@@ -10,49 +10,93 @@ export function Skeleton({ className, ...props }) {
   return <div className={cn("animate-pulse bg-surface-2", className)} {...props} />
 }
 
-/** Row-shaped skeleton so the table does not jump when data lands. */
+/**
+ * Row-shaped skeleton. Column widths and row height mirror ResultsTable
+ * exactly, so nothing reflows when the real set lands — a loading state
+ * that changes the layout is worse than no loading state.
+ *
+ * Rows fade toward the fold rather than pulsing in unison: the eye reads
+ * one incoming set instead of ten independent blinks.
+ */
 export function SkeletonRows({ rows = 8, className }) {
   return (
-    <div className={cn("flex flex-col", className)}>
+    <div className={cn("min-w-0 flex-1 overflow-hidden", className)} aria-hidden="true">
+      {/* Header placeholder keeps the sticky column band present. */}
+      <div className="flex h-[33px] items-center gap-2 border-b border-border-strong bg-surface px-3">
+        <Skeleton className="h-2 w-16" />
+        <Skeleton className="ml-auto h-2 w-10" />
+      </div>
       {Array.from({ length: rows }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-3 border-b border-border px-3 py-2.5"
+          className="flex min-w-[720px] items-center gap-2 border-b border-border px-3 py-2"
+          style={{ opacity: Math.max(0.15, 1 - i * 0.1) }}
         >
-          <Skeleton className="h-3 w-3 shrink-0 rounded-[2px]" />
-          <Skeleton className="h-3 flex-1" style={{ opacity: 1 - i * 0.06 }} />
-          <Skeleton className="hidden h-3 w-20 shrink-0 sm:block" />
-          <Skeleton className="hidden h-3 w-14 shrink-0 md:block" />
-          <Skeleton className="hidden h-3 w-16 shrink-0 lg:block" />
+          {/* Creative: headline over domain, the two-line cell */}
+          <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <Skeleton className="h-3 w-[62%]" />
+            <Skeleton className="h-2 w-[34%]" />
+          </div>
+          <Skeleton className="h-3 w-[104px] shrink-0" />
+          <Skeleton className="h-4 w-[72px] shrink-0" />
+          <Skeleton className="h-[3px] w-[112px] shrink-0" />
+          <Skeleton className="h-3 w-[64px] shrink-0" />
+          <Skeleton className="h-3 w-[52px] shrink-0" />
+          <Skeleton className="h-3 w-[52px] shrink-0" />
+          <Skeleton className="h-3 w-[60px] shrink-0" />
         </div>
       ))}
     </div>
   )
 }
 
-export function EmptyState({ icon: Icon, title, description, action, className }) {
+/**
+ * Shared frame for the three terminal states so empty and error are
+ * visibly siblings: hairline grid backdrop, a mono status line, a
+ * sentence, an action. Hierarchy comes from the type scale alone — the
+ * layout still reads correctly with colour removed.
+ */
+function StateFrame({ status, statusTone, title, description, action, meta, className }) {
   return (
     <div
       className={cn(
-        "grid-backdrop flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center",
+        "grid-backdrop flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16",
         className,
       )}
     >
-      {Icon ? (
-        <div className="flex h-9 w-9 items-center justify-center border border-border bg-surface">
-          <Icon className="h-4 w-4 text-text-faint" aria-hidden="true" />
+      <div className="flex w-full max-w-sm flex-col gap-3 border border-border bg-surface p-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className={cn("label-mono", statusTone)}>{status}</span>
+          {meta ? <span className="label-mono tnum truncate">{meta}</span> : null}
         </div>
-      ) : null}
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[13px] font-medium text-text">{title}</p>
-        {description ? (
-          <p className="max-w-sm text-pretty text-xs leading-relaxed text-text-muted">
-            {description}
+
+        <div className="flex flex-col gap-1.5">
+          <p className="text-pretty text-[13px] font-medium leading-snug text-text">
+            {title}
           </p>
-        ) : null}
+          {description ? (
+            <p className="text-pretty text-xs leading-relaxed text-text-muted">
+              {description}
+            </p>
+          ) : null}
+        </div>
+
+        {action ? <div className="flex items-center gap-1.5 pt-0.5">{action}</div> : null}
       </div>
-      {action}
     </div>
+  )
+}
+
+export function EmptyState({ status = "no data", title, description, action, className }) {
+  return (
+    <StateFrame
+      status={status}
+      statusTone="text-text-faint"
+      title={title}
+      description={description}
+      action={action}
+      className={className}
+    />
   )
 }
 
@@ -62,25 +106,20 @@ export function ErrorState({ error, onRetry, className }) {
   const code = error?.code ?? error?.status
 
   return (
-    <div
-      className={cn(
-        "flex flex-1 flex-col items-center justify-center gap-3 px-6 py-16 text-center",
-        className,
-      )}
-    >
-      <div className="flex flex-col items-center gap-2">
-        <span className="label-mono text-danger">
-          Request failed{code ? ` · ${code}` : ""}
-        </span>
-        <p className="max-w-md text-pretty text-[13px] leading-relaxed text-text">
-          {message}
-        </p>
-      </div>
-      {onRetry ? (
-        <Button size="sm" variant="outline" onClick={onRetry}>
-          Retry
-        </Button>
-      ) : null}
-    </div>
+    <StateFrame
+      status="request failed"
+      statusTone="text-danger"
+      meta={code ? String(code) : null}
+      title={message}
+      description="Nothing was written and no partial set was kept. Retrying re-runs the same request with the same parameters."
+      action={
+        onRetry ? (
+          <Button size="sm" variant="outline" onClick={onRetry}>
+            Retry
+          </Button>
+        ) : null
+      }
+      className={className}
+    />
   )
 }

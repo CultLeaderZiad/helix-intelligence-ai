@@ -77,7 +77,7 @@ export function JobProgress({ job, query, onCancel }) {
 
   return (
     <div
-      className="shrink-0 border-b border-border bg-bg px-4 py-3"
+      className="shrink-0 border-b border-border bg-bg px-3 py-3"
       role="status"
       aria-live="polite"
     >
@@ -111,10 +111,12 @@ export function JobProgress({ job, query, onCancel }) {
         ) : null}
       </div>
 
-      {/* Command echo */}
-      <p className="mt-2 truncate font-mono text-[11px] leading-5 text-text">
+      {/* Command echo. The query is data, not status — it reads at full
+          text weight rather than in accent, which is reserved for live
+          state and exceptional scores. */}
+      <p className="mt-2 truncate font-mono text-[11px] leading-5 text-text-muted">
         <span className="text-text-faint">$ </span>
-        query <span className="text-accent">&quot;{query?.trim() || "*"}&quot;</span>
+        query <span className="text-text">&quot;{query?.trim() || "*"}&quot;</span>
       </p>
 
       {/* Stage transcript */}

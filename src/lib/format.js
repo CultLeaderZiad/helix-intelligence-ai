@@ -57,6 +57,35 @@ export function formatRelative(iso) {
   return `${months}mo ago`
 }
 
+/** Days a record has been running -> "76d". Unit lives here, not in JSX. */
+export function formatDays(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—"
+  return `${formatInt(n)}d`
+}
+
+/** Pattern lift index -> "1.34×" */
+export function formatLift(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—"
+  return `${n.toFixed(2)}×`
+}
+
+/** 0..1 share of a corpus -> "28%" */
+export function formatPrevalence(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—"
+  return `${Math.round(n * 100)}%`
+}
+
+/** Integer confidence 0..99 -> "84%" */
+export function formatConfidence(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—"
+  return `${Math.round(n)}%`
+}
+
+/** Zero-padded ordinal for numbered findings -> "01" */
+export function formatOrdinal(i) {
+  return String(i).padStart(2, "0")
+}
+
 export function formatDuration(ms) {
   if (ms === null || ms === undefined) return "—"
   if (ms < 1000) return `${Math.round(ms)}ms`

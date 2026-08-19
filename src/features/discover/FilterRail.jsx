@@ -1,6 +1,7 @@
 import { Checkbox, Label, Select } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
 import { PLATFORMS, FORMATS, SPEND_BANDS } from "@/lib/constants"
+import { cn } from "@/lib/utils"
 
 const SCORE_OPTIONS = [
   { value: "0", label: "Any score" },
@@ -58,34 +59,42 @@ export function FilterRail({ filters, onChange, onClear, dirty }) {
         ) : null}
       </div>
 
-      <div className="flex flex-col gap-4 p-3">
-        <div className="flex flex-col gap-1">
+      {/* One vertical rhythm for the whole rail: groups sit on a gap-5
+          spine, every group is Label + gap-1.5 + controls. */}
+      <div className="flex flex-col gap-5 p-3">
+        <div className="flex flex-col gap-1.5">
           <Label>Platform</Label>
-          {PLATFORMS.map((p) => (
-            <Checkbox
-              key={p.value}
-              label={p.label}
-              checked={(filters.platforms ?? []).includes(p.value)}
-              onChange={() => toggleArray("platforms", p.value)}
-            />
-          ))}
+          {/* Checkbox carries its own py-1, so the list itself is gap-0 —
+              otherwise rows sit 14px apart while Select groups sit at 6px. */}
+          <div className="flex flex-col">
+            {PLATFORMS.map((p) => (
+              <Checkbox
+                key={p.value}
+                label={p.label}
+                checked={(filters.platforms ?? []).includes(p.value)}
+                onChange={() => toggleArray("platforms", p.value)}
+              />
+            ))}
+          </div>
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           <Label>Format</Label>
-          {FORMATS.map((f) => (
-            <Checkbox
-              key={f.value}
-              label={f.label}
-              checked={(filters.formats ?? []).includes(f.value)}
-              onChange={() => toggleArray("formats", f.value)}
-            />
-          ))}
+          <div className="flex flex-col">
+            {FORMATS.map((f) => (
+              <Checkbox
+                key={f.value}
+                label={f.label}
+                checked={(filters.formats ?? []).includes(f.value)}
+                onChange={() => toggleArray("formats", f.value)}
+              />
+            ))}
+          </div>
         </div>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           <Label>Spend band</Label>
-          <div className="flex gap-1 pt-0.5">
+          <div className="flex gap-1">
             {SPEND_BANDS.map((b) => {
               const active = (filters.spend_bands ?? []).includes(b.value)
               return (
@@ -94,11 +103,15 @@ export function FilterRail({ filters, onChange, onClear, dirty }) {
                   type="button"
                   onClick={() => toggleArray("spend_bands", b.value)}
                   aria-pressed={active}
-                  className={
+                  className={cn(
+                    "tnum h-6 flex-1 rounded-sm border font-mono text-[11px] transition-colors",
                     active
-                      ? "h-6 flex-1 rounded-sm border border-accent bg-accent-wash font-mono text-[11px] text-accent"
-                      : "h-6 flex-1 rounded-sm border border-border bg-surface-2 font-mono text-[11px] text-text-muted transition-colors hover:border-border-strong hover:text-text"
-                  }
+                      ? // Selection reads through the accent hairline + wash.
+                        // The glyph itself stays full-weight text so a
+                        // selected band is not three accent signals at once.
+                        "border-accent bg-accent-wash text-text"
+                      : "border-border bg-surface-2 text-text-muted hover:border-border-strong hover:text-text",
+                  )}
                 >
                   {b.label}
                 </button>
@@ -129,10 +142,15 @@ export function FilterRail({ filters, onChange, onClear, dirty }) {
           />
         </div>
 
+        {/* Staged-not-applied is a real state, so it is stated as one:
+            a labelled 1px block, not a coloured accent stripe. */}
         {dirty ? (
-          <p className="border-l-2 border-warning/50 pl-2 text-[11px] leading-relaxed text-text-muted">
-            Filters changed. Re-run discovery to apply them.
-          </p>
+          <div className="flex flex-col gap-1.5 border border-border bg-surface-2 p-2">
+            <span className="label-mono text-warning">not applied</span>
+            <p className="text-[11px] leading-relaxed text-text-muted">
+              Filters changed since the last run. Re-run discovery to apply them.
+            </p>
+          </div>
         ) : null}
       </div>
     </aside>

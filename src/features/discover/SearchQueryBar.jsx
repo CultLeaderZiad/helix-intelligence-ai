@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/Button"
 import { Select } from "@/components/ui/Field"
 import { KeyHint } from "@/components/ui/KeyHint"
 import { SORT_OPTIONS } from "@/lib/constants"
+import { formatInt } from "@/lib/format"
 
 /**
  * The query surface. Submitting enqueues a discovery job; changing sort
@@ -54,8 +55,8 @@ export function SearchQueryBar({
         <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
         Filters
         {activeFilterCount > 0 ? (
-          <span className="tnum ml-0.5 font-mono text-[10px] text-accent">
-            {activeFilterCount}
+          <span className="tnum ml-0.5 font-mono text-[10px] text-text-muted">
+            {formatInt(activeFilterCount)}
           </span>
         ) : null}
       </Button>
@@ -72,7 +73,7 @@ export function SearchQueryBar({
 
       <Button variant="primary" size="md" onClick={onSubmit} disabled={isBusy}>
         {isBusy ? "Running" : "Run discovery"}
-        {!isBusy ? <KeyHint className="border-[#0A0A0A]/25 bg-[#0A0A0A]/10 text-[#0A0A0A]">↵</KeyHint> : null}
+        {!isBusy ? <KeyHint tone="on-accent">↵</KeyHint> : null}
       </Button>
     </div>
   )
