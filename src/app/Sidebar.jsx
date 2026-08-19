@@ -1,5 +1,8 @@
+import { useState } from "react"
 import { NavLink } from "react-router-dom"
+import { LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/context/AuthContext"
 import { NAV_SECTIONS } from "./navigation"
 import { KeyHint } from "@/components/ui/KeyHint"
 
@@ -9,6 +12,18 @@ import { KeyHint } from "@/components/ui/KeyHint"
  * and styling them as finished would misrepresent its state.
  */
 export function Sidebar({ onOpenCommand, className }) {
+  const { user, signOut } = useAuth()
+  const [signingOut, setSigningOut] = useState(false)
+
+  async function handleSignOut() {
+    setSigningOut(true)
+    try {
+      await signOut()
+    } finally {
+      setSigningOut(false)
+    }
+  }
+
   return (
     <nav
       className={cn(
@@ -66,7 +81,25 @@ export function Sidebar({ onOpenCommand, className }) {
         ))}
       </div>
 
-      <div className="shrink-0 border-t border-border p-2">
+      <div className="flex shrink-0 flex-col gap-2 border-t border-border p-2">
+        <div className="flex items-center gap-2 px-1.5">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs text-text">{user?.name}</p>
+            <p className="truncate font-mono text-[10px] uppercase tracking-[0.08em] text-text-faint">
+              {user?.role}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="rounded-sm p-1.5 text-text-faint transition-colors hover:bg-surface-2 hover:text-text disabled:cursor-wait disabled:opacity-50"
+            aria-label={signingOut ? "Signing out" : "Sign out"}
+            title="Sign out"
+          >
+            <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
         <button
           type="button"
           onClick={onOpenCommand}
