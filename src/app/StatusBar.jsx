@@ -5,9 +5,14 @@ import { API_BASE_URL } from "@/services/config"
 import { formatDuration, formatInt } from "@/lib/format"
 import { useTelemetry } from "./TelemetryContext"
 
+/**
+ * State word tone. The live *dot* carries the accent (it is a status
+ * indicator); the word beside it does not, so lime stays a single signal
+ * in the strip rather than two.
+ */
 const STATE_TONE = {
   idle: "text-text-faint",
-  running: "text-accent",
+  running: "text-text",
   ready: "text-success",
   error: "text-danger",
 }
@@ -45,7 +50,7 @@ export function StatusBar() {
         </span>
       </span>
 
-      <span className="tnum hidden sm:inline">req {telemetry.requests}</span>
+      <span className="tnum hidden sm:inline">req {formatInt(telemetry.requests)}</span>
 
       <span className="ml-auto flex items-center gap-1.5">
         {telemetry.lastJobId ? (

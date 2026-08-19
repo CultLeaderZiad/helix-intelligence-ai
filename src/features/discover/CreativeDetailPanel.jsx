@@ -8,8 +8,14 @@ import { ErrorState, Skeleton } from "@/components/ui/States"
 import { deriveInsight } from "@/lib/insight"
 import {
   formatCompact,
+  formatConfidence,
   formatDate,
+  formatDays,
+  formatDuration,
+  formatLift,
   formatPercent,
+  formatOrdinal,
+  formatPrevalence,
   formatSpendBand,
 } from "@/lib/format"
 
@@ -40,8 +46,8 @@ function MediaFrame({ format, ratio, duration }) {
         <span className="label-mono absolute left-2 top-2">{format}</span>
         <span className="label-mono absolute right-2 top-2">{ratio}</span>
         {duration ? (
-          <span className="tnum absolute bottom-2 right-2 font-mono text-[10px] text-text-muted">
-            {duration}s
+          <span className="label-mono tnum absolute bottom-2 right-2">
+            {formatDuration(duration * 1000)}
           </span>
         ) : null}
       </div>
@@ -61,36 +67,32 @@ function InsightBlock({ creative }) {
     <div className="flex flex-col gap-3 border border-border bg-surface-2 p-3">
       <div className="flex items-baseline justify-between gap-2">
         <span className="label-mono text-text">Why this ad matters</span>
-        <span className="tnum font-mono text-[10px] text-text-faint">
-          confidence {insight.confidence}%
+        <span className="label-mono tnum">
+          confidence {formatConfidence(insight.confidence)}
         </span>
       </div>
 
       {insight.daysActive ? (
         <p className="text-xs leading-relaxed text-text-muted">
           This creative has been active for{" "}
-          <span className="tnum font-mono text-text">{insight.daysActive} days</span>
+          <span className="tnum font-mono text-text">
+            {formatDays(insight.daysActive)}
+          </span>
           {insight.daysActive >= 60 ? " — well past the typical fatigue window." : "."}
         </p>
       ) : null}
 
-      <ol className="flex flex-col gap-1.5">
+      <ol className="flex flex-col gap-2">
         {insight.reasons.map((r, i) => (
           <li key={r.id} className="flex items-baseline gap-2.5">
-            <span className="tnum shrink-0 font-mono text-[10px] text-text-faint">
-              {String(i + 1).padStart(2, "0")}
+            <span className="label-mono tnum shrink-0 text-text-faint">
+              {formatOrdinal(i + 1)}
             </span>
             <span className="min-w-0 flex-1 truncate text-xs text-text">{r.label}</span>
-            <span className="tnum shrink-0 font-mono text-[10px] text-text-muted">
-              {r.lift.toFixed(2)}× lift
-            </span>
+            <span className="label-mono tnum shrink-0">{formatLift(r.lift)} lift</span>
           </li>
         ))}
       </ol>
-
-      <Button variant="outline" size="sm" className="w-full justify-center">
-        Use as creative reference
-      </Button>
     </div>
   )
 }
@@ -112,19 +114,19 @@ function PatternFindings({ patterns }) {
           className="flex flex-col gap-1 border-b border-border py-2.5 first:pt-0 last:border-b-0 last:pb-0"
         >
           <div className="flex items-baseline gap-2">
-            <span className="tnum font-mono text-[10px] text-text-faint">
-              № {String(i + 1).padStart(2, "0")}
+            <span className="label-mono tnum w-5 shrink-0 text-text-faint">
+              {formatOrdinal(i + 1)}
             </span>
             <span className="text-xs text-text">{p.label}</span>
             <span className="label-mono ml-auto">{p.family}</span>
           </div>
-          <p className="pl-[26px] text-[11px] leading-relaxed text-text-muted">
+          <p className="pl-7 text-[11px] leading-relaxed text-text-muted">
             Found in{" "}
             <span className="tnum font-mono text-text">
-              {Math.round(p.prevalence * 100)}%
+              {formatPrevalence(p.prevalence)}
             </span>{" "}
             of the corpus · lift{" "}
-            <span className="tnum font-mono text-text">{p.lift_index.toFixed(2)}×</span>
+            <span className="tnum font-mono text-text">{formatLift(p.lift_index)}</span>
           </p>
         </div>
       ))}
@@ -213,7 +215,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
             {/* Active duration — position 4 in the hierarchy */}
             <div className="flex items-center gap-3 border-y border-border py-2">
-              <StatBlock label="Active" value={data.days_active ? `${data.days_active}d` : "—"} />
+              <StatBlock label="Active" value={formatDays(data.days_active)} />
               <StatBlock label="First seen" value={formatDate(data.first_seen)} />
               <StatBlock label="Last seen" value={formatDate(data.last_seen)} />
             </div>
@@ -269,9 +271,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
               <PatternFindings patterns={data.patterns} />
             </div>
 
-            <p className="border-t border-border pt-3 font-mono text-[10px] text-text-faint">
-              {data.id}
-            </p>
+            <p className="label-mono tnum border-t border-border pt-3">{data.id}</p>
           </div>
         </div>
       ) : null}

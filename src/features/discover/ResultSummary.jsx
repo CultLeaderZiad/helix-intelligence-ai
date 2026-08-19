@@ -35,7 +35,7 @@ export function ResultSummary({ query, results, sort, filterCount, selectedId })
   if (!results) return null
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 border-b border-border bg-surface px-4 py-1.5">
+    <div className="flex shrink-0 flex-wrap items-baseline gap-x-5 gap-y-1 border-b border-border bg-surface px-3 py-2">
       <span className="flex min-w-0 items-baseline gap-1.5">
         <span className="label-mono">query</span>
         <span className="truncate font-mono text-[11px] text-text">
@@ -47,12 +47,12 @@ export function ResultSummary({ query, results, sort, filterCount, selectedId })
         {formatInt(activeOnPage)}
         <span className="text-text-faint">/page</span>
       </Cell>
-      <Cell label="filters">{filterCount}</Cell>
+      <Cell label="filters">{formatInt(filterCount)}</Cell>
       <Cell label="sort">{sortLabel}</Cell>
       {selectedId ? (
         <span className="flex items-baseline gap-1.5">
-          <span className="label-mono text-accent">selected</span>
-          <span className="font-mono text-[11px] text-text-muted">{selectedId}</span>
+          <span className="label-mono">selected</span>
+          <span className="tnum font-mono text-[11px] text-text">{selectedId}</span>
         </span>
       ) : null}
       <span className="tnum ml-auto font-mono text-[10px] text-text-faint">

@@ -4,6 +4,8 @@ import { ScoreBar } from "@/components/ui/Metric"
 import { brandsById } from "@/data/brands"
 import {
   formatCompact,
+  formatDays,
+  formatInt,
   formatPercent,
   formatSpendBand,
   formatRelative,
@@ -101,7 +103,9 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                       <p className="truncate text-[13px] text-text">{c.headline}</p>
                       <p className="truncate text-[11px] text-text-faint">
                         {c.landing_domain ?? "no landing page"}
-                        {c.variant_count ? ` · ${c.variant_count} variants` : ""}
+                        {c.variant_count
+                          ? ` · ${formatInt(c.variant_count)} variants`
+                          : ""}
                       </p>
                     </div>
                   </div>
@@ -134,7 +138,7 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                   {formatSpendBand(c.metrics?.spend_band)}
                 </td>
                 <td className="tnum px-3 py-2 text-right font-mono text-[11px] text-text-faint">
-                  {c.days_active ? `${c.days_active}d` : formatRelative(c.first_seen)}
+                  {c.days_active ? formatDays(c.days_active) : formatRelative(c.first_seen)}
                 </td>
               </tr>
             )
