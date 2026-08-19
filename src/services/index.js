@@ -3,10 +3,12 @@ import { DATA_SOURCE } from "./config"
 import discoverMock from "./mock/discoverService.mock"
 import creativeMock from "./mock/creativeService.mock"
 import analysisMock from "./mock/analysisService.mock"
+import authMock from "./mock/authService.mock"
 
 import discoverApi from "./api/discoverService.api"
 import creativeApi from "./api/creativeService.api"
 import analysisApi from "./api/analysisService.api"
+import authApi from "./api/authService.api"
 
 /**
  * ============================================================
@@ -26,6 +28,7 @@ const useApi = DATA_SOURCE === "api"
 export const discoverService = useApi ? discoverApi : discoverMock
 export const creativeService = useApi ? creativeApi : creativeMock
 export const analysisService = useApi ? analysisApi : analysisMock
+export const authService = useApi ? authApi : authMock
 
 export { DATA_SOURCE }
 export { ServiceError } from "./http"
