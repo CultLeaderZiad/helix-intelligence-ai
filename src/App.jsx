@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
+import { Outlet, Route, Routes, useLocation } from "react-router-dom"
 import { AppShell } from "@/app/AppShell"
 import { AdminShell } from "@/app/admin/AdminShell"
 import { ProtectedRoute } from "@/app/ProtectedRoute"
@@ -7,6 +7,7 @@ import { TelemetryProvider } from "@/app/TelemetryContext"
 import { NAV_SECTIONS } from "@/app/navigation"
 import { ADMIN_NAV_ITEMS } from "@/app/admin/adminNavigation"
 import { AuthProvider } from "@/context/AuthContext"
+import { LandingPage } from "@/pages/LandingPage"
 import { DiscoverPage } from "@/pages/DiscoverPage"
 import { PendingLoopPage } from "@/pages/PendingLoopPage"
 import { NotFoundPage } from "@/pages/NotFoundPage"
@@ -68,6 +69,10 @@ export default function App() {
       <AuthProvider>
         <DocumentTitle />
         <Routes>
+          {/* Public front door. Fully ungated — the marketing surface the
+              header nav points at. Auth pages are reached only by choice. */}
+          <Route path="/" element={<LandingPage />} />
+
           <Route path="/sign-in" element={<SignInPage />} />
           <Route path="/sign-up" element={<SignUpPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -88,7 +93,6 @@ export default function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route element={<AuthenticatedShell />}>
-              <Route path="/" element={<Navigate to="/discover" replace />} />
               <Route path="/discover" element={<DiscoverPage />} />
               {NAV_SECTIONS.filter((s) => s.status === "pending").map((section) => (
                 <Route
