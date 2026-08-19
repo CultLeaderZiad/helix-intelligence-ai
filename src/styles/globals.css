@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+@import "@fontsource-variable/inter/index.css";
+@import "@fontsource-variable/jetbrains-mono/index.css";
+
+/* ============================================================
+   HELIX INTELLIGENCE — DESIGN TOKENS
+   Single dark theme. Instrument-grade, dense, rectangular.
+   No light mode. No gradients. One accent, used sparingly.
+   ============================================================ */
+
+@theme {
+  /* --- Surfaces (deepest -> raised) --- */
+  --color-bg: #0a0a0a;
+  --color-surface: #111111;
+  --color-surface-2: #171717;
+  --color-surface-3: #1e1e1e;
+
+  /* --- Lines --- */
+  --color-border: #242424;
+  --color-border-strong: #333333;
+
+  /* --- Text --- */
+  --color-text: #f5f5f5;
+  --color-text-muted: #8a8a8a;
+  --color-text-faint: #5c5c5c;
+
+  /* --- Single accent --- */
+  --color-accent: #d7ff4f;
+  --color-accent-dim: #a8c93e;
+  --color-accent-wash: rgba(215, 255, 79, 0.08);
+
+  /* --- Status (functional only, never decorative) --- */
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #ff5c5c;
+  --color-info: #60a5fa;
+
+  /* --- Type --- */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  /* --- Radii: near-rectangular by decree --- */
+  --radius-none: 0px;
+  --radius-sm: 2px;
+  --radius: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* --- Shell metrics (single source of truth) --- */
+  --spacing-rail: 13rem;
+  --spacing-rail-collapsed: 3.25rem;
+  --spacing-topbar: 3rem;
+  --spacing-statusbar: 1.75rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    background-color: var(--color-bg);
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv05" 1, "ss03" 1;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior: none;
+  }
+
+  /* Numeric data must never shift width */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  ::selection {
+    background-color: var(--color-accent);
+    color: #0a0a0a;
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+
+  /* Thin instrument scrollbars */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #2a2a2a;
+    border: 3px solid var(--color-bg);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3a3a3a;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  /* Uppercase mono micro-label — the workhorse of this UI */
+  .label-mono {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  /* 1px hairline grid backdrop for empty regions */
+  .grid-backdrop {
+    background-image: linear-gradient(to right, #171717 1px, transparent 1px),
+      linear-gradient(to bottom, #171717 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .stripe-progress {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      rgba(10, 10, 10, 0.22) 0 4px,
+      transparent 4px 8px
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
