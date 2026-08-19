@@ -5,6 +5,7 @@ import { useTelemetry } from "@/app/TelemetryContext"
 import { SearchQueryBar } from "@/features/discover/SearchQueryBar"
 import { FilterRail } from "@/features/discover/FilterRail"
 import { JobProgress } from "@/features/discover/JobProgress"
+import { ResultSummary } from "@/features/discover/ResultSummary"
 import { ResultsTable } from "@/features/discover/ResultsTable"
 import { CreativeDetailPanel } from "@/features/discover/CreativeDetailPanel"
 import { Button } from "@/components/ui/Button"
@@ -108,7 +109,7 @@ export function DiscoverPage() {
         trail={["Helix", "Discover"]}
         meta={
           phase === PHASE.READY && results
-            ? `${formatInt(results.total)} records · ${formatDuration(results.took_ms)}`
+            ? `${formatInt(results.total)} ${results.total === 1 ? "record" : "records"} · ${formatDuration(results.took_ms)}`
             : "no result set"
         }
         actions={
@@ -133,7 +134,17 @@ export function DiscoverPage() {
         canSort={phase === PHASE.READY || phase === PHASE.IDLE}
       />
 
-      {showProgress ? <JobProgress job={job} onCancel={cancel} /> : null}
+      {showProgress ? <JobProgress job={job} query={query} onCancel={cancel} /> : null}
+
+      {phase === PHASE.READY && results ? (
+        <ResultSummary
+          query={query}
+          results={results}
+          sort={sort}
+          filterCount={activeFilterCount}
+          selectedId={selectedId}
+        />
+      ) : null}
 
       <div className="flex min-h-0 flex-1">
         {/* Below lg the rail is an overlay so the table keeps full width. */}

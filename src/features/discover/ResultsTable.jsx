@@ -42,7 +42,7 @@ export function ResultsTable({ items, selectedId, onSelect }) {
 
   return (
     <div className="min-w-0 flex-1 overflow-auto">
-      <table className="w-full border-collapse text-left">
+      <table className="w-full min-w-[720px] border-collapse text-left">
         <thead className="sticky top-0 z-10 bg-surface">
           <tr className="border-b border-border-strong">
             <th scope="col" className="label-mono px-3 py-2 font-normal">
