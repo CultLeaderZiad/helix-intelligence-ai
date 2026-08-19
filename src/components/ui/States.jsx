@@ -56,7 +56,16 @@ export function SkeletonRows({ rows = 8, className }) {
  * sentence, an action. Hierarchy comes from the type scale alone — the
  * layout still reads correctly with colour removed.
  */
-function StateFrame({ status, statusTone, title, description, action, meta, className }) {
+function StateFrame({
+  status,
+  statusTone,
+  title,
+  description,
+  action,
+  meta,
+  icon: Icon,
+  className,
+}) {
   return (
     <div
       className={cn(
@@ -66,7 +75,10 @@ function StateFrame({ status, statusTone, title, description, action, meta, clas
     >
       <div className="flex w-full max-w-sm flex-col gap-3 border border-border bg-surface p-4">
         <div className="flex items-baseline justify-between gap-3">
-          <span className={cn("label-mono", statusTone)}>{status}</span>
+          <span className={cn("label-mono flex items-center gap-1.5", statusTone)}>
+            {Icon ? <Icon className="h-3 w-3" aria-hidden="true" /> : null}
+            {status}
+          </span>
           {meta ? <span className="label-mono tnum truncate">{meta}</span> : null}
         </div>
 
@@ -87,7 +99,14 @@ function StateFrame({ status, statusTone, title, description, action, meta, clas
   )
 }
 
-export function EmptyState({ status = "no data", title, description, action, className }) {
+export function EmptyState({
+  status = "no data",
+  title,
+  description,
+  action,
+  icon,
+  className,
+}) {
   return (
     <StateFrame
       status={status}
@@ -95,6 +114,7 @@ export function EmptyState({ status = "no data", title, description, action, cla
       title={title}
       description={description}
       action={action}
+      icon={icon}
       className={className}
     />
   )

@@ -81,7 +81,9 @@ export function JobProgress({ job, query, onCancel }) {
       role="status"
       aria-live="polite"
     >
-      {/* Session header */}
+      {/* Session header. The dot alone carries the accent while a job is
+          live — same discipline as StatusBar — so the word beside it
+          stays neutral and lime is never doubled up as one signal. */}
       <div className="flex items-center gap-2.5 font-mono text-[11px]">
         <span className="flex items-center gap-1.5">
           <span
@@ -94,7 +96,7 @@ export function JobProgress({ job, query, onCancel }) {
           <span
             className={cn(
               "label-mono",
-              failed ? "text-danger" : done ? "text-success" : "text-accent",
+              failed ? "text-danger" : done ? "text-success" : "text-text",
             )}
           >
             {failed ? "failed" : done ? "done" : "live"}
