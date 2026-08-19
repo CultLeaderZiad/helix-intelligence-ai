@@ -130,12 +130,28 @@
     background-size: 32px 32px;
   }
 
+  /* Terminal caret — used only while a job poll is actually live */
+  .cursor-blink {
+    animation: helix-blink 1s steps(1, end) infinite;
+  }
+
   .stripe-progress {
     background-image: repeating-linear-gradient(
       -45deg,
       rgba(10, 10, 10, 0.22) 0 4px,
       transparent 4px 8px
     );
+  }
+}
+
+@keyframes helix-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
   }
 }
 

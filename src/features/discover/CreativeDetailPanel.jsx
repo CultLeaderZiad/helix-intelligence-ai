@@ -1,16 +1,136 @@
-import { X, ExternalLink } from "lucide-react"
+import { X, ExternalLink, Play, Image as ImageIcon, Layers } from "lucide-react"
 import { creativeService } from "@/services"
 import { useAsync } from "@/hooks/useAsync"
 import { Button } from "@/components/ui/Button"
 import { Tag } from "@/components/ui/Tag"
 import { ScoreBar, StatBlock, MetricValue } from "@/components/ui/Metric"
 import { ErrorState, Skeleton } from "@/components/ui/States"
+import { deriveInsight } from "@/lib/insight"
 import {
   formatCompact,
   formatDate,
   formatPercent,
   formatSpendBand,
 } from "@/lib/format"
+
+const FORMAT_ICON = { video: Play, image: ImageIcon, carousel: Layers }
+
+/**
+ * Media frame — the creative itself is the hero of the inspector.
+ *
+ * The mock source does not sync binary assets, so the frame renders the
+ * creative's true geometry (ratio, format, duration) and says so plainly
+ * instead of faking a thumbnail. When the API embeds `media_url`, the
+ * inner block becomes an <img>/<video> and nothing else moves.
+ */
+function MediaFrame({ format, ratio, duration }) {
+  const Icon = FORMAT_ICON[format] ?? ImageIcon
+  const aspect = ratio ? ratio.replace(":", " / ") : "16 / 9"
+
+  return (
+    <div className="flex justify-center border-b border-border bg-bg p-4">
+      <div
+        className="grid-backdrop relative flex max-h-64 w-full items-center justify-center border border-border bg-surface"
+        style={{ aspectRatio: aspect, maxWidth: ratio === "9:16" ? "9rem" : "100%" }}
+      >
+        <div className="flex flex-col items-center gap-2">
+          <Icon className="h-5 w-5 text-text-faint" aria-hidden="true" />
+          <span className="label-mono">asset not synced</span>
+        </div>
+        <span className="label-mono absolute left-2 top-2">{format}</span>
+        <span className="label-mono absolute right-2 top-2">{ratio}</span>
+        {duration ? (
+          <span className="tnum absolute bottom-2 right-2 font-mono text-[10px] text-text-muted">
+            {duration}s
+          </span>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * WHY THIS AD MATTERS — research finding, not marketing copy.
+ * Every line is derived from the record (see lib/insight.js).
+ */
+function InsightBlock({ creative }) {
+  const insight = deriveInsight(creative)
+  if (!insight) return null
+
+  return (
+    <div className="flex flex-col gap-3 border border-border bg-surface-2 p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="label-mono text-text">Why this ad matters</span>
+        <span className="tnum font-mono text-[10px] text-text-faint">
+          confidence {insight.confidence}%
+        </span>
+      </div>
+
+      {insight.daysActive ? (
+        <p className="text-xs leading-relaxed text-text-muted">
+          This creative has been active for{" "}
+          <span className="tnum font-mono text-text">{insight.daysActive} days</span>
+          {insight.daysActive >= 60 ? " — well past the typical fatigue window." : "."}
+        </p>
+      ) : null}
+
+      <ol className="flex flex-col gap-1.5">
+        {insight.reasons.map((r, i) => (
+          <li key={r.id} className="flex items-baseline gap-2.5">
+            <span className="tnum shrink-0 font-mono text-[10px] text-text-faint">
+              {String(i + 1).padStart(2, "0")}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-xs text-text">{r.label}</span>
+            <span className="tnum shrink-0 font-mono text-[10px] text-text-muted">
+              {r.lift.toFixed(2)}× lift
+            </span>
+          </li>
+        ))}
+      </ol>
+
+      <Button variant="outline" size="sm" className="w-full justify-center">
+        Use as creative reference
+      </Button>
+    </div>
+  )
+}
+
+/** Numbered pattern findings — research results, not feature cards. */
+function PatternFindings({ patterns }) {
+  if (!patterns?.length) {
+    return (
+      <p className="text-xs text-text-faint">
+        No patterns attributed. Pattern mining runs in the Intelligence loop.
+      </p>
+    )
+  }
+  return (
+    <div className="flex flex-col">
+      {patterns.map((p, i) => (
+        <div
+          key={p.id}
+          className="flex flex-col gap-1 border-b border-border py-2.5 first:pt-0 last:border-b-0 last:pb-0"
+        >
+          <div className="flex items-baseline gap-2">
+            <span className="tnum font-mono text-[10px] text-text-faint">
+              № {String(i + 1).padStart(2, "0")}
+            </span>
+            <span className="text-xs text-text">{p.label}</span>
+            <span className="label-mono ml-auto">{p.family}</span>
+          </div>
+          <p className="pl-[26px] text-[11px] leading-relaxed text-text-muted">
+            Found in{" "}
+            <span className="tnum font-mono text-text">
+              {Math.round(p.prevalence * 100)}%
+            </span>{" "}
+            of the corpus · lift{" "}
+            <span className="tnum font-mono text-text">{p.lift_index.toFixed(2)}×</span>
+          </p>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 /**
  * Right-hand inspector. Uses the *detail* endpoint rather than the row
@@ -27,7 +147,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
   return (
     <aside
-      className="flex w-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface lg:w-[320px]"
+      className="flex w-full shrink-0 flex-col overflow-hidden border-l border-border bg-surface lg:w-[344px]"
       aria-label="Creative detail"
     >
       <div className="flex h-8 shrink-0 items-center justify-between border-b border-border px-3">
@@ -39,124 +159,120 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
       {loading ? (
         <div className="flex flex-col gap-3 p-3">
+          <Skeleton className="h-40 w-full" />
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-3 w-32" />
-          <Skeleton className="h-16 w-full" />
         </div>
       ) : null}
 
       {error ? <ErrorState error={error} onRetry={refetch} /> : null}
 
       {data ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-3">
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-1">
-              <Tag tone="strong">{data.platform}</Tag>
-              <Tag>{data.format}</Tag>
-              {data.duration_seconds ? <Tag>{data.duration_seconds}s</Tag> : null}
-              {data.thumbnail_ratio ? <Tag>{data.thumbnail_ratio}</Tag> : null}
-            </div>
-            <h3 className="text-pretty text-sm leading-snug text-text">{data.headline}</h3>
-            {data.body ? (
-              <p className="text-pretty text-xs leading-relaxed text-text-muted">
-                {data.body}
-              </p>
-            ) : null}
-          </div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <MediaFrame
+            format={data.format}
+            ratio={data.thumbnail_ratio}
+            duration={data.duration_seconds}
+          />
 
-          <div className="flex flex-col gap-2 border-t border-border pt-3">
-            <span className="label-mono">Brand</span>
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate text-[13px] text-text">
-                {data.brand?.name ?? "Unknown"}
-              </span>
-              {data.brand?.ad_count !== undefined ? (
-                <MetricValue value={formatCompact(data.brand.ad_count)} unit="ads" muted />
+          <div className="flex flex-col gap-4 p-3">
+            {/* Brand + copy — hierarchy: brand, headline, body */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="truncate text-xs font-medium text-text">
+                    {data.brand?.name ?? "Unknown brand"}
+                  </span>
+                  <Tag>{data.platform}</Tag>
+                </span>
+                {data.brand?.ad_count !== undefined ? (
+                  <MetricValue
+                    value={formatCompact(data.brand.ad_count)}
+                    unit="ads"
+                    muted
+                    className="text-[11px]"
+                  />
+                ) : null}
+              </div>
+              <h3 className="text-pretty text-sm font-medium leading-snug text-text">
+                {data.headline}
+              </h3>
+              {data.body ? (
+                <p className="text-pretty text-xs leading-relaxed text-text-muted">
+                  {data.body}
+                </p>
+              ) : null}
+              {data.landing_domain ? (
+                <span className="flex items-center gap-1 pt-0.5 font-mono text-[11px] text-text-faint">
+                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                  {data.landing_domain}
+                </span>
               ) : null}
             </div>
-            {data.landing_domain ? (
-              <span className="flex items-center gap-1 font-mono text-[11px] text-text-faint">
-                <ExternalLink className="h-3 w-3" aria-hidden="true" />
-                {data.landing_domain}
-              </span>
-            ) : null}
-          </div>
 
-          <div className="flex flex-col gap-2.5 border-t border-border pt-3">
-            <span className="label-mono">Scores</span>
-            {[
-              ["Hook", data.scores?.hook],
-              ["Clarity", data.scores?.clarity],
-              ["Retention", data.scores?.retention],
-              ["Composite", data.scores?.composite],
-            ].map(([label, value]) => (
-              <div key={label} className="flex items-center justify-between gap-2">
-                <span className="text-xs text-text-muted">{label}</span>
-                {value === null || value === undefined ? (
-                  <span className="label-mono">not scored</span>
-                ) : (
-                  <ScoreBar value={value} width="w-16" />
-                )}
-              </div>
-            ))}
-          </div>
+            {/* Active duration — position 4 in the hierarchy */}
+            <div className="flex items-center gap-3 border-y border-border py-2">
+              <StatBlock label="Active" value={data.days_active ? `${data.days_active}d` : "—"} />
+              <StatBlock label="First seen" value={formatDate(data.first_seen)} />
+              <StatBlock label="Last seen" value={formatDate(data.last_seen)} />
+            </div>
 
-          <div className="grid grid-cols-2 gap-3 border-t border-border pt-3">
-            <StatBlock
-              label="Impressions"
-              value={formatCompact(data.metrics?.impressions_est)}
-            />
-            <StatBlock label="Spend" value={formatSpendBand(data.metrics?.spend_band)} />
-            <StatBlock
-              label="Engagement"
-              value={
-                data.metrics?.engagement_rate === null ||
-                data.metrics?.engagement_rate === undefined
-                  ? "—"
-                  : formatPercent(data.metrics.engagement_rate)
-              }
-            />
-            <StatBlock
-              label="Est. CTR"
-              value={
-                data.metrics?.ctr_est === null || data.metrics?.ctr_est === undefined
-                  ? "—"
-                  : formatPercent(data.metrics.ctr_est, 2)
-              }
-            />
-            <StatBlock label="First seen" value={formatDate(data.first_seen)} />
-            <StatBlock label="Last seen" value={formatDate(data.last_seen)} />
-          </div>
+            <InsightBlock creative={data} />
 
-          <div className="flex flex-col gap-2 border-t border-border pt-3">
-            <span className="label-mono">Patterns</span>
-            {data.patterns?.length ? (
-              <div className="flex flex-col gap-1.5">
-                {data.patterns.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2">
-                    <span className="truncate text-xs text-text">{p.label}</span>
-                    <span className="flex shrink-0 items-center gap-2">
-                      <span className="label-mono">{p.family}</span>
-                      <MetricValue
-                        value={p.lift_index.toFixed(2)}
-                        unit="lift"
-                        className="text-[11px]"
-                      />
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-text-faint">
-                No patterns attributed. Pattern mining runs in the Intelligence loop.
-              </p>
-            )}
-          </div>
+            <div className="flex flex-col gap-2.5">
+              <span className="label-mono">Scores</span>
+              {[
+                ["Hook", data.scores?.hook],
+                ["Clarity", data.scores?.clarity],
+                ["Retention", data.scores?.retention],
+                ["Composite", data.scores?.composite],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-text-muted">{label}</span>
+                  {value === null || value === undefined ? (
+                    <span className="label-mono">not scored</span>
+                  ) : (
+                    <ScoreBar value={value} width="w-20" />
+                  )}
+                </div>
+              ))}
+            </div>
 
-          <p className="mt-auto border-t border-border pt-3 font-mono text-[10px] text-text-faint">
-            {data.id}
-          </p>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-3 border-t border-border pt-3">
+              <StatBlock
+                label="Impressions"
+                value={formatCompact(data.metrics?.impressions_est)}
+              />
+              <StatBlock label="Spend" value={formatSpendBand(data.metrics?.spend_band)} />
+              <StatBlock
+                label="Engagement"
+                value={
+                  data.metrics?.engagement_rate === null ||
+                  data.metrics?.engagement_rate === undefined
+                    ? "—"
+                    : formatPercent(data.metrics.engagement_rate)
+                }
+              />
+              <StatBlock
+                label="Est. CTR"
+                value={
+                  data.metrics?.ctr_est === null || data.metrics?.ctr_est === undefined
+                    ? "—"
+                    : formatPercent(data.metrics.ctr_est, 2)
+                }
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 border-t border-border pt-3">
+              <span className="label-mono">Pattern findings</span>
+              <PatternFindings patterns={data.patterns} />
+            </div>
+
+            <p className="border-t border-border pt-3 font-mono text-[10px] text-text-faint">
+              {data.id}
+            </p>
+          </div>
         </div>
       ) : null}
     </aside>
