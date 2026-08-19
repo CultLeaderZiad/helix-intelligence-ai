@@ -4,6 +4,8 @@ import { Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Logo } from "@/components/ui/Logo"
 import { Button } from "@/components/ui/Button"
+import { useAuth } from "@/context/AuthContext"
+import { APP_HOME } from "@/app/ProtectedRoute"
 
 /**
  * ============================================================
@@ -29,6 +31,7 @@ const NAV_LINKS = [
 ]
 
 export function PublicHeader() {
+  const { isAuthenticated } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -87,12 +90,20 @@ export function PublicHeader() {
         </nav>
 
         <div className="ml-auto hidden items-center gap-2 md:flex">
-          <Button as={Link} to="/sign-in" variant="ghost" size="sm">
-            Sign in
-          </Button>
-          <Button as={Link} to="/sign-up" variant="primary" size="sm">
-            Get started
-          </Button>
+          {isAuthenticated ? (
+            <Button as={Link} to={APP_HOME} variant="primary" size="sm">
+              Open console
+            </Button>
+          ) : (
+            <>
+              <Button as={Link} to="/sign-in" variant="ghost" size="sm">
+                Sign in
+              </Button>
+              <Button as={Link} to="/sign-up" variant="primary" size="sm">
+                Get started
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile trigger */}
@@ -132,26 +143,41 @@ export function PublicHeader() {
             ))}
           </nav>
           <div className="mt-auto flex flex-col gap-2 border-t border-border p-3">
-            <Button
-              as={Link}
-              to="/sign-in"
-              variant="outline"
-              size="lg"
-              className="w-full"
-              onClick={() => setMenuOpen(false)}
-            >
-              Sign in
-            </Button>
-            <Button
-              as={Link}
-              to="/sign-up"
-              variant="primary"
-              size="lg"
-              className="w-full"
-              onClick={() => setMenuOpen(false)}
-            >
-              Get started
-            </Button>
+            {isAuthenticated ? (
+              <Button
+                as={Link}
+                to={APP_HOME}
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={() => setMenuOpen(false)}
+              >
+                Open console
+              </Button>
+            ) : (
+              <>
+                <Button
+                  as={Link}
+                  to="/sign-in"
+                  variant="outline"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Sign in
+                </Button>
+                <Button
+                  as={Link}
+                  to="/sign-up"
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Get started
+                </Button>
+              </>
+            )}
           </div>
         </div>
       ) : null}

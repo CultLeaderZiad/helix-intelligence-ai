@@ -1,6 +1,6 @@
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { Button } from "@/components/ui/Button"
-import { Panel, PanelHeader, PanelTitle, PanelBody } from "@/components/ui/Panel"
+import { Panel, PanelHeader, PanelTitle } from "@/components/ui/Panel"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { Tag } from "@/components/ui/Tag"
 import { OverviewStatStrip } from "@/features/admin/OverviewStatStrip"
