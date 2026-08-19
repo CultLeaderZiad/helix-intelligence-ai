@@ -12,6 +12,8 @@ export function ProgressBar({ value = 0, tone = "accent", className, striped = f
   const fill = {
     accent: "bg-accent",
     danger: "bg-danger",
+    warning: "bg-warning",
+    success: "bg-success",
     muted: "bg-border-strong",
   }[tone]
 
