@@ -141,4 +141,53 @@
  * @property {string} code
  */
 
+/* ------------------------------------------------------------------ */
+/* Admin console — operations surface, admin role only                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Headline counters for the admin overview strip. Every value is a
+ * measured figure the service owns; the client never invents them.
+ *
+ * @typedef {Object} AdminOverviewStats
+ * @property {number} organizations       total organizations on the platform
+ * @property {number} active_scrape_jobs  jobs currently queued or running
+ * @property {'operational'|'degraded'|'down'} system_health  rolled-up state
+ * @property {number} api_error_rate      5xx share over the trailing window, %
+ * @property {string} window_label        human label for the measured window
+ */
+
+/**
+ * One row in the admin recent-jobs table. Distinct from a discovery Job:
+ * this is the operator's cross-tenant view, so it carries the owning
+ * organization and a flat record count rather than stage internals.
+ *
+ * @typedef {Object} AdminJobRow
+ * @property {string} job_id
+ * @property {string} organization
+ * @property {string} query
+ * @property {'queued'|'running'|'succeeded'|'failed'} status
+ * @property {number} records
+ * @property {number} duration_ms
+ * @property {string} created_at
+ */
+
+/**
+ * A monitored dependency in the system-health panel.
+ *
+ * @typedef {Object} AdminServiceHealth
+ * @property {string} id
+ * @property {string} name
+ * @property {'success'|'warning'|'danger'} status
+ * @property {string} detail          short human status line
+ * @property {number|null} latency_ms last measured probe latency
+ * @property {string} last_checked    ISO-8601 UTC of the last probe
+ */
+
+/**
+ * @typedef {Object} AdminSystemHealth
+ * @property {'operational'|'degraded'|'down'} state  rolled-up state
+ * @property {AdminServiceHealth[]} services
+ */
+
 export {}
