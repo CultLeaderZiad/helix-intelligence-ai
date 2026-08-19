@@ -19,28 +19,28 @@ const STATUS_TONE = {
 export function RecentJobsTable({ jobs }) {
   return (
     <div className="min-w-0 overflow-auto">
-      <table className="w-full min-w-[680px] border-collapse text-left">
+      <table className="w-full min-w-[620px] table-fixed border-collapse text-left">
         <thead className="sticky top-0 z-10 bg-surface">
           <tr className="border-b border-border-strong">
-            <th scope="col" className="label-mono w-[104px] px-3 py-2 font-normal">
+            <th scope="col" className="label-mono w-[94px] px-3 py-2 font-normal">
               Job
             </th>
-            <th scope="col" className="label-mono w-[160px] px-2 py-2 font-normal">
+            <th scope="col" className="label-mono w-[132px] px-2 py-2 font-normal">
               Organization
             </th>
             <th scope="col" className="label-mono px-2 py-2 font-normal">
               Query
             </th>
-            <th scope="col" className="label-mono w-[92px] px-2 py-2 font-normal">
+            <th scope="col" className="label-mono w-[86px] px-2 py-2 font-normal">
               Status
             </th>
-            <th scope="col" className="label-mono w-[80px] px-2 py-2 text-right font-normal">
+            <th scope="col" className="label-mono w-[68px] px-2 py-2 text-right font-normal">
               Records
             </th>
-            <th scope="col" className="label-mono w-[80px] px-2 py-2 text-right font-normal">
+            <th scope="col" className="label-mono w-[68px] px-2 py-2 text-right font-normal">
               Duration
             </th>
-            <th scope="col" className="label-mono w-[72px] px-3 py-2 text-right font-normal">
+            <th scope="col" className="label-mono w-[76px] px-3 py-2 text-right font-normal">
               Age
             </th>
           </tr>
@@ -58,7 +58,7 @@ export function RecentJobsTable({ jobs }) {
                   {job.organization}
                 </span>
               </td>
-              <td className="max-w-0 px-2 py-2">
+              <td className="px-2 py-2">
                 <span className="block truncate text-xs text-text-muted">
                   {job.query}
                 </span>
@@ -72,7 +72,7 @@ export function RecentJobsTable({ jobs }) {
               <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted">
                 {job.duration_ms ? formatDuration(job.duration_ms) : "—"}
               </td>
-              <td className="tnum px-3 py-2 text-right font-mono text-[11px] text-text-faint">
+              <td className="tnum whitespace-nowrap px-3 py-2 text-right font-mono text-[11px] text-text-faint">
                 {formatRelative(job.created_at)}
               </td>
             </tr>
