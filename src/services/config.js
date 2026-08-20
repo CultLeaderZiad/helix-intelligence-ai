@@ -13,7 +13,7 @@ const env = import.meta.env ?? {}
 /** @type {'mock'|'api'} */
 export const DATA_SOURCE = env.VITE_DATA_SOURCE === "api" ? "api" : "mock"
 
-export const API_BASE_URL = env.VITE_API_BASE_URL ?? "/v1"
+export const API_BASE_URL = env.VITE_API_BASE_URL ?? "/api"
 
 /** Mock-only knobs, used to rehearse slow networks and failures. */
 export const MOCK_LATENCY_MS = [180, 520]

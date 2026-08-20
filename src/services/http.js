@@ -36,11 +36,15 @@ function buildQuery(params = {}) {
  * all land here — not in features.
  *
  * @param {string} path
- * @param {{ method?: string, params?: Object, body?: any, signal?: AbortSignal }} [options]
+ * @param {{ method?: string, params?: Object, body?: any, headers?: Object, signal?: AbortSignal }} [options]
  */
 export async function request(path, options = {}) {
-  const { method = "GET", params, body, signal } = options
+  const { method = "GET", params, body, signal, headers: extraHeaders } = options
   const url = `${API_BASE_URL}${path}${buildQuery(params)}`
+
+  // Attach JWT from localStorage if present
+  const token = localStorage.getItem("helix_access_token")
+  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
 
   let res
   try {
@@ -50,6 +54,8 @@ export async function request(path, options = {}) {
       headers: {
         Accept: "application/json",
         ...(body ? { "Content-Type": "application/json" } : {}),
+        ...authHeader,
+        ...extraHeaders,
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     })
@@ -76,3 +82,4 @@ export async function request(path, options = {}) {
   if (res.status === 204) return null
   return res.json()
 }
+
