@@ -10,9 +10,9 @@ const COLUMNS = [
   {
     heading: "Product",
     links: [
-      { label: "Overview", href: "#product" },
-      { label: "Pricing", href: "#pricing" },
-      { label: "Docs", href: "#docs" },
+      { label: "Overview", path: "/#product" },
+      { label: "Pricing", path: "/#pricing" },
+      { label: "Docs", path: "/#docs" },
     ],
   },
 ]
@@ -36,12 +36,12 @@ export function MarketingFooter() {
               <ul className="flex flex-col gap-2">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <a
-                      href={link.href}
+                    <Link
+                      to={link.path}
                       className="text-[13px] text-text-muted transition-colors hover:text-text"
                     >
                       {link.label}
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>

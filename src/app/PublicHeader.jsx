@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useLocation } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Logo } from "@/components/ui/Logo"
 import { Button } from "@/components/ui/Button"
+import { PillNav } from "@/components/ui/PillNav"
 import { useAuth } from "@/context/AuthContext"
 import { APP_HOME } from "@/app/ProtectedRoute"
 
@@ -25,13 +26,14 @@ import { APP_HOME } from "@/app/ProtectedRoute"
 /* Marketing destinations do not exist yet — these are honest anchors, not
    routes faked into the router. They become real links when the pages do. */
 const NAV_LINKS = [
-  { label: "Product", href: "#product" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "Docs", href: "#docs" },
+  { label: "Product", path: "/#product" },
+  { label: "Pricing", path: "/#pricing" },
+  { label: "Docs", path: "/#docs" },
 ]
 
 export function PublicHeader() {
   const { isAuthenticated } = useAuth()
+  const { pathname, hash } = useLocation()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -74,20 +76,19 @@ export function PublicHeader() {
         </Link>
 
         {/* Desktop nav */}
-        <nav
-          className="ml-4 hidden items-center gap-1 md:flex"
-          aria-label="Primary"
-        >
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="rounded-sm px-2.5 py-1.5 text-[13px] text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
+        <div className="hidden md:flex flex-1 justify-center">
+          <PillNav
+            logo={<Logo showWordmark={false} />}
+            logoAlt="Helix Logo"
+            items={NAV_LINKS}
+            activeHref={`${pathname}${hash}`}
+            ease="power2.easeOut"
+            baseColor="#000000"
+            pillColor="#ffffff"
+            hoveredPillTextColor="#ffffff"
+            pillTextColor="#000000"
+          />
+        </div>
 
         <div className="ml-auto hidden items-center gap-2 md:flex">
           {isAuthenticated ? (
@@ -132,14 +133,14 @@ export function PublicHeader() {
             aria-label="Primary"
           >
             {NAV_LINKS.map((link) => (
-              <a
+              <Link
                 key={link.label}
-                href={link.href}
+                to={link.path}
                 onClick={() => setMenuOpen(false)}
                 className="rounded-sm px-2 py-2.5 text-sm text-text-muted transition-colors hover:bg-surface-2 hover:text-text"
               >
                 {link.label}
-              </a>
+              </Link>
             ))}
           </nav>
           <div className="mt-auto flex flex-col gap-2 border-t border-border p-3">

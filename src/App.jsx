@@ -63,11 +63,36 @@ function AdminShellLayout() {
   )
 }
 
+function ScrollToHash() {
+  const { pathname, hash } = useLocation()
+
+  useEffect(() => {
+    if (hash) {
+      const id = hash.slice(1)
+      const scroll = () => {
+        const element = document.getElementById(id)
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" })
+        }
+      }
+      scroll()
+      // Fallback for DOM changes / loading delay
+      const timer = setTimeout(scroll, 100)
+      return () => clearTimeout(timer)
+    } else {
+      window.scrollTo(0, 0)
+    }
+  }, [pathname, hash])
+
+  return null
+}
+
 export default function App() {
   return (
     <TelemetryProvider>
       <AuthProvider>
         <DocumentTitle />
+        <ScrollToHash />
         <Routes>
           {/* Public front door. Fully ungated — the marketing surface the
               header nav points at. Auth pages are reached only by choice. */}
