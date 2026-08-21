@@ -11,7 +11,9 @@ router = APIRouter()
 @router.post("/sign-up", response_model=SessionResponse)
 async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     user = await auth_service.register_user(db, user_in)
-    token = await auth_service.authenticate_user(db, UserLogin(email=user_in.email, password=user_in.password))
+    # Generate token directly — no need to re-query + re-verify the password we just hashed
+    from app.core.security import create_access_token
+    token = create_access_token(subject=user.id, role=user.role)
     return SessionResponse(user_id=user.id, email=user.email, role=user.role, access_token=token)
 
 @router.post("/sign-in", response_model=SessionResponse)

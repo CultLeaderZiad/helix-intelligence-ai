@@ -8,7 +8,13 @@ engine = create_async_engine(
     pool_size=5,
     max_overflow=10,
     pool_pre_ping=True,
-    pool_recycle=1800
+    pool_recycle=1800,
+    connect_args={
+        # Neon pooler (PgBouncer) doesn't support prepared statements
+        "statement_cache_size": 0,
+        # Allow 30s for Neon free-tier cold-start wake-up
+        "command_timeout": 30,
+    },
 )
 
 async_session_maker = async_sessionmaker(

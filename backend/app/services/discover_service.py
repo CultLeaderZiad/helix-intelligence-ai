@@ -10,6 +10,13 @@ from app.core.config import settings
 from app.db.session import async_session_maker
 import datetime
 import asyncio
+import traceback
+import uuid
+import time
+from app.services.scraping.ad_library_provider import AdLibraryProvider
+from app.services.scraping.scrapegraph_provider import ScrapeGraphProvider
+from app.services.scraping.normalizer import normalize_creative
+from app.services.creative_service import generate_patterns_for_recent_creatives
 
 async def trigger_search(db: AsyncSession, search_params: SearchParams, user_id: str, background_tasks: Optional[BackgroundTasks] = None) -> Job:
     if settings.USE_MOCKS:
@@ -30,8 +37,11 @@ async def trigger_search(db: AsyncSession, search_params: SearchParams, user_id:
     result = await db.execute(select(Organization).where(Organization.owner_id == user_id))
     org = result.scalar_one_or_none()
     
-    org_id = org.id if org else "mock-org-id"
+    if not org:
+        raise HTTPException(status_code=400, detail="No organization found for this user. Please contact support.")
+    org_id = org.id
     
+
     new_job = ScrapeJob(
         org_id=org_id,
         query=search_params.query,
@@ -50,7 +60,7 @@ async def trigger_search(db: AsyncSession, search_params: SearchParams, user_id:
     await db.refresh(new_job)
 
     if background_tasks:
-        background_tasks.add_task(run_scrape_simulation, new_job.id, search_params.query)
+        background_tasks.add_task(run_discovery_pipeline, new_job.id, search_params.query)
 
     return Job(
         job_id=new_job.id,
@@ -96,7 +106,8 @@ async def get_job_status(db: AsyncSession, job_id: str) -> Job:
         stages_total=job.stages_total,
         records_found=job.record_count,
         elapsed_ms=job.elapsed_ms,
-        created_at=job.created_at.isoformat() + "Z" if job.created_at else ""
+        created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
+        error=job.error_msg
     )
 
 async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_size: int = 8) -> Paginated[Job]:
@@ -151,7 +162,8 @@ async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_s
             stages_total=job.stages_total or 1,
             records_found=job.record_count or 0,
             elapsed_ms=job.elapsed_ms or 0,
-            created_at=job.created_at.isoformat() + "Z" if job.created_at else ""
+            created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
+            error=job.error_msg
         )
         for job in jobs
     ]
@@ -164,85 +176,104 @@ async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_s
         has_more=(offset + page_size) < total
     )
 
-async def run_scrape_simulation(job_id: str, query: str):
-    from app.models.creative import Creative as DBCreative
-    from app.models.creative_score import CreativeScore as DBCreativeScore
-    
-    # Wait a bit
-    await asyncio.sleep(1.0)
-    
+async def update_job_stage(db: AsyncSession, job_id: str, stage: str, label: str, progress: float, stage_index: int):
+    result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
+    job = result.scalar_one_or_none()
+    if job:
+        job.stage = stage
+        job.stage_label = label
+        job.progress = progress
+        job.stage_index = stage_index
+        await db.commit()
+
+async def run_discovery_pipeline(job_id: str, query: str):
+    start_time = time.time()
     async with async_session_maker() as db:
         result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
         job = result.scalar_one_or_none()
         if not job:
             return
-            
-        job.progress = 0.4
-        job.stage = "scraping"
-        job.stage_label = "Scraping Platforms"
-        await db.commit()
         
-    await asyncio.sleep(1.0)
-    
-    async with async_session_maker() as db:
-        result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
-        job = result.scalar_one_or_none()
-        if not job:
-            return
-            
-        job.progress = 0.8
-        job.stage = "scoring"
-        job.stage_label = "Scoring Creatives"
-        await db.commit()
+        org_id = job.org_id
         
-    await asyncio.sleep(1.0)
-    
-    async with async_session_maker() as db:
-        result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
-        job = result.scalar_one_or_none()
-        if not job:
+    try:
+        # Stage 1: Scraping Ad Library
+        async with async_session_maker() as db:
+            await update_job_stage(db, job_id, "scraping", "Scraping Platforms", 0.2, 1)
+        
+        ad_library = AdLibraryProvider()
+        raw_creatives = await ad_library.search(query)
+        
+        if not raw_creatives:
+            async with async_session_maker() as db:
+                result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
+                job = result.scalar_one_or_none()
+                job.status = "failed"
+                job.error_msg = f"No creatives found for query '{query}'"
+                job.elapsed_ms = int((time.time() - start_time) * 1000)
+                await db.commit()
             return
             
-        record_count = 0
-        if "empty" not in query.lower():
-            # Insert a creative
-            c_id = f"creative-{job_id}-1"
-            creative = DBCreative(
-                id=c_id,
-                job_id=job_id,
-                brand_id="nike",
-                platform="meta",
-                format="video",
-                headline="Just Do It!",
-                body="Unlock your potential with our latest gear.",
-                cta="Shop Now",
-                impressions_est=150000,
-                spend_band="high",
-                engagement_rate=0.045,
-                ctr_est=0.018,
-                first_seen="2026-08-10T12:00:00Z",
-                last_seen="2026-08-20T12:00:00Z",
-                days_active=10,
-                variant_count=2
-            )
-            db.add(creative)
+        # Stage 2: Enriching with ScrapeGraph
+        async with async_session_maker() as db:
+            await update_job_stage(db, job_id, "enriching", "Enriching via Landing Pages", 0.4, 2)
             
-            score = DBCreativeScore(
-                creative_id=c_id,
-                hook=88.5,
-                clarity=92.0,
-                retention=84.0,
-                composite=87.5
-            )
-            db.add(score)
-            record_count = 1
+        scrapegraph = ScrapeGraphProvider()
+        enriched_creatives = []
+        for rc in raw_creatives:
+            if rc.landing_url:
+                extra_data = await scrapegraph.extract_landing_page(rc.landing_url)
+                enriched_creatives.append((rc, extra_data))
+            else:
+                enriched_creatives.append((rc, None))
+                
+        # Stage 3: Normalizing and Saving to DB
+        async with async_session_maker() as db:
+            await update_job_stage(db, job_id, "normalizing", "Normalizing & Saving", 0.6, 3)
             
-        job.progress = 1.0
-        job.status = "succeeded"
-        job.stage = "complete"
-        job.stage_label = "Complete"
-        job.record_count = record_count
-        await db.commit()
-
-
-
+            brand_id = str(uuid.uuid4()) # For now, mock a brand UUID for the query
+            
+            saved_creatives = 0
+            for rc, extra in enriched_creatives:
+                db_creative, db_score = normalize_creative(rc, job_id, brand_id, extra)
+                db.add(db_creative)
+                db.add(db_score)
+                saved_creatives += 1
+                
+            await db.commit()
+            
+        # Stage 4: AI Pattern Scoring/Generation
+        async with async_session_maker() as db:
+            await update_job_stage(db, job_id, "scoring", "AI Generating Insights", 0.8, 4)
+            # Fetch the user for the org
+            from app.models.organization import Organization
+            from app.models.user import User
+            org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one()
+            user = (await db.execute(select(User).where(User.id == org.owner_id))).scalar_one()
+            await generate_patterns_for_recent_creatives(db, user, job_id)
+            
+        # Stage 5: Complete
+        async with async_session_maker() as db:
+            result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
+            job = result.scalar_one_or_none()
+            job.status = "succeeded"
+            job.stage = "complete"
+            job.stage_label = "Complete"
+            job.progress = 1.0
+            job.stage_index = 5
+            job.record_count = saved_creatives
+            job.elapsed_ms = int((time.time() - start_time) * 1000)
+            job.completed_at = datetime.datetime.utcnow()
+            await db.commit()
+            
+    except Exception as e:
+        error_msg = f"Pipeline failed: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        async with async_session_maker() as db:
+            result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
+            job = result.scalar_one_or_none()
+            if job:
+                job.status = "failed"
+                job.error_msg = str(e)
+                job.elapsed_ms = int((time.time() - start_time) * 1000)
+                await db.commit()

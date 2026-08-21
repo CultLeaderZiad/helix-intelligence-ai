@@ -261,4 +261,61 @@ async def list_patterns(db: AsyncSession, page: int = 1, page_size: int = 20) ->
         has_more=(offset + page_size) < total
     )
 
+from app.services.ai.ai_router import AIRouter
+from app.models.user import User
+from typing import List
 
+async def generate_patterns_for_recent_creatives(db: AsyncSession, user: User, job_id: str, byok_key: str = None, byok_provider: str = None) -> List[PatternSchema]:
+    # Fetch recent creatives (e.g., last 10)
+    query = select(Creative).order_by(Creative.first_seen.desc()).limit(10)
+    result = await db.execute(query)
+    creatives_models = result.scalars().all()
+    
+    if not creatives_models:
+        raise HTTPException(status_code=400, detail="No creatives available for pattern extraction")
+        
+    provider = await AIRouter.get_provider_for_user(db, user, byok_key, byok_provider)
+    
+    # Map to schema
+    from app.schemas.creative import Creative as CreativeSchema, Scores, CreativeMetrics
+    creative_schemas = []
+    for c in creatives_models:
+        creative_schemas.append(CreativeSchema(
+            id=c.id,
+            brand_id=c.brand_id,
+            platform=c.platform,
+            format=c.format,
+            headline=c.headline or "",
+            body=c.body or "",
+            cta=c.cta or "",
+            first_seen=c.first_seen or "",
+            last_seen=c.last_seen or "",
+            days_active=c.days_active or 1,
+            variant_count=c.variant_count or 1,
+            scores=Scores(),
+            metrics=CreativeMetrics(),
+            pattern_ids=[]
+        ))
+        
+    try:
+        patterns = await provider.generate_patterns(creative_schemas)
+        
+        # Log usage
+        await AIRouter.log_usage(db, user.id, getattr(provider, "model", "unknown"), tokens=0)
+        
+        # Save patterns to DB
+        for p_schema in patterns:
+            new_pattern = Pattern(
+                id=p_schema.id,
+                label=p_schema.label,
+                family=p_schema.family,
+                prevalence=p_schema.prevalence,
+                lift_index=p_schema.lift_index,
+                job_id=job_id
+            )
+            db.add(new_pattern)
+        
+        await db.commit()
+        return patterns
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

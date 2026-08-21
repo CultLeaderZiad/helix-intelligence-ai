@@ -73,6 +73,10 @@ export async function request(path, options = {}) {
     } catch {
       /* non-JSON error body */
     }
+    if (res.status === 401) {
+      window.dispatchEvent(new CustomEvent("helix:unauthorized"))
+    }
+
     throw new ServiceError(
       typeof detail === "string" ? detail : "Request failed",
       { status: res.status, code: `http_${res.status}` },

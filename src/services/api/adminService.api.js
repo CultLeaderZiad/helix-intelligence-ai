@@ -22,8 +22,15 @@ const adminService = {
     return request("/admin/overview/stats")
   },
 
-  listRecentJobs() {
-    return request("/admin/jobs", { params: { page: 1, page_size: 8 } })
+  async listRecentJobs() {
+    const items = await request("/admin/jobs", { params: { page: 1, page_size: 8 } })
+    return {
+      items,
+      total: items.length,
+      page: 1,
+      page_size: items.length,
+      has_more: false,
+    }
   },
 
   getSystemHealth() {

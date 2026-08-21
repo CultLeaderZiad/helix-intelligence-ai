@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.routers import auth, discover, creatives, analysis, admin, health
+from app.api.routers import auth, discover, creatives, analysis, admin, health, account
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -20,6 +20,7 @@ if settings.BACKEND_CORS_ORIGINS:
 
 # Include routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
+app.include_router(account.router, prefix=f"{settings.API_V1_STR}/account", tags=["account"])
 app.include_router(discover.router, prefix=f"{settings.API_V1_STR}/discovery", tags=["discovery"])
 app.include_router(creatives.router, prefix=f"{settings.API_V1_STR}/creatives", tags=["creatives"])
 app.include_router(creatives.brands_router, prefix=f"{settings.API_V1_STR}/brands", tags=["brands"])

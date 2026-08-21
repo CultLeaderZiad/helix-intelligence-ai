@@ -18,6 +18,19 @@ async def get_creative_insights(
 ):
     return await analysis_service.get_creative_insight(db, creative_id)
 
+@creatives_insights_router.post("/{creative_id}/generate-insights", response_model=Insight)
+async def generate_creative_insights(
+    creative_id: str,
+    byok_key: str = None,
+    byok_provider: str = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return await analysis_service.generate_insight_for_creative(
+        db, creative_id, current_user, byok_key, byok_provider
+    )
+
+
 @insights_router.get("/", response_model=Paginated[Insight])
 async def list_insights(
     page: int = 1,

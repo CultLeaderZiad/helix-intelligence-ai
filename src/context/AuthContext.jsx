@@ -58,8 +58,17 @@ export function AuthProvider({ children }) {
         setUser(null)
         setStatus(AUTH_STATUS.UNAUTHENTICATED)
       })
+
+    const handleUnauthorized = () => {
+      authService.signOut() // ensure token is cleared
+      setUser(null)
+      setStatus(AUTH_STATUS.UNAUTHENTICATED)
+    }
+    window.addEventListener("helix:unauthorized", handleUnauthorized)
+
     return () => {
       active = false
+      window.removeEventListener("helix:unauthorized", handleUnauthorized)
     }
   }, [])
 

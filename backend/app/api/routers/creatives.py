@@ -49,3 +49,17 @@ async def get_patterns(
 ):
     return await creative_service.list_patterns(db, page, page_size)
 
+from typing import List
+
+@patterns_router.post("/generate", response_model=List[Pattern])
+async def generate_patterns(
+    byok_key: str = None,
+    byok_provider: str = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return await creative_service.generate_patterns_for_recent_creatives(
+        db, current_user, byok_key, byok_provider
+    )
+
+
