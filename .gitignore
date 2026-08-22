@@ -25,3 +25,12 @@ env/
 node_modules
 .next/
 .DS_Store
+
+# Temporary & Local Scratch Scripts
+scripts/local/
+backend/scripts/local/
+scratch/
+backend/scratch/
+*test_local*.py
+*check_local*.py
+*debug_local*.py
