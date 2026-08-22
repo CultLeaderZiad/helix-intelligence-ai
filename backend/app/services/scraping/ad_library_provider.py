@@ -312,6 +312,8 @@ class AdLibraryProvider(ScraperProvider):
                 RawCreative(
                     platform="meta",
                     format=format_type,
+                    source_type="organic_content_proxy",
+                    is_impression_estimate=True,
                     brand_name=brand_name,
                     headline=headline,
                     body=body,

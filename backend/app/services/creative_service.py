@@ -78,6 +78,7 @@ async def list_creatives(
             brand_id=c.brand_id,
             platform=c.platform,
             format=c.format,
+            source_type=getattr(c, "source_type", "ad") or "ad",
             headline=c.headline or "",
             body=c.body or "",
             cta=c.cta or "",
@@ -96,6 +97,7 @@ async def list_creatives(
             ) if score else Scores(),
             metrics=CreativeMetrics(
                 impressions_est=c.impressions_est,
+                is_impression_estimate=getattr(c, "is_impression_estimate", True),
                 spend_band=c.spend_band,
                 engagement_rate=c.engagement_rate,
                 ctr_est=c.ctr_est

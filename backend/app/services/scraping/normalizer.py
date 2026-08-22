@@ -58,6 +58,8 @@ def normalize_creative(
         days_active=raw.days_active,
         variant_count=raw.variant_count,
         impressions_est=raw.impressions_est,
+        is_impression_estimate=getattr(raw, "is_impression_estimate", True),
+        source_type=getattr(raw, "source_type", "ad"),
         spend_band=raw.spend_band,
         # Mocking engagement for MVP purposes unless provided by raw source
         engagement_rate=random.uniform(0.01, 0.08),

@@ -9,6 +9,7 @@ class Scores(BaseModel):
 
 class CreativeMetrics(BaseModel):
     impressions_est: Optional[int] = None
+    is_impression_estimate: Optional[bool] = True
     spend_band: Optional[str] = None
     engagement_rate: Optional[float] = None
     ctr_est: Optional[float] = None
@@ -18,6 +19,7 @@ class Creative(BaseModel):
     brand_id: str
     platform: str
     format: str
+    source_type: Optional[str] = "ad" # 'ad' | 'organic_content_proxy'
     headline: str
     body: str
     cta: str

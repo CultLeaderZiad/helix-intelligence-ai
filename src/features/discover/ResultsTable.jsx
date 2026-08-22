@@ -59,8 +59,8 @@ export function ResultsTable({ items, selectedId, onSelect }) {
             <th scope="col" className="label-mono w-[112px] px-2 py-2 font-normal">
               Composite
             </th>
-            <th scope="col" className="label-mono w-[64px] px-2 py-2 text-right font-normal">
-              Impr.
+            <th scope="col" className="label-mono w-[80px] px-2 py-2 text-right font-normal" title="Estimated impressions from engagement proxy metrics">
+              Impr. (Est.)
             </th>
             <th scope="col" className="label-mono w-[52px] px-2 py-2 text-right font-normal">
               ER
@@ -116,7 +116,14 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                   </span>
                 </td>
                 <td className="px-2 py-2">
-                  <Tag>{PLATFORM_LABEL[c.platform] ?? c.platform}</Tag>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Tag>{PLATFORM_LABEL[c.platform] ?? c.platform}</Tag>
+                    {c.source_type === "organic_content_proxy" ? (
+                      <span className="rounded bg-amber-500/10 px-1 py-0.5 font-mono text-[9px] text-amber-400 font-medium" title="Organic Post/Reel Proxy Content">
+                        Organic Proxy
+                      </span>
+                    ) : null}
+                  </div>
                 </td>
                 <td className="px-2 py-2">
                   {c.scores?.composite === null || c.scores?.composite === undefined ? (
@@ -125,8 +132,8 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                     <ScoreBar value={c.scores.composite} />
                   )}
                 </td>
-                <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted">
-                  {formatCompact(c.metrics?.impressions_est)}
+                <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted" title="Estimated impressions">
+                  ~{formatCompact(c.metrics?.impressions_est)}
                 </td>
                 <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted">
                   {c.metrics?.engagement_rate === null ||

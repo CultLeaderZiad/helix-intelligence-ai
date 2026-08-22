@@ -187,6 +187,11 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                     {data.brand?.name ?? "Unknown brand"}
                   </span>
                   <Tag>{data.platform}</Tag>
+                  {data.source_type === "organic_content_proxy" ? (
+                    <span className="rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-amber-400" title="Organic Post/Reel Proxy Content">
+                      Organic Proxy
+                    </span>
+                  ) : null}
                 </span>
                 {data.brand?.ad_count !== undefined ? (
                   <MetricValue
@@ -222,8 +227,16 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
             <InsightBlock creative={data} />
 
-            <div className="flex flex-col gap-2.5">
-              <span className="label-mono">Scores</span>
+            {/* Performance scores */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="label-mono">Performance scores</span>
+                {data.scores?.composite !== null && data.scores?.composite !== undefined ? (
+                  <span className="label-mono text-accent">
+                    tier {data.scores.composite >= 80 ? "A" : data.scores.composite >= 60 ? "B" : "C"}
+                  </span>
+                ) : null}
+              </div>
               {[
                 ["Hook", data.scores?.hook],
                 ["Clarity", data.scores?.clarity],
@@ -243,8 +256,8 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
             <div className="grid grid-cols-2 gap-x-3 gap-y-3 border-t border-border pt-3">
               <StatBlock
-                label="Impressions"
-                value={formatCompact(data.metrics?.impressions_est)}
+                label="Impressions (Est.)"
+                value={`~${formatCompact(data.metrics?.impressions_est)}`}
               />
               <StatBlock label="Spend" value={formatSpendBand(data.metrics?.spend_band)} />
               <StatBlock
