@@ -3,20 +3,18 @@ import asyncio
 import httpx
 import logging
 from typing import Dict, Any
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 class ScrapeGraphProvider:
     """
     Enriches a creative by extracting structured marketing data from its landing page
-    using ScrapeGraphAI's SmartScraper.
+    using ScrapeGraphAI's v2 Extract API.
     """
     def __init__(self):
-        self.api_key = os.getenv("SCRAPEGRAPH_API_KEY")
-        # Example API endpoint if they have a managed REST API, 
-        # or we could use their python SDK if it was installed.
-        # We will use httpx to mock a REST call for robustness in async environments.
-        self.endpoint = "https://api.scrapegraphai.com/v1/smartscraper"
+        self.api_key = getattr(settings, "SCRAPEGRAPH_API_KEY", None) or os.getenv("SCRAPEGRAPH_API_KEY")
+        self.endpoint = "https://v2-api.scrapegraphai.com/api/extract"
 
     async def extract_landing_page(self, url: str) -> Dict[str, Any]:
         """
@@ -28,8 +26,7 @@ class ScrapeGraphProvider:
 
         if not self.api_key:
             logger.warning("SCRAPEGRAPH_API_KEY not set. Falling back to mocked landing page extraction.")
-            # Simulate latency
-            await asyncio.sleep(1.0)
+            await asyncio.sleep(0.5)
             return self._mock_extraction()
 
         prompt = (
@@ -39,7 +36,7 @@ class ScrapeGraphProvider:
         )
 
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "SGAI-APIKEY": self.api_key.strip('"').strip("'"),
             "Content-Type": "application/json"
         }
         
@@ -49,14 +46,22 @@ class ScrapeGraphProvider:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=45.0) as client:
                 response = await client.post(self.endpoint, json=payload, headers=headers)
                 response.raise_for_status()
                 data = response.json()
-                return data.get("result", self._mock_extraction())
+                # ScrapeGraphAI v2 returns extracted data in the 'json' or 'result' field
+                extracted = data.get("json") or data.get("result") or {}
+                if isinstance(extracted, dict) and extracted:
+                    return {
+                        "headline": extracted.get("headline") or "Exclusive Online Offer",
+                        "offer": extracted.get("offer") or "Special promotional pricing available now",
+                        "positioning": extracted.get("positioning") or "Industry leading quality and performance",
+                        "cta": extracted.get("cta") or "Shop Now"
+                    }
+                return self._mock_extraction()
         except Exception as e:
             logger.error(f"ScrapeGraphAI extraction failed for {url}: {e}")
-            # Graceful fallback on error so the pipeline doesn't completely fail
             return self._mock_extraction()
 
     def _mock_extraction(self) -> Dict[str, Any]:

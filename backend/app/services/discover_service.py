@@ -208,10 +208,16 @@ async def run_discovery_pipeline(job_id: str, query: str):
             async with async_session_maker() as db:
                 result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
                 job = result.scalar_one_or_none()
-                job.status = "failed"
-                job.error_msg = f"No creatives found for query '{query}'"
-                job.elapsed_ms = int((time.time() - start_time) * 1000)
-                await db.commit()
+                if job:
+                    job.status = "succeeded"
+                    job.stage = "complete"
+                    job.stage_label = "Complete"
+                    job.progress = 1.0
+                    job.stage_index = 5
+                    job.record_count = 0
+                    job.elapsed_ms = int((time.time() - start_time) * 1000)
+                    job.completed_at = datetime.datetime.utcnow()
+                    await db.commit()
             return
             
         # Stage 2: Enriching with ScrapeGraph

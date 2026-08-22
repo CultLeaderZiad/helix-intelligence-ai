@@ -16,9 +16,10 @@ import { request } from "../http"
 const discoverService = {
   search(params = {}) {
     const { query = "", filters = {}, sort = "composite_desc" } = params
+    const finalQuery = query.trim() || "*"
     return request("/discovery/jobs", {
       method: "POST",
-      body: { query, filters, sort },
+      body: { query: finalQuery, filters, sort },
     })
   },
 

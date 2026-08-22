@@ -81,15 +81,32 @@ class AIProvider(ABC):
                 result_text = result_text.split("```")[1].split("```")[0].strip()
                 
             data = json.loads(result_text)
+            
+            # Handle both direct list and dict with list property (e.g. {"patterns": [...]})
+            if isinstance(data, dict):
+                items = data.get("patterns") or data.get("data") or data.get("results")
+                if not items:
+                    for v in data.values():
+                        if isinstance(v, list):
+                            items = v
+                            break
+                if not items:
+                    items = [data]
+            elif isinstance(data, list):
+                items = data
+            else:
+                items = []
+
             patterns = []
-            for item in data:
-                patterns.append(Pattern(
-                    id=f"pattern_{datetime.datetime.now().timestamp()}",
-                    label=item.get("label", "Pattern"),
-                    family=item.get("family", "structural"),
-                    prevalence=float(item.get("prevalence", 0.5)),
-                    lift_index=float(item.get("lift_index", 1.0))
-                ))
+            for item in items:
+                if isinstance(item, dict):
+                    patterns.append(Pattern(
+                        id=f"pattern_{datetime.datetime.now().timestamp()}_{len(patterns)}",
+                        label=item.get("label") or item.get("name", "Pattern"),
+                        family=item.get("family", "structural"),
+                        prevalence=float(item.get("prevalence", 0.5)),
+                        lift_index=float(item.get("lift_index", 1.0))
+                    ))
             return patterns
         except Exception as e:
             raise Exception(f"Failed to parse AI response: {e}\nResponse: {result_text}")

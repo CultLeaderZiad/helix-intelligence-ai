@@ -5,39 +5,28 @@ from app.core.config import settings
 
 class GroqProvider(AIProvider):
     def __init__(self):
-        self.api_key = getattr(settings, "GROQ_API_KEY", None)
+        self.api_key = getattr(settings, "GROQ_API_KEY", None) or os.getenv("GROQ_API_KEY")
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
-        self.model = "llama-3.3-70b-versatile"
+        self.model = "openai/gpt-oss-120b"
         
     async def _call_api(self, messages: List[dict]) -> str:
         if not self.api_key:
             import json
-            # Dummy JSON block to simulate an AI response without a key
-            return json.dumps({
-                "creatives": [
-                    {
-                        "brand_name": "Nike (Mocked without API Key)",
-                        "product_name": "Air Zoom Pegasus",
-                        "headline": "Run like the wind",
-                        "primary_text": "Experience ultimate comfort.",
-                        "ad_format": "Video",
-                        "platform": "Instagram",
-                        "target_audience": "Runners",
-                        "objective": "Conversion",
-                        "call_to_action": "Shop Now"
-                    }
-                ],
-                "patterns": [
-                    {
-                        "name": "Dynamic Motion",
-                        "description": "Using fast cuts",
-                        "effectiveness_score": 8,
-                        "platform_suitability": ["Instagram"]
-                    }
-                ]
-            })
+            is_pattern_request = any("Identify 2 common patterns" in m.get("content", "") for m in messages)
+            if is_pattern_request:
+                return json.dumps([
+                    {"label": "Dynamic Motion", "family": "visual", "prevalence": 0.8, "lift_index": 1.15},
+                    {"label": "Urgency Copy", "family": "copy", "prevalence": 0.6, "lift_index": 1.25}
+                ])
+            else:
+                return json.dumps({
+                    "kind": "opportunity",
+                    "title": "Use more motion",
+                    "summary": "Video ads perform better with fast cuts.",
+                    "confidence": 0.85
+                })
             
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.base_url,
                 headers={
@@ -47,10 +36,10 @@ class GroqProvider(AIProvider):
                 json={
                     "model": self.model,
                     "messages": messages,
-                    "temperature": 0.3,
-                    "max_tokens": 1000
-                },
-                timeout=30.0
+                    "response_format": {"type": "json_object"},
+                    "temperature": 0.2,
+                    "stream": False
+                }
             )
             response.raise_for_status()
             data = response.json()

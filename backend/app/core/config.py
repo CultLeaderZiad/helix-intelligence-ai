@@ -47,9 +47,17 @@ class Settings(BaseSettings):
             
         return url
 
+    # API KEYS
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    SCRAPEGRAPH_API_KEY: str = os.getenv("SCRAPEGRAPH_API_KEY", "")
+    META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
+    BRIGHTDATA_API_KEY: str = os.getenv("BRIGHTDATA_API_KEY", "")
+
     model_config = SettingsConfigDict(
         case_sensitive=True, 
-        env_file=("../.env", "../.env.local"), 
+        env_file=("../.env", "../.env.local", ".env", ".env.local"), 
         extra="ignore"
     )
 

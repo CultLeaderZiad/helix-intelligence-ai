@@ -61,7 +61,7 @@ def test_api():
 
     print("\nTesting authenticated Discovery Trigger Search...")
     req_search = urllib.request.Request(
-        "http://localhost:8000/api/discovery/search",
+        "http://localhost:8000/api/discovery/jobs",
         data=json.dumps({"query": "Nike running shoes"}).encode(),
         headers={"Content-Type": "application/json", "Authorization": f"Bearer {token_in}"},
         method="POST"
