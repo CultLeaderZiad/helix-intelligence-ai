@@ -1,3 +1,4 @@
+import os
 import httpx
 from typing import List
 from app.services.ai.base import AIProvider
