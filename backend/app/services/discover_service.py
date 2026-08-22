@@ -107,6 +107,7 @@ async def get_job_status(db: AsyncSession, job_id: str) -> Job:
         records_found=job.record_count,
         elapsed_ms=job.elapsed_ms,
         created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
+        completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
         error=job.error_msg
     )
 
@@ -124,7 +125,8 @@ async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_s
             stages_total=5,
             records_found=15,
             elapsed_ms=12000,
-            created_at=datetime.datetime.utcnow().isoformat() + "Z"
+            created_at=datetime.datetime.utcnow().isoformat() + "Z",
+            completed_at=datetime.datetime.utcnow().isoformat() + "Z"
         )
         return Paginated(
             items=[mock_job],
@@ -163,6 +165,7 @@ async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_s
             records_found=job.record_count or 0,
             elapsed_ms=job.elapsed_ms or 0,
             created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
+            completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
             error=job.error_msg
         )
         for job in jobs
