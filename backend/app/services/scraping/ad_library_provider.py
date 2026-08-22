@@ -22,7 +22,7 @@ class AdLibraryProvider(ScraperProvider):
         self.brightdata_key = getattr(settings, "BRIGHTDATA_API_KEY", None) or os.getenv("BRIGHTDATA_API_KEY")
         self.meta_graph_version = "v21.0"
 
-    async def search(self, query: str) -> List[RawCreative]:
+    async def search(self, query: str, progress_callback=None) -> List[RawCreative]:
         if not query or not query.strip():
             return []
 
@@ -37,8 +37,8 @@ class AdLibraryProvider(ScraperProvider):
             logger.info(f"Retrieved {len(creatives)} creatives from Meta Ad Library API")
             return creatives
 
-        # 2. Try Bright Data Scraper / Dataset API
-        creatives = await self._query_brightdata(cleaned_query)
+        # 2. Try Bright Data Scraper / Dataset API (Async Trigger -> Poll Snapshot)
+        creatives = await self._query_brightdata(cleaned_query, progress_callback=progress_callback)
         if creatives:
             logger.info(f"Retrieved {len(creatives)} creatives from Bright Data API")
             return creatives
@@ -164,64 +164,142 @@ class AdLibraryProvider(ScraperProvider):
 
         return creatives
 
-    async def _query_brightdata(self, query: str) -> List[RawCreative]:
+    async def _query_brightdata(self, query: str, progress_callback=None) -> List[RawCreative]:
         if not self.brightdata_key:
             logger.warning("BRIGHTDATA_API_KEY not configured.")
             return []
 
-        # Bright Data Web Scraper API for Facebook Ad Library / Social Ads
-        # Format: POST https://api.brightdata.com/datasets/v3/scrape?format=json
-        url = "https://api.brightdata.com/datasets/v3/scrape?dataset_id=gd_lkaxegm826bjpoo9m5&format=json"
-        target_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=ALL&q={query}"
+        # Bright Data Facebook Ads Library Dataset Trigger (Async Pattern)
+        url = "https://api.brightdata.com/datasets/v3/trigger?dataset_id=gd_lkaxegm826bjpoo9m5&format=json"
+        target_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=ALL&q={query}&search_type=keyword_unordered&media_type=all"
         
         headers = {
             "Authorization": f"Bearer {self.brightdata_key.strip('\"').strip('\'')}",
             "Content-Type": "application/json"
         }
-        payload = {"input": [{"url": target_url}]}
+        payload = [{"url": target_url}]
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:
                 resp = await client.post(url, json=payload, headers=headers)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    if isinstance(data, list):
-                        return self._parse_brightdata_ads(data, query)
-                    elif isinstance(data, dict) and "results" in data:
-                        return self._parse_brightdata_ads(data["results"], query)
-                else:
-                    logger.warning(f"Bright Data API returned status {resp.status_code}: {resp.text[:250]}")
+                if resp.status_code != 200:
+                    logger.warning(f"Bright Data trigger returned status {resp.status_code}: {resp.text[:250]}")
                     return []
+                
+                trigger_data = resp.json()
+                snapshot_id = trigger_data.get("snapshot_id")
+                if not snapshot_id:
+                    logger.warning(f"Bright Data trigger response missing snapshot_id: {trigger_data}")
+                    return []
+                
+                logger.info(f"Bright Data snapshot triggered: {snapshot_id}. Polling progress (up to 5m)...")
+                
+                # Poll snapshot progress every 12s for up to 5 minutes
+                start_time = asyncio.get_event_loop().time()
+                max_duration = 300.0
+                poll_interval = 12.0
+
+                while (asyncio.get_event_loop().time() - start_time) < max_duration:
+                    await asyncio.sleep(poll_interval)
+                    elapsed_s = int(asyncio.get_event_loop().time() - start_time)
+                    
+                    if progress_callback:
+                        await progress_callback(elapsed_s, f"Waiting on Bright Data snapshot ({elapsed_s}s elapsed)")
+                        
+                    prog_resp = await client.get(
+                        f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}",
+                        headers=headers
+                    )
+                    if prog_resp.status_code == 200:
+                        prog_data = prog_resp.json()
+                        status = prog_data.get("status")
+                        logger.info(f"Bright Data snapshot {snapshot_id} status: {status} ({elapsed_s}s)")
+                        
+                        if status == "ready":
+                            snap_resp = await client.get(
+                                f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}?format=json",
+                                headers=headers,
+                                timeout=60.0
+                            )
+                            if snap_resp.status_code == 200:
+                                items = snap_resp.json()
+                                if isinstance(items, list):
+                                    return self._parse_brightdata_ads(items, query)
+                                elif isinstance(items, dict) and "results" in items:
+                                    return self._parse_brightdata_ads(items["results"], query)
+                            break
+                        elif status == "failed":
+                            logger.error(f"Bright Data snapshot {snapshot_id} failed: {prog_data}")
+                            break
         except Exception as e:
-            logger.error(f"Bright Data API request failed: {e}")
+            logger.error(f"Bright Data API async poll failed: {e}")
             return []
+
+        return []
 
     def _parse_brightdata_ads(self, items: List[dict], fallback_brand: str) -> List[RawCreative]:
         creatives = []
         now = datetime.utcnow()
 
         for item in items:
-            headline = item.get("headline") or item.get("title") or f"{fallback_brand.title()} Creative"
-            body = item.get("body") or item.get("text") or item.get("post_text") or ""
-            landing_url = item.get("link") or item.get("url") or f"https://{fallback_brand.lower()}.com"
+            brand_name = (
+                item.get("page_name") or 
+                item.get("advertiser_name") or 
+                item.get("brand") or 
+                fallback_brand.title()
+            )
+            headline = (
+                item.get("headline") or 
+                item.get("title") or 
+                item.get("ad_creative_link_titles", [""])[0] if isinstance(item.get("ad_creative_link_titles"), list) and item.get("ad_creative_link_titles") else None or
+                f"{brand_name} Announcement"
+            )
+            body = (
+                item.get("body") or 
+                item.get("text") or 
+                item.get("post_text") or 
+                item.get("caption") or 
+                (item.get("ad_creative_bodies", [""])[0] if isinstance(item.get("ad_creative_bodies"), list) and item.get("ad_creative_bodies") else "") or
+                ""
+            )
+            landing_url = (
+                item.get("link") or 
+                item.get("url") or 
+                item.get("landing_page_url") or 
+                f"https://{fallback_brand.lower().replace(' ', '')}.com"
+            )
             domain = fallback_brand.lower().replace(" ", "") + ".com"
+            if landing_url and "://" in landing_url:
+                try:
+                    domain = landing_url.split("://")[1].split("/")[0]
+                except Exception:
+                    pass
+
+            format_type = "video" if (item.get("video_url") or "video" in str(item.get("media_type", "")).lower()) else "image"
+            
+            impressions_est = 50000
+            if item.get("impressions"):
+                try:
+                    impressions_est = int(item["impressions"])
+                except Exception:
+                    pass
 
             creatives.append(
                 RawCreative(
                     platform="meta",
-                    format="video" if item.get("video_url") else "image",
-                    brand_name=fallback_brand.title(),
+                    format=format_type,
+                    brand_name=brand_name,
                     headline=headline,
                     body=body,
                     cta=item.get("cta") or "Learn More",
                     landing_domain=domain,
                     landing_url=landing_url,
-                    first_seen=now.isoformat() + "Z",
-                    last_seen=now.isoformat() + "Z",
+                    first_seen=item.get("start_date") or now.isoformat() + "Z",
+                    last_seen=item.get("end_date") or now.isoformat() + "Z",
                     days_active=item.get("days_active", 7),
                     variant_count=1,
-                    impressions_est=item.get("impressions", 50000),
-                    spend_band="mid"
+                    impressions_est=impressions_est,
+                    spend_band=item.get("spend_band", "mid")
                 )
             )
 

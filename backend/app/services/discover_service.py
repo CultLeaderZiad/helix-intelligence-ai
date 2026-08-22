@@ -204,8 +204,17 @@ async def run_discovery_pipeline(job_id: str, query: str):
         async with async_session_maker() as db:
             await update_job_stage(db, job_id, "scraping", "Scraping Platforms", 0.2, 1)
         
+        async def on_scraping_progress(elapsed_s: int, msg: str):
+            async with async_session_maker() as db:
+                result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
+                j = result.scalar_one_or_none()
+                if j:
+                    j.stage_label = msg
+                    j.elapsed_ms = int((time.time() - start_time) * 1000)
+                    await db.commit()
+
         ad_library = AdLibraryProvider()
-        raw_creatives = await ad_library.search(query)
+        raw_creatives = await ad_library.search(query, progress_callback=on_scraping_progress)
         
         if not raw_creatives:
             async with async_session_maker() as db:
