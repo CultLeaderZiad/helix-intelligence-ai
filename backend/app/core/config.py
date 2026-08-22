@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     SCRAPEGRAPH_API_KEY: str = os.getenv("SCRAPEGRAPH_API_KEY", "")
     META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
     BRIGHTDATA_API_KEY: str = os.getenv("BRIGHTDATA_API_KEY", "")
+    APIFY_API_TOKEN: str = os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")
 
     model_config = SettingsConfigDict(
         case_sensitive=True, 

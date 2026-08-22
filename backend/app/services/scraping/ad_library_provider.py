@@ -20,6 +20,7 @@ class AdLibraryProvider(ScraperProvider):
     def __init__(self):
         self.meta_token = getattr(settings, "META_ACCESS_TOKEN", None) or os.getenv("META_ACCESS_TOKEN")
         self.brightdata_key = getattr(settings, "BRIGHTDATA_API_KEY", None) or os.getenv("BRIGHTDATA_API_KEY")
+        self.apify_token = getattr(settings, "APIFY_API_TOKEN", None) or os.getenv("APIFY_API_TOKEN") or os.getenv("APIFY_TOKEN")
         self.meta_graph_version = "v21.0"
 
     async def search(self, query: str, progress_callback=None) -> List[RawCreative]:
@@ -43,7 +44,13 @@ class AdLibraryProvider(ScraperProvider):
             logger.info(f"Retrieved {len(creatives)} creatives from Bright Data API")
             return creatives
 
-        logger.info(f"Zero creatives found for query '{query}' across Meta and Bright Data sources.")
+        # 3. Try Apify Facebook Ads Scraper (Free Tier Fallback)
+        creatives = await self._query_apify(cleaned_query, progress_callback=progress_callback)
+        if creatives:
+            logger.info(f"Retrieved {len(creatives)} creatives from Apify API")
+            return creatives
+
+        logger.info(f"Zero creatives found for query '{query}' across Meta, Bright Data, and Apify sources.")
         return []
 
     async def _query_meta_api(self, query: str) -> List[RawCreative]:
@@ -169,9 +176,15 @@ class AdLibraryProvider(ScraperProvider):
             logger.warning("BRIGHTDATA_API_KEY not configured.")
             return []
 
-        # Bright Data Facebook Ads Library Dataset Trigger (Async Pattern)
+        # Bright Data Facebook Dataset Trigger
         url = "https://api.brightdata.com/datasets/v3/trigger?dataset_id=gd_lkaxegm826bjpoo9m5&format=json"
-        target_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=ALL&q={query}&search_type=keyword_unordered&media_type=all"
+        
+        # Target URL for Facebook scraper
+        clean_brand = query.strip().lower().replace(" ", "")
+        if "://" in query:
+            target_url = query
+        else:
+            target_url = f"https://www.facebook.com/{clean_brand}"
         
         headers = {
             "Authorization": f"Bearer {self.brightdata_key.strip('\"').strip('\'')}",
@@ -244,17 +257,13 @@ class AdLibraryProvider(ScraperProvider):
         for item in items:
             brand_name = (
                 item.get("page_name") or 
+                item.get("user_username_raw") or 
                 item.get("advertiser_name") or 
                 item.get("brand") or 
                 fallback_brand.title()
             )
-            headline = (
-                item.get("headline") or 
-                item.get("title") or 
-                item.get("ad_creative_link_titles", [""])[0] if isinstance(item.get("ad_creative_link_titles"), list) and item.get("ad_creative_link_titles") else None or
-                f"{brand_name} Announcement"
-            )
             body = (
+                item.get("content") or 
                 item.get("body") or 
                 item.get("text") or 
                 item.get("post_text") or 
@@ -262,9 +271,17 @@ class AdLibraryProvider(ScraperProvider):
                 (item.get("ad_creative_bodies", [""])[0] if isinstance(item.get("ad_creative_bodies"), list) and item.get("ad_creative_bodies") else "") or
                 ""
             )
+            headline = (
+                item.get("headline") or 
+                item.get("title") or 
+                (item.get("ad_creative_link_titles", [""])[0] if isinstance(item.get("ad_creative_link_titles"), list) and item.get("ad_creative_link_titles") else None) or
+                ((body[:60] + "...") if len(body) > 60 else body) or
+                f"{brand_name} Announcement"
+            )
             landing_url = (
-                item.get("link") or 
                 item.get("url") or 
+                item.get("user_url") or 
+                item.get("link") or 
                 item.get("landing_page_url") or 
                 f"https://{fallback_brand.lower().replace(' ', '')}.com"
             )
@@ -275,14 +292,21 @@ class AdLibraryProvider(ScraperProvider):
                 except Exception:
                     pass
 
-            format_type = "video" if (item.get("video_url") or "video" in str(item.get("media_type", "")).lower()) else "image"
+            format_type = "video" if ("reel" in str(landing_url).lower() or item.get("video_url") or "video" in str(item.get("media_type", "")).lower()) else "image"
             
             impressions_est = 50000
-            if item.get("impressions"):
+            if item.get("num_likes_type") and isinstance(item.get("num_likes_type"), dict):
+                likes = item["num_likes_type"].get("num", 0)
+                comments = item.get("num_comments", 0)
+                shares = item.get("num_shares", 0)
+                impressions_est = int((likes * 10) + (comments * 25) + (shares * 50))
+            elif item.get("impressions"):
                 try:
                     impressions_est = int(item["impressions"])
                 except Exception:
                     pass
+
+            first_seen_val = item.get("date_posted") or item.get("start_date") or now.isoformat() + "Z"
 
             creatives.append(
                 RawCreative(
@@ -291,14 +315,90 @@ class AdLibraryProvider(ScraperProvider):
                     brand_name=brand_name,
                     headline=headline,
                     body=body,
-                    cta=item.get("cta") or "Learn More",
+                    cta=item.get("cta") or item.get("cta_text") or "Learn More",
+                    landing_domain=domain,
+                    landing_url=landing_url,
+                    first_seen=first_seen_val,
+                    last_seen=item.get("end_date") or now.isoformat() + "Z",
+                    days_active=item.get("days_active", 7),
+                    variant_count=1,
+                    impressions_est=max(1000, impressions_est),
+                    spend_band=item.get("spend_band", "mid")
+                )
+            )
+
+        return creatives
+
+    async def _query_apify(self, query: str, progress_callback=None) -> List[RawCreative]:
+        if not self.apify_token:
+            logger.warning("APIFY_API_TOKEN not configured.")
+            return []
+
+        if progress_callback:
+            await progress_callback(0, "Trying Apify fallback scraper...")
+
+        # Apify Facebook Ads Library Scraper actor (curious_coder/facebook-ads-library-scraper)
+        # Endpoint: POST https://api.apify.com/v2/acts/curious_coder~facebook-ads-library-scraper/run-sync-get-dataset-items?token={token}
+        url = f"https://api.apify.com/v2/acts/curious_coder~facebook-ads-library-scraper/run-sync-get-dataset-items?token={self.apify_token.strip('\"').strip('\'')}"
+        target_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q={query}&search_type=keyword_unordered&media_type=all"
+        payload = {
+            "urls": [{"url": target_url}],
+            "max_items": 15
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=45.0) as client:
+                resp = await client.post(url, json=payload)
+                if resp.status_code in [200, 201]:
+                    items = resp.json()
+                    if isinstance(items, list) and items:
+                        return self._parse_apify_ads(items, query)
+                else:
+                    logger.warning(f"Apify Actor returned status {resp.status_code}: {resp.text[:250]}")
+        except Exception as e:
+            logger.error(f"Apify scraper request failed: {e}")
+
+        return []
+
+    def _parse_apify_ads(self, items: List[dict], fallback_brand: str) -> List[RawCreative]:
+        creatives = []
+        now = datetime.utcnow()
+
+        for item in items:
+            brand_name = item.get("page_name") or item.get("pageName") or item.get("advertiser") or fallback_brand.title()
+            body = item.get("ad_creative_bodies") or item.get("body") or item.get("text") or item.get("caption") or ""
+            if isinstance(body, list):
+                body = body[0] if body else ""
+            
+            title = item.get("ad_creative_link_titles") or item.get("title") or item.get("headline") or f"{brand_name} Announcement"
+            if isinstance(title, list):
+                title = title[0] if title else f"{brand_name} Announcement"
+
+            landing_url = item.get("link_url") or item.get("url") or item.get("link") or f"https://{fallback_brand.lower().replace(' ', '')}.com"
+            domain = fallback_brand.lower().replace(" ", "") + ".com"
+            if landing_url and "://" in landing_url:
+                try:
+                    domain = landing_url.split("://")[1].split("/")[0]
+                except Exception:
+                    pass
+
+            format_type = "video" if ("video" in str(item.get("media_type", "")).lower() or item.get("video_url")) else "image"
+            
+            creatives.append(
+                RawCreative(
+                    platform="meta",
+                    format=format_type,
+                    brand_name=brand_name,
+                    headline=title,
+                    body=body,
+                    cta=item.get("cta_text") or item.get("cta") or "Learn More",
                     landing_domain=domain,
                     landing_url=landing_url,
                     first_seen=item.get("start_date") or now.isoformat() + "Z",
                     last_seen=item.get("end_date") or now.isoformat() + "Z",
-                    days_active=item.get("days_active", 7),
+                    days_active=item.get("days_active", 5),
                     variant_count=1,
-                    impressions_est=impressions_est,
+                    impressions_est=item.get("impressions", 35000),
                     spend_band=item.get("spend_band", "mid")
                 )
             )
