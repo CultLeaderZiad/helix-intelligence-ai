@@ -30,7 +30,7 @@ async def get_job_results(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return await creative_service.list_creatives(db, job_id, page, page_size)
+    return await creative_service.list_creatives(db, job_id=job_id, page=page, page_size=page_size)
 
 @router.get("/jobs", response_model=Paginated[Job])
 async def list_jobs(
