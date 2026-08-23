@@ -321,3 +321,142 @@ async def generate_patterns_for_recent_creatives(db: AsyncSession, user: User, j
         return patterns
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# --- Swipe Files / Saved Creatives (Gated by 'swipe_files', 0 credit cost) ---
+async def save_creative(
+    db: AsyncSession,
+    user: "User",
+    creative_id: str,
+    collection_name: str = "Default",
+    tags: Optional[list] = None
+) -> dict:
+    from app.services.billing_service import check_quota_and_feature
+    from app.models.saved_creative import SavedCreative
+    from app.models.creative import Creative
+
+    # 1. Check feature flag (0 credits required)
+    org, plan = await check_quota_and_feature(db, user, feature_name="swipe_files", required_credits=0.0)
+
+    # 2. Check creative exists
+    creative = (await db.execute(select(Creative).where(Creative.id == creative_id))).scalar_one_or_none()
+    if not creative:
+        raise HTTPException(status_code=404, detail="Creative not found")
+
+    # 3. Check already saved
+    existing = (await db.execute(
+        select(SavedCreative).where(
+            SavedCreative.user_id == user.id,
+            SavedCreative.creative_id == creative_id
+        )
+    )).scalar_one_or_none()
+
+    if existing:
+        existing.collection_name = collection_name
+        if tags is not None:
+            existing.tags = tags
+        await db.commit()
+        return {"success": True, "message": "Saved creative collection updated", "saved_id": existing.id}
+
+    new_saved = SavedCreative(
+        user_id=user.id,
+        org_id=org.id,
+        creative_id=creative_id,
+        collection_name=collection_name,
+        tags=tags or []
+    )
+    db.add(new_saved)
+    await db.commit()
+    await db.refresh(new_saved)
+    return {"success": True, "message": "Creative saved to swipe file (0 credits used)", "saved_id": new_saved.id}
+
+async def unsave_creative(db: AsyncSession, user: "User", creative_id: str) -> dict:
+    from app.models.saved_creative import SavedCreative
+    from sqlalchemy import delete
+
+    result = await db.execute(
+        delete(SavedCreative).where(
+            SavedCreative.user_id == user.id,
+            SavedCreative.creative_id == creative_id
+        )
+    )
+    await db.commit()
+    return {"success": True, "message": "Creative removed from swipe file"}
+
+async def list_saved_creatives(
+    db: AsyncSession,
+    user: "User",
+    collection_name: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20
+) -> Paginated[CreativeSchema]:
+    from app.services.billing_service import check_quota_and_feature
+    from app.models.saved_creative import SavedCreative
+    from app.models.creative import Creative
+    from app.models.creative_score import CreativeScore
+
+    # Gated by feature flag
+    await check_quota_and_feature(db, user, feature_name="swipe_files", required_credits=0.0)
+
+    filters = [SavedCreative.user_id == user.id]
+    if collection_name:
+        filters.append(SavedCreative.collection_name == collection_name)
+
+    count_query = select(func.count(SavedCreative.id)).where(*filters)
+    total = await db.scalar(count_query) or 0
+
+    offset = (page - 1) * page_size
+    query = (
+        select(Creative, CreativeScore, SavedCreative)
+        .join(SavedCreative, Creative.id == SavedCreative.creative_id)
+        .outerjoin(CreativeScore, Creative.id == CreativeScore.creative_id)
+        .where(*filters)
+        .order_by(SavedCreative.created_at.desc())
+        .offset(offset)
+        .limit(page_size)
+    )
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    items = []
+    for c, score, saved in rows:
+        items.append(CreativeSchema(
+            id=c.id,
+            brand_id=c.brand_id,
+            platform=c.platform,
+            format=c.format,
+            source_type=getattr(c, "source_type", "ad") or "ad",
+            headline=c.headline or "",
+            body=c.body or "",
+            cta=c.cta or "",
+            landing_domain=c.landing_domain,
+            thumbnail_ratio=c.thumbnail_ratio,
+            duration_seconds=c.duration_seconds,
+            first_seen=c.first_seen or "",
+            last_seen=c.last_seen or "",
+            days_active=c.days_active or 1,
+            variant_count=c.variant_count or 1,
+            scores=Scores(
+                hook=score.hook if score else None,
+                clarity=score.clarity if score else None,
+                retention=score.retention if score else None,
+                composite=score.composite if score else None
+            ) if score else Scores(),
+            metrics=CreativeMetrics(
+                impressions_est=c.impressions_est,
+                is_impression_estimate=getattr(c, "is_impression_estimate", True),
+                spend_band=c.spend_band,
+                engagement_rate=c.engagement_rate,
+                ctr_est=c.ctr_est
+            ),
+            pattern_ids=[]
+        ))
+
+    return Paginated(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=(offset + page_size) < total
+    )
+

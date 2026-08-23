@@ -1,21 +1,9 @@
 import { request } from "../http"
 
 /**
- * FastAPI-backed admin service.
- *
- * Written up front and intentionally thin. Because it satisfies the same
- * interface as adminService.mock.js, switching VITE_DATA_SOURCE=api needs
- * zero page or hook changes.
- *
- * These endpoints are admin-scoped server-side: the session cookie's role
- * claim gates them, so a customer session receives 403 here regardless of
- * what the client renders. The route guard is defense-in-depth, not the
- * authorization boundary.
- *
- * Expected endpoints:
- *   GET /v1/admin/overview/stats  -> AdminOverviewStats
- *   GET /v1/admin/jobs            -> Paginated<AdminJobRow>
- *   GET /v1/admin/system/health   -> AdminSystemHealth
+ * Real FastAPI-backed admin service for full platform control,
+ * plans management, organization billing, credit grants, usage breakdown,
+ * feature flags, and user impersonation.
  */
 const adminService = {
   getOverviewStats() {
@@ -23,18 +11,72 @@ const adminService = {
   },
 
   async listRecentJobs() {
-    const items = await request("/admin/jobs", { params: { page: 1, page_size: 8 } })
+    const items = await request("/admin/jobs", { params: { page: 1, page_size: 20 } })
     return {
-      items,
-      total: items.length,
+      items: Array.isArray(items) ? items : [],
+      total: Array.isArray(items) ? items.length : 0,
       page: 1,
-      page_size: items.length,
+      page_size: 20,
       has_more: false,
     }
   },
 
   getSystemHealth() {
     return request("/admin/system/health")
+  },
+
+  // Plans Management
+  listPlans() {
+    return request("/admin/plans")
+  },
+
+  createPlan(planData) {
+    return request("/admin/plans", {
+      method: "POST",
+      body: JSON.stringify(planData),
+    })
+  },
+
+  // Organizations & Credits
+  listOrganizations() {
+    return request("/admin/organizations")
+  },
+
+  grantCredits(orgId, amount, reason = "Admin manual grant") {
+    return request(`/admin/organizations/${orgId}/grant-credits`, {
+      method: "POST",
+      body: JSON.stringify({ amount, reason }),
+    })
+  },
+
+  switchPlan(orgId, planId, resetCredits = false) {
+    return request(`/admin/organizations/${orgId}/switch-plan`, {
+      method: "POST",
+      body: JSON.stringify({ plan_id: planId, reset_credits: resetCredits }),
+    })
+  },
+
+  updateFeatureFlags(orgId, featureFlags) {
+    return request(`/admin/organizations/${orgId}/feature-flags`, {
+      method: "POST",
+      body: JSON.stringify({ feature_flags: featureFlags }),
+    })
+  },
+
+  // Usage & Provider Breakdown
+  getUsageSummary() {
+    return request("/admin/usage")
+  },
+
+  // Users & Impersonation
+  listUsers() {
+    return request("/admin/users")
+  },
+
+  impersonateUser(userId) {
+    return request(`/admin/users/${userId}/impersonate`, {
+      method: "POST",
+    })
   },
 }
 

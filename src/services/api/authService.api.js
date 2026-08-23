@@ -34,6 +34,9 @@ function toSession(data) {
       id: data.user_id,
       email: data.email,
       role: data.role,
+      credit_balance: data.credit_balance,
+      plan_id: data.plan_id,
+      feature_flags: data.feature_flags || { discover: true, swipe_files: true },
     },
   }
 }

@@ -1,4 +1,6 @@
-import { X, ExternalLink, Play, Image as ImageIcon, Layers } from "lucide-react"
+import { useState } from "react"
+import { X, ExternalLink, Play, Image as ImageIcon, Layers, Bookmark, Check } from "lucide-react"
+import { useAuth } from "@/context/AuthContext"
 import { creativeService } from "@/services"
 import { useAsync } from "@/hooks/useAsync"
 import { Button } from "@/components/ui/Button"
@@ -141,11 +143,35 @@ function PatternFindings({ patterns }) {
  * split FastAPI will have.
  */
 export function CreativeDetailPanel({ creativeId, onClose }) {
+  const { user } = useAuth()
+  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+
   const { data, error, loading, refetch } = useAsync(
     () => creativeService.getCreativeById(creativeId),
     [creativeId],
     { enabled: Boolean(creativeId) },
   )
+
+  const showSwipeOption = user?.feature_flags?.swipe_files !== false
+
+  const handleToggleSave = async () => {
+    if (!creativeId || saving) return
+    setSaving(true)
+    try {
+      if (saved) {
+        await creativeService.unsaveCreative(creativeId)
+        setSaved(false)
+      } else {
+        await creativeService.saveCreative(creativeId)
+        setSaved(true)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <aside
@@ -154,9 +180,28 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
     >
       <div className="flex h-8 shrink-0 items-center justify-between border-b border-border px-3">
         <span className="label-mono">Inspector</span>
-        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close inspector">
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {showSwipeOption && data ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleToggleSave}
+              disabled={saving}
+              className={saved ? "text-accent" : "text-text-muted hover:text-text"}
+              aria-label={saved ? "Remove from swipe file" : "Save to swipe file"}
+              title={saved ? "Saved in swipe files" : "Save to swipe files (0 credits)"}
+            >
+              {saved ? (
+                <Check className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
+              ) : (
+                <Bookmark className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+            </Button>
+          ) : null}
+          <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close inspector">
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -187,7 +232,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                     {data.brand?.name ?? "Unknown brand"}
                   </span>
                   <Tag>{data.platform}</Tag>
-                  {data.source_type === "organic_content_proxy" ? (
+                  {data.data_source === "organic_content_proxy" ? (
                     <span className="rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-amber-400" title="Organic Post/Reel Proxy Content">
                       Organic Proxy
                     </span>
@@ -256,7 +301,12 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
             <div className="grid grid-cols-2 gap-x-3 gap-y-3 border-t border-border pt-3">
               <StatBlock
-                label="Impressions (Est.)"
+                label={
+                  <span className="flex items-center gap-1">
+                    Impressions
+                    {data.is_estimated && <span className="text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
+                  </span>
+                }
                 value={`~${formatCompact(data.metrics?.impressions_est)}`}
               />
               <StatBlock label="Spend" value={formatSpendBand(data.metrics?.spend_band)} />

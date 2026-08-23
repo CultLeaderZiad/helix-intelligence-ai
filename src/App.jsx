@@ -16,6 +16,16 @@ import { SignInPage } from "@/pages/auth/SignInPage"
 import { SignUpPage } from "@/pages/auth/SignUpPage"
 import { OverviewPage } from "@/pages/admin/OverviewPage"
 import { AdminPendingPage } from "@/pages/admin/AdminPendingPage"
+import OrganizationsPage from "@/pages/admin/OrganizationsPage"
+import SubscriptionsPlansPage from "@/pages/admin/SubscriptionsPlansPage"
+import UsagePage from "@/pages/admin/UsagePage"
+import FeatureFlagsPage from "@/pages/admin/FeatureFlagsPage"
+import UsersPage from "@/pages/admin/UsersPage"
+
+import SwipeFilesPage from "@/pages/SwipeFilesPage"
+import BillingPage from "@/pages/BillingPage"
+import ApiKeysPage from "@/pages/ApiKeysPage"
+import TeamPage from "@/pages/TeamPage"
 
 /**
  * Root component. Deliberately thin: it mounts shell-level providers,
@@ -29,6 +39,10 @@ const PUBLIC_TITLES = {
   "/sign-in": "Sign in",
   "/sign-up": "Create account",
   "/forgot-password": "Reset password",
+  "/swipe-files": "Swipe Files",
+  "/billing": "Billing & Usage",
+  "/api-keys": "API Keys",
+  "/team": "Team Members",
 }
 
 function DocumentTitle() {
@@ -81,6 +95,11 @@ export default function App() {
           <Route element={<ProtectedRoute requireRole="admin" />}>
             <Route element={<AdminShellLayout />}>
               <Route path="/admin" element={<OverviewPage />} />
+              <Route path="/admin/organizations" element={<OrganizationsPage />} />
+              <Route path="/admin/subscriptions" element={<SubscriptionsPlansPage />} />
+              <Route path="/admin/usage" element={<UsagePage />} />
+              <Route path="/admin/feature-flags" element={<FeatureFlagsPage />} />
+              <Route path="/admin/users" element={<UsersPage />} />
               {ADMIN_NAV_ITEMS.filter((i) => !i.built).map((item) => (
                 <Route
                   key={item.key}
@@ -94,6 +113,10 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<AuthenticatedShell />}>
               <Route path="/discover" element={<DiscoverPage />} />
+              <Route path="/swipe-files" element={<SwipeFilesPage />} />
+              <Route path="/billing" element={<BillingPage />} />
+              <Route path="/api-keys" element={<ApiKeysPage />} />
+              <Route path="/team" element={<TeamPage />} />
               {NAV_SECTIONS.filter((s) => s.status === "pending").map((section) => (
                 <Route
                   key={section.key}

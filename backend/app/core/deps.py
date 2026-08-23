@@ -1,5 +1,5 @@
-from typing import AsyncGenerator
-from fastapi import Depends, HTTPException, status
+from typing import AsyncGenerator, Optional
+from fastapi import Depends, HTTPException, Header, Security, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,15 +10,31 @@ from app.core.config import settings
 from app.core.security import ALGORITHM
 from app.models.user import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/signin")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/signin", auto_error=False)
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:
         yield session
 
 async def get_current_user(
-    db: AsyncSession = Depends(get_db), token: str = Depends(oauth2_scheme)
+    db: AsyncSession = Depends(get_db),
+    token: Optional[str] = Depends(oauth2_scheme),
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key")
 ) -> User:
+    # 1. Check API Key authentication
+    if x_api_key:
+        from app.services.api_key_service import authenticate_api_key
+        user, org = await authenticate_api_key(db, x_api_key)
+        return user
+
+    # 2. Check JWT Bearer token authentication
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated. Provide Bearer token or X-API-Key header.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

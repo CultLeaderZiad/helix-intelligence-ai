@@ -30,8 +30,8 @@ class Creative(Base):
     variant_count = Column(Integer, default=1)
     # the metrics can be linked or stored here (stored directly as columns for simplicity)
     impressions_est = Column(Integer, nullable=True)
-    is_impression_estimate = Column(Boolean, default=True, nullable=True)
-    source_type = Column(String, default="ad", nullable=True) # 'ad'|'organic_content_proxy'
+    is_estimated = Column(Boolean, default=True, nullable=True)
+    data_source = Column(String, default="meta_official", nullable=True) # 'meta_official'|'ad_library_scrape'|'organic_content_proxy'
     spend_band = Column(String, nullable=True) # 'low'|'mid'|'high'|'very_high'
     engagement_rate = Column(Float, nullable=True)
     ctr_est = Column(Float, nullable=True)

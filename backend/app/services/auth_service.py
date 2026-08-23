@@ -40,13 +40,17 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     db.add(user)
     await db.flush()  # write user, get its id, don't commit yet
 
-    # Auto-create a personal org for every new user so FK constraints are satisfied
+    # Auto-create a personal org for every new user with 25 trial credits and default trial plan
     from app.models.organization import Organization
     org_name = getattr(user_in, "name", None) or user_in.email.split("@")[0]
     org = Organization(
         owner_id=user.id,
         name=f"{org_name}'s Workspace",
+        plan_id="plan_trial_default",
         plan="trial",
+        credit_balance=25.0,
+        credits_used=0.0,
+        status="active"
     )
     db.add(org)
     await db.commit()

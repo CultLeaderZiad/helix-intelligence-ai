@@ -43,7 +43,7 @@ export async function request(path, options = {}) {
   const url = `${API_BASE_URL}${path}${buildQuery(params)}`
 
   // Attach JWT from localStorage if present
-  const token = localStorage.getItem("helix_access_token")
+  const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
 
   let res
@@ -57,7 +57,7 @@ export async function request(path, options = {}) {
         ...authHeader,
         ...extraHeaders,
       },
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...(body && typeof body !== "string" ? { body: JSON.stringify(body) } : body ? { body } : {}),
     })
   } catch (err) {
     if (err?.name === "AbortError") throw err
@@ -66,10 +66,15 @@ export async function request(path, options = {}) {
 
   if (!res.ok) {
     let detail = res.statusText
+    let errorCode = `http_${res.status}`
     try {
       const payload = await res.json()
       // FastAPI conventionally returns { detail: ... }
       detail = payload?.detail ?? payload?.message ?? detail
+      if (typeof detail === "object" && detail !== null) {
+        if (detail.code) errorCode = detail.code
+        if (detail.message) detail = detail.message
+      }
     } catch {
       /* non-JSON error body */
     }
@@ -79,7 +84,7 @@ export async function request(path, options = {}) {
 
     throw new ServiceError(
       typeof detail === "string" ? detail : "Request failed",
-      { status: res.status, code: `http_${res.status}` },
+      { status: res.status, code: errorCode },
     )
   }
 

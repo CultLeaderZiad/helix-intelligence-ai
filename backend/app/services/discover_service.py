@@ -6,6 +6,7 @@ from app.schemas.discover import SearchParams, Job
 from app.schemas.common import Paginated
 from app.models.scrape_job import ScrapeJob
 from app.models.organization import Organization
+from app.models.user import User
 from app.core.config import settings
 from app.db.session import async_session_maker
 import datetime
@@ -17,6 +18,7 @@ from app.services.scraping.ad_library_provider import AdLibraryProvider
 from app.services.scraping.scrapegraph_provider import ScrapeGraphProvider
 from app.services.scraping.normalizer import normalize_creative
 from app.services.creative_service import generate_patterns_for_recent_creatives
+from app.services.billing_service import check_quota_and_feature, meter_and_deduct, DISCOVER_SEARCH_CREDIT_COST
 
 async def trigger_search(db: AsyncSession, search_params: SearchParams, user_id: str, background_tasks: Optional[BackgroundTasks] = None) -> Job:
     if settings.USE_MOCKS:
@@ -33,14 +35,15 @@ async def trigger_search(db: AsyncSession, search_params: SearchParams, user_id:
             created_at=datetime.datetime.utcnow().isoformat() + "Z"
         )
     
-    # Get first org for user for now (or mock org if none)
-    result = await db.execute(select(Organization).where(Organization.owner_id == user_id))
-    org = result.scalar_one_or_none()
-    
-    if not org:
-        raise HTTPException(status_code=400, detail="No organization found for this user. Please contact support.")
+    # 1. Fetch user
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    # 2. REAL Quota, Trial Expiration & Feature Gatekeeper
+    org, plan = await check_quota_and_feature(db, user, feature_name="discover", required_credits=DISCOVER_SEARCH_CREDIT_COST)
     org_id = org.id
-    
 
     new_job = ScrapeJob(
         org_id=org_id,
@@ -99,13 +102,13 @@ async def get_job_status(db: AsyncSession, job_id: str) -> Job:
     return Job(
         job_id=job.id,
         status=job.status,
-        progress=job.progress,
-        stage=job.stage,
-        stage_label=job.stage_label,
-        stage_index=job.stage_index,
-        stages_total=job.stages_total,
-        records_found=job.record_count,
-        elapsed_ms=job.elapsed_ms,
+        progress=job.progress or 0.0,
+        stage=job.stage or "complete",
+        stage_label=job.stage_label or "Complete",
+        stage_index=job.stage_index or 0,
+        stages_total=job.stages_total or 1,
+        records_found=job.record_count or 0,
+        elapsed_ms=job.elapsed_ms or 0,
         created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
         completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
         error=job.error_msg
@@ -231,6 +234,21 @@ async def run_discovery_pipeline(job_id: str, query: str):
                     job.completed_at = datetime.datetime.utcnow()
                     await db.commit()
             return
+
+        # Meter stage 1: Scraping cost (1.0 Credit)
+        async with async_session_maker() as db:
+            await meter_and_deduct(
+                db,
+                org_id=org_id,
+                user_id=None,
+                provider="brightdata",
+                operation="discover_scrape",
+                units=float(len(raw_creatives)),
+                cost_usd=0.003,
+                credits_deducted=1.0,
+                job_id=job_id,
+                metadata={"brand": query, "raw_count": len(raw_creatives)}
+            )
             
         # Stage 2: Enriching with ScrapeGraph
         async with async_session_maker() as db:
@@ -244,6 +262,21 @@ async def run_discovery_pipeline(job_id: str, query: str):
                 enriched_creatives.append((rc, extra_data))
             else:
                 enriched_creatives.append((rc, None))
+
+        # Meter stage 2: Landing page extract (0.5 Credits)
+        async with async_session_maker() as db:
+            await meter_and_deduct(
+                db,
+                org_id=org_id,
+                user_id=None,
+                provider="scrapegraph",
+                operation="landing_enrich",
+                units=float(len(enriched_creatives)),
+                cost_usd=0.005,
+                credits_deducted=0.5,
+                job_id=job_id,
+                metadata={"enriched_count": len(enriched_creatives)}
+            )
                 
         # Stage 3: Normalizing and Saving to DB
         async with async_session_maker() as db:
@@ -264,11 +297,23 @@ async def run_discovery_pipeline(job_id: str, query: str):
         async with async_session_maker() as db:
             await update_job_stage(db, job_id, "scoring", "AI Generating Insights", 0.8, 4)
             # Fetch the user for the org
-            from app.models.organization import Organization
-            from app.models.user import User
             org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one()
             user = (await db.execute(select(User).where(User.id == org.owner_id))).scalar_one()
             await generate_patterns_for_recent_creatives(db, user, job_id)
+
+            # Meter stage 4: Groq AI Pattern Generation (0.5 Credits)
+            await meter_and_deduct(
+                db,
+                org_id=org_id,
+                user_id=user.id,
+                provider="groq",
+                operation="pattern_synthesis",
+                units=1800.0,
+                cost_usd=0.001,
+                credits_deducted=0.5,
+                job_id=job_id,
+                metadata={"model": "llama-3.3-70b-versatile"}
+            )
             
         # Stage 5: Complete
         async with async_session_maker() as db:
