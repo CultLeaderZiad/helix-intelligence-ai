@@ -118,7 +118,7 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                 <td className="px-2 py-2">
                   <div className="flex flex-wrap items-center gap-1">
                     <Tag>{PLATFORM_LABEL[c.platform] ?? c.platform}</Tag>
-                    {c.data_source === "organic_content_proxy" ? (
+                    {c.source_type === "organic_content_proxy" ? (
                       <span className="rounded bg-amber-500/10 px-1 py-0.5 font-mono text-[9px] text-amber-400 font-medium" title="Organic Post/Reel Proxy Content">
                         Organic Proxy
                       </span>
@@ -134,7 +134,7 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                 </td>
                 <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted" title="Estimated impressions">
                   ~{formatCompact(c.metrics?.impressions_est)}
-                  {c.is_estimated && <span className="ml-1 text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
+                  {c.metrics?.is_impression_estimate && <span className="ml-1 text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
                 </td>
                 <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted">
                   {c.metrics?.engagement_rate === null ||

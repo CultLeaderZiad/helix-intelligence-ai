@@ -41,6 +41,23 @@ def normalize_creative(
             if parts:
                 body = " | ".join(parts)
 
+    # Data Honesty Rule: If not from the official Meta API, these are arbitrary guesses
+    # and should be dropped unless explicitly permitted.
+    impressions_est = raw.impressions_est
+    spend_band = raw.spend_band
+    engagement_rate = random.uniform(0.01, 0.08)
+    ctr_est = random.uniform(0.005, 0.03)
+
+    data_source = getattr(raw, "data_source", "meta_official")
+    is_estimated = getattr(raw, "is_estimated", True)
+
+    if data_source != "meta_official":
+        impressions_est = None
+        spend_band = None
+        engagement_rate = None
+        ctr_est = None
+        is_estimated = True
+
     creative = DBCreative(
         id=c_id,
         job_id=job_id,
@@ -57,13 +74,12 @@ def normalize_creative(
         last_seen=raw.last_seen,
         days_active=raw.days_active,
         variant_count=raw.variant_count,
-        impressions_est=raw.impressions_est,
-        is_estimated=getattr(raw, "is_estimated", True),
-        data_source=getattr(raw, "data_source", "meta_official"),
-        spend_band=raw.spend_band,
-        # Mocking engagement for MVP purposes unless provided by raw source
-        engagement_rate=random.uniform(0.01, 0.08),
-        ctr_est=random.uniform(0.005, 0.03)
+        impressions_est=impressions_est,
+        is_estimated=is_estimated,
+        data_source=data_source,
+        spend_band=spend_band,
+        engagement_rate=engagement_rate,
+        ctr_est=ctr_est
     )
     
     # For MVP, we will mock the AI scores (hook, clarity, retention) 

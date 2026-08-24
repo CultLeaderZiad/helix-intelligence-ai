@@ -6,7 +6,7 @@ from app.schemas.admin import (
     AdminOverviewStats, AdminJobRow, AdminSystemHealth,
     PlanSchema, PlanCreate, AdminOrganizationRow, GrantCreditsRequest,
     SwitchPlanRequest, UpdateFeatureFlagsRequest, AdminUsageSummary,
-    AdminUserRow, ImpersonateResponse
+    AdminUserRow, ImpersonateResponse, UserStatusUpdate
 )
 from app.services import admin_service
 from app.core.deps import get_db, get_current_admin
@@ -77,6 +77,15 @@ async def get_usage_summary(db: AsyncSession = Depends(get_db), current_admin: U
 @router.get("/users", response_model=List[AdminUserRow])
 async def list_users(db: AsyncSession = Depends(get_db), current_admin: User = Depends(get_current_admin)):
     return await admin_service.list_users(db)
+
+@router.post("/users/{user_id}/status", response_model=Dict[str, Any])
+async def update_user_status(
+    user_id: str,
+    status_in: UserStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_admin)
+):
+    return await admin_service.update_user_status(db, user_id, status_in.status)
 
 @router.post("/users/{user_id}/impersonate", response_model=ImpersonateResponse)
 async def impersonate_user(

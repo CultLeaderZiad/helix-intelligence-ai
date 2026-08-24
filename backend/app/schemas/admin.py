@@ -10,6 +10,8 @@ class AdminOverviewStats(BaseModel):
     total_credits_consumed: float = 0.0
     total_provider_cost_usd: float = 0.0
     active_trials: int = 0
+    today_api_calls: int = 0
+    today_api_spend: float = 0.0
 
 class AdminJobRow(BaseModel):
     job_id: str

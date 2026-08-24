@@ -35,6 +35,7 @@ function toSession(data) {
       email: data.email,
       role: data.role,
       credit_balance: data.credit_balance,
+      trial_days_remaining: data.trial_days_remaining,
       plan_id: data.plan_id,
       feature_flags: data.feature_flags || { discover: true, swipe_files: true },
     },
@@ -81,6 +82,10 @@ const authService = {
   signOut() {
     clearToken()
     return request("/auth/sign-out", { method: "POST" }).catch(() => null)
+  },
+
+  completeOnboarding() {
+    return request("/auth/session/onboarding/complete", { method: "POST" })
   },
 
   requestPasswordReset({ email } = {}) {

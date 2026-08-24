@@ -73,6 +73,13 @@ const adminService = {
     return request("/admin/users")
   },
 
+  updateUserStatus(userId, status) {
+    return request(`/admin/users/${userId}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status }),
+    })
+  },
+
   impersonateUser(userId) {
     return request(`/admin/users/${userId}/impersonate`, {
       method: "POST",

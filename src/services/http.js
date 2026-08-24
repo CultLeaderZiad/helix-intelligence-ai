@@ -71,7 +71,9 @@ export async function request(path, options = {}) {
       const payload = await res.json()
       // FastAPI conventionally returns { detail: ... }
       detail = payload?.detail ?? payload?.message ?? detail
-      if (typeof detail === "object" && detail !== null) {
+      if (Array.isArray(detail) && detail.length > 0) {
+        detail = detail[0].msg || "Validation error"
+      } else if (typeof detail === "object" && detail !== null) {
         if (detail.code) errorCode = detail.code
         if (detail.message) detail = detail.message
       }

@@ -55,6 +55,15 @@ async def get_trial_status(
         requests_limit=TRIAL_DAILY_REQUEST_LIMIT
     )
 
+@router.post("/onboarding-complete")
+async def complete_onboarding(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    current_user.has_completed_onboarding = True
+    await db.commit()
+    return {"status": "ok"}
+
 @router.get("/billing")
 async def get_billing(
     db: AsyncSession = Depends(get_db),

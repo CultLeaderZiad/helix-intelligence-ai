@@ -16,9 +16,11 @@ import uuid
 import time
 from app.services.scraping.ad_library_provider import AdLibraryProvider
 from app.services.scraping.scrapegraph_provider import ScrapeGraphProvider
+from app.services.scraping.adyntel_provider import AdyntelProvider
 from app.services.scraping.normalizer import normalize_creative
 from app.services.creative_service import generate_patterns_for_recent_creatives
 from app.services.billing_service import check_quota_and_feature, meter_and_deduct, DISCOVER_SEARCH_CREDIT_COST
+from app.services.api_usage_service import check_global_cap_and_log_preflight, mark_api_usage_status, APILimitExceeded
 
 async def trigger_search(db: AsyncSession, search_params: SearchParams, user_id: str, background_tasks: Optional[BackgroundTasks] = None) -> Job:
     if settings.USE_MOCKS:
@@ -45,6 +47,32 @@ async def trigger_search(db: AsyncSession, search_params: SearchParams, user_id:
     org, plan = await check_quota_and_feature(db, user, feature_name="discover", required_credits=DISCOVER_SEARCH_CREDIT_COST)
     org_id = org.id
 
+    # Duplicate Query Check (10 minutes)
+    ten_minutes_ago = datetime.datetime.utcnow() - datetime.timedelta(minutes=10)
+    duplicate_job_result = await db.execute(
+        select(ScrapeJob)
+        .where(ScrapeJob.org_id == org_id)
+        .where(ScrapeJob.query == search_params.query)
+        .where(ScrapeJob.status.in_(["succeeded", "running"]))
+        .where(ScrapeJob.created_at >= ten_minutes_ago)
+        .order_by(ScrapeJob.created_at.desc())
+        .limit(1)
+    )
+    duplicate_job = duplicate_job_result.scalar_one_or_none()
+    if duplicate_job:
+        return Job(
+            job_id=duplicate_job.id,
+            status=duplicate_job.status,
+            progress=duplicate_job.progress,
+            stage=duplicate_job.stage,
+            stage_label=duplicate_job.stage_label,
+            stage_index=duplicate_job.stage_index,
+            stages_total=duplicate_job.stages_total,
+            records_found=duplicate_job.record_count,
+            elapsed_ms=duplicate_job.elapsed_ms,
+            created_at=duplicate_job.created_at.isoformat() + "Z" if duplicate_job.created_at else ""
+        )
+
     new_job = ScrapeJob(
         org_id=org_id,
         query=search_params.query,
@@ -63,7 +91,7 @@ async def trigger_search(db: AsyncSession, search_params: SearchParams, user_id:
     await db.refresh(new_job)
 
     if background_tasks:
-        background_tasks.add_task(run_discovery_pipeline, new_job.id, search_params.query)
+        background_tasks.add_task(run_discovery_pipeline, new_job.id, search_params.query, search_params.filters)
 
     return Job(
         job_id=new_job.id,
@@ -192,7 +220,7 @@ async def update_job_stage(db: AsyncSession, job_id: str, stage: str, label: str
         job.stage_index = stage_index
         await db.commit()
 
-async def run_discovery_pipeline(job_id: str, query: str):
+async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
     start_time = time.time()
     async with async_session_maker() as db:
         result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
@@ -202,7 +230,25 @@ async def run_discovery_pipeline(job_id: str, query: str):
         
         org_id = job.org_id
         
+    usage_log_id = None
     try:
+        # Pre-flight Check & Global Cap
+        async with async_session_maker() as db:
+            # Get user id from org
+            org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one()
+            user_id = org.owner_id
+            
+            usage_log = await check_global_cap_and_log_preflight(
+                db=db,
+                provider="discover_composite",
+                org_id=org_id,
+                user_id=user_id,
+                query=query,
+                max_records=15,
+                estimated_cost=0.01
+            )
+            usage_log_id = usage_log.id
+
         # Stage 1: Scraping Ad Library
         async with async_session_maker() as db:
             await update_job_stage(db, job_id, "scraping", "Scraping Platforms", 0.2, 1)
@@ -216,9 +262,34 @@ async def run_discovery_pipeline(job_id: str, query: str):
                     j.elapsed_ms = int((time.time() - start_time) * 1000)
                     await db.commit()
 
-        ad_library = AdLibraryProvider()
-        raw_creatives = await ad_library.search(query, progress_callback=on_scraping_progress)
+        # 1. Main Scraper Chain (Meta -> Apify -> Bright Data)
+        ad_lib_provider = AdLibraryProvider(db, str(org_id), str(user_id))
         
+        # 1b. Adyntel Fallback Chain
+        adyntel_provider = AdyntelProvider(db, str(org_id), str(user_id))
+
+        # 2. Page Deep-Dive Scraper
+        sg_provider = ScrapeGraphProvider(db, str(org_id), str(user_id))
+        
+        raw_creatives = await ad_lib_provider.search(
+            query, 
+            max_records=15,
+            filters=filters,
+            progress_callback=on_scraping_progress
+        )
+        
+        if not raw_creatives:
+            # Fallback to Adyntel if main chain (Meta -> Apify -> Bright Data) found nothing
+            raw_creatives = await adyntel_provider.search(
+                query,
+                max_records=15,
+                filters=filters,
+                progress_callback=on_scraping_progress
+            )
+            provider_used = "adyntel"
+        else:
+            provider_used = "meta_apify_bd"
+            
         if not raw_creatives:
             async with async_session_maker() as db:
                 result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
@@ -241,7 +312,7 @@ async def run_discovery_pipeline(job_id: str, query: str):
                 db,
                 org_id=org_id,
                 user_id=None,
-                provider="brightdata",
+                provider=provider_used,
                 operation="discover_scrape",
                 units=float(len(raw_creatives)),
                 cost_usd=0.003,
@@ -256,10 +327,12 @@ async def run_discovery_pipeline(job_id: str, query: str):
             
         scrapegraph = ScrapeGraphProvider()
         enriched_creatives = []
+        scrapegraph_calls = 0
         for rc in raw_creatives:
-            if rc.landing_url:
+            if rc.landing_url and scrapegraph_calls < 3:
                 extra_data = await scrapegraph.extract_landing_page(rc.landing_url)
                 enriched_creatives.append((rc, extra_data))
+                scrapegraph_calls += 1
             else:
                 enriched_creatives.append((rc, None))
 
@@ -329,6 +402,22 @@ async def run_discovery_pipeline(job_id: str, query: str):
             job.completed_at = datetime.datetime.utcnow()
             await db.commit()
             
+            if usage_log_id:
+                await mark_api_usage_status(db, usage_log_id, "success")
+                
+    except APILimitExceeded as e:
+        error_msg = str(e)
+        print(f"Pipeline blocked: {error_msg}")
+        async with async_session_maker() as db:
+            result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
+            job = result.scalar_one_or_none()
+            if job:
+                job.status = "failed"
+                job.error_msg = error_msg
+                job.elapsed_ms = int((time.time() - start_time) * 1000)
+                await db.commit()
+            if usage_log_id:
+                await mark_api_usage_status(db, usage_log_id, "failed")
     except Exception as e:
         error_msg = f"Pipeline failed: {str(e)}\n{traceback.format_exc()}"
         print(error_msg)
@@ -340,3 +429,5 @@ async def run_discovery_pipeline(job_id: str, query: str):
                 job.error_msg = str(e)
                 job.elapsed_ms = int((time.time() - start_time) * 1000)
                 await db.commit()
+            if usage_log_id:
+                await mark_api_usage_status(db, usage_log_id, "failed")

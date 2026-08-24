@@ -52,6 +52,7 @@ export function Sidebar({ onOpenCommand, className }) {
           <NavLink
             key={section.key}
             to={section.path}
+            id={section.path === "/discover" ? "tour-discover-nav" : undefined}
             className={({ isActive }) =>
               cn(
                 "group flex items-center gap-2 rounded-sm px-1.5 py-[7px] text-[13px] transition-colors",

@@ -21,6 +21,15 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     if org.custom_feature_flags:
         effective_flags.update(org.custom_feature_flags)
 
+    import datetime
+    now = datetime.datetime.now(datetime.timezone.utc)
+    trial_days_remaining = None
+    if user.trial_expires_at:
+        trial_exp = user.trial_expires_at
+        if trial_exp.tzinfo is None:
+            trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
+        trial_days_remaining = max(0, (trial_exp - now).days) if trial_exp > now else 0
+
     return SessionResponse(
         user_id=user.id,
         email=user.email,
@@ -28,7 +37,9 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         access_token=access_token,
         feature_flags=effective_flags,
         credit_balance=round(float(org.credit_balance), 2),
-        plan_id=org.plan_id
+        trial_days_remaining=trial_days_remaining,
+        plan_id=org.plan_id,
+        has_completed_onboarding=getattr(user, "has_completed_onboarding", False)
     )
 
 @router.post("/sign-up", response_model=SessionResponse)
@@ -53,3 +64,9 @@ async def signout():
 @router.get("/session", response_model=SessionResponse)
 async def get_session(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await build_session_response(db, current_user)
+
+@router.post("/session/onboarding/complete")
+async def complete_onboarding(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    current_user.has_completed_onboarding = True
+    await db.commit()
+    return {"message": "Onboarding marked as complete"}

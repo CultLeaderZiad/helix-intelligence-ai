@@ -25,6 +25,11 @@ async def get_current_user(
     if x_api_key:
         from app.services.api_key_service import authenticate_api_key
         user, org = await authenticate_api_key(db, x_api_key)
+        if getattr(user, "is_suspended", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account suspended"
+            )
         return user
 
     # 2. Check JWT Bearer token authentication
@@ -53,6 +58,13 @@ async def get_current_user(
     
     if user is None:
         raise credentials_exception
+
+    if getattr(user, "is_suspended", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account suspended"
+        )
+
     return user
 
 async def get_current_admin(

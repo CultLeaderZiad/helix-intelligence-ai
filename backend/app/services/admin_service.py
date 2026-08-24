@@ -15,6 +15,7 @@ from app.models.user import User
 from app.models.plan import Plan
 from app.models.usage_log import UsageLog
 from app.models.scrape_job import ScrapeJob
+from app.models.api_usage import ExternalApiUsage
 from app.core.config import settings
 from app.core.security import create_access_token
 from fastapi import HTTPException
@@ -38,6 +39,11 @@ async def get_overview(db: AsyncSession) -> AdminOverviewStats:
     total_cost = await db.scalar(select(func.sum(UsageLog.cost_usd))) or 0.0
     active_trials = await db.scalar(select(func.count(Organization.id)).where(Organization.plan_id == "plan_trial_default")) or 0
 
+    now = datetime.datetime.utcnow()
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_api_calls = await db.scalar(select(func.count(ExternalApiUsage.id)).where(ExternalApiUsage.created_at >= start_of_day)) or 0
+    today_api_spend = await db.scalar(select(func.sum(ExternalApiUsage.estimated_cost_usd)).where(ExternalApiUsage.created_at >= start_of_day)) or 0.0
+
     return AdminOverviewStats(
         organizations=org_count,
         active_scrape_jobs=active_jobs,
@@ -46,7 +52,9 @@ async def get_overview(db: AsyncSession) -> AdminOverviewStats:
         window_label="All Time",
         total_credits_consumed=round(float(total_credits), 2),
         total_provider_cost_usd=round(float(total_cost), 4),
-        active_trials=active_trials
+        active_trials=active_trials,
+        today_api_calls=today_api_calls,
+        today_api_spend=round(float(today_api_spend), 4)
     )
 
 async def list_jobs(db: AsyncSession) -> list[AdminJobRow]:
@@ -376,9 +384,25 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
             trial_started_at=user.trial_started_at.isoformat() + "Z" if user.trial_started_at else None,
             trial_expires_at=user.trial_expires_at.isoformat() + "Z" if user.trial_expires_at else None,
             created_at=user.created_at.isoformat() + "Z" if user.created_at else "",
-            status="active"
+            status="suspended" if getattr(user, "is_suspended", False) else "active"
         ))
     return users
+
+async def update_user_status(db: AsyncSession, target_user_id: str, status: str) -> Dict[str, Any]:
+    user = (await db.execute(select(User).where(User.id == target_user_id))).scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.is_suspended = (status == "suspended")
+    await db.commit()
+    await db.refresh(user)
+    
+    return {
+        "success": True,
+        "message": f"User status updated to {status}",
+        "user_id": user.id,
+        "status": status
+    }
 
 async def impersonate_user(db: AsyncSession, target_user_id: str) -> ImpersonateResponse:
     user = (await db.execute(select(User).where(User.id == target_user_id))).scalar_one_or_none()

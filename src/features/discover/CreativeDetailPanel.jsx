@@ -232,7 +232,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                     {data.brand?.name ?? "Unknown brand"}
                   </span>
                   <Tag>{data.platform}</Tag>
-                  {data.data_source === "organic_content_proxy" ? (
+                  {data.source_type === "organic_content_proxy" ? (
                     <span className="rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-amber-400" title="Organic Post/Reel Proxy Content">
                       Organic Proxy
                     </span>
@@ -304,7 +304,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                 label={
                   <span className="flex items-center gap-1">
                     Impressions
-                    {data.is_estimated && <span className="text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
+                    {data.metrics?.is_impression_estimate && <span className="text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
                   </span>
                 }
                 value={`~${formatCompact(data.metrics?.impressions_est)}`}

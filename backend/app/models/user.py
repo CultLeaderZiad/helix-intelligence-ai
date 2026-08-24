@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, func
+from sqlalchemy import Column, String, DateTime, func, Boolean
 from app.db.base import Base
 import uuid
 
@@ -14,4 +14,6 @@ class User(Base):
     role = Column(String, default="customer") # 'customer' or 'admin'
     trial_started_at = Column(DateTime(timezone=True), nullable=True)
     trial_expires_at = Column(DateTime(timezone=True), nullable=True)
+    is_suspended = Column(Boolean, default=False)
+    has_completed_onboarding = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

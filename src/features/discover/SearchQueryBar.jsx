@@ -37,6 +37,7 @@ export function SearchQueryBar({
           aria-hidden="true"
         />
         <input
+          id="tour-search-input"
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={handleKeyDown}

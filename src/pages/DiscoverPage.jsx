@@ -12,9 +12,12 @@ import { Button } from "@/components/ui/Button"
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States"
 import { PHASE, useDiscoverySearch } from "@/hooks/useDiscoverySearch"
 import { useIsBelowLg } from "@/hooks/useMediaQuery"
+import { useAuth } from "@/context/AuthContext"
 import { formatDuration, formatInt } from "@/lib/format"
+import { OnboardingTour } from "@/app/OnboardingTour"
 
 const EMPTY_FILTERS = {
+  country: "ALL",
   platforms: [],
   formats: [],
   spend_bands: [],
@@ -46,6 +49,7 @@ export function DiscoverPage() {
 
   const isBelowLg = useIsBelowLg()
   const { report } = useTelemetry()
+  const { user, updateUser } = useAuth()
   const { phase, job, results, error, submit, refine, cancel, retry, isBusy } =
     useDiscoverySearch()
 
@@ -105,6 +109,7 @@ export function DiscoverPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      <OnboardingTour user={user} onComplete={() => updateUser({ has_completed_onboarding: true })} />
       <BreadcrumbBar
         trail={["Helix", "Discover"]}
         meta={
@@ -134,7 +139,11 @@ export function DiscoverPage() {
         canSort={phase === PHASE.READY || phase === PHASE.IDLE}
       />
 
-      {showProgress ? <JobProgress job={job} query={query} onCancel={cancel} /> : null}
+      {showProgress ? (
+        <JobProgress job={job} query={query} onCancel={cancel} />
+      ) : (
+        <div id="tour-job-progress" className="w-full h-0" />
+      )}
 
       {phase === PHASE.READY && results ? (
         <ResultSummary
@@ -181,6 +190,7 @@ export function DiscoverPage() {
             unreadable below lg. */}
         {!(isBelowLg && inspectorOpen) ? (
           <section
+            id="tour-results-area"
             className="flex min-w-0 flex-1 flex-col overflow-hidden"
             aria-label="Discovery results"
           >
@@ -203,7 +213,13 @@ export function DiscoverPage() {
               <SkeletonRows rows={10} />
             ) : null}
 
-            {phase === PHASE.ERROR ? <ErrorState error={error} onRetry={retry} /> : null}
+            {phase === PHASE.ERROR ? (
+              <ErrorState 
+                error={error} 
+                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
+                description={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? "Upgrade your account or add credits to continue using Discover." : undefined}
+              />
+            ) : null}
 
             {phase === PHASE.READY && items.length === 0 ? (
               <EmptyState

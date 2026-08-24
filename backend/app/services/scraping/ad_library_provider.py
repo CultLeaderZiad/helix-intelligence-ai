@@ -17,13 +17,17 @@ class AdLibraryProvider(ScraperProvider):
     3. Normalization into RawCreative schema
     """
 
-    def __init__(self):
+    def __init__(self, db, org_id: str, user_id: str):
+        self.db = db
+        self.org_id = org_id
+        self.user_id = user_id
         self.meta_token = getattr(settings, "META_ACCESS_TOKEN", None) or os.getenv("META_ACCESS_TOKEN")
         self.brightdata_key = getattr(settings, "BRIGHTDATA_API_KEY", None) or os.getenv("BRIGHTDATA_API_KEY")
         self.apify_token = getattr(settings, "APIFY_API_TOKEN", None) or os.getenv("APIFY_API_TOKEN") or os.getenv("APIFY_TOKEN")
         self.meta_graph_version = "v21.0"
 
-    async def search(self, query: str, progress_callback=None) -> List[RawCreative]:
+    async def search(self, query: str, max_records: int, filters: dict = None, progress_callback=None) -> List[RawCreative]:
+        assert max_records and max_records > 0, "Safety Violation: max_records missing or invalid"
         if not query or not query.strip():
             return []
 
@@ -31,38 +35,47 @@ class AdLibraryProvider(ScraperProvider):
         if cleaned_query == "*":
             # Search for broad generic term if wildcard
             cleaned_query = "brand"
+            
+        country = "ALL"
+        if filters and filters.get("country"):
+            country = filters.get("country")
+            if country == "ALL":
+                country_array = "['GB', 'US', 'DE', 'FR']"
+            else:
+                country_array = f"['{country}']"
+        else:
+            country_array = "['GB', 'US', 'DE', 'FR']"
 
         # 1. Try Meta Ad Library Graph API
-        creatives = await self._query_meta_api(cleaned_query)
+        creatives = await self._query_meta_api(cleaned_query, country_array, max_records)
         if creatives:
             logger.info(f"Retrieved {len(creatives)} creatives from Meta Ad Library API")
             return creatives
 
-        # 2. Try Bright Data Scraper / Dataset API (Async Trigger -> Poll Snapshot)
-        creatives = await self._query_brightdata(cleaned_query, progress_callback=progress_callback)
-        if creatives:
-            logger.info(f"Retrieved {len(creatives)} creatives from Bright Data API")
-            return creatives
-
-        # 3. Try Apify Facebook Ads Scraper (Free Tier Fallback)
-        creatives = await self._query_apify(cleaned_query, progress_callback=progress_callback)
+        # 2. Try Apify Facebook Ads Scraper (Primary working fallback)
+        creatives = await self._query_apify(cleaned_query, country, max_records, progress_callback=progress_callback)
         if creatives:
             logger.info(f"Retrieved {len(creatives)} creatives from Apify API")
             return creatives
 
-        logger.info(f"Zero creatives found for query '{query}' across Meta, Bright Data, and Apify sources.")
+        # 3. Bright Data fallback (as requested by user)
+        creatives = await self._query_brightdata(cleaned_query, country, max_records, progress_callback=progress_callback)
+        if creatives:
+            logger.info(f"Retrieved {len(creatives)} creatives from Bright Data API")
+            return creatives
+
+        logger.info(f"Zero creatives found for query '{query}' across Meta and Apify sources.")
         return []
 
-    async def _query_meta_api(self, query: str) -> List[RawCreative]:
+    async def _query_meta_api(self, query: str, country_array: str, max_records: int) -> List[RawCreative]:
         if not self.meta_token:
             logger.warning("META_ACCESS_TOKEN not configured.")
             return []
 
         url = f"https://graph.facebook.com/{self.meta_graph_version}/ads_archive"
-        # Search multiple EU/UK and global markets
         params = {
             "access_token": self.meta_token.strip('"').strip("'"),
-            "ad_reached_countries": "['GB', 'US', 'DE', 'FR']",
+            "ad_reached_countries": country_array,
             "search_terms": query,
             "ad_type": "ALL",
             "ad_active_status": "ALL",
@@ -72,7 +85,7 @@ class AdLibraryProvider(ScraperProvider):
                 "ad_creative_link_titles,ad_snapshot_url,page_id,page_name,publisher_platforms,"
                 "impressions,spend"
             ),
-            "limit": 20
+            "limit": max_records
         }
 
         try:
@@ -171,20 +184,25 @@ class AdLibraryProvider(ScraperProvider):
 
         return creatives
 
-    async def _query_brightdata(self, query: str, progress_callback=None) -> List[RawCreative]:
+    async def _query_brightdata(self, query: str, country: str, max_records: int, progress_callback=None) -> List[RawCreative]:
         if not self.brightdata_key:
             logger.warning("BRIGHTDATA_API_KEY not configured.")
             return []
 
         # Bright Data Facebook Dataset Trigger
-        url = "https://api.brightdata.com/datasets/v3/trigger?dataset_id=gd_lkaxegm826bjpoo9m5&format=json"
+        # Defense-in-depth: Ensure limit_per_input is explicitly defined in URL.
+        url = f"https://api.brightdata.com/datasets/v3/trigger?dataset_id=gd_lkaxegm826bjpoo9m5&format=json&limit_per_input={max_records}&include_errors=true"
         
+        if "limit_per_input=" not in url:
+            logger.error("Safety Ceiling Violation: limit_per_input missing from Bright Data trigger URL. Refusing to execute unbounded job.")
+            return []
+            
         # Target URL for Facebook scraper
         clean_brand = query.strip().lower().replace(" ", "")
         if "://" in query:
             target_url = query
         else:
-            target_url = f"https://www.facebook.com/{clean_brand}"
+            target_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country={country}&q={clean_brand}&search_type=keyword_unordered&media_type=all"
         
         headers = {
             "Authorization": f"Bearer {self.brightdata_key.strip('\"').strip('\'')}",
@@ -211,6 +229,7 @@ class AdLibraryProvider(ScraperProvider):
                 start_time = asyncio.get_event_loop().time()
                 max_duration = 300.0
                 poll_interval = 12.0
+                snapshot_completed = False
 
                 while (asyncio.get_event_loop().time() - start_time) < max_duration:
                     await asyncio.sleep(poll_interval)
@@ -229,6 +248,7 @@ class AdLibraryProvider(ScraperProvider):
                         logger.info(f"Bright Data snapshot {snapshot_id} status: {status} ({elapsed_s}s)")
                         
                         if status == "ready":
+                            snapshot_completed = True
                             snap_resp = await client.get(
                                 f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}?format=json",
                                 headers=headers,
@@ -242,8 +262,21 @@ class AdLibraryProvider(ScraperProvider):
                                     return self._parse_brightdata_ads(items["results"], query)
                             break
                         elif status == "failed":
+                            snapshot_completed = True
                             logger.error(f"Bright Data snapshot {snapshot_id} failed: {prog_data}")
                             break
+
+                if not snapshot_completed:
+                    logger.warning(f"Bright Data snapshot {snapshot_id} timed out after {max_duration}s. Cancelling job proactively.")
+                    try:
+                        cancel_resp = await client.post(
+                            f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}/cancel",
+                            headers=headers
+                        )
+                        logger.info(f"Bright Data cancellation response: {cancel_resp.status_code} - {cancel_resp.text}")
+                    except Exception as cancel_e:
+                        logger.error(f"Failed to cancel Bright Data snapshot {snapshot_id}: {cancel_e}")
+
         except Exception as e:
             logger.error(f"Bright Data API async poll failed: {e}")
             return []
@@ -331,7 +364,7 @@ class AdLibraryProvider(ScraperProvider):
 
         return creatives
 
-    async def _query_apify(self, query: str, progress_callback=None) -> List[RawCreative]:
+    async def _query_apify(self, query: str, country: str, max_records: int, progress_callback=None) -> List[RawCreative]:
         if not self.apify_token:
             logger.warning("APIFY_API_TOKEN not configured.")
             return []
@@ -342,10 +375,10 @@ class AdLibraryProvider(ScraperProvider):
         # Apify Facebook Ads Library Scraper actor (curious_coder/facebook-ads-library-scraper)
         # Endpoint: POST https://api.apify.com/v2/acts/curious_coder~facebook-ads-library-scraper/run-sync-get-dataset-items?token={token}
         url = f"https://api.apify.com/v2/acts/curious_coder~facebook-ads-library-scraper/run-sync-get-dataset-items?token={self.apify_token.strip('\"').strip('\'')}"
-        target_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=US&q={query}&search_type=keyword_unordered&media_type=all"
+        target_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country={country}&q={query}&search_type=keyword_unordered&media_type=all"
         payload = {
             "urls": [{"url": target_url}],
-            "max_items": 15
+            "max_items": max_records
         }
 
         try:

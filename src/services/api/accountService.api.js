@@ -1,6 +1,12 @@
 import { request } from "../http"
 
 const accountService = {
+  completeOnboarding() {
+    return request("/account/onboarding-complete", {
+      method: "POST",
+    })
+  },
+
   getBilling() {
     return request("/account/billing")
   },

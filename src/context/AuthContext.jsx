@@ -101,20 +101,25 @@ export function AuthProvider({ children }) {
     [],
   )
 
-  const value = useMemo(
-    () => ({
-      user,
-      role: user?.role ?? null,
-      status,
-      isAuthenticated: status === AUTH_STATUS.AUTHENTICATED,
-      isResolving: status === AUTH_STATUS.LOADING,
-      signIn,
-      signUp,
-      signOut,
-      requestPasswordReset,
-    }),
-    [user, status, signIn, signUp, signOut, requestPasswordReset],
-  )
+    const updateUser = useCallback((updater) => {
+      setUser((prev) => (typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }))
+    }, [])
+
+    const value = useMemo(
+      () => ({
+        user,
+        role: user?.role ?? null,
+        status,
+        isAuthenticated: status === AUTH_STATUS.AUTHENTICATED,
+        isResolving: status === AUTH_STATUS.LOADING,
+        signIn,
+        signUp,
+        signOut,
+        requestPasswordReset,
+        updateUser,
+      }),
+      [user, status, signIn, signUp, signOut, requestPasswordReset, updateUser],
+    )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
