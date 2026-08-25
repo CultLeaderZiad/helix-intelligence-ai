@@ -6,15 +6,14 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Helix Backend"
     API_V1_STR: str = "/api"
     
-    # SECURITY
-    SECRET_KEY: str = "YOUR_SUPER_SECRET_KEY_HERE_CHANGE_IN_PRODUCTION"
+    # SECURITY — must be set via env var; no hardcoded fallback
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = [
         "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",
-        "*" # Can be restricted in prod
     ]
     
     # MOCKS
@@ -22,6 +21,14 @@ class Settings(BaseSettings):
 
     # DATABASE
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+
+    def __init__(self, **values):
+        super().__init__(**values)
+        if not self.SECRET_KEY:
+            raise ValueError(
+                "SECRET_KEY environment variable is not set. "
+                "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+            )
 
     @property
     def async_database_url(self) -> str:

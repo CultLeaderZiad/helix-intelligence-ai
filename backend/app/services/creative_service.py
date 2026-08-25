@@ -78,7 +78,7 @@ async def list_creatives(
             brand_id=c.brand_id,
             platform=c.platform,
             format=c.format,
-            source_type=getattr(c, "source_type", "ad") or "ad",
+            source_type=getattr(c, "data_source", "ad") or "ad",
             headline=c.headline or "",
             body=c.body or "",
             cta=c.cta or "",
@@ -97,7 +97,7 @@ async def list_creatives(
             ) if score else Scores(),
             metrics=CreativeMetrics(
                 impressions_est=c.impressions_est,
-                is_impression_estimate=getattr(c, "is_impression_estimate", True),
+                is_impression_estimate=getattr(c, "is_estimated", True),
                 spend_band=c.spend_band,
                 engagement_rate=c.engagement_rate,
                 ctr_est=c.ctr_est
@@ -147,6 +147,7 @@ async def get_creative_by_id(db: AsyncSession, creative_id: str) -> CreativeSche
         brand_id=c.brand_id,
         platform=c.platform,
         format=c.format,
+        source_type=getattr(c, "data_source", "ad") or "ad",
         headline=c.headline or "",
         body=c.body or "",
         cta=c.cta or "",
@@ -165,6 +166,7 @@ async def get_creative_by_id(db: AsyncSession, creative_id: str) -> CreativeSche
         ) if score else Scores(),
         metrics=CreativeMetrics(
             impressions_est=c.impressions_est,
+            is_impression_estimate=getattr(c, "is_estimated", True),
             spend_band=c.spend_band,
             engagement_rate=c.engagement_rate,
             ctr_est=c.ctr_est
@@ -425,7 +427,7 @@ async def list_saved_creatives(
             brand_id=c.brand_id,
             platform=c.platform,
             format=c.format,
-            source_type=getattr(c, "source_type", "ad") or "ad",
+            source_type=getattr(c, "data_source", "ad") or "ad",
             headline=c.headline or "",
             body=c.body or "",
             cta=c.cta or "",
@@ -444,7 +446,7 @@ async def list_saved_creatives(
             ) if score else Scores(),
             metrics=CreativeMetrics(
                 impressions_est=c.impressions_est,
-                is_impression_estimate=getattr(c, "is_impression_estimate", True),
+                is_impression_estimate=getattr(c, "is_estimated", True),
                 spend_band=c.spend_band,
                 engagement_rate=c.engagement_rate,
                 ctr_est=c.ctr_est

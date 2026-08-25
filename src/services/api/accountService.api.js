@@ -18,7 +18,7 @@ const accountService = {
   createApiKey(name = "Default API Key") {
     return request("/account/api-keys", {
       method: "POST",
-      body: JSON.stringify({ name }),
+      body: { name },
     })
   },
 
@@ -35,7 +35,7 @@ const accountService = {
   inviteTeamMember(email, role = "member") {
     return request("/account/team/invites", {
       method: "POST",
-      body: JSON.stringify({ email, role }),
+      body: { email, role },
     })
   },
 
@@ -48,7 +48,7 @@ const accountService = {
   acceptTeamInvite(token) {
     return request("/account/team/invites/accept", {
       method: "POST",
-      body: JSON.stringify({ token }),
+      body: { token },
     })
   },
 }

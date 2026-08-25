@@ -2,7 +2,6 @@ from typing import Dict, Any, Optional
 from app.models.creative import Creative as DBCreative, generate_uuid
 from app.models.creative_score import CreativeScore as DBCreativeScore
 from app.services.scraping.base import RawCreative
-import random
 
 def normalize_creative(
     raw: RawCreative,
@@ -45,8 +44,8 @@ def normalize_creative(
     # and should be dropped unless explicitly permitted.
     impressions_est = raw.impressions_est
     spend_band = raw.spend_band
-    engagement_rate = random.uniform(0.01, 0.08)
-    ctr_est = random.uniform(0.005, 0.03)
+    engagement_rate = None  # Only available from official APIs with verified data
+    ctr_est = None  # Only available from official APIs with verified data
 
     data_source = getattr(raw, "data_source", "meta_official")
     is_estimated = getattr(raw, "is_estimated", True)
@@ -82,19 +81,14 @@ def normalize_creative(
         ctr_est=ctr_est
     )
     
-    # For MVP, we will mock the AI scores (hook, clarity, retention) 
-    # based on heuristics or randomly if we don't run an LLM scoring pass per creative.
-    hook = random.uniform(60, 95)
-    clarity = random.uniform(70, 98)
-    retention = random.uniform(50, 90)
-    composite = (hook + clarity + retention) / 3.0
-    
+    # AI scores are set to None until a real LLM scoring pass is run.
+    # Do not generate random scores — they are displayed as real scores to users.
     score = DBCreativeScore(
         creative_id=c_id,
-        hook=hook,
-        clarity=clarity,
-        retention=retention,
-        composite=composite
+        hook=None,
+        clarity=None,
+        retention=None,
+        composite=None
     )
     
     return creative, score

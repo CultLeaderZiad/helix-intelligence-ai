@@ -162,7 +162,7 @@ export default function SwipeFilesPage() {
                 <span>{c.cta || "No CTA"}</span>
                 {c.metrics?.impressions_est && (
                   <span className="text-amber-300">
-                    ~{(c.metrics.impressions_est / 1000).toFixed(0)}k impr {c.is_estimated && <span className="text-[9px] text-amber-500">(est)</span>}
+                    ~{(c.metrics.impressions_est / 1000).toFixed(0)}k impr {c.metrics?.is_impression_estimate && <span className="text-[9px] text-amber-500">(est)</span>}
                   </span>
                 )}
               </div>

@@ -33,7 +33,7 @@ const adminService = {
   createPlan(planData) {
     return request("/admin/plans", {
       method: "POST",
-      body: JSON.stringify(planData),
+      body: planData,
     })
   },
 
@@ -45,21 +45,21 @@ const adminService = {
   grantCredits(orgId, amount, reason = "Admin manual grant") {
     return request(`/admin/organizations/${orgId}/grant-credits`, {
       method: "POST",
-      body: JSON.stringify({ amount, reason }),
+      body: { amount, reason },
     })
   },
 
   switchPlan(orgId, planId, resetCredits = false) {
     return request(`/admin/organizations/${orgId}/switch-plan`, {
       method: "POST",
-      body: JSON.stringify({ plan_id: planId, reset_credits: resetCredits }),
+      body: { plan_id: planId, reset_credits: resetCredits },
     })
   },
 
   updateFeatureFlags(orgId, featureFlags) {
     return request(`/admin/organizations/${orgId}/feature-flags`, {
       method: "POST",
-      body: JSON.stringify({ feature_flags: featureFlags }),
+      body: { feature_flags: featureFlags },
     })
   },
 
@@ -76,7 +76,7 @@ const adminService = {
   updateUserStatus(userId, status) {
     return request(`/admin/users/${userId}/status`, {
       method: "POST",
-      body: JSON.stringify({ status }),
+      body: { status },
     })
   },
 
