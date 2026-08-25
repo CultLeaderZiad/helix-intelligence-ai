@@ -1,21 +1,23 @@
 import os
+import json
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Helix Backend"
     API_V1_STR: str = "/api"
-    
+
     # SECURITY — must be set via env var; no hardcoded fallback
     SECRET_KEY: str = os.getenv("SECRET_KEY", "")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
-    
-    # CORS
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",
-    ]
-    
+
+    # CORS — see _parse_cors_origins() below.  Declared as str so
+    # pydantic-settings won't try JSON-decoding a comma-separated
+    # value from the env var.  main.py imports `cors_origins` (not
+    # this field) for the CORS middleware.
+    BACKEND_CORS_ORIGINS: str = ""
+
     # MOCKS
     USE_MOCKS: bool = os.getenv("USE_MOCKS", "True").lower() in ("true", "1")
 
@@ -34,24 +36,18 @@ class Settings(BaseSettings):
     def async_database_url(self) -> str:
         url = self.DATABASE_URL
         if not url:
-            raise ValueError("DATABASE_URL environment variable is not set. Please check your .env or .env.local file.")
-        
-        # Ensure asyncpg dialect
+            raise ValueError(
+                "DATABASE_URL environment variable is not set. "
+                "Please check your .env or .env.local file."
+            )
         if url.startswith("postgresql://"):
             url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-            
-        # Fix sslmode and other params for asyncpg
         if "sslmode=" in url:
             url = url.replace("sslmode=", "ssl=")
-        if "channel_binding=require&" in url:
-            url = url.replace("channel_binding=require&", "")
-        if "&channel_binding=require" in url:
-            url = url.replace("&channel_binding=require", "")
-        if "?channel_binding=require" in url:
-            url = url.replace("?channel_binding=require", "?")
-            
+        for bad in ("channel_binding=require&", "&channel_binding=require", "?channel_binding=require"):
+            url = url.replace(bad, "" if "&" in bad else "?" if "?" in bad else "")
         return url
 
     # API KEYS
@@ -64,9 +60,38 @@ class Settings(BaseSettings):
     APIFY_API_TOKEN: str = os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")
 
     model_config = SettingsConfigDict(
-        case_sensitive=True, 
-        env_file=("../.env", "../.env.local", ".env", ".env.local"), 
-        extra="ignore"
+        case_sensitive=True,
+        env_file=("../.env", "../.env.local", ".env", ".env.local"),
+        extra="ignore",
     )
 
+
+# ---------------------------------------------------------------------------
+# CORS origins — parsed from env var, NOT from pydantic fields, because
+# pydantic-settings tries to JSON-decode List[str] env vars which breaks
+# comma-separated values.  This is the single source of truth for CORS
+# origins throughout the app.
+# ---------------------------------------------------------------------------
+def _parse_cors_origins() -> List[str]:
+    """Parse BACKEND_CORS_ORIGINS env var.
+
+    Accepts comma-separated:
+        "https://app.vercel.app,https://preview.vercel.app"
+    or JSON array:
+        '["https://app.vercel.app"]'
+
+    Returns localhost defaults when the var is unset/empty.
+    """
+    raw = os.getenv("BACKEND_CORS_ORIGINS", "").strip()
+    if not raw:
+        return ["http://localhost:5173", "http://localhost:3000"]
+    if raw.startswith("["):
+        return json.loads(raw)
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
 settings = Settings()
+
+# Module-level list used by main.py CORS middleware.
+# Import as:  from app.core.config import cors_origins
+cors_origins: List[str] = _parse_cors_origins()
