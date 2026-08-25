@@ -15,7 +15,24 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     org = await billing_service.get_or_create_default_org(db, user)
     plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
     if not plan:
-        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one()
+        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
+    if not plan:
+        # Fallback: return a minimal session without plan data instead of crashing
+        return SessionResponse(
+            user_id=user.id,
+            email=user.email,
+            role=user.role,
+            access_token=access_token,
+            feature_flags={},
+            credit_balance=round(float(org.credit_balance), 2),
+            trial_days_remaining=None,
+            daily_credit_limit=None,
+            daily_credits_used=0,
+            daily_credits_remaining=None,
+            daily_credits_resets_at_utc=None,
+            plan_id=org.plan_id,
+            has_completed_onboarding=getattr(user, "has_completed_onboarding", False)
+        )
 
     effective_flags = dict(plan.feature_flags or {})
     if org.custom_feature_flags:
@@ -65,11 +82,21 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/sign-in", response_model=SessionResponse)
 async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
-    token = await auth_service.authenticate_user(db, user_in)
-    from app.models.user import User as UserModel
-    result = await db.execute(select(UserModel).where(UserModel.email == user_in.email))
-    user = result.scalar_one_or_none()
-    return await build_session_response(db, user, access_token=token)
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        token = await auth_service.authenticate_user(db, user_in)
+        from app.models.user import User as UserModel
+        result = await db.execute(select(UserModel).where(UserModel.email == user_in.email))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="User found during auth but not on second query")
+        return await build_session_response(db, user, access_token=token)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Sign-in failed for {user_in.email}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error during sign-in")
 
 @router.post("/sign-out")
 async def signout():

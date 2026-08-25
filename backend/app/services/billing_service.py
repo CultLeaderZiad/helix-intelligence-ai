@@ -88,7 +88,19 @@ async def check_quota_and_feature(
     plan = plan_result.scalar_one_or_none()
     if not plan:
         # Fallback to default trial plan
-        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one()
+        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
+    if not plan:
+        # Last resort: create a minimal in-memory plan so the request doesn't crash
+        from app.models.plan import Plan as PlanModel
+        plan = PlanModel(
+            id="plan_trial_default",
+            name="7-Day Free Trial",
+            type="trial",
+            credit_allowance=25,
+            daily_credit_limit=3.5,
+            price_per_credit=0.0,
+            feature_flags={"discover": True, "intelligence": True, "create": True, "performance": True, "swipe_files": True, "team_accounts": False, "public_api": False}
+        )
 
     # 2. Check 7-Day Trial Expiration
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -221,7 +233,19 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
     plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
     plan = plan_result.scalar_one_or_none()
     if not plan:
-        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one()
+        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
+    if not plan:
+        # Fallback plan if neither the org's plan nor default trial plan exist in DB
+        from app.models.plan import Plan as PlanModel
+        plan = PlanModel(
+            id="plan_trial_default",
+            name="7-Day Free Trial",
+            type="trial",
+            credit_allowance=25,
+            daily_credit_limit=3.5,
+            price_per_credit=0.0,
+            feature_flags={"discover": True, "intelligence": True, "create": True, "performance": True, "swipe_files": True, "team_accounts": False, "public_api": False}
+        )
 
     # Recent usage logs for this org
     logs_result = await db.execute(

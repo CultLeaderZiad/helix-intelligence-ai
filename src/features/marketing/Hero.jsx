@@ -46,7 +46,7 @@ const PRODUCT_STEPS = [
 export function Hero() {
   return (
     <section className="grid-backdrop relative border-b border-border bg-bg overflow-hidden">
-      <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-16 md:px-6 md:py-24">
+      <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-20 md:px-6 md:py-32">
         
         {/* --- Top Status Badge --- */}
         <div className="flex items-center">
@@ -63,7 +63,7 @@ export function Hero() {
         </div>
 
         {/* --- Headline & Subtitle --- */}
-        <h1 className="mt-6 max-w-4xl text-balance text-3xl font-semibold leading-[1.08] tracking-tight text-text sm:text-5xl lg:text-6xl">
+        <h1 className="mt-6 max-w-4xl text-balance text-4xl font-semibold leading-[1.08] tracking-tight text-text sm:text-6xl lg:text-7xl">
           Turn every competitor&apos;s ad library into a ranked,{" "}
           <span className="italic font-normal text-text">searchable</span> intelligence engine.
         </h1>
