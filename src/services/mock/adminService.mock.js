@@ -216,9 +216,9 @@ const adminService = {
   async listPlans() {
     await delay(150)
     return [
-      { id: "plan_trial_default", name: "7-Day Free Trial", type: "trial", credit_allowance: 25, price_per_credit: 0.0, feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: false, public_api: false } },
-      { id: "plan_payg_default", name: "Pay As You Go", type: "pay_as_you_go", credit_allowance: 0, price_per_credit: 0.01, feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: true, public_api: false } },
-      { id: "plan_enterprise_custom", name: "Enterprise Custom", type: "custom", credit_allowance: 500, price_per_credit: 0.008, feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: true, public_api: true } },
+      { id: "plan_trial_default", name: "7-Day Free Trial", type: "trial", credit_allowance: 25, daily_credit_limit: 3.5, price_per_credit: 0.0, feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: false, public_api: false } },
+      { id: "plan_payg_default", name: "Pay As You Go", type: "pay_as_you_go", credit_allowance: 0, daily_credit_limit: null, price_per_credit: 0.01, feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: true, public_api: false } },
+      { id: "plan_enterprise_custom", name: "Enterprise Custom", type: "custom", credit_allowance: 500, daily_credit_limit: null, price_per_credit: 0.008, feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: true, public_api: true } },
     ]
   },
 

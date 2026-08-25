@@ -40,19 +40,39 @@ async def get_trial_status(
             delta = current_user.trial_expires_at - now
             days_remaining = max(0, delta.days)
 
-    # Get today's usage
+    # Get today's request count
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     query = select(func.count(UsageLog.id)).where(
         UsageLog.user_id == current_user.id,
         UsageLog.created_at >= today_start
     )
     usage_count = await db.scalar(query) or 0
+
+    # Get daily credit usage from org
+    from app.services.billing_service import get_or_create_default_org, _ensure_daily_reset, _utc_midnight
+    org = await get_or_create_default_org(db, current_user)
+    from app.models.plan import Plan
+    plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
+    plan = plan_result.scalar_one_or_none()
+    if not plan:
+        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one()
+
+    daily_limit = getattr(plan, "daily_credit_limit", None)
+    daily_used = round(float(org.daily_credits_used_today), 2)
+    daily_remaining = round(max(0, (daily_limit or 0) - daily_used), 2) if daily_limit else None
+    daily_resets_at = None
+    if daily_limit:
+        daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
     
     return TrialStatusResponse(
         active=is_active,
         days_remaining=days_remaining,
         requests_used=usage_count,
-        requests_limit=TRIAL_DAILY_REQUEST_LIMIT
+        requests_limit=TRIAL_DAILY_REQUEST_LIMIT,
+        daily_credit_limit=daily_limit,
+        daily_credits_used=daily_used,
+        daily_credits_remaining=daily_remaining,
+        daily_credits_resets_at_utc=daily_resets_at
     )
 
 @router.post("/onboarding-complete")

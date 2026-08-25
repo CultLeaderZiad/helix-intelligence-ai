@@ -22,6 +22,27 @@ ESTIMATED_PROVIDER_COSTS = {
     "apify_ad": 0.00075, # ~$0.75 per 1,000 ads
 }
 
+def _utc_midnight(dt: datetime.datetime) -> datetime.datetime:
+    """Return the UTC midnight (00:00:00 UTC) for a given datetime."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+async def _ensure_daily_reset(db: AsyncSession, org: Organization) -> None:
+    """
+    If the org's daily counter hasn't been reset since the current UTC
+    day began, zero it out and stamp the reset boundary.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
+    today_midnight = _utc_midnight(now)
+
+    if org.daily_credits_reset_at is None or org.daily_credits_reset_at < today_midnight:
+        org.daily_credits_used_today = 0.0
+        org.daily_credits_reset_at = today_midnight
+        await db.flush()  # don't commit yet — caller owns the transaction
+
+
 async def get_or_create_default_org(db: AsyncSession, user: User) -> Organization:
     result = await db.execute(select(Organization).where(Organization.owner_id == user.id))
     org = result.scalar_one_or_none()
@@ -33,11 +54,15 @@ async def get_or_create_default_org(db: AsyncSession, user: User) -> Organizatio
             plan="trial",
             credit_balance=25.0,
             credits_used=0.0,
+            daily_credits_used_today=0.0,
             status="active"
         )
         db.add(org)
         await db.commit()
         await db.refresh(org)
+    else:
+        # Ensure daily counter is up to date
+        await _ensure_daily_reset(db, org)
     return org
 
 async def check_quota_and_feature(
@@ -100,7 +125,32 @@ async def check_quota_and_feature(
             }
         )
 
-    # 4. Check Credit Balance Quota
+    # 4. Check Daily Credit Limit (UTC midnight boundary)
+    daily_limit = getattr(plan, "daily_credit_limit", None)
+    if daily_limit is not None:
+        await _ensure_daily_reset(db, org)
+        if org.daily_credits_used_today + required_credits > daily_limit:
+            now = datetime.datetime.now(datetime.timezone.utc)
+            next_reset = _utc_midnight(now) + datetime.timedelta(days=1)
+            reset_str = next_reset.strftime("%H:%M UTC")
+            raise HTTPException(
+                status_code=429,
+                detail={
+                    "code": "DAILY_LIMIT_REACHED",
+                    "message": (
+                        f"Daily credit limit reached ({daily_limit:.1f}/day). "
+                        f"You've used {org.daily_credits_used_today:.1f} of {daily_limit:.1f} credits today. "
+                        f"Resets at {reset_str}. Upgrade your plan or wait for the daily reset."
+                    ),
+                    "daily_limit": daily_limit,
+                    "daily_used": round(org.daily_credits_used_today, 2),
+                    "daily_remaining": round(max(0, daily_limit - org.daily_credits_used_today), 2),
+                    "resets_at_utc": next_reset.isoformat(),
+                    "plan_name": plan.name
+                }
+            )
+
+    # 5. Check Credit Balance Quota (total)
     if org.credit_balance < required_credits:
         org.status = "quota_exhausted"
         await db.commit()
@@ -133,12 +183,14 @@ async def meter_and_deduct(
     Atomically deducts credits from org balance, increments credits_used,
     and creates a real usage log entry.
     """
-    # 1. Update organization balance
+    # 1. Update organization balance + daily counter
     org_result = await db.execute(select(Organization).where(Organization.id == org_id))
     org = org_result.scalar_one_or_none()
     if org:
         org.credit_balance = max(0.0, org.credit_balance - credits_deducted)
         org.credits_used += credits_deducted
+        await _ensure_daily_reset(db, org)
+        org.daily_credits_used_today += credits_deducted
         if org.credit_balance <= 0.0:
             org.status = "quota_exhausted"
 
@@ -188,6 +240,15 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
             trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
         trial_days_remaining = max(0, (trial_exp - now).days) if trial_exp > now else 0
 
+    # Daily limit info
+    daily_limit = getattr(plan, "daily_credit_limit", None)
+    await _ensure_daily_reset(db, org)
+    daily_used = round(float(org.daily_credits_used_today), 2)
+    daily_remaining = round(max(0, (daily_limit or 0) - daily_used), 2) if daily_limit else None
+    daily_resets_at = None
+    if daily_limit:
+        daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
+
     return {
         "org_id": org.id,
         "org_name": org.name,
@@ -199,6 +260,10 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
         "status": org.status,
         "trial_expires_at": user.trial_expires_at.isoformat() + "Z" if user.trial_expires_at else None,
         "trial_days_remaining": trial_days_remaining,
+        "daily_credit_limit": daily_limit,
+        "daily_credits_used": daily_used,
+        "daily_credits_remaining": daily_remaining,
+        "daily_credits_resets_at_utc": daily_resets_at,
         "feature_flags": plan.feature_flags or {},
         "recent_usage": [
             {
@@ -208,6 +273,7 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
                 "units": l.units,
                 "credits_deducted": l.credits_deducted,
                 "cost_usd": l.cost_usd,
+                "tokens_used": getattr(l, "tokens_used", 0),
                 "created_at": l.created_at.isoformat() + "Z" if l.created_at else ""
             }
             for l in logs

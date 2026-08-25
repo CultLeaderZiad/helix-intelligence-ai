@@ -6,3 +6,7 @@ class TrialStatusResponse(BaseModel):
     days_remaining: int
     requests_used: int
     requests_limit: int
+    daily_credit_limit: Optional[float] = None
+    daily_credits_used: Optional[float] = None
+    daily_credits_remaining: Optional[float] = None
+    daily_credits_resets_at_utc: Optional[str] = None

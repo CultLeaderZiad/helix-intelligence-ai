@@ -30,6 +30,16 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
             trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
         trial_days_remaining = max(0, (trial_exp - now).days) if trial_exp > now else 0
 
+    # Daily usage info
+    from app.services.billing_service import _ensure_daily_reset, _utc_midnight
+    await _ensure_daily_reset(db, org)
+    daily_limit = getattr(plan, "daily_credit_limit", None)
+    daily_used = round(float(org.daily_credits_used_today), 2)
+    daily_remaining = round(max(0, (daily_limit or 0) - daily_used), 2) if daily_limit else None
+    daily_resets_at = None
+    if daily_limit:
+        daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
+
     return SessionResponse(
         user_id=user.id,
         email=user.email,
@@ -38,6 +48,10 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         feature_flags=effective_flags,
         credit_balance=round(float(org.credit_balance), 2),
         trial_days_remaining=trial_days_remaining,
+        daily_credit_limit=daily_limit,
+        daily_credits_used=daily_used,
+        daily_credits_remaining=daily_remaining,
+        daily_credits_resets_at_utc=daily_resets_at,
         plan_id=org.plan_id,
         has_completed_onboarding=getattr(user, "has_completed_onboarding", False)
     )

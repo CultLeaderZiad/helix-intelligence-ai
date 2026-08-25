@@ -47,7 +47,14 @@ const users = new Map(SEED_USERS.map((u) => [u.email.toLowerCase(), u]))
 
 /** Strip the password before anything leaves the service boundary. */
 function publicUser(u) {
-  return { id: u.id, name: u.name, email: u.email, role: u.role }
+  return {
+    id: u.id, name: u.name, email: u.email, role: u.role,
+    credit_balance: 25.0, trial_days_remaining: 7,
+    daily_credit_limit: 3.5, daily_credits_used: 0.0, daily_credits_remaining: 3.5,
+    daily_credits_resets_at_utc: null,
+    plan_id: "plan_trial_default",
+    feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true },
+  }
 }
 
 function persistSession(user) {

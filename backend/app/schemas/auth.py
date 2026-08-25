@@ -26,6 +26,10 @@ class SessionResponse(BaseModel):
     feature_flags: Optional[Dict[str, bool]] = None
     credit_balance: Optional[float] = None
     trial_days_remaining: Optional[int] = None
+    daily_credit_limit: Optional[float] = None
+    daily_credits_used: Optional[float] = None
+    daily_credits_remaining: Optional[float] = None
+    daily_credits_resets_at_utc: Optional[str] = None
     plan_id: Optional[str] = None
     has_completed_onboarding: bool = False
 

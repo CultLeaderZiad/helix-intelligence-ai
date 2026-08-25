@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey, Float, JSON
+from sqlalchemy import Column, String, ForeignKey, Float, JSON, DateTime, func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 import uuid
@@ -16,6 +16,8 @@ class Organization(Base):
     plan = Column(String, default="trial") # Legacy text field fallback ('trial' | 'pay_as_you_go' | 'custom')
     credit_balance = Column(Float, default=25.0, nullable=False)
     credits_used = Column(Float, default=0.0, nullable=False)
+    daily_credits_used_today = Column(Float, default=0.0, nullable=False)
+    daily_credits_reset_at = Column(DateTime(timezone=True), nullable=True) # last UTC midnight when daily counter was reset
     custom_feature_flags = Column(JSON, default=dict, nullable=True)
-    status = Column(String, default="active", nullable=False) # 'active' | 'trial_expired' | 'quota_exhausted' | 'suspended'
+    status = Column(String, default="active", nullable=False) # 'active' | 'trial_expired' | 'quota_exhausted' | 'suspended' | 'daily_limit_reached'
 
