@@ -268,8 +268,6 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
         # 1b. Adyntel Fallback Chain
         adyntel_provider = AdyntelProvider(db, str(org_id), str(user_id))
 
-        # 2. Page Deep-Dive Scraper
-        sg_provider = ScrapeGraphProvider(db, str(org_id), str(user_id))
         
         raw_creatives = await ad_lib_provider.search(
             query, 

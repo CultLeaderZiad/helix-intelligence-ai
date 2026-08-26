@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, Query, BackgroundTasks, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.discover import SearchParams, Job
 from app.schemas.creative import Creative
@@ -16,6 +16,8 @@ async def search(
     db: AsyncSession = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
+    if not params.query or not params.query.strip():
+        raise HTTPException(status_code=400, detail="Search query cannot be empty")
     return await discover_service.trigger_search(db, params, current_user.id, background_tasks)
 
 @router.get("/jobs/{job_id}", response_model=Job)

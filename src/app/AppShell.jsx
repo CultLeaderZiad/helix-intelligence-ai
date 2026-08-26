@@ -4,6 +4,7 @@ import { Sidebar } from "./Sidebar"
 import { StatusBar } from "./StatusBar"
 import { CommandBar } from "./CommandBar"
 import { Button } from "@/components/ui/Button"
+import { TrialBanner } from "@/components/ui/TrialBanner"
 
 /**
  * Workstation chrome: fixed rail, scrollable workspace, instrument strip.
@@ -63,6 +64,8 @@ export function AppShell({ children }) {
             </Button>
             <span className="text-[13px] font-medium text-text">Helix Intelligence</span>
           </div>
+
+          <TrialBanner />
 
           {children}
         </main>

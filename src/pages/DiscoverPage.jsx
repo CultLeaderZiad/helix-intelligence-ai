@@ -89,9 +89,10 @@ export function DiscoverPage() {
   }, [phase, job?.job_id, job?.records_found, results, report])
 
   function runDiscovery() {
+    if (!query.trim()) return
     setSelectedId(null)
     setAppliedFilters(draftFilters)
-    submit({ query, filters: draftFilters, sort })
+    submit({ query: query.trim(), filters: draftFilters, sort })
   }
 
   function handleSortChange(next) {
