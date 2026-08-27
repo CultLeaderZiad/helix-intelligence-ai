@@ -53,6 +53,7 @@ function publicUser(u) {
     daily_credit_limit: 3.5, daily_credits_used: 0.0, daily_credits_remaining: 3.5,
     daily_credits_resets_at_utc: null,
     plan_id: "plan_trial_default",
+    has_completed_onboarding: u.has_completed_onboarding ?? false,
     feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true },
   }
 }
@@ -175,6 +176,19 @@ const authService = {
     await delay(300)
     maybeFail("Authentication service unavailable")
     return { ok: true, email: String(email ?? "").trim().toLowerCase() }
+  },
+
+  async completeOnboarding() {
+    await delay(100)
+    const user = readSession()
+    if (user) {
+      const rec = users.get(user.email.toLowerCase())
+      if (rec) {
+        rec.has_completed_onboarding = true
+        persistSession(rec)
+      }
+    }
+    return { message: "Onboarding marked as complete" }
   },
 }
 

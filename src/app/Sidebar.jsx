@@ -1,6 +1,6 @@
 import { useState } from "react"
-import { NavLink } from "react-router-dom"
-import { LogOut, Bookmark, CreditCard, Users, Key, Shield } from "lucide-react"
+import { NavLink, useNavigate } from "react-router-dom"
+import { LogOut, Bookmark, CreditCard, Users, Key, Shield, HelpCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { NAV_SECTIONS } from "./navigation"
@@ -8,8 +8,14 @@ import { KeyHint } from "@/components/ui/KeyHint"
 import { NotificationBell } from "@/components/NotificationBell"
 
 export function Sidebar({ onOpenCommand, className }) {
-  const { user, signOut } = useAuth()
+  const { user, signOut, updateUser } = useAuth()
   const [signingOut, setSigningOut] = useState(false)
+  const navigate = useNavigate()
+
+  function handleRestartTour() {
+    updateUser({ has_completed_onboarding: false })
+    navigate("/discover")
+  }
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -223,6 +229,16 @@ export function Sidebar({ onOpenCommand, className }) {
           </div>
 
           <NotificationBell />
+
+          <button
+            type="button"
+            onClick={handleRestartTour}
+            className="rounded-sm p-1.5 text-text-faint transition-colors hover:bg-surface-2 hover:text-text"
+            aria-label="Help & Tour"
+            title="Help & Tour"
+          >
+            <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
 
           <button
             type="button"

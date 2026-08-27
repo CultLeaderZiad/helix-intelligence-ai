@@ -1,8 +1,6 @@
 import { useEffect, useRef } from "react"
 import { driver } from "driver.js"
 import "driver.js/dist/driver.css"
-import { authService } from "@/services"
-
 export function OnboardingTour({ user, onComplete }) {
   const driverObj = useRef(null)
 
@@ -11,7 +9,6 @@ export function OnboardingTour({ user, onComplete }) {
 
     const handleComplete = async () => {
       try {
-        await authService.completeOnboarding()
         onComplete && onComplete()
       } catch (err) {
         console.error("Failed to complete onboarding:", err)

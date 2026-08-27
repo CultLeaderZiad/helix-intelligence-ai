@@ -49,7 +49,7 @@ export function DiscoverPage() {
 
   const isBelowLg = useIsBelowLg()
   const { report } = useTelemetry()
-  const { user, updateUser } = useAuth()
+  const { user, completeOnboarding } = useAuth()
   const { phase, job, results, error, submit, refine, cancel, retry, isBusy } =
     useDiscoverySearch()
 
@@ -110,7 +110,7 @@ export function DiscoverPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <OnboardingTour user={user} onComplete={() => updateUser({ has_completed_onboarding: true })} />
+      <OnboardingTour user={user} onComplete={() => completeOnboarding()} />
       <BreadcrumbBar
         trail={["Helix", "Discover"]}
         meta={

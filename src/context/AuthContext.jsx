@@ -105,6 +105,15 @@ export function AuthProvider({ children }) {
       setUser((prev) => (typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }))
     }, [])
 
+    const completeOnboarding = useCallback(async () => {
+      try {
+        await authService.completeOnboarding()
+        updateUser({ has_completed_onboarding: true })
+      } catch (err) {
+        console.error("Failed to complete onboarding:", err)
+      }
+    }, [updateUser])
+
     const value = useMemo(
       () => ({
         user,
@@ -117,8 +126,9 @@ export function AuthProvider({ children }) {
         signOut,
         requestPasswordReset,
         updateUser,
+        completeOnboarding,
       }),
-      [user, status, signIn, signUp, signOut, requestPasswordReset, updateUser],
+      [user, status, signIn, signUp, signOut, requestPasswordReset, updateUser, completeOnboarding],
     )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

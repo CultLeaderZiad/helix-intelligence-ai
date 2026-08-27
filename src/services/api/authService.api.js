@@ -41,6 +41,7 @@ function toSession(data) {
       daily_credits_remaining: data.daily_credits_remaining,
       daily_credits_resets_at_utc: data.daily_credits_resets_at_utc,
       plan_id: data.plan_id,
+      has_completed_onboarding: data.has_completed_onboarding,
       feature_flags: data.feature_flags || { discover: true, swipe_files: true },
     },
   }
