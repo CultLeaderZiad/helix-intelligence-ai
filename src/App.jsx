@@ -20,6 +20,7 @@ const DiscoverPage = lazy(() => import("@/pages/DiscoverPage").then(m => ({ defa
 const PendingLoopPage = lazy(() => import("@/pages/PendingLoopPage").then(m => ({ default: m.PendingLoopPage })))
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage").then(m => ({ default: m.NotFoundPage })))
 const SwipeFilesPage = lazy(() => import("@/pages/SwipeFilesPage"))
+const CreatePage = lazy(() => import("@/pages/CreatePage"))
 const BillingPage = lazy(() => import("@/pages/BillingPage"))
 const ApiKeysPage = lazy(() => import("@/pages/ApiKeysPage"))
 const TeamPage = lazy(() => import("@/pages/TeamPage"))
@@ -130,6 +131,7 @@ export default function App() {
             <Route element={<AuthenticatedShell />}>
               <Route path="/discover" element={<DiscoverPage />} />
               <Route path="/swipe-files" element={<SwipeFilesPage />} />
+              <Route path="/create" element={<CreatePage />} />
               <Route path="/billing" element={<BillingPage />} />
               <Route path="/api-keys" element={<ApiKeysPage />} />
               <Route path="/team" element={<TeamPage />} />

@@ -33,18 +33,23 @@ class MultiTierAIProvider(AIProvider):
         self.model = "groq/openai/gpt-oss-120b"
         
     async def _call_api(self, messages: List[dict]) -> str:
+        errors = {}
         # Tier 1: Groq (Primary)
         try:
             res = await self.groq._call_api(messages)
             self.model = "groq/openai/gpt-oss-120b"
             return res
         except Exception as e_groq:
+            errors["groq"] = str(e_groq)
+            
             # Tier 2: OpenRouter (Fallback)
             try:
                 res = await self.openrouter._call_api(messages)
                 self.model = f"openrouter/{self.openrouter.model}"
                 return res
             except Exception as e_or:
+                errors["openrouter"] = str(e_or)
+                
                 # Tier 3: AIHubMix (Tertiary Fallback)
                 if self.aihubmix:
                     try:
@@ -52,9 +57,9 @@ class MultiTierAIProvider(AIProvider):
                         self.model = f"aihubmix/{self.aihubmix.model}"
                         return res
                     except Exception as e_ah:
-                        pass
+                        errors["aihubmix"] = str(e_ah)
                 else:
-                    e_ah = "AIHubMix skipped (no API key)"
+                    errors["aihubmix"] = "skipped (no API key)"
                     
                 # Tier 4: Token Harbor (Quaternary Fallback)
                 if self.tokenharbor:
@@ -63,9 +68,9 @@ class MultiTierAIProvider(AIProvider):
                         self.model = f"tokenharbor/{self.tokenharbor.model}"
                         return res
                     except Exception as e_th:
-                        pass
+                        errors["tokenharbor"] = str(e_th)
                 else:
-                    e_th = "Token Harbor skipped (no API key)"
+                    errors["tokenharbor"] = "skipped (no API key)"
                     
                 # Tier 5: Gemini (Final Fallback)
                 try:
@@ -73,7 +78,8 @@ class MultiTierAIProvider(AIProvider):
                     self.model = f"gemini/{self.gemini.model}"
                     return res
                 except Exception as e_gem:
-                    raise Exception(f"All AI providers failed: Groq ({e_groq}), OpenRouter ({e_or}), AIHubMix ({e_ah}), TokenHarbor ({e_th}), Gemini ({e_gem})")
+                    errors["gemini"] = str(e_gem)
+                    raise Exception(f"All AI providers failed: {errors}")
 
 class AIRouter:
     @staticmethod

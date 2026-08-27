@@ -14,5 +14,6 @@ from .notification import Notification
 from .organization_member import OrganizationMember, OrganizationInvite
 from .api_usage import ExternalApiUsage
 from .media_job import MediaGenerationJob
+from .webhook_event import WebhookEvent
 
 # This file imports all models so Alembic can discover them

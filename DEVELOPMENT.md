@@ -43,10 +43,14 @@ The free tier automatically spins down the service after a period of inactivity.
 | `GROQ_API_KEY` | optional | Groq inference API |
 | `OPENROUTER_API_KEY` | optional | OpenRouter API |
 | `GEMINI_API_KEY` | optional | Google Gemini API |
+| `AIHUBMIX_API_KEY` | optional | AIHubMix inference API |
+| `TOKENHARBOR_API_KEY` | optional | Token Harbor inference API |
 | `SCRAPEGRAPH_API_KEY` | optional | ScrapeGraph API |
 | `META_ACCESS_TOKEN` | optional | Meta Marketing API |
-| `BRIGHTDATA_API_KEY` | optional | Bright Data API |
+| `FIRECRAWL_API_KEY` | optional | Firecrawl API |
 | `APIFY_API_TOKEN` | optional | Apify API |
+| `HF_API_KEY_ID` | optional | Higgsfield API Key ID (for media generation) |
+| `HF_API_KEY_SECRET` | optional | Higgsfield API Key Secret (for media generation) |
 
 ### Frontend (Vercel)
 

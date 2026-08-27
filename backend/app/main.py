@@ -27,10 +27,19 @@ app.include_router(creatives.router, prefix=f"{settings.API_V1_STR}/creatives", 
 app.include_router(creatives.brands_router, prefix=f"{settings.API_V1_STR}/brands", tags=["brands"])
 app.include_router(creatives.patterns_router, prefix=f"{settings.API_V1_STR}/patterns", tags=["patterns"])
 app.include_router(analysis.insights_router, prefix=f"{settings.API_V1_STR}/insights", tags=["insights"])
-from app.api.routers import media
+from app.api.routers import media, webhooks
+from fastapi.staticfiles import StaticFiles
+import os
+
 app.include_router(media.router, prefix=f"{settings.API_V1_STR}/media", tags=["media"])
+app.include_router(webhooks.router, prefix=f"{settings.API_V1_STR}/webhooks", tags=["webhooks"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
+
+# Mount uploads directory for serving static files
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 @app.get("/")
 def root():

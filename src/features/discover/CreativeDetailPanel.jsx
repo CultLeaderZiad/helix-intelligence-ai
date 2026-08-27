@@ -198,6 +198,18 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
               )}
             </Button>
           ) : null}
+          <div className="h-4 w-px bg-border mx-1"></div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-xs text-text hover:text-accent"
+            onClick={() => {
+              const url = new URL(window.location.href)
+              window.location.href = `/create?sourceId=${creativeId}`
+            }}
+          >
+            Remix
+          </Button>
           <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close inspector">
             <X className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>

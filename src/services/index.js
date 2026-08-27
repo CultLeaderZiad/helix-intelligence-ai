@@ -7,6 +7,7 @@ import authMock from "./mock/authService.mock"
 import adminMock from "./mock/adminService.mock"
 import accountMock from "./mock/accountService.mock"
 import notificationMock from "./mock/notificationService.mock"
+import mediaMock from "./mock/mediaService.mock"
 
 import discoverApi from "./api/discoverService.api"
 import creativeApi from "./api/creativeService.api"
@@ -15,6 +16,7 @@ import authApi from "./api/authService.api"
 import adminApi from "./api/adminService.api"
 import accountApi from "./api/accountService.api"
 import notificationApi from "./api/notificationService.api"
+import mediaApi from "./api/mediaService.api"
 
 /**
  * ============================================================
@@ -38,7 +40,7 @@ export const authService = useApi ? authApi : authMock
 export const adminService = useApi ? adminApi : adminMock
 export const accountService = useApi ? accountApi : accountMock
 export const notificationService = useApi ? notificationApi : notificationMock
+export const mediaService = useApi ? mediaApi : mediaMock
 
 export { DATA_SOURCE }
 export { ServiceError } from "./http"
-

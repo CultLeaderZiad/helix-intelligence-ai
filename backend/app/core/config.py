@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     APIFY_API_TOKEN: str = os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")
     AIHUBMIX_API_KEY: str = os.getenv("AIHUBMIX_API_KEY", "")
     TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
+    HF_API_KEY_ID: str = os.getenv("HF_API_KEY_ID", "")
+    HF_API_KEY_SECRET: str = os.getenv("HF_API_KEY_SECRET", "")
 
     model_config = SettingsConfigDict(
         case_sensitive=True,
