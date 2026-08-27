@@ -10,6 +10,8 @@ from app.services.ai.groq_provider import GroqProvider
 from app.services.ai.openrouter_provider import OpenRouterProvider
 from app.services.ai.gemini_provider import GeminiProvider
 from app.services.ai.byok_provider import BYOKProvider
+from app.services.ai.openai_compatible_provider import OpenAICompatibleProvider
+from app.core.config import settings
 
 TRIAL_DAILY_REQUEST_LIMIT = 20
 
@@ -18,6 +20,16 @@ class MultiTierAIProvider(AIProvider):
         self.groq = GroqProvider()
         self.openrouter = OpenRouterProvider(trial_mode=True)
         self.gemini = GeminiProvider()
+        self.aihubmix = OpenAICompatibleProvider(
+            base_url="https://aihubmix.com/v1",
+            api_key=settings.AIHUBMIX_API_KEY,
+            default_model="glm-4.7-flash-free"
+        ) if settings.AIHUBMIX_API_KEY else None
+        self.tokenharbor = OpenAICompatibleProvider(
+            base_url="https://tokenharbor.ai/v1",
+            api_key=settings.TOKENHARBOR_API_KEY,
+            default_model="qwen3.8-27b:free"
+        ) if settings.TOKENHARBOR_API_KEY else None
         self.model = "groq/openai/gpt-oss-120b"
         
     async def _call_api(self, messages: List[dict]) -> str:
@@ -33,13 +45,35 @@ class MultiTierAIProvider(AIProvider):
                 self.model = f"openrouter/{self.openrouter.model}"
                 return res
             except Exception as e_or:
-                # Tier 3: Gemini (Tertiary Fallback)
+                # Tier 3: AIHubMix (Tertiary Fallback)
+                if self.aihubmix:
+                    try:
+                        res = await self.aihubmix._call_api(messages)
+                        self.model = f"aihubmix/{self.aihubmix.model}"
+                        return res
+                    except Exception as e_ah:
+                        pass
+                else:
+                    e_ah = "AIHubMix skipped (no API key)"
+                    
+                # Tier 4: Token Harbor (Quaternary Fallback)
+                if self.tokenharbor:
+                    try:
+                        res = await self.tokenharbor._call_api(messages)
+                        self.model = f"tokenharbor/{self.tokenharbor.model}"
+                        return res
+                    except Exception as e_th:
+                        pass
+                else:
+                    e_th = "Token Harbor skipped (no API key)"
+                    
+                # Tier 5: Gemini (Final Fallback)
                 try:
                     res = await self.gemini._call_api(messages)
                     self.model = f"gemini/{self.gemini.model}"
                     return res
                 except Exception as e_gem:
-                    raise Exception(f"All AI providers failed: Groq ({e_groq}), OpenRouter ({e_or}), Gemini ({e_gem})")
+                    raise Exception(f"All AI providers failed: Groq ({e_groq}), OpenRouter ({e_or}), AIHubMix ({e_ah}), TokenHarbor ({e_th}), Gemini ({e_gem})")
 
 class AIRouter:
     @staticmethod

@@ -54,7 +54,7 @@ The frontend builds on Vercel. **Two env vars must be set at build time** (Verce
 
 ```
 VITE_DATA_SOURCE=api
-VITE_API_BASE_URL=https://helix-backend.onrender.com/api
+VITE_API_BASE_URL=https://helix-intelligence-ai.onrender.com/api
 ```
 
 The URL **must be absolute** — a relative `/api` path will 404 because the frontend and backend live on different origins.

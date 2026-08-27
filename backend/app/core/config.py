@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
     BRIGHTDATA_API_KEY: str = os.getenv("BRIGHTDATA_API_KEY", "")
     APIFY_API_TOKEN: str = os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")
+    AIHUBMIX_API_KEY: str = os.getenv("AIHUBMIX_API_KEY", "")
+    TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
 
     model_config = SettingsConfigDict(
         case_sensitive=True,

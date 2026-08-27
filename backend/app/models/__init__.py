@@ -13,5 +13,6 @@ from .api_key import ApiKey
 from .notification import Notification
 from .organization_member import OrganizationMember, OrganizationInvite
 from .api_usage import ExternalApiUsage
+from .media_job import MediaGenerationJob
 
 # This file imports all models so Alembic can discover them
