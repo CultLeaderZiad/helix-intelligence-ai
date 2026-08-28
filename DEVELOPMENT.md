@@ -39,9 +39,9 @@ The free tier automatically spins down the service after a period of inactivity.
 |----------|----------|-------|
 | `SECRET_KEY` | ✅ | JWT signing key. Generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `DATABASE_URL` | ✅ | Neon Postgres connection string (with asyncpg driver) |
-| `BACKEND_CORS_ORIGINS` | ✅ (prod) | Comma-separated list of allowed frontend origins, e.g. `https://helix-intelligence-ai-six.vercel.app` |
+| `BACKEND_CORS_ORIGINS` | ✅ | Comma-separated origins, **must include the Vercel URL exactly** (scheme + host, no trailing slash): `https://helix-intelligence-ai-six.vercel.app,http://localhost:5173,http://localhost:3000` |
+| `USE_MOCKS` | ✅ | **Must be `false` in production.** When `true`, sign-in always returns a fake admin token regardless of credentials. |
 | `PUBLIC_API_BASE_URL` | ✅ (prod) | Public API base for webhooks, e.g. `https://helix-intelligence-ai.onrender.com/api` |
-| `USE_MOCKS` | Optional | Set to `false` in production to enforce real APIs only |
 | `HF_API_KEY_ID` | ✅ (for Create) | Higgsfield API Key ID |
 | `HF_API_KEY_SECRET` | ✅ (for Create) | Higgsfield API Key Secret |
 | `META_ACCESS_TOKEN` | Optional | Meta Marketing / Ad Library API access |
@@ -73,6 +73,21 @@ The Vite dev proxy in `vite.config.js` (`/api → http://127.0.0.1:8000`) **only
 
 Without the two env vars above, sign-up/sign-in and all other API calls will fail with network errors in production while working fine locally. This is the single most common "it works on my machine" deployment issue.
 
+## Auth Architecture
+
+Sign-in / sign-up go **directly to the FastAPI backend** (Render) via JWT HS256.
+There is **no** Neon Auth / Better Auth dependency on the login path.
+
+- Frontend: `VITE_API_BASE_URL` → POST `/api/auth/sign-in` or `/api/auth/sign-up`
+- Backend returns `SessionResponse` with `access_token` (HS256 JWT)
+- Token stored in `localStorage` as `helix_access_token`
+- All subsequent requests send `Authorization: Bearer <token>`
+- `GET /api/auth/session` validates the JWT and returns the current user
+
+Do **not** set `VITE_NEON_AUTH_URL` — it is no longer used and was the cause of the "Invalid origin" error in production.
+
 ## Database (Neon)
 
-The FastAPI backend is designed to be backed by Neon Postgres. The frontend has no direct database dependency.
+The FastAPI backend is backed by Neon Postgres. The `plan_trial_default` plan row must exist for full session responses. If missing, the backend returns a graceful minimal session.
+
+The frontend has **no** direct database dependency.

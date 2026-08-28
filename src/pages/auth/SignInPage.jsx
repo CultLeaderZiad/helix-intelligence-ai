@@ -10,6 +10,7 @@ import { validateSignIn } from "@/features/auth/validation"
 import { Input } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
 import { ServiceError } from "@/services"
+import { DATA_SOURCE } from "@/services/config"
 
 /**
  * Sign in. Owns its own UI intent (field values, validation, submit state)
@@ -150,22 +151,24 @@ export function SignInPage() {
       </form>
 
       {/* Mock backend ships seeded accounts so both roles are reachable
-          without a signup. Remove when the real auth service lands. */}
-      <details className="mt-4 border-t border-border pt-3">
-        <summary className="label-mono cursor-pointer select-none list-none text-text-faint transition-colors hover:text-text-muted">
-          demo credentials
-        </summary>
-        <dl className="mt-2 flex flex-col gap-1.5 font-mono text-[11px] text-text-muted">
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-text-faint">admin</dt>
-            <dd className="tnum">admin@helix.io · helix-admin</dd>
-          </div>
-          <div className="flex items-center justify-between gap-3">
-            <dt className="text-text-faint">customer</dt>
-            <dd className="tnum">analyst@helix.io · helix-analyst</dd>
-          </div>
-        </dl>
-      </details>
+          without a signup. Hidden in API/production mode. */}
+      {DATA_SOURCE !== "api" && (
+        <details className="mt-4 border-t border-border pt-3">
+          <summary className="label-mono cursor-pointer select-none list-none text-text-faint transition-colors hover:text-text-muted">
+            demo credentials
+          </summary>
+          <dl className="mt-2 flex flex-col gap-1.5 font-mono text-[11px] text-text-muted">
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-text-faint">admin</dt>
+              <dd className="tnum">admin@helix.io · helix-admin</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt className="text-text-faint">customer</dt>
+              <dd className="tnum">analyst@helix.io · helix-analyst</dd>
+            </div>
+          </dl>
+        </details>
+      )}
     </AuthLayout>
   )
 }
