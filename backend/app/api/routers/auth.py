@@ -57,6 +57,28 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     if daily_limit:
         daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
 
+    # Administrator Full Privilege Override
+    credit_balance = round(float(org.credit_balance), 2)
+    if user.role == "admin":
+        effective_flags = {
+            "discover": True,
+            "intelligence": True,
+            "create": True,
+            "performance": True,
+            "swipe_files": True,
+            "team_accounts": True,
+            "public_api": True,
+            "ai_insights": True,
+            "create_media": True,
+            "advanced_scoring": True,
+            "bulk_export": True,
+            "custom_webhooks": True,
+        }
+        trial_days_remaining = None
+        daily_limit = None
+        daily_remaining = 999999.0
+        credit_balance = max(credit_balance, 999999.0)
+
     return SessionResponse(
         user_id=user.id,
         email=user.email,

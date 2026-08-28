@@ -31,6 +31,8 @@ import mediaApi from "./api/mediaService.api"
  * FastAPI while the other stays mocked.
  * ============================================================
  */
+import { updatesApi } from "./api/updatesService.api"
+
 const useApi = DATA_SOURCE === "api"
 
 export const discoverService = useApi ? discoverApi : discoverMock
@@ -41,6 +43,7 @@ export const adminService = useApi ? adminApi : adminMock
 export const accountService = useApi ? accountApi : accountMock
 export const notificationService = useApi ? notificationApi : notificationMock
 export const mediaService = useApi ? mediaApi : mediaMock
+export const updatesService = updatesApi
 
 export { DATA_SOURCE }
 export { ServiceError } from "./http"
