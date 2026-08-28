@@ -32,7 +32,7 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     now = datetime.datetime.now(datetime.timezone.utc)
     user = User(
         email=user_in.email,
-        password_hash=await get_password_hash(user_in.password),
+        password_hash=get_password_hash(user_in.password),
         role="customer",
         trial_started_at=now,
         trial_expires_at=now + datetime.timedelta(days=7)
@@ -54,4 +54,5 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     )
     db.add(org)
     await db.commit()
+    await db.refresh(user)   # reload all columns — caller must not access expired attrs in async context
     return user

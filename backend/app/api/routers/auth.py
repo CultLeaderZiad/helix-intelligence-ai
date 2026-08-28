@@ -97,10 +97,21 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
 
 @router.post("/sign-up", response_model=SessionResponse)
 async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
-    user = await auth_service.register_user(db, user_in)
-    from app.core.security import create_access_token
-    token = create_access_token(subject=user.id, role=user.role)
-    return await build_session_response(db, user, access_token=token)
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        user = await auth_service.register_user(db, user_in)
+        from app.core.security import create_access_token
+        token = create_access_token(subject=user.id, role=user.role)
+        return await build_session_response(db, user, access_token=token)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Sign-up failed for {user_in.email}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Sign-up error: {type(e).__name__}: {e}"
+        )
 
 @router.post("/sign-in", response_model=SessionResponse)
 async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
