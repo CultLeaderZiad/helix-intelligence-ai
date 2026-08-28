@@ -90,8 +90,9 @@ def _parse_cors_origins() -> List[str]:
     if not raw:
         return ["http://localhost:5173", "http://localhost:3000"]
     if raw.startswith("["):
-        return json.loads(raw)
-    return [o.strip() for o in raw.split(",") if o.strip()]
+        origins = json.loads(raw)
+        return [o.rstrip("/") for o in origins]
+    return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
 
 
 settings = Settings()
