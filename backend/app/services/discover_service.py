@@ -53,7 +53,7 @@ async def trigger_search(db: AsyncSession, search_params: SearchParams, user_id:
         select(ScrapeJob)
         .where(ScrapeJob.org_id == org_id)
         .where(ScrapeJob.query == search_params.query)
-        .where(ScrapeJob.status.in_(["succeeded", "running"]))
+        .where(ScrapeJob.status == "succeeded")
         .where(ScrapeJob.created_at >= ten_minutes_ago)
         .order_by(ScrapeJob.created_at.desc())
         .limit(1)
