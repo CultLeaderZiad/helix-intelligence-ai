@@ -27,7 +27,14 @@ class Settings(BaseSettings):
     # NEON AUTH
     NEON_JWKS_URL: str = os.getenv(
         "NEON_JWKS_URL", 
-        "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json"
+        os.getenv(
+            "NEON_AUTH_JWKS_URL",
+            "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json"
+        )
+    )
+    NEON_AUTH_URL: str = os.getenv(
+        "NEON_AUTH_BASE_URL",
+        "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth"
     )
     NEON_WEBHOOK_SECRET: str = os.getenv("NEON_WEBHOOK_SECRET", "")
 
