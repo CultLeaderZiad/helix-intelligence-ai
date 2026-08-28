@@ -58,8 +58,17 @@ export function AuthProvider({ children }) {
         setUser(null)
         setStatus(AUTH_STATUS.UNAUTHENTICATED)
       })
+
+    const handleUnauthorized = () => {
+      authService.signOut() // ensure token is cleared
+      setUser(null)
+      setStatus(AUTH_STATUS.UNAUTHENTICATED)
+    }
+    window.addEventListener("helix:unauthorized", handleUnauthorized)
+
     return () => {
       active = false
+      window.removeEventListener("helix:unauthorized", handleUnauthorized)
     }
   }, [])
 
@@ -92,20 +101,35 @@ export function AuthProvider({ children }) {
     [],
   )
 
-  const value = useMemo(
-    () => ({
-      user,
-      role: user?.role ?? null,
-      status,
-      isAuthenticated: status === AUTH_STATUS.AUTHENTICATED,
-      isResolving: status === AUTH_STATUS.LOADING,
-      signIn,
-      signUp,
-      signOut,
-      requestPasswordReset,
-    }),
-    [user, status, signIn, signUp, signOut, requestPasswordReset],
-  )
+    const updateUser = useCallback((updater) => {
+      setUser((prev) => (typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }))
+    }, [])
+
+    const completeOnboarding = useCallback(async () => {
+      try {
+        await authService.completeOnboarding()
+        updateUser({ has_completed_onboarding: true })
+      } catch (err) {
+        console.error("Failed to complete onboarding:", err)
+      }
+    }, [updateUser])
+
+    const value = useMemo(
+      () => ({
+        user,
+        role: user?.role ?? null,
+        status,
+        isAuthenticated: status === AUTH_STATUS.AUTHENTICATED,
+        isResolving: status === AUTH_STATUS.LOADING,
+        signIn,
+        signUp,
+        signOut,
+        requestPasswordReset,
+        updateUser,
+        completeOnboarding,
+      }),
+      [user, status, signIn, signUp, signOut, requestPasswordReset, updateUser, completeOnboarding],
+    )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

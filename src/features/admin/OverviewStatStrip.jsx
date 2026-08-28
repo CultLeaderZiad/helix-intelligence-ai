@@ -1,4 +1,4 @@
-import { Building2, Loader2, ShieldCheck, AlertTriangle } from "lucide-react"
+import { Building2, Loader2, ShieldCheck, AlertTriangle, CircleDollarSign, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatInt, formatPercent } from "@/lib/format"
 
@@ -46,7 +46,7 @@ export function OverviewStatStrip({ stats }) {
   const health = HEALTH_PRESENTATION[stats.system_health] ?? HEALTH_PRESENTATION.down
 
   return (
-    <div className="flex flex-col border border-border bg-surface rounded-sm sm:flex-row">
+    <div className="flex flex-col border border-border bg-surface rounded-sm sm:flex-row sm:flex-wrap">
       <Cell label="Organizations" icon={Building2}>
         <span className="tnum font-mono text-2xl leading-none text-text">
           {formatInt(stats.organizations)}
@@ -72,6 +72,18 @@ export function OverviewStatStrip({ stats }) {
       <Cell label={`API error rate · ${stats.window_label}`} icon={AlertTriangle}>
         <span className={cn("tnum font-mono text-2xl leading-none", errorRateTone(stats.api_error_rate))}>
           {formatPercent(stats.api_error_rate, 2)}
+        </span>
+      </Cell>
+
+      <Cell label="API Calls (Today)" icon={Activity}>
+        <span className="tnum font-mono text-2xl leading-none text-text">
+          {formatInt(stats.today_api_calls)}
+        </span>
+      </Cell>
+
+      <Cell label="Est. API Spend (Today)" icon={CircleDollarSign}>
+        <span className="tnum font-mono text-2xl leading-none text-text">
+          ${stats.today_api_spend.toFixed(4)}
         </span>
       </Cell>
     </div>

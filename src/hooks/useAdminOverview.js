@@ -23,18 +23,22 @@ export function useAdminOverview() {
         adminService.getOverviewStats(),
         adminService.listRecentJobs(),
         adminService.getSystemHealth(),
+        adminService.listOrganizations(),
+        adminService.listUsers(),
       ]),
     [],
   )
 
   const { data, error, loading, refetch } = useAsync(fetcher, [fetcher])
 
-  const [stats, jobs, health] = data ?? [null, null, null]
+  const [stats, jobs, health, organizations, users] = data ?? [null, null, null, null, null]
 
   return {
     stats,
     jobs: jobs?.items ?? [],
     health,
+    organizations: organizations ?? [],
+    users: users ?? [],
     loading,
     error,
     refetch,

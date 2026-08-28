@@ -7,9 +7,31 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 
 # Environment variables
+.env
+.env.local
 .env*.local
+
+# Build directories
+dist/
+dist-ssr/
+
+# Python
+__pycache__/
+venv/
+env/
+.venv/
 
 # Common ignores
 node_modules
 .next/
 .DS_Store
+
+# Temporary & Local Scratch Scripts
+scripts/local/
+backend/scripts/local/
+scratch/
+backend/scratch/
+*test_local*.py
+*check_local*.py
+*debug_local*.py
+.vercel

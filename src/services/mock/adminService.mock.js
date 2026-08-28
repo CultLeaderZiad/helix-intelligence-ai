@@ -212,6 +212,71 @@ const adminService = {
     const services = [...SERVICE_HEALTH]
     return { state: rollUpHealth(services), services }
   },
+
+  async listPlans() {
+    await delay(150)
+    return [
+      { id: "plan_trial_default", name: "7-Day Free Trial", type: "trial", credit_allowance: 25, daily_credit_limit: 3.5, price_per_credit: 0.0, feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: false, public_api: false } },
+      { id: "plan_payg_default", name: "Pay As You Go", type: "pay_as_you_go", credit_allowance: 0, daily_credit_limit: null, price_per_credit: 0.01, feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: true, public_api: false } },
+      { id: "plan_enterprise_custom", name: "Enterprise Custom", type: "custom", credit_allowance: 500, daily_credit_limit: null, price_per_credit: 0.008, feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: true, public_api: true } },
+    ]
+  },
+
+  async createPlan(planData) {
+    await delay(150)
+    return { id: `plan_${Date.now()}`, ...planData }
+  },
+
+  async listOrganizations() {
+    await delay(150)
+    return [
+      { id: "org_1", name: "Acme Corp", owner_id: "user_1", owner_email: "acme@example.com", plan_id: "plan_trial_default", plan_name: "7-Day Free Trial", plan_type: "trial", credit_balance: 18.0, credits_used: 7.0, custom_feature_flags: {}, effective_feature_flags: { discover: true, intelligence: true, create: true }, status: "active", total_jobs: 4 },
+      { id: "org_2", name: "Stripe Demo", owner_id: "user_2", owner_email: "demo@stripe.com", plan_id: "plan_payg_default", plan_name: "Pay As You Go", plan_type: "pay_as_you_go", credit_balance: 140.0, credits_used: 60.0, custom_feature_flags: {}, effective_feature_flags: { discover: true, intelligence: true, create: true, team_accounts: true }, status: "active", total_jobs: 12 },
+    ]
+  },
+
+  async grantCredits(orgId, amount, reason) {
+    await delay(150)
+    return { success: true, message: `Granted ${amount} credits`, new_balance: 100.0, status: "active" }
+  },
+
+  async switchPlan(orgId, planId, resetCredits) {
+    await delay(150)
+    return { success: true, message: `Switched plan to ${planId}`, plan_id: planId, credit_balance: 50.0, status: "active" }
+  },
+
+  async updateFeatureFlags(orgId, featureFlags) {
+    await delay(150)
+    return { success: true, message: "Feature flags updated", custom_feature_flags: featureFlags }
+  },
+
+  async getUsageSummary() {
+    await delay(150)
+    return {
+      total_cost_usd: 1.42,
+      total_credits_deducted: 142.5,
+      total_requests: 64,
+      by_provider: [
+        { provider: "brightdata", operation: "discover_scrape", total_units: 12.0, total_cost_usd: 0.036, total_credits_deducted: 12.0, total_requests: 12 },
+        { provider: "scrapegraph", operation: "landing_enrich", total_units: 40.0, total_cost_usd: 0.20, total_credits_deducted: 20.0, total_requests: 12 },
+        { provider: "groq", operation: "pattern_synthesis", total_units: 24000.0, total_cost_usd: 0.014, total_credits_deducted: 6.0, total_requests: 12 }
+      ],
+      recent_logs: []
+    }
+  },
+
+  async listUsers() {
+    await delay(150)
+    return [
+      { id: "user_1", email: "admin@helix.ai", role: "admin", created_at: new Date().toISOString(), status: "active" },
+      { id: "user_2", email: "customer@example.com", role: "customer", created_at: new Date().toISOString(), status: "active" }
+    ]
+  },
+
+  async impersonateUser(userId) {
+    await delay(150)
+    return { access_token: "mock-impersonated-token", token_type: "bearer", user_id: userId, email: "impersonated@example.com", role: "customer" }
+  }
 }
 
 export default adminService

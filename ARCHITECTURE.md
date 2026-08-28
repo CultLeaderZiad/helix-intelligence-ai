@@ -9,7 +9,7 @@ under the sidebar:
 |---|---|---|---|
 | Discover | `/discover` | **Live** | Query competitor ad libraries, run an async scrape job, browse/filter/sort the resulting creatives, inspect one in detail |
 | Intelligence | `/intelligence` | PLANNED | Mine recurring creative patterns across a discovered corpus |
-| Create | `/create` | PLANNED | Draft new creative briefed on the patterns that win |
+| Create | `/create` | **Live** | Draft new creative briefed on the patterns that win, using Higgsfield media generation via webhook/polling |
 | Performance | `/performance` | PLANNED | Feed live performance data back into the scoring model |
 
 The single source of truth for this list is `src/app/navigation.js`
@@ -240,7 +240,19 @@ endpoint mapping, and the mock ⇄ API parity guarantee.
    `JobProgress` renders the failed stage inline; `retry()` resubmits the
    last params.
 
-## 8. Future FastAPI integration — PLANNED
+## 8. Current Create flow (Higgsfield Integration)
+
+1. User selects a Source Creative (from Discover) or provides a custom brief.
+2. The UI drafts a `CreativeBrief` using the AI Router (falling back across Groq, OpenRouter, Gemini, AIHubMix, Token Harbor).
+3. The user initiates generation by selecting a media capability (e.g., `IMAGE_FAST`).
+4. The `mediaService.generateMedia` call creates a `MediaGenerationJob` in the backend.
+5. The backend (`HiggsfieldProvider`) submits a generation request to the Higgsfield API. It includes a `webhook` payload pointing to the backend's `/api/v1/webhooks/higgsfield` endpoint.
+6. The frontend uses `useMediaGeneration` to poll `mediaService.getJobStatus(jobId)` while waiting.
+7. Higgsfield processes the request. Upon completion (success or failure), it POSTs to the webhook endpoint.
+8. The backend's webhook handler dedupes the event, updates the job status, and if successful, downloads the generated artifact to persistent storage.
+9. The polling frontend receives the updated status (`succeeded`) and artifact URL, rendering the result with full lineage intact.
+
+## 9. Future FastAPI integration — PLANNED
 
 Not implemented. When it happens:
 
@@ -256,19 +268,19 @@ Not implemented. When it happens:
   `api/*.api.js` file (e.g. `POST /v1/discovery/jobs`,
   `GET /v1/creatives/{id}`). See `API_CONTRACTS.md` for the full list.
 
-## 9. Future Neon database integration — PLANNED
+## 10. Future Neon database integration — PLANNED
 
 Not implemented, and nothing in this repository talks to a database.
 When a backend is built, the FastAPI service is expected to be backed by
 Neon Postgres; the frontend has no direct database dependency in any
 scenario — it only ever talks to the HTTP contract in `contracts.js`.
 This frontend repo requires no changes for that integration beyond the
-`VITE_DATA_SOURCE` / `VITE_API_BASE_URL` cutover in §8.
+`VITE_DATA_SOURCE` / `VITE_API_BASE_URL` cutover in §9.
 
-## 10–13. Design tokens, motion rules, anti-patterns
+## 11–14. Design tokens, motion rules, anti-patterns
 
 See [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md).
 
-## 14–15. Running, building, TODOs
+## 15–16. Running, building, TODOs
 
 See [`DEVELOPMENT.md`](./DEVELOPMENT.md).

@@ -3,46 +3,94 @@ import { request, ServiceError } from "../http"
 /**
  * FastAPI-backed auth service.
  *
- * Written up front and intentionally thin. Because it satisfies the same
- * interface as authService.mock.js, switching VITE_DATA_SOURCE=api needs
- * zero context/page changes.
+ * The backend returns a flat SessionResponse:
+ *   { user_id, email, role, access_token, token_type }
  *
- * Sessions are cookie-based server-side: the browser sends the httpOnly
- * session cookie automatically, so there is no token to store or attach
- * here. `credentials: 'include'` is handled in the shared request() layer
- * when the app cuts over.
+ * AuthContext expects { user: { id, email, role } } from signIn/signUp,
+ * and { user: {...} } or null from getSession.
  *
- * Expected endpoints:
- *   POST /v1/auth/sign-in         -> { user }
- *   POST /v1/auth/sign-up         -> { user }
- *   POST /v1/auth/sign-out        -> 204
- *   POST /v1/auth/password-reset  -> { ok, email }
- *   GET  /v1/auth/session         -> { user }  (401 when unauthenticated)
+ * This service normalises the shape here so nothing else changes.
  */
+
+const TOKEN_KEY = "helix_access_token"
+
+function storeToken(token) {
+  if (token) localStorage.setItem(TOKEN_KEY, token)
+}
+
+function clearToken() {
+  localStorage.removeItem(TOKEN_KEY)
+}
+
+export function getStoredToken() {
+  return localStorage.getItem(TOKEN_KEY)
+}
+
+/** Shape a flat SessionResponse into { user } */
+function toSession(data) {
+  if (!data) return null
+  return {
+    user: {
+      id: data.user_id,
+      email: data.email,
+      role: data.role,
+      credit_balance: data.credit_balance,
+      trial_days_remaining: data.trial_days_remaining,
+      daily_credit_limit: data.daily_credit_limit,
+      daily_credits_used: data.daily_credits_used,
+      daily_credits_remaining: data.daily_credits_remaining,
+      daily_credits_resets_at_utc: data.daily_credits_resets_at_utc,
+      plan_id: data.plan_id,
+      has_completed_onboarding: data.has_completed_onboarding,
+      feature_flags: data.feature_flags || { discover: true, swipe_files: true },
+    },
+  }
+}
+
 const authService = {
   async getSession() {
+    // Try the token we have in storage — if none, return null immediately
+    const token = getStoredToken()
+    if (!token) return null
     try {
-      return await request("/auth/session")
+      const data = await request("/auth/session", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      return toSession(data)
     } catch (err) {
-      // "Not signed in" is a normal state, not an error to surface.
-      if (err instanceof ServiceError && err.status === 401) return null
+      if (err instanceof ServiceError && err.status === 401) {
+        clearToken()
+        return null
+      }
       throw err
     }
   },
 
-  signIn({ email, password } = {}) {
-    return request("/auth/sign-in", { method: "POST", body: { email, password } })
+  async signIn({ email, password } = {}) {
+    const data = await request("/auth/sign-in", {
+      method: "POST",
+      body: { email, password },
+    })
+    storeToken(data.access_token)
+    return toSession(data)
   },
 
-  signUp({ name, email, password } = {}) {
-    return request("/auth/sign-up", {
+  async signUp({ name, email, password } = {}) {
+    const data = await request("/auth/sign-up", {
       method: "POST",
       body: { name, email, password },
     })
+    storeToken(data.access_token)
+    return toSession(data)
   },
 
   signOut() {
-    return request("/auth/sign-out", { method: "POST" })
+    clearToken()
+    return request("/auth/sign-out", { method: "POST" }).catch(() => null)
+  },
+
+  completeOnboarding() {
+    return request("/auth/session/onboarding/complete", { method: "POST" })
   },
 
   requestPasswordReset({ email } = {}) {

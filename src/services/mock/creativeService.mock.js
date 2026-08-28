@@ -77,6 +77,27 @@ const creativeService = {
       has_more: false,
     }
   },
+
+  async getSavedCreatives({ page = 1, page_size = 20 } = {}) {
+    await delay(150)
+    return {
+      items: creatives.slice(0, 4),
+      total: 4,
+      page: 1,
+      page_size: 20,
+      has_more: false,
+    }
+  },
+
+  async saveCreative(creativeId) {
+    await delay(100)
+    return { success: true, message: "Saved to collection" }
+  },
+
+  async unsaveCreative(creativeId) {
+    await delay(100)
+    return { success: true, message: "Removed from collection" }
+  },
 }
 
 export default creativeService

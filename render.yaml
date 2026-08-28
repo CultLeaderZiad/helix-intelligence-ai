@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: helix-backend
+    env: python
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    # ────────────────────────────────────────────────────────
+    # Required environment variables (set via Render Dashboard → Environment)
+    # ────────────────────────────────────────────────────────
+    # SECRET_KEY          – JWT signing key. Generate with:
+    #                       python -c "import secrets; print(secrets.token_urlsafe(32))"
+    # DATABASE_URL        – Neon Postgres connection string (postgres://…)
+    #                       Render injects this automatically if linked via
+    #                       the Render integration; otherwise paste it manually.
+    #
+    # ────────────────────────────────────────────────────────
+    # Production CORS (REQUIRED when frontend is on a different origin)
+    # ────────────────────────────────────────────────────────
+    # BACKEND_CORS_ORIGINS – Comma-separated list of allowed frontend origins.
+    #   Example: "https://helix-frontend.vercel.app"
+    #   Without this, cross-origin sign-up/sign-in from Vercel will fail
+    #   with a network error (CORS block).
+    #
+    #   ⚠️  vite.config.js's dev proxy (/api → localhost:8000) is for local
+    #       development ONLY.  In production the frontend MUST use an
+    #       absolute VITE_API_BASE_URL and VITE_DATA_SOURCE=api.
+    #
+    # ────────────────────────────────────────────────────────
+    # Optional API keys
+    # ────────────────────────────────────────────────────────
+    # GROQ_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY,
+    # SCRAPEGRAPH_API_KEY, META_ACCESS_TOKEN, BRIGHTDATA_API_KEY,
+    # APIFY_API_TOKEN

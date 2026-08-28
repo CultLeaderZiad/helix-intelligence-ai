@@ -1,5 +1,7 @@
+import { useEffect } from "react"
 import { Navigate, Outlet, useLocation } from "react-router-dom"
 import { AUTH_STATUS, useAuth } from "@/context/AuthContext"
+import { authService } from "@/services"
 
 /** The authenticated landing surface. Kept as a constant so redirects
  *  from the guard and from the auth pages agree on one destination. */
@@ -22,8 +24,24 @@ export const APP_HOME = "/discover"
  *                       session, and never a fake authenticated shell.
  */
 export function ProtectedRoute({ requireRole = null }) {
-  const { status, role } = useAuth()
+  const { status, role, signOut, updateUser } = useAuth()
   const location = useLocation()
+
+  // Re-check auth state on EVERY navigation (including back/forward)
+  useEffect(() => {
+    if (status === AUTH_STATUS.AUTHENTICATED) {
+      authService.getSession().then((session) => {
+        if (!session) {
+          signOut()
+        } else if (session.user) {
+          // Keep user role/flags fresh on navigation
+          updateUser(session.user)
+        }
+      }).catch(() => {
+        signOut()
+      })
+    }
+  }, [location.pathname, status, signOut, updateUser])
 
   if (status === AUTH_STATUS.LOADING) {
     return <SessionHold />

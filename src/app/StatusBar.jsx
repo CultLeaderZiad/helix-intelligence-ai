@@ -4,6 +4,7 @@ import { DATA_SOURCE } from "@/services"
 import { API_BASE_URL } from "@/services/config"
 import { formatDuration, formatInt } from "@/lib/format"
 import { useTelemetry } from "./TelemetryContext"
+import { useAuth } from "@/context/AuthContext"
 
 /**
  * State word tone. The live *dot* carries the accent (it is a status
@@ -24,6 +25,9 @@ const STATE_TONE = {
  */
 export function StatusBar() {
   const { telemetry } = useTelemetry()
+  const { user, isAuthenticated } = useAuth()
+
+  const isTrial = user?.plan_id?.includes("trial") || user?.trial_days_remaining != null
 
   return (
     <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-border bg-surface px-3 font-mono text-[10px] uppercase tracking-[0.06em] text-text-faint">
@@ -52,22 +56,49 @@ export function StatusBar() {
 
       <span className="tnum hidden sm:inline">req {formatInt(telemetry.requests)}</span>
 
-      <span className="ml-auto flex items-center gap-1.5">
-        {telemetry.lastJobId ? (
-          <span className="hidden truncate text-text-muted md:inline">
-            {telemetry.lastJobId}
+      <span className="ml-auto flex items-center gap-4">
+        {isAuthenticated && isTrial && (
+          <span className="flex items-center gap-1.5 border-l border-border pl-4">
+            <span className="text-accent">{user.trial_days_remaining}d left</span>
+            <span className="text-text-muted">·</span>
+            <span className="text-accent">{user.credit_balance?.toFixed(1)}cr</span>
+            {user.daily_credit_limit != null && (
+              <>
+                <span className="text-text-muted">·</span>
+                <span className="flex items-center gap-1">
+                  <span className="text-text-muted">today</span>
+                  <span
+                    className={cn("tnum", {
+                      "text-success": user.daily_credits_remaining > 1,
+                      "text-warning": user.daily_credits_remaining > 0 && user.daily_credits_remaining <= 1,
+                      "text-danger": user.daily_credits_remaining <= 0,
+                    })}
+                  >
+                    {user.daily_credits_used?.toFixed(1)}/{user.daily_credit_limit?.toFixed(1)}
+                  </span>
+                </span>
+              </>
+            )}
           </span>
-        ) : null}
-        <span
-          className={cn("h-1.5 w-1.5 rounded-full", {
-            "bg-border-strong": telemetry.state === "idle",
-            "bg-accent animate-pulse": telemetry.state === "running",
-            "bg-success": telemetry.state === "ready",
-            "bg-danger": telemetry.state === "error",
-          })}
-          aria-hidden="true"
-        />
-        <span className={cn(STATE_TONE[telemetry.state])}>{telemetry.state}</span>
+        )}
+
+        <span className="flex items-center gap-1.5">
+          {telemetry.lastJobId ? (
+            <span className="hidden truncate text-text-muted md:inline">
+              {telemetry.lastJobId}
+            </span>
+          ) : null}
+          <span
+            className={cn("h-1.5 w-1.5 rounded-full", {
+              "bg-border-strong": telemetry.state === "idle",
+              "bg-accent animate-pulse": telemetry.state === "running",
+              "bg-success": telemetry.state === "ready",
+              "bg-danger": telemetry.state === "error",
+            })}
+            aria-hidden="true"
+          />
+          <span className={cn(STATE_TONE[telemetry.state])}>{telemetry.state}</span>
+        </span>
       </span>
     </footer>
   )

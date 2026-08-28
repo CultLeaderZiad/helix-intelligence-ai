@@ -28,7 +28,7 @@ export const NAV_SECTIONS = [
     label: "Create",
     icon: PenLine,
     description: "Draft new creative briefed on the patterns that win.",
-    status: "pending",
+    status: "live",
   },
   {
     key: "performance",

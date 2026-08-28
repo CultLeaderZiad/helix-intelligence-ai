@@ -6,6 +6,8 @@ import { Tag } from "@/components/ui/Tag"
 import { OverviewStatStrip } from "@/features/admin/OverviewStatStrip"
 import { RecentJobsTable } from "@/features/admin/RecentJobsTable"
 import { SystemHealthPanel } from "@/features/admin/SystemHealthPanel"
+import { OrganizationsTable } from "@/features/admin/OrganizationsTable"
+import { UsersTable } from "@/features/admin/UsersTable"
 import { useAdminOverview } from "@/hooks/useAdminOverview"
 
 /**
@@ -19,7 +21,7 @@ import { useAdminOverview } from "@/hooks/useAdminOverview"
  * ============================================================
  */
 export function OverviewPage() {
-  const { stats, jobs, health, loading, error, refetch } = useAdminOverview()
+  const { stats, jobs, health, organizations, users, loading, error, refetch } = useAdminOverview()
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -75,6 +77,34 @@ export function OverviewPage() {
                 )}
               </Panel>
             </div>
+
+            <Panel className="flex min-w-0 flex-col">
+              <PanelHeader>
+                <PanelTitle>Organizations</PanelTitle>
+                {!loading && organizations?.length ? (
+                  <Tag>{`${organizations.length} total`}</Tag>
+                ) : null}
+              </PanelHeader>
+              {loading ? (
+                <JobsSkeleton />
+              ) : (
+                <OrganizationsTable organizations={organizations} onRefresh={refetch} />
+              )}
+            </Panel>
+
+            <Panel className="flex min-w-0 flex-col">
+              <PanelHeader>
+                <PanelTitle>Users</PanelTitle>
+                {!loading && users?.length ? (
+                  <Tag>{`${users.length} total`}</Tag>
+                ) : null}
+              </PanelHeader>
+              {loading ? (
+                <JobsSkeleton />
+              ) : (
+                <UsersTable users={users} onRefresh={refetch} />
+              )}
+            </Panel>
           </div>
         </div>
       )}

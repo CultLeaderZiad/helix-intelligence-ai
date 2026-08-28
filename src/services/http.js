@@ -36,11 +36,15 @@ function buildQuery(params = {}) {
  * all land here — not in features.
  *
  * @param {string} path
- * @param {{ method?: string, params?: Object, body?: any, signal?: AbortSignal }} [options]
+ * @param {{ method?: string, params?: Object, body?: any, headers?: Object, signal?: AbortSignal }} [options]
  */
 export async function request(path, options = {}) {
-  const { method = "GET", params, body, signal } = options
+  const { method = "GET", params, body, signal, headers: extraHeaders } = options
   const url = `${API_BASE_URL}${path}${buildQuery(params)}`
+
+  // Attach JWT from localStorage if present
+  const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
+  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
 
   let res
   try {
@@ -50,8 +54,10 @@ export async function request(path, options = {}) {
       headers: {
         Accept: "application/json",
         ...(body ? { "Content-Type": "application/json" } : {}),
+        ...authHeader,
+        ...extraHeaders,
       },
-      ...(body ? { body: JSON.stringify(body) } : {}),
+      ...(body && typeof body !== "string" ? { body: JSON.stringify(body) } : body ? { body } : {}),
     })
   } catch (err) {
     if (err?.name === "AbortError") throw err
@@ -60,19 +66,31 @@ export async function request(path, options = {}) {
 
   if (!res.ok) {
     let detail = res.statusText
+    let errorCode = `http_${res.status}`
     try {
       const payload = await res.json()
       // FastAPI conventionally returns { detail: ... }
       detail = payload?.detail ?? payload?.message ?? detail
+      if (Array.isArray(detail) && detail.length > 0) {
+        detail = detail[0].msg || "Validation error"
+      } else if (typeof detail === "object" && detail !== null) {
+        if (detail.code) errorCode = detail.code
+        if (detail.message) detail = detail.message
+      }
     } catch {
       /* non-JSON error body */
     }
+    if (res.status === 401) {
+      window.dispatchEvent(new CustomEvent("helix:unauthorized"))
+    }
+
     throw new ServiceError(
       typeof detail === "string" ? detail : "Request failed",
-      { status: res.status, code: `http_${res.status}` },
+      { status: res.status, code: errorCode },
     )
   }
 
   if (res.status === 204) return null
   return res.json()
 }
+

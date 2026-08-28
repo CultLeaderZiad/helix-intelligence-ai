@@ -1,6 +1,6 @@
 import { Checkbox, Label, Select } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
-import { PLATFORMS, FORMATS, SPEND_BANDS } from "@/lib/constants"
+import { PLATFORMS, FORMATS, SPEND_BANDS, COUNTRIES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
 const SCORE_OPTIONS = [
@@ -62,6 +62,16 @@ export function FilterRail({ filters, onChange, onClear, dirty }) {
       {/* One vertical rhythm for the whole rail: groups sit on a gap-5
           spine, every group is Label + gap-1.5 + controls. */}
       <div className="flex flex-col gap-5 p-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="filter-country">Country</Label>
+          <Select
+            id="filter-country"
+            value={filters.country ?? "ALL"}
+            onChange={(e) => onChange({ ...filters, country: e.target.value })}
+            options={COUNTRIES}
+          />
+        </div>
+
         <div className="flex flex-col gap-1.5">
           <Label>Platform</Label>
           {/* Checkbox carries its own py-1, so the list itself is gap-0 —

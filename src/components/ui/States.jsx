@@ -120,7 +120,7 @@ export function EmptyState({
   )
 }
 
-export function ErrorState({ error, onRetry, className }) {
+export function ErrorState({ error, onRetry, className, description }) {
   const message =
     error?.message ?? "The request failed for a reason the client did not recognise."
   const code = error?.code ?? error?.status
@@ -131,7 +131,7 @@ export function ErrorState({ error, onRetry, className }) {
       statusTone="text-danger"
       meta={code ? String(code) : null}
       title={message}
-      description="Nothing was written and no partial set was kept. Retrying re-runs the same request with the same parameters."
+      description={description ?? "Nothing was written and no partial set was kept. Retrying re-runs the same request with the same parameters."}
       action={
         onRetry ? (
           <Button size="sm" variant="outline" onClick={onRetry}>

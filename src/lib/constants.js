@@ -15,6 +15,16 @@ export const FORMATS = [
   { value: "text", label: "Text" },
 ]
 
+export const COUNTRIES = [
+  { value: "ALL", label: "All Countries" },
+  { value: "US", label: "United States" },
+  { value: "GB", label: "United Kingdom" },
+  { value: "CA", label: "Canada" },
+  { value: "AU", label: "Australia" },
+  { value: "DE", label: "Germany" },
+  { value: "FR", label: "France" },
+]
+
 export const SPEND_BANDS = [
   { value: "low", label: "$" },
   { value: "mid", label: "$$" },
