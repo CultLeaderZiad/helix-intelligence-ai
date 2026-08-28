@@ -54,4 +54,5 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     )
     db.add(org)
     await db.commit()
+    await db.refresh(user)   # reload all columns — caller must not access expired attrs in async context
     return user
