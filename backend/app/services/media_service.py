@@ -155,12 +155,16 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
                 detail="Higgsfield is not configured on this server.",
             )
             
+    parameters = dict(request.parameters or {})
+    if request.mode and "mode" not in parameters:
+        parameters["mode"] = request.mode
+
     job = MediaGenerationJob(
         user_id=user.id,
         org_id=org.id,
         prompt=request.prompt,
         provider=provider,
-        parameters=request.parameters,
+        parameters=parameters,
         status="pending"
     )
     

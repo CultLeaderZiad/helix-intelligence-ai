@@ -26,9 +26,14 @@ export const mediaService = {
     }
     
     // Normalize backend result into MediaResult shape
+    const url = job.result_url || ""
+    const isVideo = url.endsWith(".mp4") || url.endsWith(".webm") || url.includes("video") || (job.parameters && job.parameters.kind === "video")
+    
     return {
-      type: "video", // Defaulting for Higgsfield, in a real app check backend response
-      video: { url: job.result_url },
+      type: isVideo ? "video" : "image",
+      url: url,
+      video: isVideo ? { url } : undefined,
+      images: isVideo ? undefined : [{ url }],
       provider: job.provider,
     }
   },

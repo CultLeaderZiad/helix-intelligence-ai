@@ -294,8 +294,8 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
                 job = result.scalar_one_or_none()
                 if job:
                     job.status = "succeeded"
-                    job.stage = "complete"
-                    job.stage_label = "Complete"
+                    job.stage = "zero_results"
+                    job.stage_label = f"No active ads found across Meta, Apify, Bright Data, or Adyntel for '{query}'"
                     job.progress = 1.0
                     job.stage_index = 5
                     job.record_count = 0
