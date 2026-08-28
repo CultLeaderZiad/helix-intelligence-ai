@@ -1,87 +1,121 @@
 import httpx
 import logging
-from typing import Optional
+from urllib.parse import quote
+from typing import Any, Optional
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Official base (docs quickstart). platform.higgsfield.ai also seen in some clients;
+# prefer api.higgsfield.ai for new integrations.
+HF_API_BASE = "https://api.higgsfield.ai"
+
+# Model endpoint paths (extend as needed)
+MODEL_ENDPOINTS = {
+    "soul_v2": "/higgsfield-ai/soul/v2/standard",
+    "image": "/higgsfield-ai/soul/v2/standard",
+    # Video examples — enable when you have access/credits:
+    # "kling_t2v": "/kling-video/v3.0/std/text-to-video",
+    # "veo_fast": "/veo3.1/fast/text-to-video",
+}
 class HiggsfieldProvider:
     def __init__(self):
         self.key_id = settings.HF_API_KEY_ID
         self.key_secret = settings.HF_API_KEY_SECRET
-        self.base_url = "https://platform.higgsfield.ai"
-        
+
     @property
-    def headers(self):
+    def headers(self) -> dict:
         if not self.key_id or not self.key_secret:
-            raise ValueError("Higgsfield API credentials not configured (HF_API_KEY_ID / HF_API_KEY_SECRET)")
-            
+            raise ValueError(
+                "Higgsfield API credentials not configured "
+                "(HF_API_KEY_ID / HF_API_KEY_SECRET)"
+            )
         return {
             "Authorization": f"Key {self.key_id}:{self.key_secret}",
             "Content-Type": "application/json",
-            "User-Agent": "higgsfield-server-js/2.0"
+            "Accept": "application/json",
         }
-        
-    async def generate_media(self, prompt: str, parameters: dict) -> str:
+
+    def _resolve_endpoint(self, parameters: dict) -> str:
+        model_key = (parameters or {}).get("model") or (parameters or {}).get("kind") or "soul_v2"
+        if model_key in ("IMAGE_FAST", "image", "soul"):
+            model_key = "soul_v2"
+        path = MODEL_ENDPOINTS.get(model_key, MODEL_ENDPOINTS["soul_v2"])
+        return f"{HF_API_BASE}{path}"
+
+    async def generate_media(
+        self,
+        prompt: str,
+        parameters: Optional[dict] = None,
+        webhook_url: Optional[str] = None,
+    ) -> str:
         """
-        Submits a generation request to Higgsfield and returns the request_id.
-        Raises an exception if the request fails.
+        Submit generation. Returns request_id.
+        Webhook is passed as ?hf_webhook= per official docs.
         """
-        # Map parameters for Higgsfield
-        payload = {
-            "params": {
-                "prompt": prompt,
-                "width_and_height": parameters.get("resolution", "1024x1024"),
-                "quality": parameters.get("quality", "720p"),
-                "batch_size": 1
-            }
-        }
-        
-        if "webhook" in parameters:
-            payload["webhook"] = {
-                "url": parameters["webhook"],
-                "secret": parameters.get("webhook_secret", "helix_webhook_secret")
-            }
-        
-        endpoint = f"{self.base_url}/v1/text2image/soul"
-        
+        parameters = parameters or {}
+        url = self._resolve_endpoint(parameters)
+
+        if webhook_url:
+            url = f"{url}?hf_webhook={quote(webhook_url, safe='')}"
+
+        # Minimal official body; add only fields the model accepts
+        body: dict[str, Any] = {"prompt": prompt}
+
+        # Optional passthroughs if present (ignore unknown safely)
+        for key in ("seed", "aspect_ratio", "duration", "image_url"):
+            if parameters.get(key) is not None:
+                body[key] = parameters[key]
+
         async with httpx.AsyncClient() as client:
-            resp = await client.post(endpoint, json=payload, headers=self.headers, timeout=30.0)
-            
-            if resp.status_code != 200:
-                logger.error(f"Higgsfield generation failed: {resp.status_code} - {resp.text}")
+            resp = await client.post(
+                url, json=body, headers=self.headers, timeout=60.0
+            )
+            if resp.status_code >= 400:
+                logger.error(
+                    "Higgsfield submit failed: %s %s", resp.status_code, resp.text
+                )
                 resp.raise_for_status()
-                
+
             data = resp.json()
             request_id = data.get("request_id")
-            
             if not request_id:
-                raise ValueError(f"No request_id returned from Higgsfield. Response: {data}")
-                
+                raise ValueError(f"No request_id from Higgsfield: {data}")
+            logger.info("Higgsfield queued request_id=%s", request_id)
             return request_id
 
     async def check_status(self, request_id: str) -> dict:
         """
-        Checks the status of a generation request.
-        Returns a dict with 'status' (completed, failed, in_progress, etc.) and 'url' if completed.
+        Poll GET /requests/{id}/status.
+        Returns { status, url?, raw }.
+        Status endpoint may put images at top-level; webhooks nest under payload.
         """
-        endpoint = f"{self.base_url}/requests/{request_id}/status"
-        
+        endpoint = f"{HF_API_BASE}/requests/{request_id}/status"
         async with httpx.AsyncClient() as client:
-            resp = await client.get(endpoint, headers=self.headers, timeout=10.0)
-            
-            if resp.status_code != 200:
-                logger.error(f"Higgsfield status check failed: {resp.status_code} - {resp.text}")
+            resp = await client.get(endpoint, headers=self.headers, timeout=30.0)
+            if resp.status_code >= 400:
+                logger.error(
+                    "Higgsfield status failed: %s %s", resp.status_code, resp.text
+                )
                 resp.raise_for_status()
-                
+
             data = resp.json()
             status = data.get("status")
-            
-            result = {"status": status, "raw": data}
-            
+            result: dict[str, Any] = {"status": status, "raw": data}
+
+            # Status API shape (quickstart): top-level images[]
+            images = data.get("images") or []
+            video = data.get("video")
+            # Some responses nest under payload
+            nested = data.get("payload") or {}
+            if not images and isinstance(nested, dict):
+                images = nested.get("images") or []
+                video = video or nested.get("video")
+
             if status == "completed":
-                images = data.get("images", [])
-                if images and len(images) > 0:
-                    result["url"] = images[0].get("url")
-            
+                if images and isinstance(images, list) and images[0].get("url"):
+                    result["url"] = images[0]["url"]
+                elif isinstance(video, dict) and video.get("url"):
+                    result["url"] = video["url"]
+
             return result

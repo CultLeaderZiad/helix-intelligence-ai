@@ -46,8 +46,15 @@ export function SignInPage() {
 
     setSubmitting(true)
     try {
-      await signIn({ email: values.email.trim(), password: values.password })
-      navigate(redirectTo, { replace: true })
+      const user = await signIn({ email: values.email.trim(), password: values.password })
+      
+      let finalRedirect = redirectTo
+      // If the user was just heading to the default landing page, route based on role
+      if (redirectTo === APP_HOME || redirectTo === "/") {
+        finalRedirect = user?.role === "admin" ? "/admin" : "/discover"
+      }
+      
+      navigate(finalRedirect, { replace: true })
     } catch (err) {
       setAuthError(
         err instanceof ServiceError

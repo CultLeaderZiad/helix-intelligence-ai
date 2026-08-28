@@ -4,8 +4,10 @@ import json
 import time
 
 base_url = "https://helix-intelligence-ai.onrender.com/api"
-email = "cultleaderzoz.dev@gmail.com"
-password = "Helixxa-intel-2027"
+import os
+
+email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
+password = os.environ.get("ADMIN_PASSWORD", "password123")
 
 # 1. Sign In
 try:

@@ -4,7 +4,7 @@ from datetime import datetime
 
 class MediaGenerationRequest(BaseModel):
     prompt: str
-    provider: str = "mock"
+    provider: str = "higgsfield"  # was "mock"
     parameters: Optional[Dict[str, Any]] = None
 
 class MediaGenerationJobResponse(BaseModel):

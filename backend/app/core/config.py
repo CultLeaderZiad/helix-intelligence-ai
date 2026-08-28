@@ -23,6 +23,13 @@ class Settings(BaseSettings):
 
     # DATABASE
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    
+    # NEON AUTH
+    NEON_JWKS_URL: str = os.getenv(
+        "NEON_JWKS_URL", 
+        "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json"
+    )
+    NEON_WEBHOOK_SECRET: str = os.getenv("NEON_WEBHOOK_SECRET", "")
 
     def __init__(self, **values):
         super().__init__(**values)
@@ -62,6 +69,11 @@ class Settings(BaseSettings):
     TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
     HF_API_KEY_ID: str = os.getenv("HF_API_KEY_ID", "")
     HF_API_KEY_SECRET: str = os.getenv("HF_API_KEY_SECRET", "")
+    # Public API origin used to build Higgsfield webhook URLs (no trailing slash issues)
+    PUBLIC_API_BASE_URL: str = os.getenv(
+        "PUBLIC_API_BASE_URL",
+        "https://helix-intelligence-ai.onrender.com/api",
+    ).rstrip("/")
 
     model_config = SettingsConfigDict(
         case_sensitive=True,
