@@ -12,12 +12,12 @@ export const PillNav = ({
   ease = 'power3.easeOut',
   baseColor = '#0c0d0e',
   pillColor = '#181a1b',
+  hoverCircleColor = '#ccff00',
   hoveredPillTextColor = '#000000',
   pillTextColor = '#ffffff',
   onMobileMenuClick,
   initialLoadAnimation = true
 }) => {
-  const resolvedPillTextColor = pillTextColor ?? baseColor;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const circleRefs = useRef([]);
   const tlRefs = useRef([]);
@@ -61,15 +61,15 @@ export const PillNav = ({
         tlRefs.current[index]?.kill();
         const tl = gsap.timeline({ paused: true });
 
-        tl.to(circle, { scale: 1.2, xPercent: -50, duration: 0.4, ease, overwrite: 'auto' }, 0);
+        tl.to(circle, { scale: 1.2, xPercent: -50, duration: 0.35, ease, overwrite: 'auto' }, 0);
 
         if (label) {
-          tl.to(label, { y: -(h + 8), duration: 0.4, ease, overwrite: 'auto' }, 0);
+          tl.to(label, { y: -(h + 8), duration: 0.35, ease, overwrite: 'auto' }, 0);
         }
 
         if (white) {
           gsap.set(white, { y: Math.ceil(h + 100), opacity: 0 });
-          tl.to(white, { y: 0, opacity: 1, duration: 0.4, ease, overwrite: 'auto' }, 0);
+          tl.to(white, { y: 0, opacity: 1, duration: 0.35, ease, overwrite: 'auto' }, 0);
         }
 
         tlRefs.current[index] = tl;
@@ -163,8 +163,8 @@ export const PillNav = ({
       const lines = hamburger.querySelectorAll('.hamburger-line');
       if (lines.length >= 2) {
         if (newState) {
-          gsap.to(lines[0], { rotation: 45, y: 3, duration: 0.3, ease });
-          gsap.to(lines[1], { rotation: -45, y: -3, duration: 0.3, ease });
+          gsap.to(lines[0], { rotation: 45, y: 3.5, duration: 0.3, ease });
+          gsap.to(lines[1], { rotation: -45, y: -3.5, duration: 0.3, ease });
         } else {
           gsap.to(lines[0], { rotation: 0, y: 0, duration: 0.3, ease });
           gsap.to(lines[1], { rotation: 0, y: 0, duration: 0.3, ease });
@@ -177,11 +177,10 @@ export const PillNav = ({
         gsap.set(menu, { visibility: 'visible' });
         gsap.fromTo(
           menu,
-          { opacity: 0, y: 10, scaleY: 1 },
+          { opacity: 0, y: -10 },
           {
             opacity: 1,
             y: 0,
-            scaleY: 1,
             duration: 0.3,
             ease,
             transformOrigin: 'top center'
@@ -190,8 +189,7 @@ export const PillNav = ({
       } else {
         gsap.to(menu, {
           opacity: 0,
-          y: 10,
-          scaleY: 1,
+          y: -10,
           duration: 0.2,
           ease,
           transformOrigin: 'top center',
@@ -220,8 +218,9 @@ export const PillNav = ({
   const cssVars = {
     '--base': baseColor,
     '--pill-bg': pillColor,
+    '--hover-circle': hoverCircleColor,
     '--hover-text': hoveredPillTextColor,
-    '--pill-text': resolvedPillTextColor
+    '--pill-text': pillTextColor
   };
 
   return (
@@ -312,16 +311,22 @@ export const PillNav = ({
               {isRouterLink(item.href) ? (
                 <Link
                   to={item.href}
-                  className={`mobile-menu-link${activeHref === item.href ? ' is-active' : ''}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`mobile-menu-link${activeHref === item.href ? ' is-active' : ''}${item.isPrimary ? ' is-primary' : ''}`}
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    toggleMobileMenu();
+                  }}
                 >
                   {item.label}
                 </Link>
               ) : (
                 <a
                   href={item.href}
-                  className={`mobile-menu-link${activeHref === item.href ? ' is-active' : ''}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`mobile-menu-link${activeHref === item.href ? ' is-active' : ''}${item.isPrimary ? ' is-primary' : ''}`}
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    toggleMobileMenu();
+                  }}
                 >
                   {item.label}
                 </a>

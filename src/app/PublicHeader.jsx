@@ -31,6 +31,7 @@ export function PublicHeader() {
         ease="power2.easeOut"
         baseColor="#0c0d0e"
         pillColor="#181a1b"
+        hoverCircleColor="#ccff00"
         hoveredPillTextColor="#000000"
         pillTextColor="#ffffff"
         initialLoadAnimation={true}
