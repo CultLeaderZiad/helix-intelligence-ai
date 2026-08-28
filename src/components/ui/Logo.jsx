@@ -12,13 +12,11 @@ import { cn } from "@/lib/utils"
 export function Logo({ showWordmark = true, wordmark = "HELIX", className }) {
   return (
     <span className={cn("flex items-center gap-2", className)}>
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border border-border-strong bg-surface-2">
-        <span
-          className="h-2.5 w-2.5 bg-accent"
-          aria-hidden="true"
-          style={{ clipPath: "polygon(0 0, 100% 28%, 100% 100%, 0 72%)" }}
-        />
-      </span>
+      <img
+        src="/brand/helix-logo.png"
+        alt="Helix Logo"
+        className="h-5 w-5 shrink-0 rounded-[3px] object-contain"
+      />
       {showWordmark ? (
         <span className="font-mono text-[13px] font-medium tracking-[0.16em] text-text">
           {wordmark}

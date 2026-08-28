@@ -83,6 +83,32 @@ async def check_quota_and_feature(
 
     org = await get_or_create_default_org(db, user)
 
+    # 0. Administrator bypass: unrestricted features, zero credit block
+    if getattr(user, "role", None) == "admin":
+        admin_plan = Plan(
+            id="plan_admin",
+            name="Helix Administrator",
+            type="admin",
+            credit_allowance=999999,
+            daily_credit_limit=None,
+            price_per_credit=0.0,
+            feature_flags={
+                "discover": True,
+                "intelligence": True,
+                "create": True,
+                "performance": True,
+                "swipe_files": True,
+                "team_accounts": True,
+                "public_api": True,
+                "ai_insights": True,
+                "create_media": True,
+                "advanced_scoring": True,
+                "bulk_export": True,
+                "custom_webhooks": True,
+            }
+        )
+        return org, admin_plan
+
     # 1. Fetch Plan
     plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
     plan = plan_result.scalar_one_or_none()

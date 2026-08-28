@@ -31,6 +31,7 @@ const SubscriptionsPlansPage = lazy(() => import("@/pages/admin/SubscriptionsPla
 const UsagePage = lazy(() => import("@/pages/admin/UsagePage"))
 const FeatureFlagsPage = lazy(() => import("@/pages/admin/FeatureFlagsPage"))
 const UsersPage = lazy(() => import("@/pages/admin/UsersPage"))
+const UpdatesPage = lazy(() => import("@/pages/admin/UpdatesPage"))
 
 /**
  * Root component. Deliberately thin: it mounts shell-level providers,
@@ -117,6 +118,7 @@ export default function App() {
               <Route path="/admin/usage" element={<UsagePage />} />
               <Route path="/admin/feature-flags" element={<FeatureFlagsPage />} />
               <Route path="/admin/users" element={<UsersPage />} />
+              <Route path="/admin/updates" element={<UpdatesPage />} />
               {ADMIN_NAV_ITEMS.filter((i) => !i.built).map((item) => (
                 <Route
                   key={item.key}

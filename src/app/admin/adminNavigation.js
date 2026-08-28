@@ -9,6 +9,7 @@ import {
   HeartPulse,
   Flag,
   ScrollText,
+  Bell,
 } from "lucide-react"
 
 /**
@@ -97,6 +98,13 @@ export const ADMIN_NAV_GROUPS = [
   {
     label: "System",
     items: [
+      {
+        key: "updates",
+        path: "/admin/updates",
+        label: "Updates & Banners",
+        icon: Bell,
+        built: true,
+      },
       {
         key: "health",
         path: "/admin/health",
