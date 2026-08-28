@@ -38,19 +38,23 @@ The free tier automatically spins down the service after a period of inactivity.
 | Variable | Required | Notes |
 |----------|----------|-------|
 | `SECRET_KEY` | ✅ | JWT signing key. Generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
-| `DATABASE_URL` | ✅ | Neon Postgres connection string |
-| `BACKEND_CORS_ORIGINS` | ✅ (prod) | Comma-separated list of allowed frontend origins, e.g. `https://helix-frontend.vercel.app` |
-| `GROQ_API_KEY` | optional | Groq inference API |
-| `OPENROUTER_API_KEY` | optional | OpenRouter API |
-| `GEMINI_API_KEY` | optional | Google Gemini API |
-| `AIHUBMIX_API_KEY` | optional | AIHubMix inference API |
-| `TOKENHARBOR_API_KEY` | optional | Token Harbor inference API |
-| `SCRAPEGRAPH_API_KEY` | optional | ScrapeGraph API |
-| `META_ACCESS_TOKEN` | optional | Meta Marketing API |
-| `FIRECRAWL_API_KEY` | optional | Firecrawl API |
-| `APIFY_API_TOKEN` | optional | Apify API |
-| `HF_API_KEY_ID` | optional | Higgsfield API Key ID (for media generation) |
-| `HF_API_KEY_SECRET` | optional | Higgsfield API Key Secret (for media generation) |
+| `DATABASE_URL` | ✅ | Neon Postgres connection string (with asyncpg driver) |
+| `BACKEND_CORS_ORIGINS` | ✅ (prod) | Comma-separated list of allowed frontend origins, e.g. `https://helix-intelligence-ai-six.vercel.app` |
+| `PUBLIC_API_BASE_URL` | ✅ (prod) | Public API base for webhooks, e.g. `https://helix-intelligence-ai.onrender.com/api` |
+| `USE_MOCKS` | Optional | Set to `false` in production to enforce real APIs only |
+| `HF_API_KEY_ID` | ✅ (for Create) | Higgsfield API Key ID |
+| `HF_API_KEY_SECRET` | ✅ (for Create) | Higgsfield API Key Secret |
+| `META_ACCESS_TOKEN` | Optional | Meta Marketing / Ad Library API access |
+| `APIFY_API_TOKEN` | Optional | Apify Actor scraper API token |
+| `BRIGHTDATA_API_KEY` | Optional | Bright Data scraping proxy API key |
+| `ADYNTEL_API_KEY` | Optional | Adyntel ad intelligence API key |
+| `ADYNTEL_EMAIL` | Optional | Adyntel account email |
+| `SCRAPEGRAPH_API_KEY` | Optional | ScrapeGraph AI landing page enrichment |
+| `GROQ_API_KEY` | Optional | Groq primary LLM inference (Llama 3.3 70B) |
+| `OPENROUTER_API_KEY` | Optional | OpenRouter secondary LLM inference |
+| `AIHUBMIX_API_KEY` | Optional | AIHubMix tertiary LLM inference |
+| `TOKENHARBOR_API_KEY` | Optional | Token Harbor quaternary LLM inference |
+| `GEMINI_API_KEY` | Optional | Google Gemini final LLM inference fallback |
 
 ### Frontend (Vercel)
 

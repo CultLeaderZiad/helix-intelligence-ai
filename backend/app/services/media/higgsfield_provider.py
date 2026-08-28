@@ -8,16 +8,13 @@ logger = logging.getLogger(__name__)
 
 # Official base (docs quickstart). platform.higgsfield.ai also seen in some clients;
 # prefer api.higgsfield.ai for new integrations.
-HF_API_BASE = "https://api.higgsfield.ai"
+from app.services.media.higgsfield_registry import (
+    HF_API_BASE,
+    resolve_mode_spec,
+    resolve_endpoint_url,
+    MODEL_REGISTRY,
+)
 
-# Model endpoint paths (extend as needed)
-MODEL_ENDPOINTS = {
-    "soul_v2": "/higgsfield-ai/soul/v2/standard",
-    "image": "/higgsfield-ai/soul/v2/standard",
-    # Video examples — enable when you have access/credits:
-    # "kling_t2v": "/kling-video/v3.0/std/text-to-video",
-    # "veo_fast": "/veo3.1/fast/text-to-video",
-}
 class HiggsfieldProvider:
     def __init__(self):
         self.key_id = settings.HF_API_KEY_ID
@@ -37,11 +34,9 @@ class HiggsfieldProvider:
         }
 
     def _resolve_endpoint(self, parameters: dict) -> str:
-        model_key = (parameters or {}).get("model") or (parameters or {}).get("kind") or "soul_v2"
-        if model_key in ("IMAGE_FAST", "image", "soul"):
-            model_key = "soul_v2"
-        path = MODEL_ENDPOINTS.get(model_key, MODEL_ENDPOINTS["soul_v2"])
-        return f"{HF_API_BASE}{path}"
+        mode = (parameters or {}).get("mode") or (parameters or {}).get("model") or (parameters or {}).get("kind")
+        mode_spec = resolve_mode_spec(mode)
+        return resolve_endpoint_url(mode_spec)
 
     async def generate_media(
         self,
@@ -54,16 +49,32 @@ class HiggsfieldProvider:
         Webhook is passed as ?hf_webhook= per official docs.
         """
         parameters = parameters or {}
-        url = self._resolve_endpoint(parameters)
+        mode = parameters.get("mode") or parameters.get("model") or parameters.get("kind")
+        mode_spec = resolve_mode_spec(mode)
+        url = resolve_endpoint_url(mode_spec)
 
         if webhook_url:
             url = f"{url}?hf_webhook={quote(webhook_url, safe='')}"
 
-        # Minimal official body; add only fields the model accepts
+        # Build payload with model defaults and user overrides
         body: dict[str, Any] = {"prompt": prompt}
+        
+        # Merge default params from mode spec
+        for k, v in mode_spec.get("default_params", {}).items():
+            body[k] = v
 
-        # Optional passthroughs if present (ignore unknown safely)
-        for key in ("seed", "aspect_ratio", "duration", "image_url"):
+        # User overrides and passthroughs
+        for key in (
+            "seed", 
+            "aspect_ratio", 
+            "duration", 
+            "image_url", 
+            "start_image_url", 
+            "end_image_url",
+            "batch_size",
+            "quality",
+            "negative_prompt"
+        ):
             if parameters.get(key) is not None:
                 body[key] = parameters[key]
 
