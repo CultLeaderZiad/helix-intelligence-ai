@@ -125,7 +125,7 @@ export function StatusBar() {
             aria-label="Helix on GitHub"
             className="text-text-faint hover:text-text transition-colors flex items-center gap-1"
           >
-            <Github className="h-3 w-3" />
+            <GithubIcon className="h-3 w-3" />
             <span className="hidden lg:inline text-[9px]">GITHUB</span>
           </a>
         </span>

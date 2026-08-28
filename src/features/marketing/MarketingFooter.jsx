@@ -101,7 +101,7 @@ export function MarketingFooter() {
               aria-label="Helix on GitHub"
               className="flex items-center gap-1.5 font-mono text-[11px] text-text-muted hover:text-text transition-colors"
             >
-              <Github className="h-3.5 w-3.5" />
+              <GithubIcon className="h-3.5 w-3.5" />
               <span>GitHub</span>
             </a>
             <span className="text-border-strong hidden sm:inline">·</span>
