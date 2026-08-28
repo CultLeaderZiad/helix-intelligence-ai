@@ -3,7 +3,8 @@ import { useSearchParams } from "react-router-dom"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { PenLine, Play, Image as ImageIcon, CheckCircle, AlertCircle, Loader } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { creativeService, mediaService } from "@/services"
+import { creativeService } from "@/services"
+import { useMediaGenerate, PHASE } from "@/hooks/useMediaGenerate"
 
 export function CreatePage() {
   const [searchParams] = useSearchParams()
@@ -12,13 +13,8 @@ export function CreatePage() {
   const [sourceCreative, setSourceCreative] = useState(null)
   const [brief, setBrief] = useState("")
   const [generationMode, setGenerationMode] = useState("IMAGE_FAST")
-  const [qualityIntent, setQualityIntent] = useState("1024x1024")
   
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [jobId, setJobId] = useState(null)
-  const [jobStatus, setJobStatus] = useState(null)
-  const [resultUrl, setResultUrl] = useState(null)
-  const [error, setError] = useState(null)
+  const { phase, job, result, error, submit, cancel, isBusy } = useMediaGenerate()
 
   useEffect(() => {
     if (sourceId) {
@@ -33,55 +29,33 @@ export function CreatePage() {
     }
   }, [sourceId])
 
-  useEffect(() => {
-    let interval = null
-    if (jobId && (jobStatus === "pending" || jobStatus === "in_progress")) {
-      interval = setInterval(() => {
-        mediaService.getJob(jobId).then((job) => {
-          setJobStatus(job.status)
-          if (job.status === "completed") {
-            setResultUrl(job.result_url)
-            setIsGenerating(false)
-          } else if (job.status === "failed") {
-            setError(job.error_message || "Generation failed")
-            setIsGenerating(false)
-          }
-        }).catch(err => {
-          console.error("Failed to poll job status", err)
-        })
-      }, 2000)
-    }
-    return () => {
-      if (interval) clearInterval(interval)
-    }
-  }, [jobId, jobStatus])
-
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!brief.trim()) return
-    
-    setIsGenerating(true)
-    setError(null)
-    setJobId(null)
-    setResultUrl(null)
-    setJobStatus(null)
-    
-    try {
-      const payload = {
-        prompt: brief,
-        provider: generationMode === "IMAGE_FAST" ? "higgsfield" : "mock",
-        parameters: {
-          resolution: qualityIntent,
-          quality: "720p",
-          source_creative_id: sourceId // Lineage
-        }
+    submit({
+      prompt: brief,
+      provider: "higgsfield",
+      parameters: {
+        model: generationMode === "VIDEO_STANDARD" ? "soul_v2" : "soul_v2",
+        resolution: "1024x1024",
+        kind: generationMode === "VIDEO_STANDARD" ? "video" : "image",
+        source_creative_id: sourceId
       }
-      
-      const job = await mediaService.createJob(payload)
-      setJobId(job.id)
-      setJobStatus(job.status)
-    } catch (err) {
-      setError(err.message || "Failed to start generation")
-      setIsGenerating(false)
+    })
+  }
+
+  let displayUrl = null
+  let isVideo = false
+  if (result) {
+    if (result.type === "video" && result.video?.url) {
+      displayUrl = result.video.url
+    } else if (result.type === "image" && result.images?.[0]?.url) {
+      displayUrl = result.images[0].url
+    } else if (result.url) {
+      displayUrl = result.url
+    }
+    
+    if (displayUrl) {
+      isVideo = displayUrl.includes(".mp4") || displayUrl.includes("video") || generationMode === "VIDEO_STANDARD"
     }
   }
 
@@ -129,52 +103,45 @@ export function CreatePage() {
                 placeholder="Describe the asset you want to generate..."
                 value={brief}
                 onChange={(e) => setBrief(e.target.value)}
-                disabled={isGenerating}
+                disabled={isBusy}
               />
             </div>
 
             {/* Generation Mode */}
             <div className="flex flex-col gap-3">
-              <label className="label-mono">Generation Mode</label>
-              <div className="flex gap-2">
+              <label className="label-mono">Generation Provider</label>
+              <div className="flex flex-wrap gap-2">
                 {["IMAGE_FAST", "VIDEO_STANDARD"].map(mode => (
                   <Button 
                     key={mode} 
                     variant={generationMode === mode ? "primary" : "outline"}
                     onClick={() => setGenerationMode(mode)}
-                    disabled={isGenerating}
+                    disabled={isBusy}
                   >
-                    {mode}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
-            {/* Quality Intent */}
-            <div className="flex flex-col gap-3">
-              <label className="label-mono">Quality Intent (Resolution)</label>
-              <div className="flex gap-2">
-                {["1024x1024", "16:9", "9:16"].map(intent => (
-                  <Button 
-                    key={intent} 
-                    variant={qualityIntent === intent ? "primary" : "outline"}
-                    onClick={() => setQualityIntent(intent)}
-                    disabled={isGenerating}
-                  >
-                    {intent}
+                    {mode.replace("_", " ")}
                   </Button>
                 ))}
               </div>
             </div>
             
-            <Button 
-              variant="primary" 
-              className="mt-4 w-full"
-              disabled={!brief.trim() || isGenerating}
-              onClick={handleGenerate}
-            >
-              {isGenerating ? "Generating..." : "Generate Asset"}
-            </Button>
+            {isBusy ? (
+              <Button 
+                variant="outline" 
+                className="mt-4 w-full border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                onClick={cancel}
+              >
+                Cancel Generation
+              </Button>
+            ) : (
+              <Button 
+                variant="primary" 
+                className="mt-4 w-full"
+                disabled={!brief.trim()}
+                onClick={handleGenerate}
+              >
+                Generate Asset
+              </Button>
+            )}
             
           </div>
 
@@ -185,40 +152,50 @@ export function CreatePage() {
               
               <div className="flex min-h-[400px] w-full flex-col items-center justify-center rounded border border-border bg-surface p-4 text-center">
                 
-                {!jobId && !resultUrl && !error && (
+                {phase === PHASE.IDLE && (
                   <div className="flex flex-col items-center gap-2 text-text-faint">
                     <PenLine className="h-8 w-8" />
                     <span className="text-sm">Ready to generate</span>
                   </div>
                 )}
 
-                {isGenerating && (
-                  <div className="flex flex-col items-center gap-3">
+                {isBusy && (
+                  <div className="flex flex-col items-center gap-4 w-full max-w-xs">
                     <Loader className="h-8 w-8 animate-spin text-accent" />
-                    <span className="text-sm text-text-muted">
-                      {jobStatus === "pending" ? "Starting job..." : "Generating media, please wait..."}
-                    </span>
+                    <div className="flex flex-col gap-1 w-full text-center">
+                      <span className="text-sm font-medium text-text">
+                        {job?.stage_label || "Starting job..."}
+                      </span>
+                      {job?.progress !== undefined && (
+                        <div className="h-1.5 w-full bg-border rounded overflow-hidden mt-2">
+                          <div 
+                            className="h-full bg-accent transition-all duration-500" 
+                            style={{ width: `${Math.max(5, job.progress * 100)}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 
-                {error && (
+                {phase === PHASE.ERROR && (
                   <div className="flex flex-col items-center gap-3 text-red-500">
                     <AlertCircle className="h-8 w-8" />
-                    <span className="text-sm">{error}</span>
+                    <span className="text-sm">{error?.message || "Generation failed"}</span>
                   </div>
                 )}
 
-                {resultUrl && !isGenerating && (
+                {phase === PHASE.READY && displayUrl && (
                   <div className="flex h-full w-full flex-col gap-3">
                     <div className="flex items-center gap-2 text-green-500">
                       <CheckCircle className="h-5 w-5" />
                       <span className="text-sm font-medium">Generation Complete</span>
                     </div>
                     <div className="relative flex min-h-0 flex-1 items-center justify-center bg-bg rounded overflow-hidden">
-                      {resultUrl.endsWith(".mp4") ? (
-                        <video src={resultUrl} controls autoPlay loop className="max-h-full max-w-full object-contain" />
+                      {isVideo ? (
+                        <video src={displayUrl} controls autoPlay loop className="max-h-full max-w-full object-contain" />
                       ) : (
-                        <img src={resultUrl} alt="Generated asset" className="max-h-full max-w-full object-contain" />
+                        <img src={displayUrl} alt="Generated asset" className="max-h-full max-w-full object-contain" />
                       )}
                     </div>
                   </div>
@@ -233,3 +210,4 @@ export function CreatePage() {
     </div>
   )
 }
+

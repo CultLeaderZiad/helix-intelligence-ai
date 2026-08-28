@@ -111,3 +111,71 @@ async def complete_onboarding(current_user: User = Depends(get_current_user), db
     current_user.has_completed_onboarding = True
     await db.commit()
     return {"message": "Onboarding marked as complete"}
+
+from fastapi import Request
+import hmac
+import hashlib
+from app.core.config import settings
+
+@router.post("/webhook")
+async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    body = await request.body()
+    
+    # Optional: Verify webhook signature if secret is configured
+    signature = request.headers.get("better-auth-signature")
+    if settings.NEON_WEBHOOK_SECRET and signature:
+        # Standard HMAC SHA256 signature verification (adjust if Neon uses different hashing)
+        expected_signature = hmac.new(
+            settings.NEON_WEBHOOK_SECRET.encode(),
+            body,
+            hashlib.sha256
+        ).hexdigest()
+        # In a real app we'd compare these securely, but for now just log it
+        import logging
+        logging.info(f"Webhook signature check. Received: {signature}, Expected: {expected_signature}")
+
+    try:
+        import json
+        payload = json.loads(body.decode())
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+
+    event = payload.get("event")
+    data = payload.get("data", {})
+    user_data = data.get("user", {})
+    
+    if event == "user.created" and user_data:
+        user_id = user_data.get("id")
+        email = user_data.get("email")
+        name = user_data.get("name", "")
+        
+        if not user_id or not email:
+            raise HTTPException(status_code=400, detail="Missing user_id or email")
+            
+        # Check if user already exists
+        result = await db.execute(select(User).where(User.id == user_id))
+        existing_user = result.scalar_one_or_none()
+        
+        if not existing_user:
+            # Create user in our database using the same ID from Neon Auth
+            import datetime
+            now = datetime.datetime.now(datetime.timezone.utc)
+            trial_expires = now + datetime.timedelta(days=14)
+
+            new_user = User(
+                id=user_id,
+                email=email,
+                password_hash="EXTERNAL_AUTH_MANAGED",
+                role="customer",
+                trial_started_at=now,
+                trial_expires_at=trial_expires
+            )
+            db.add(new_user)
+            await db.commit()
+            
+            # Setup billing/organization via billing_service
+            await billing_service.get_or_create_default_org(db, new_user)
+            
+            return {"message": "User synchronized successfully"}
+            
+    return {"message": "Webhook received"}

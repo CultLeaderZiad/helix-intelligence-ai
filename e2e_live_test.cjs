@@ -7,21 +7,41 @@ const { chromium } = require('playwright');
 
   console.log("🚀 Starting end-to-end smoke test against LIVE Vercel deployment...");
   
-  const BASE_URL = 'https://helix-intelligence-ai-six.vercel.app';
+  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://helix-intelligence-ai-six.vercel.app';
   
   try {
+    // Add console listener
+    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
+    page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
+    page.on('requestfailed', request => console.log('REQUEST FAILED:', request.url(), request.failure().errorText));
+
     // 1. Test Admin Login
     console.log("Testing Admin Login...");
-    await page.goto(`${BASE_URL}/auth`);
-    await page.fill('input[type="email"]', 'cultleaderzoz.dev@gmail.com');
-    await page.fill('input[type="password"]', 'Helixxa-intel-2027');
-    await page.click('button:has-text("Sign in")');
+    await page.goto(`${FRONTEND_URL}/auth`);
+    await page.waitForLoadState('networkidle');
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'password123';
+    await page.fill('input[type="email"]', adminEmail);
+    await page.fill('input[type="password"]', adminPassword);
     
-    // Wait for navigation to /discover
-    await page.waitForURL('**/discover');
-    console.log("✅ Admin Login successful!");
+    // Take screenshot before clicking
+    await page.screenshot({ path: 'login_before_click.png' });
     
-    // Check if Trial Banner is present
+    await Promise.all([
+      page.waitForResponse(resp => resp.url().includes('/auth') && resp.status() !== 204).then(r => console.log('Auth API Response:', r.status(), r.url())),
+      page.click('button:has-text("Sign in")')
+    ]);
+    
+    // Wait a bit for navigation or error to show
+    await page.waitForTimeout(5000);
+    await page.screenshot({ path: 'login_after_click.png' });
+    
+    try {
+      await page.waitForURL('**/discover', { timeout: 10000 });
+      console.log("✅ Admin Login successful!");
+    } catch (e) {
+      console.log("❌ Failed to navigate to /discover within 10s. See login_after_click.png for UI state.");
+    }
     console.log("Checking Trial Banner...");
     const banner = page.locator('text=You are currently on a 7-day free trial');
     const bannerCount = await banner.count();

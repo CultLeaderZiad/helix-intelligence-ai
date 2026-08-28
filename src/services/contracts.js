@@ -141,6 +141,39 @@
  * @property {string} code
  */
 
+/**
+ * @typedef {Object} MediaJob
+ * @property {string} job_id
+ * @property {'queued'|'running'|'succeeded'|'failed'|'nsfw'|'canceled'} status
+ * @property {number} progress          // 0–1
+ * @property {string|null} stage
+ * @property {string|null} stage_label
+ * @property {number|null} elapsed_ms
+ * @property {string|null} error
+ * @property {string} created_at        // ISO-8601
+ * @property {string|null} completed_at
+ * @property {MediaResult|null} result
+ * @property {Object} meta              // model, prompt, provider, external_request_id, etc.
+ */
+
+/**
+ * @typedef {Object} MediaResult
+ * @property {'image'|'video'} type
+ * @property {Array<{url: string, content_type?: string, width?: number, height?: number}>} [images]
+ * @property {{url: string, content_type?: string}} [video]
+ * @property {string} [provider]        // 'aihubmix' | 'pollinations' | 'higgsfield'
+ * @property {string} [model]
+ */
+
+/**
+ * @typedef {Object} MediaGenerateParams
+ * @property {string} prompt
+ * @property {string} [model]           // e.g. 'gpt-image-2-free' | 'higgsfield-ai/soul/v2/standard'
+ * @property {'auto'|'image'|'video'} [kind]
+ * @property {Object} [options]         // size, quality, aspect_ratio, duration, etc.
+ * @property {string} [webhook_base]    // internal only; backend builds full URL
+ */
+
 /* ------------------------------------------------------------------ */
 /* Admin console — operations surface, admin role only                */
 /* ------------------------------------------------------------------ */

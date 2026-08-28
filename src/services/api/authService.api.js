@@ -1,18 +1,20 @@
+import { createAuthClient } from "better-auth/react"
 import { request, ServiceError } from "../http"
 
 /**
- * FastAPI-backed auth service.
- *
- * The backend returns a flat SessionResponse:
- *   { user_id, email, role, access_token, token_type }
- *
- * AuthContext expects { user: { id, email, role } } from signIn/signUp,
- * and { user: {...} } or null from getSession.
- *
- * This service normalises the shape here so nothing else changes.
+ * Neon Auth (Better Auth) backed auth service.
  */
 
 const TOKEN_KEY = "helix_access_token"
+
+export const authClient = createAuthClient({
+  // Point to the Neon Auth URL via environment variable
+  baseURL: import.meta.env.VITE_NEON_AUTH_URL || "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth"
+})
+
+export function getStoredToken() {
+  return localStorage.getItem(TOKEN_KEY)
+}
 
 function storeToken(token) {
   if (token) localStorage.setItem(TOKEN_KEY, token)
@@ -22,80 +24,101 @@ function clearToken() {
   localStorage.removeItem(TOKEN_KEY)
 }
 
-export function getStoredToken() {
-  return localStorage.getItem(TOKEN_KEY)
-}
-
-/** Shape a flat SessionResponse into { user } */
-function toSession(data) {
-  if (!data) return null
+/** Shape a Better Auth User into our legacy session shape */
+function toSession(user) {
+  if (!user) return null
   return {
     user: {
-      id: data.user_id,
-      email: data.email,
-      role: data.role,
-      credit_balance: data.credit_balance,
-      trial_days_remaining: data.trial_days_remaining,
-      daily_credit_limit: data.daily_credit_limit,
-      daily_credits_used: data.daily_credits_used,
-      daily_credits_remaining: data.daily_credits_remaining,
-      daily_credits_resets_at_utc: data.daily_credits_resets_at_utc,
-      plan_id: data.plan_id,
-      has_completed_onboarding: data.has_completed_onboarding,
-      feature_flags: data.feature_flags || { discover: true, swipe_files: true },
+      id: user.id,
+      email: user.email,
+      role: user.role || "user",
+      name: user.name,
+      // For now, mock the business fields until we fetch them from our own DB
+      credit_balance: 0,
+      trial_days_remaining: 0,
+      daily_credit_limit: 10,
+      daily_credits_used: 0,
+      daily_credits_remaining: 10,
+      has_completed_onboarding: true,
+      feature_flags: { discover: true, swipe_files: true },
     },
   }
 }
 
 const authService = {
   async getSession() {
-    // Try the token we have in storage — if none, return null immediately
-    const token = getStoredToken()
-    if (!token) return null
     try {
-      const data = await request("/auth/session", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      return toSession(data)
-    } catch (err) {
-      if (err instanceof ServiceError && err.status === 401) {
+      const { data, error } = await authClient.getSession()
+      if (error || !data?.user) {
         clearToken()
         return null
       }
-      throw err
+      
+      // Fetch extended user data from our own API using the access token
+      try {
+        const response = await request("/auth/session")
+        return { user: { ...data.user, ...response } }
+      } catch (backendError) {
+        // Fallback if backend session fails
+        return toSession(data.user)
+      }
+    } catch (err) {
+      clearToken()
+      return null
     }
   },
 
   async signIn({ email, password } = {}) {
-    const data = await request("/auth/sign-in", {
-      method: "POST",
-      body: { email, password },
-    })
-    storeToken(data.access_token)
-    return toSession(data)
+    const { data, error } = await authClient.signIn.email({ email, password })
+    if (error) throw new ServiceError(error.message, error.status)
+    
+    // Better Auth normally uses cookies, but for cross-domain API calls, we need a token.
+    // If the token is returned in data.session.token, store it.
+    if (data?.session?.token) {
+      storeToken(data.session.token)
+    }
+    
+    try {
+      const response = await request("/auth/session")
+      return { user: { ...data.user, ...response } }
+    } catch (backendError) {
+      return toSession(data.user)
+    }
   },
 
   async signUp({ name, email, password } = {}) {
-    const data = await request("/auth/sign-up", {
-      method: "POST",
-      body: { name, email, password },
-    })
-    storeToken(data.access_token)
-    return toSession(data)
+    const { data, error } = await authClient.signUp.email({ name, email, password })
+    if (error) throw new ServiceError(error.message, error.status)
+    
+    if (data?.session?.token) {
+      storeToken(data.session.token)
+    }
+    
+    try {
+      const response = await request("/auth/session")
+      return { user: { ...data.user, ...response } }
+    } catch (backendError) {
+      return toSession(data.user)
+    }
   },
 
-  signOut() {
+  async signOut() {
     clearToken()
-    return request("/auth/sign-out", { method: "POST" }).catch(() => null)
+    await authClient.signOut()
+    return null
   },
 
+  // Stub these out or forward them to our own API as needed
   completeOnboarding() {
     return request("/auth/session/onboarding/complete", { method: "POST" })
   },
 
-  requestPasswordReset({ email } = {}) {
-    return request("/auth/password-reset", { method: "POST", body: { email } })
+  async requestPasswordReset({ email } = {}) {
+    const { error } = await authClient.forgetPassword({ email })
+    if (error) throw new ServiceError(error.message, error.status)
+    return true
   },
 }
 
 export default authService
+

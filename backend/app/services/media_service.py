@@ -42,17 +42,19 @@ async def higgsfield_generate_media_task(job_id: str):
             
         try:
             # 1. Start generation
-            import os
+            from app.core.config import settings
             logger.info(f"Starting Higgsfield generation for job {job_id}")
             
-            # Construct webhook URL
-            app_url = os.environ.get("VITE_API_BASE_URL", "http://localhost:8000/api")
-            webhook_url = f"{app_url}/webhooks/higgsfield"
+            # Construct webhook URL using PUBLIC_API_BASE_URL
+            webhook_url = f"{settings.PUBLIC_API_BASE_URL}/webhooks/higgsfield"
             
             params = job.parameters or {}
-            params["webhook"] = webhook_url
             
-            request_id = await provider.generate_media(job.prompt, params)
+            request_id = await provider.generate_media(
+                job.prompt, 
+                params,
+                webhook_url=webhook_url
+            )
             
             job.provider_job_id = request_id
             job.status = "in_progress"
@@ -75,11 +77,9 @@ async def higgsfield_generate_media_task(job_id: str):
                 
                 if status == "completed":
                     job.status = "completed"
-                    # Trigger storage service manually since webhook missed it
-                    from app.services.storage_service import store_media_from_url
                     result_url = status_info.get("url")
                     if result_url:
-                        asyncio.create_task(store_media_from_url(job.id, result_url))
+                        job.result_url = result_url
                     await db.commit()
                     logger.info(f"Job {job_id} completed successfully via polling fallback")
                     return
@@ -101,15 +101,65 @@ async def higgsfield_generate_media_task(job_id: str):
             job.error_message = str(e)
             await db.commit()
 
+async def pollinations_generate_media_task(job_id: str):
+    """
+    Ultra-cheap fallback using Pollinations AI (free, no API key).
+    """
+    from app.db.session import async_session_maker
+    import urllib.parse
+    
+    # We still simulate some delay so the UI shows the loading state nicely
+    await asyncio.sleep(2)
+    
+    async with async_session_maker() as db:
+        result = await db.execute(select(MediaGenerationJob).where(MediaGenerationJob.id == job_id))
+        job = result.scalar_one_or_none()
+        
+        if job:
+            job.status = "completed"
+            
+            prompt_encoded = urllib.parse.quote(job.prompt or "abstract art")
+            # Pollinations just returns the image directly via GET
+            job.result_url = f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=1024&height=1024&nologo=true"
+            
+            # Since Pollinations doesn't have a real webhook or async wait, we just finish it
+            from app.services.storage_service import store_media_from_url
+            asyncio.create_task(store_media_from_url(job.id, job.result_url))
+            
+            await db.commit()
+
+async def aihubmix_generate_media_task(job_id: str):
+    """
+    Free tier provider placeholder for AIHubMix.
+    Currently maps to Pollinations as a stand-in since the SDK isn't integrated yet.
+    """
+    await pollinations_generate_media_task(job_id)
+
 
 async def create_media_job(db: AsyncSession, user: User, request: MediaGenerationRequest) -> MediaGenerationJob:
+    from app.core.config import settings
+    from fastapi import HTTPException
+    
     org = await get_or_create_default_org(db, user)
     
+    provider = (request.provider or "higgsfield").lower()
+    if provider == "mock" and not settings.USE_MOCKS:
+        raise HTTPException(
+            status_code=400,
+            detail="Mock media provider is disabled. Use provider=higgsfield.",
+        )
+    if provider == "higgsfield":
+        if not settings.HF_API_KEY_ID or not settings.HF_API_KEY_SECRET:
+            raise HTTPException(
+                status_code=503,
+                detail="Higgsfield is not configured on this server.",
+            )
+            
     job = MediaGenerationJob(
         user_id=user.id,
         org_id=org.id,
         prompt=request.prompt,
-        provider=request.provider,
+        provider=provider,
         parameters=request.parameters,
         status="pending"
     )
@@ -118,12 +168,18 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
     await db.commit()
     await db.refresh(job)
     
-    if request.provider == "mock":
-        # Launch background task for mock
+    if provider == "mock" and settings.USE_MOCKS:
         asyncio.create_task(mock_generate_media_task(job.id))
-    elif request.provider == "higgsfield":
-        # Launch real background task
+    elif provider == "higgsfield":
         asyncio.create_task(higgsfield_generate_media_task(job.id))
+    elif provider == "pollinations":
+        asyncio.create_task(pollinations_generate_media_task(job.id))
+    elif provider == "aihubmix":
+        asyncio.create_task(aihubmix_generate_media_task(job.id))
+    else:
+        job.status = "failed"
+        job.error_message = f"Unknown provider: {provider}"
+        await db.commit()
         
     return job
 

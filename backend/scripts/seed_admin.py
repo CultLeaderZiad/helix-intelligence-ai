@@ -15,8 +15,8 @@ from sqlalchemy import select
 
 async def seed_admin():
     async with async_session_maker() as db:
-        email = "cultleaderzoz.dev@gmail.com"
-        password = "Helixxa-intel-2027"
+        email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
+        password = os.environ.get("ADMIN_PASSWORD", "password123")
         
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
