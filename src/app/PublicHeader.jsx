@@ -13,10 +13,7 @@ export function PublicHeader() {
     { label: "Docs", href: "#docs" },
     ...(isAuthenticated
       ? [{ label: "Console", href: APP_HOME, isPrimary: true }]
-      : [
-          { label: "Sign in", href: "/sign-in" },
-          { label: "Get started", href: "/sign-up", isPrimary: true }
-        ]
+      : [{ label: "Get started", href: "/sign-up", isPrimary: true }]
     )
   ]
 
