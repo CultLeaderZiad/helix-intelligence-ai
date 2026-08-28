@@ -99,6 +99,10 @@ export function StatusBar() {
           />
           <span className={cn(STATE_TONE[telemetry.state])}>{telemetry.state}</span>
         </span>
+
+        <span className="hidden items-center gap-1.5 border-l border-border pl-3 font-mono text-[9px] tracking-[0.12em] text-text-faint sm:flex">
+          POWERED BY HELIX
+        </span>
       </span>
     </footer>
   )
