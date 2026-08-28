@@ -1,0 +1,11 @@
+<svg width="240" height="48" viewBox="0 0 240 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Brand Mark -->
+  <rect width="48" height="48" rx="10" fill="#0c0d0e"/>
+  <rect x="0.5" y="0.5" width="47" height="47" rx="9.5" stroke="#222527"/>
+  <path d="M14 15L23 18V33L14 30Z" fill="#ccff00"/>
+  <path d="M26 15L35 18V33L26 30Z" fill="#ffffff" fill-opacity="0.85"/>
+  <path d="M20 21L29 24V27L20 24Z" fill="#ccff00" fill-opacity="0.6"/>
+  <!-- Typography -->
+  <text x="60" y="24" fill="#ffffff" font-family="'JetBrains Mono', monospace" font-size="14" font-weight="700" letter-spacing="0.16em">HELIX</text>
+  <text x="60" y="37" fill="#888888" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="500" letter-spacing="0.2em">INTELLIGENCE</text>
+</svg>

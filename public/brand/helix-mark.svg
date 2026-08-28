@@ -1,0 +1,8 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="64" height="64" rx="14" fill="#0c0d0e"/>
+  <rect x="1" y="1" width="62" height="62" rx="13" stroke="#222527" stroke-width="1.5"/>
+  <!-- Geometric Angled Double Helix Mark -->
+  <path d="M18 20L30 24V44L18 40Z" fill="#ccff00"/>
+  <path d="M34 20L46 24V44L34 40Z" fill="#ffffff" fill-opacity="0.85"/>
+  <path d="M26 28L38 32V36L26 32Z" fill="#ccff00" fill-opacity="0.6"/>
+</svg>

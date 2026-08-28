@@ -41,12 +41,12 @@ export function Sidebar({ onOpenCommand, className }) {
     >
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
         <div className="flex items-center gap-2">
-          <span
-            className="h-2.5 w-2.5 shrink-0 bg-accent"
-            aria-hidden="true"
-            style={{ clipPath: "polygon(0 0, 100% 28%, 100% 100%, 0 72%)" }}
+          <img
+            src="/brand/helix-mark.svg"
+            alt="Helix"
+            className="h-4 w-4 shrink-0 rounded-[3px] object-contain"
           />
-          <span className="truncate text-[13px] font-medium tracking-tight text-text">
+          <span className="truncate text-[13px] font-medium tracking-tight text-text font-mono">
             Helix Intelligence
           </span>
         </div>
