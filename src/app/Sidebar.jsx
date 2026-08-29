@@ -196,7 +196,7 @@ export function Sidebar({ onOpenCommand, className }) {
 
         {user?.role === "admin" && (
           <NavLink
-            to="/admin/overview"
+            to="/admin"
             className={({ isActive }) =>
               cn(
                 "group flex items-center gap-2 rounded-sm px-1.5 py-[7px] text-[13px] transition-colors mt-2 border-t border-border/50 pt-2",

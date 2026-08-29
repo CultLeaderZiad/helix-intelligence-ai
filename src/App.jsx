@@ -12,7 +12,12 @@ import { LandingPage } from "@/pages/LandingPage"
 // ── Lazy-loaded page chunks ──────────────────────────────────────
 // Each dynamic import becomes a separate Vite chunk, loaded only
 // when the user navigates to that route.
-// Components with named exports need { default: X } wrappers.
+//
+// ⚠️  RULE: If a page uses `export function Foo()` (named export),
+//     you MUST wrap the import: .then(m => ({ default: m.Foo }))
+//     If it uses `export default function Foo()`, no wrapper needed.
+//     Forgetting this causes a BLANK PAGE — React.lazy resolves to
+//     undefined when .default is missing. See CreatePage fix.
 const SignInPage = lazy(() => import("@/pages/auth/SignInPage").then(m => ({ default: m.SignInPage })))
 const SignUpPage = lazy(() => import("@/pages/auth/SignUpPage").then(m => ({ default: m.SignUpPage })))
 const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })))
@@ -20,7 +25,7 @@ const DiscoverPage = lazy(() => import("@/pages/DiscoverPage").then(m => ({ defa
 const PendingLoopPage = lazy(() => import("@/pages/PendingLoopPage").then(m => ({ default: m.PendingLoopPage })))
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage").then(m => ({ default: m.NotFoundPage })))
 const SwipeFilesPage = lazy(() => import("@/pages/SwipeFilesPage"))
-const CreatePage = lazy(() => import("@/pages/CreatePage"))
+const CreatePage = lazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
 const BillingPage = lazy(() => import("@/pages/BillingPage"))
 const ApiKeysPage = lazy(() => import("@/pages/ApiKeysPage"))
 const TeamPage = lazy(() => import("@/pages/TeamPage"))
