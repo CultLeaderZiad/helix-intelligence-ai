@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, Navigate, useNavigate } from "react-router-dom"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
@@ -26,6 +26,17 @@ export function SignUpPage() {
   const [errors, setErrors] = useState({})
   const [authError, setAuthError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [isSlow, setIsSlow] = useState(false)
+
+  useEffect(() => {
+    let timer
+    if (submitting) {
+      timer = setTimeout(() => setIsSlow(true), 3000)
+    } else {
+      setIsSlow(false)
+    }
+    return () => clearTimeout(timer)
+  }, [submitting])
 
   if (isAuthenticated) return <Navigate to={APP_HOME} replace />
 
@@ -36,7 +47,7 @@ export function SignUpPage() {
   }
 
   async function onSubmit(event) {
-    event.preventDefault()
+    if (event?.preventDefault) event.preventDefault()
     setAuthError(null)
     const nextErrors = validateSignUp(values)
     setErrors(nextErrors)
@@ -51,11 +62,28 @@ export function SignUpPage() {
       })
       navigate(APP_HOME, { replace: true })
     } catch (err) {
-      setAuthError(
-        err instanceof ServiceError
-          ? err.message
-          : "Sign up failed. Please try again.",
-      )
+      const isColdStart =
+        err?.code === "network_error" ||
+        [502, 503, 504].includes(Number(err?.status))
+
+      if (isColdStart) {
+        setAuthError({
+          status: "waking up",
+          tone: "warning",
+          message: "Starting Helix services… The free-tier backend is spinning up after idle (typically 10–30s). Please retry.",
+          isColdStart: true,
+        })
+      } else {
+        setAuthError({
+          status: "signup failed",
+          tone: "danger",
+          message:
+            err instanceof ServiceError
+              ? err.message
+              : "Sign up failed. Please try again.",
+          isColdStart: false,
+        })
+      }
       setSubmitting(false)
     }
   }
@@ -78,7 +106,26 @@ export function SignUpPage() {
       }
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        {authError ? <FormBanner status="signup failed">{authError}</FormBanner> : null}
+        {authError ? (
+          <FormBanner
+            status={authError.status}
+            tone={authError.tone}
+            action={
+              authError.isColdStart ? (
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={onSubmit}
+                >
+                  Retry
+                </Button>
+              ) : null
+            }
+          >
+            {authError.message}
+          </FormBanner>
+        ) : null}
 
         <AuthField id="name" label="Name" error={errors.name}>
           <Input
@@ -138,7 +185,7 @@ export function SignUpPage() {
           {submitting ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              Creating account…
+              {isSlow ? "Starting Helix services…" : "Creating account…"}
             </>
           ) : (
             <>
@@ -151,3 +198,5 @@ export function SignUpPage() {
     </AuthLayout>
   )
 }
+
+export default SignUpPage

@@ -30,3 +30,5 @@ export function AdminPendingPage({ itemKey }) {
     </div>
   )
 }
+
+export default AdminPendingPage

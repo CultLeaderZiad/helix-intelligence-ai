@@ -11,7 +11,7 @@ import {
   Key 
 } from "lucide-react"
 
-export default function UsersPage() {
+export function UsersPage() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
@@ -179,3 +179,5 @@ export default function UsersPage() {
     </div>
   )
 }
+
+export default UsersPage

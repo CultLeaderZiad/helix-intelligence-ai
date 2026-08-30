@@ -44,5 +44,10 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 @app.get("/")
+@app.get("/health")
 def root():
-    return {"message": "Welcome to Helix API"}
+    return {
+        "status": "ok",
+        "service": "helix-backend",
+        "message": "Welcome to Helix API. Service is online.",
+    }

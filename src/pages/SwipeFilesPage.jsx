@@ -14,7 +14,7 @@ import {
   Image as ImageIcon 
 } from "lucide-react"
 
-export default function SwipeFilesPage() {
+export function SwipeFilesPage() {
   const { user } = useAuth()
   const [creatives, setCreatives] = useState([])
   const [loading, setLoading] = useState(true)
@@ -173,3 +173,5 @@ export default function SwipeFilesPage() {
     </div>
   )
 }
+
+export default SwipeFilesPage

@@ -1,19 +1,28 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter
 from sqlalchemy import text
+import asyncio
 import os
-from app.core.deps import get_db
+from app.db.session import async_session_maker
 from app.core.config import settings
 
 router = APIRouter()
 
 @router.get("")
 @router.get("/")
-async def health_check(db: AsyncSession = Depends(get_db)):
-    db_status = "connected"
+async def health_check():
+    db_status = "unknown"
     db_error = None
     try:
-        await db.execute(text("SELECT 1"))
+        async def _ping_db():
+            async with async_session_maker() as session:
+                await session.execute(text("SELECT 1"))
+
+        # Strict 2.5s timeout: return fast 200 OK even if Neon is cold starting
+        await asyncio.wait_for(_ping_db(), timeout=2.5)
+        db_status = "connected"
+    except (asyncio.TimeoutError, TimeoutError):
+        db_status = "waking_up"
+        db_error = "Database ping timed out (Neon sleeping / cold starting)"
     except Exception as e:
         db_status = "disconnected"
         db_error = str(e)
@@ -28,15 +37,17 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         "META_ACCESS_TOKEN": bool(settings.META_ACCESS_TOKEN or os.getenv("META_ACCESS_TOKEN")),
         "BRIGHTDATA_API_KEY": bool(settings.BRIGHTDATA_API_KEY or os.getenv("BRIGHTDATA_API_KEY")),
         "JWT_SECRET": bool(settings.SECRET_KEY or os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET")),
-        "USE_MOCKS": settings.USE_MOCKS
+        "USE_MOCKS": settings.USE_MOCKS,
     }
 
     response = {
-        "status": "ok" if db_status == "connected" else "error",
+        "status": "ok",
+        "service": "helix-backend",
         "db": db_status,
-        "env_vars": env_diagnostics
+        "env_vars": env_diagnostics,
     }
     if db_error:
-        response["detail"] = db_error
-        
+        response["db_detail"] = db_error
+
     return response
+

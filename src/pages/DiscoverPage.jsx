@@ -281,3 +281,5 @@ export function DiscoverPage() {
     </div>
   )
 }
+
+export default DiscoverPage

@@ -121,20 +121,30 @@ export function EmptyState({
 }
 
 export function ErrorState({ error, onRetry, className, description }) {
-  const message =
-    error?.message ?? "The request failed for a reason the client did not recognise."
+  const isColdStart =
+    error?.code === "network_error" ||
+    [502, 503, 504].includes(Number(error?.status))
+
+  const status = isColdStart ? "starting services" : "request failed"
+  const statusTone = isColdStart ? "text-amber-500" : "text-danger"
+  const title = isColdStart
+    ? "Starting Helix services…"
+    : (error?.message ?? "The request failed for a reason the client did not recognise.")
   const code = error?.code ?? error?.status
+  const defaultDesc = isColdStart
+    ? "The free-tier backend services are spinning up after being idle (first request typically takes 10–30s). Click Retry to connect."
+    : "Nothing was written and no partial set was kept. Retrying re-runs the same request with the same parameters."
 
   return (
     <StateFrame
-      status="request failed"
-      statusTone="text-danger"
+      status={status}
+      statusTone={statusTone}
       meta={code ? String(code) : null}
-      title={message}
-      description={description ?? "Nothing was written and no partial set was kept. Retrying re-runs the same request with the same parameters."}
+      title={title}
+      description={description ?? defaultDesc}
       action={
         onRetry ? (
-          <Button size="sm" variant="outline" onClick={onRetry}>
+          <Button size="sm" variant={isColdStart ? "primary" : "outline"} onClick={onRetry}>
             Retry
           </Button>
         ) : null

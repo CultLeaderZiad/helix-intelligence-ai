@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
@@ -28,6 +28,17 @@ export function SignInPage() {
   const [errors, setErrors] = useState({})
   const [authError, setAuthError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [isSlow, setIsSlow] = useState(false)
+
+  useEffect(() => {
+    let timer
+    if (submitting) {
+      timer = setTimeout(() => setIsSlow(true), 3000)
+    } else {
+      setIsSlow(false)
+    }
+    return () => clearTimeout(timer)
+  }, [submitting])
 
   /* Already signed in? Never show the form — go where they were headed. */
   if (isAuthenticated) return <Navigate to={redirectTo} replace />
@@ -39,7 +50,7 @@ export function SignInPage() {
   }
 
   async function onSubmit(event) {
-    event.preventDefault()
+    if (event?.preventDefault) event.preventDefault()
     setAuthError(null)
     const nextErrors = validateSignIn(values)
     setErrors(nextErrors)
@@ -57,11 +68,28 @@ export function SignInPage() {
       
       navigate(finalRedirect, { replace: true })
     } catch (err) {
-      setAuthError(
-        err instanceof ServiceError
-          ? err.message
-          : "Sign in failed. Please try again.",
-      )
+      const isColdStart =
+        err?.code === "network_error" ||
+        [502, 503, 504].includes(Number(err?.status))
+
+      if (isColdStart) {
+        setAuthError({
+          status: "waking up",
+          tone: "warning",
+          message: "Starting Helix services… The free-tier backend is spinning up after idle (typically 10–30s). Please retry.",
+          isColdStart: true,
+        })
+      } else {
+        setAuthError({
+          status: "auth failed",
+          tone: "danger",
+          message:
+            err instanceof ServiceError
+              ? err.message
+              : "Sign in failed. Please try again.",
+          isColdStart: false,
+        })
+      }
       setSubmitting(false)
     }
   }
@@ -84,7 +112,26 @@ export function SignInPage() {
       }
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-        {authError ? <FormBanner status="auth failed">{authError}</FormBanner> : null}
+        {authError ? (
+          <FormBanner
+            status={authError.status}
+            tone={authError.tone}
+            action={
+              authError.isColdStart ? (
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={onSubmit}
+                >
+                  Retry
+                </Button>
+              ) : null
+            }
+          >
+            {authError.message}
+          </FormBanner>
+        ) : null}
 
         <AuthField id="email" label="Email" error={errors.email}>
           <Input
@@ -139,7 +186,7 @@ export function SignInPage() {
           {submitting ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              Signing in…
+              {isSlow ? "Starting Helix services…" : "Signing in…"}
             </>
           ) : (
             <>
@@ -172,3 +219,5 @@ export function SignInPage() {
     </AuthLayout>
   )
 }
+
+export default SignInPage

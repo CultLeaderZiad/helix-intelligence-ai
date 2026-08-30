@@ -13,30 +13,34 @@ import { LandingPage } from "@/pages/LandingPage"
 // Each dynamic import becomes a separate Vite chunk, loaded only
 // when the user navigates to that route.
 //
-// ⚠️  RULE: If a page uses `export function Foo()` (named export),
-//     you MUST wrap the import: .then(m => ({ default: m.Foo }))
-//     If it uses `export default function Foo()`, no wrapper needed.
-//     Forgetting this causes a BLANK PAGE — React.lazy resolves to
-//     undefined when .default is missing. See CreatePage fix.
+// 📐 PROJECT CONVENTION & RULE FOR CONTRIBUTORS / AGENTS:
+// Every page component must use named exports: `export function PageName() { ... }`
+// Every React.lazy() import in App.jsx MUST use an explicit .then() mapper:
+//   const PageName = lazy(() => import("@/pages/PageName").then(m => ({ default: m.PageName })))
+//
+// ⚠️ NEVER rely on bare `lazy(() => import("@/pages/..."))` without .then()
+// React.lazy expects `{ default: Component }`. Bare dynamic imports with named exports
+// return undefined for `.default`, causing a blank screen at runtime without build errors.
+// All pages also export a default export fallback for maximum resilience.
 const SignInPage = lazy(() => import("@/pages/auth/SignInPage").then(m => ({ default: m.SignInPage })))
 const SignUpPage = lazy(() => import("@/pages/auth/SignUpPage").then(m => ({ default: m.SignUpPage })))
 const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })))
 const DiscoverPage = lazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
 const PendingLoopPage = lazy(() => import("@/pages/PendingLoopPage").then(m => ({ default: m.PendingLoopPage })))
 const NotFoundPage = lazy(() => import("@/pages/NotFoundPage").then(m => ({ default: m.NotFoundPage })))
-const SwipeFilesPage = lazy(() => import("@/pages/SwipeFilesPage"))
+const SwipeFilesPage = lazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
 const CreatePage = lazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
-const BillingPage = lazy(() => import("@/pages/BillingPage"))
-const ApiKeysPage = lazy(() => import("@/pages/ApiKeysPage"))
-const TeamPage = lazy(() => import("@/pages/TeamPage"))
+const BillingPage = lazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
+const ApiKeysPage = lazy(() => import("@/pages/ApiKeysPage").then(m => ({ default: m.ApiKeysPage })))
+const TeamPage = lazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamPage })))
 const OverviewPage = lazy(() => import("@/pages/admin/OverviewPage").then(m => ({ default: m.OverviewPage })))
 const AdminPendingPage = lazy(() => import("@/pages/admin/AdminPendingPage").then(m => ({ default: m.AdminPendingPage })))
-const OrganizationsPage = lazy(() => import("@/pages/admin/OrganizationsPage"))
-const SubscriptionsPlansPage = lazy(() => import("@/pages/admin/SubscriptionsPlansPage"))
-const UsagePage = lazy(() => import("@/pages/admin/UsagePage"))
-const FeatureFlagsPage = lazy(() => import("@/pages/admin/FeatureFlagsPage"))
-const UsersPage = lazy(() => import("@/pages/admin/UsersPage"))
-const UpdatesPage = lazy(() => import("@/pages/admin/UpdatesPage"))
+const OrganizationsPage = lazy(() => import("@/pages/admin/OrganizationsPage").then(m => ({ default: m.OrganizationsPage })))
+const SubscriptionsPlansPage = lazy(() => import("@/pages/admin/SubscriptionsPlansPage").then(m => ({ default: m.SubscriptionsPlansPage })))
+const UsagePage = lazy(() => import("@/pages/admin/UsagePage").then(m => ({ default: m.UsagePage })))
+const FeatureFlagsPage = lazy(() => import("@/pages/admin/FeatureFlagsPage").then(m => ({ default: m.FeatureFlagsPage })))
+const UsersPage = lazy(() => import("@/pages/admin/UsersPage").then(m => ({ default: m.UsersPage })))
+const UpdatesPage = lazy(() => import("@/pages/admin/UpdatesPage").then(m => ({ default: m.UpdatesPage })))
 
 /**
  * Root component. Deliberately thin: it mounts shell-level providers,

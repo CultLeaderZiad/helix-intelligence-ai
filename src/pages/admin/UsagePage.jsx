@@ -12,7 +12,7 @@ import {
   Search
 } from "lucide-react"
 
-export default function UsagePage() {
+export function UsagePage() {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -220,3 +220,5 @@ export default function UsagePage() {
     </div>
   )
 }
+
+export default UsagePage

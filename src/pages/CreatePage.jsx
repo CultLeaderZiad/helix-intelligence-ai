@@ -379,3 +379,5 @@ export function CreatePage() {
     </div>
   )
 }
+
+export default CreatePage

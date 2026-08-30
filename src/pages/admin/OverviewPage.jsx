@@ -154,3 +154,5 @@ function HealthSkeleton() {
     </div>
   )
 }
+
+export default OverviewPage
