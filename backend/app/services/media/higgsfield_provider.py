@@ -1,25 +1,24 @@
 import httpx
 import logging
 from urllib.parse import quote
-from typing import Any, Optional
+from typing import Any, Optional, Dict, List
 from app.core.config import settings
+from app.services.media.higgsfield_registry import (
+    get_base_url,
+    resolve_capability,
+    resolve_endpoint_url,
+    list_available_capabilities,
+    SEMANTIC_CAPABILITIES,
+)
 
 logger = logging.getLogger(__name__)
-
-# Official base URL (docs quickstart: https://docs.higgsfield.ai/docs/quickstart)
-from app.services.media.higgsfield_registry import (
-    HF_API_BASE,
-    resolve_mode_spec,
-    resolve_endpoint_url,
-    MODEL_REGISTRY,
-)
 
 class HiggsfieldProvider:
     def __init__(self):
         raw_key_id = (getattr(settings, "HF_API_KEY_ID", "") or "").strip().strip('"\'')
         raw_key_secret = (getattr(settings, "HF_API_KEY_SECRET", "") or "").strip().strip('"\'')
         
-        # If user entered key_id:key_secret together in one field
+        # Handle case where key_id:key_secret was passed in a single variable
         if ":" in raw_key_id and not raw_key_secret:
             parts = raw_key_id.split(":", 1)
             raw_key_id = parts[0].strip()
@@ -27,15 +26,19 @@ class HiggsfieldProvider:
 
         self.key_id = raw_key_id
         self.key_secret = raw_key_secret
+        self.base_url = get_base_url()
+
+    @property
+    def is_configured(self) -> bool:
+        return bool(self.key_id and self.key_secret)
 
     @property
     def headers(self) -> dict:
-        if not self.key_id or not self.key_secret:
+        if not self.is_configured:
             raise ValueError(
                 "Higgsfield API credentials not configured. Please verify HF_API_KEY_ID and HF_API_KEY_SECRET on Render."
             )
         # Official Auth format: Authorization: Key {HF_API_KEY_ID}:{HF_API_KEY_SECRET} (NOT Bearer)
-        # We also pass the hf-api-key and hf-secret headers for universal gateway compatibility
         return {
             "Authorization": f"Key {self.key_id}:{self.key_secret}",
             "hf-api-key": self.key_id,
@@ -44,10 +47,69 @@ class HiggsfieldProvider:
             "Accept": "application/json",
         }
 
-    def _resolve_endpoint(self, parameters: dict) -> str:
-        mode = (parameters or {}).get("mode") or (parameters or {}).get("model") or (parameters or {}).get("kind")
-        mode_spec = resolve_mode_spec(mode)
-        return resolve_endpoint_url(mode_spec)
+    async def get_health(self) -> Dict[str, Any]:
+        """
+        Diagnostic check against {HIGGSFIELD_BASE_URL}/models.
+        Never leaks raw keys or headers.
+        """
+        if not self.is_configured:
+            return {
+                "provider": "higgsfield",
+                "configured": False,
+                "authenticated": False,
+                "base_url": self.base_url,
+                "error": "Missing HF_API_KEY_ID or HF_API_KEY_SECRET"
+            }
+
+        endpoint = f"{self.base_url}/models"
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(endpoint, headers=self.headers, timeout=12.0)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    models_list = data if isinstance(data, list) else data.get("models", data.get("data", []))
+                    
+                    sanitized_models = []
+                    for m in models_list:
+                        if isinstance(m, dict):
+                            sanitized_models.append({
+                                "slug": m.get("slug") or m.get("id") or m.get("name"),
+                                "name": m.get("name") or m.get("title") or m.get("slug"),
+                                "type": m.get("type") or m.get("operation_type"),
+                            })
+                        elif isinstance(m, str):
+                            sanitized_models.append({"slug": m, "name": m})
+
+                    return {
+                        "provider": "higgsfield",
+                        "configured": True,
+                        "authenticated": True,
+                        "base_url": self.base_url,
+                        "model_count": len(models_list),
+                        "available_models": sanitized_models or list_available_capabilities()
+                    }
+                else:
+                    return {
+                        "provider": "higgsfield",
+                        "configured": True,
+                        "authenticated": False,
+                        "status_code": resp.status_code,
+                        "base_url": self.base_url,
+                        "error": resp.text[:200]
+                    }
+        except Exception as e:
+            logger.error("Higgsfield health check error: %s", str(e))
+            return {
+                "provider": "higgsfield",
+                "configured": True,
+                "authenticated": False,
+                "base_url": self.base_url,
+                "error": str(e)
+            }
+
+    async def list_models(self) -> List[Dict[str, Any]]:
+        """Returns catalog of supported semantic capabilities."""
+        return list_available_capabilities()
 
     async def generate_media(
         self,
@@ -56,31 +118,34 @@ class HiggsfieldProvider:
         webhook_url: Optional[str] = None,
     ) -> str:
         """
-        Submit generation. Returns request_id.
-        Webhook is passed as ?hf_webhook= per official docs.
+        Submit media generation to Higgsfield. Returns provider request_id.
         """
         parameters = parameters or {}
-        mode = parameters.get("mode") or parameters.get("model") or parameters.get("kind")
-        mode_spec = resolve_mode_spec(mode)
-        url = resolve_endpoint_url(mode_spec)
+        mode_or_cap = (
+            parameters.get("capability") or 
+            parameters.get("mode") or 
+            parameters.get("model") or 
+            parameters.get("kind")
+        )
+        cap_spec = resolve_capability(mode_or_cap)
+        url = resolve_endpoint_url(cap_spec)
 
+        # Append webhook URL if provided
         if webhook_url:
-            url = f"{url}?hf_webhook={quote(webhook_url, safe='')}"
+            separator = "&" if "?" in url else "?"
+            url = f"{url}{separator}hf_webhook={quote(webhook_url, safe='')}"
 
-        # Build payload with model defaults and user overrides
-        body: dict[str, Any] = {"prompt": prompt}
-        
-        # Merge default params from mode spec
-        for k, v in mode_spec.get("default_params", {}).items():
+        # Payload construction
+        body: Dict[str, Any] = {"prompt": prompt}
+        for k, v in cap_spec.get("default_params", {}).items():
             body[k] = v
 
-        # User overrides and passthroughs
         for key in (
-            "seed", 
-            "aspect_ratio", 
-            "duration", 
-            "image_url", 
-            "start_image_url", 
+            "seed",
+            "aspect_ratio",
+            "duration",
+            "image_url",
+            "start_image_url",
             "end_image_url",
             "batch_size",
             "quality",
@@ -95,7 +160,10 @@ class HiggsfieldProvider:
             )
             if resp.status_code >= 400:
                 logger.error(
-                    "Higgsfield submit failed with HTTP %s: %s", resp.status_code, resp.text
+                    "Higgsfield generation failed [%s] on %s: %s",
+                    resp.status_code,
+                    url,
+                    resp.text
                 )
                 resp.raise_for_status()
 
@@ -103,21 +171,20 @@ class HiggsfieldProvider:
             request_id = data.get("request_id")
             if not request_id:
                 raise ValueError(f"No request_id returned from Higgsfield: {data}")
-            logger.info("Higgsfield generation successfully queued with request_id=%s", request_id)
+            
+            logger.info("Higgsfield generation queued successfully with request_id=%s", request_id)
             return request_id
 
     async def check_status(self, request_id: str) -> dict:
         """
-        Poll GET /requests/{id}/status.
-        Returns { status, url?, raw }.
-        Status endpoint may put images at top-level; webhooks nest under payload.
+        Poll GET {HIGGSFIELD_BASE_URL}/requests/{request_id}/status
         """
-        endpoint = f"{HF_API_BASE}/requests/{request_id}/status"
+        endpoint = f"{self.base_url}/requests/{request_id}/status"
         async with httpx.AsyncClient() as client:
             resp = await client.get(endpoint, headers=self.headers, timeout=30.0)
             if resp.status_code >= 400:
                 logger.error(
-                    "Higgsfield status check failed with HTTP %s: %s", resp.status_code, resp.text
+                    "Higgsfield status check failed [%s]: %s", resp.status_code, resp.text
                 )
                 resp.raise_for_status()
 
@@ -125,10 +192,8 @@ class HiggsfieldProvider:
             status = data.get("status")
             result: dict[str, Any] = {"status": status, "raw": data}
 
-            # Status API shape (quickstart): top-level images[]
             images = data.get("images") or []
             video = data.get("video")
-            # Some responses nest under payload
             nested = data.get("payload") or {}
             if not images and isinstance(nested, dict):
                 images = nested.get("images") or []
@@ -139,5 +204,7 @@ class HiggsfieldProvider:
                     result["url"] = images[0]["url"]
                 elif isinstance(video, dict) and video.get("url"):
                     result["url"] = video["url"]
+                elif isinstance(data.get("url"), str):
+                    result["url"] = data["url"]
 
             return result
