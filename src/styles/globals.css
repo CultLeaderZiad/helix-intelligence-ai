@@ -5,40 +5,40 @@
 
 /* ============================================================
    HELIX INTELLIGENCE — DESIGN TOKENS
-   Single dark theme. Instrument-grade, dense, rectangular.
-   No light mode. No gradients. One accent, used sparingly.
+   Single dark theme. Instrument-grade, dense, crisp, high-contrast.
+   Enhanced typography: crystal clear, zero blurriness, legible.
    ============================================================ */
 
 @theme {
   /* --- Surfaces (deepest -> raised) --- */
-  --color-bg: #0a0a0a;
-  --color-surface: #111111;
-  --color-surface-2: #171717;
-  --color-surface-3: #1e1e1e;
+  --color-bg: #09090b;
+  --color-surface: #111115;
+  --color-surface-2: #18181f;
+  --color-surface-3: #22222b;
 
   /* --- Lines --- */
-  --color-border: #242424;
-  --color-border-strong: #333333;
+  --color-border: #2a2a35;
+  --color-border-strong: #3f3f4e;
 
-  /* --- Text --- */
-  --color-text: #f5f5f5;
-  --color-text-muted: #8a8a8a;
-  --color-text-faint: #5c5c5c;
+  /* --- Text (High-contrast, crisp, non-blurry) --- */
+  --color-text: #ffffff;
+  --color-text-muted: #cbd5e1;
+  --color-text-faint: #94a3b8;
 
   /* --- Single accent --- */
   --color-accent: #d7ff4f;
   --color-accent-dim: #a8c93e;
-  --color-accent-wash: rgba(215, 255, 79, 0.08);
+  --color-accent-wash: rgba(215, 255, 79, 0.12);
 
-  /* --- Status (functional only, never decorative) --- */
+  /* --- Status (functional only, high visibility) --- */
   --color-success: #4ade80;
   --color-warning: #fbbf24;
-  --color-danger: #ff5c5c;
+  --color-danger: #f87171;
   --color-info: #60a5fa;
 
   /* --- Type --- */
-  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+  --font-sans: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* --- Radii: near-rectangular by decree --- */
   --radius-none: 0px;
@@ -48,7 +48,7 @@
   --radius-lg: 8px;
 
   /* --- Shell metrics (single source of truth) --- */
-  --spacing-rail: 13rem;
+  --spacing-rail: 13.5rem;
   --spacing-rail-collapsed: 3.25rem;
   --spacing-topbar: 3rem;
   --spacing-statusbar: 1.75rem;
@@ -71,8 +71,10 @@
     font-family: var(--font-sans);
     font-feature-settings: "cv05" 1, "ss03" 1;
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     overscroll-behavior: none;
+    line-height: 1.5;
   }
 
   /* Numeric data must never shift width */
@@ -93,19 +95,19 @@
 
   /* Thin instrument scrollbars */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2a2a2a;
-    border: 3px solid var(--color-bg);
+    background: #33333f;
+    border: 2px solid var(--color-bg);
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #3a3a3a;
+    background: #474757;
   }
   ::-webkit-scrollbar-corner {
     background: transparent;
@@ -113,20 +115,21 @@
 }
 
 @layer utilities {
-  /* Uppercase mono micro-label — the workhorse of this UI */
+  /* Uppercase mono micro-label — readable, crisp font metrics */
   .label-mono {
     font-family: var(--font-mono);
-    font-size: 10px;
-    line-height: 1;
-    letter-spacing: 0.08em;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--color-text-muted);
   }
 
   /* 1px hairline grid backdrop for empty regions */
   .grid-backdrop {
-    background-image: linear-gradient(to right, #171717 1px, transparent 1px),
-      linear-gradient(to bottom, #171717 1px, transparent 1px);
+    background-image: linear-gradient(to right, #181822 1px, transparent 1px),
+      linear-gradient(to bottom, #181822 1px, transparent 1px);
     background-size: 32px 32px;
   }
 
@@ -143,8 +146,7 @@
     );
   }
 
-  /* Quick fade for transient overlays (e.g. the mobile nav panel). No
-     slide, no bounce — a single opacity ramp, by decree. */
+  /* Quick fade for transient overlays */
   .animate-fade {
     animation: helix-fade 150ms ease-out;
   }
@@ -190,12 +192,13 @@
   border-radius: var(--radius);
   padding: 16px;
   font-family: var(--font-sans);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 
 .helixa-driver-theme .driver-popover-title {
   font-family: var(--font-mono);
   font-size: 14px;
+  font-weight: 600;
   color: var(--color-text);
   margin-bottom: 8px;
   text-transform: uppercase;
@@ -227,6 +230,7 @@
   text-shadow: none;
   font-family: var(--font-mono);
   font-size: 11px;
+  font-weight: 600;
   border-radius: var(--radius-sm);
   padding: 6px 12px;
   transition: all 0.15s ease;

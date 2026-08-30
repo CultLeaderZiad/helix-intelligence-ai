@@ -74,8 +74,8 @@ class Settings(BaseSettings):
     APIFY_API_TOKEN: str = os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")
     AIHUBMIX_API_KEY: str = os.getenv("AIHUBMIX_API_KEY", "")
     TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
-    HF_API_KEY_ID: str = os.getenv("HF_API_KEY_ID", "")
-    HF_API_KEY_SECRET: str = os.getenv("HF_API_KEY_SECRET", "")
+    HF_API_KEY_ID: str = os.getenv("HF_API_KEY_ID", "") or os.getenv("HIGGSFIELD_API_KEY_ID", "") or os.getenv("HIGGSFIELD_API_KEY", "")
+    HF_API_KEY_SECRET: str = os.getenv("HF_API_KEY_SECRET", "") or os.getenv("HIGGSFIELD_API_KEY_SECRET", "") or os.getenv("HIGGSFIELD_API_SECRET", "") or os.getenv("HIGGSFIELD_SECRET", "")
     # Public API origin used to build Higgsfield webhook URLs (no trailing slash issues)
     PUBLIC_API_BASE_URL: str = os.getenv(
         "PUBLIC_API_BASE_URL",

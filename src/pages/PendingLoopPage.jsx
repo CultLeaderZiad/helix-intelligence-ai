@@ -31,3 +31,5 @@ export function PendingLoopPage({ sectionKey }) {
     </div>
   )
 }
+
+export default PendingLoopPage

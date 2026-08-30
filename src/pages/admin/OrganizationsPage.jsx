@@ -13,7 +13,7 @@ import {
   ShieldAlert
 } from "lucide-react"
 
-export default function OrganizationsPage() {
+export function OrganizationsPage() {
   const [orgs, setOrgs] = useState([])
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
@@ -427,3 +427,5 @@ export default function OrganizationsPage() {
     </div>
   )
 }
+
+export default OrganizationsPage

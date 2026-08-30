@@ -39,8 +39,13 @@ const EMPTY_FILTERS = {
  * rail to say so out loud.
  * ============================================================
  */
+import { useSearchContext } from "@/context/SearchContext"
+import { useLanguage } from "@/context/LanguageContext"
+
 export function DiscoverPage() {
-  const [query, setQuery] = useState("")
+  const { latestSearch, saveCompletedSearch, selectActiveCreative } = useSearchContext()
+  const { t } = useLanguage()
+  const [query, setQuery] = useState(() => latestSearch?.query || "")
   const [sort, setSort] = useState("composite_desc")
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS)
@@ -67,6 +72,27 @@ export function DiscoverPage() {
       (draftFilters.min_days_active > 0 ? 1 : 0),
     [draftFilters],
   )
+
+  /* Sync completed search results with SearchContext across tabs */
+  useEffect(() => {
+    if (phase === PHASE.READY && results && query) {
+      saveCompletedSearch({
+        query: query.trim(),
+        jobId: job?.job_id,
+        total: results.total,
+        items: results.items,
+        tookMs: results.took_ms,
+      })
+    }
+  }, [phase, results, query, job?.job_id, saveCompletedSearch])
+
+  /* Sync active creative */
+  useEffect(() => {
+    if (selectedId && results?.items) {
+      const active = results.items.find((i) => i.id === selectedId)
+      if (active) selectActiveCreative(active)
+    }
+  }, [selectedId, results?.items, selectActiveCreative])
 
   /* Publish measured values into the shell's instrument strip. */
   useEffect(() => {
@@ -115,13 +141,13 @@ export function DiscoverPage() {
         trail={["Helix", "Discover"]}
         meta={
           phase === PHASE.READY && results
-            ? `${formatInt(results.total)} ${results.total === 1 ? "record" : "records"} · ${formatDuration(results.took_ms)}`
-            : "no result set"
+            ? `${formatInt(results.total)} ${results.total === 1 ? t("record", "record") : t("records", "records")} · ${formatDuration(results.took_ms)}`
+            : t("noResultSet", "no result set")
         }
         actions={
           phase === PHASE.READY ? (
             <Button size="xs" variant="ghost" onClick={cancel}>
-              Clear set
+              {t("clearSet", "Clear set")}
             </Button>
           ) : null
         }
@@ -281,3 +307,5 @@ export function DiscoverPage() {
     </div>
   )
 }
+
+export default DiscoverPage

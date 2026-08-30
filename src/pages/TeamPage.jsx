@@ -12,7 +12,7 @@ import {
   Copy 
 } from "lucide-react"
 
-export default function TeamPage() {
+export function TeamPage() {
   const { user } = useAuth()
   const [team, setTeam] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -277,3 +277,5 @@ export default function TeamPage() {
     </div>
   )
 }
+
+export default TeamPage

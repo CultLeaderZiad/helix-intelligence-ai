@@ -11,7 +11,7 @@ import {
   ShieldCheck 
 } from "lucide-react"
 
-export default function SubscriptionsPlansPage() {
+export function SubscriptionsPlansPage() {
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -288,3 +288,5 @@ export default function SubscriptionsPlansPage() {
     </div>
   )
 }
+
+export default SubscriptionsPlansPage

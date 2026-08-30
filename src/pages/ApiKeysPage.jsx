@@ -12,7 +12,7 @@ import {
   Code2 
 } from "lucide-react"
 
-export default function ApiKeysPage() {
+export function ApiKeysPage() {
   const { user } = useAuth()
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
@@ -257,3 +257,5 @@ export default function ApiKeysPage() {
     </div>
   )
 }
+
+export default ApiKeysPage

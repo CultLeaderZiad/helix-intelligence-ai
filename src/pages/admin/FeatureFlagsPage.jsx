@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { adminService } from "@/services"
 import { Flag, Sliders, CheckCircle2, RefreshCw, ShieldCheck, Zap } from "lucide-react"
 
-export default function FeatureFlagsPage() {
+export function FeatureFlagsPage() {
   const [plans, setPlans] = useState([])
   const [orgs, setOrgs] = useState([])
   const [loading, setLoading] = useState(true)
@@ -152,3 +152,5 @@ export default function FeatureFlagsPage() {
     </div>
   )
 }
+
+export default FeatureFlagsPage

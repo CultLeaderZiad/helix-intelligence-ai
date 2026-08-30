@@ -6,8 +6,7 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Official base (docs quickstart). platform.higgsfield.ai also seen in some clients;
-# prefer api.higgsfield.ai for new integrations.
+# Official base URL (docs quickstart: https://docs.higgsfield.ai/docs/quickstart)
 from app.services.media.higgsfield_registry import (
     HF_API_BASE,
     resolve_mode_spec,
@@ -17,18 +16,30 @@ from app.services.media.higgsfield_registry import (
 
 class HiggsfieldProvider:
     def __init__(self):
-        self.key_id = settings.HF_API_KEY_ID
-        self.key_secret = settings.HF_API_KEY_SECRET
+        raw_key_id = (getattr(settings, "HF_API_KEY_ID", "") or "").strip().strip('"\'')
+        raw_key_secret = (getattr(settings, "HF_API_KEY_SECRET", "") or "").strip().strip('"\'')
+        
+        # If user entered key_id:key_secret together in one field
+        if ":" in raw_key_id and not raw_key_secret:
+            parts = raw_key_id.split(":", 1)
+            raw_key_id = parts[0].strip()
+            raw_key_secret = parts[1].strip()
+
+        self.key_id = raw_key_id
+        self.key_secret = raw_key_secret
 
     @property
     def headers(self) -> dict:
         if not self.key_id or not self.key_secret:
             raise ValueError(
-                "Higgsfield API credentials not configured "
-                "(HF_API_KEY_ID / HF_API_KEY_SECRET)"
+                "Higgsfield API credentials not configured. Please verify HF_API_KEY_ID and HF_API_KEY_SECRET on Render."
             )
+        # Official Auth format: Authorization: Key {HF_API_KEY_ID}:{HF_API_KEY_SECRET} (NOT Bearer)
+        # We also pass the hf-api-key and hf-secret headers for universal gateway compatibility
         return {
             "Authorization": f"Key {self.key_id}:{self.key_secret}",
+            "hf-api-key": self.key_id,
+            "hf-secret": self.key_secret,
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
@@ -84,15 +95,15 @@ class HiggsfieldProvider:
             )
             if resp.status_code >= 400:
                 logger.error(
-                    "Higgsfield submit failed: %s %s", resp.status_code, resp.text
+                    "Higgsfield submit failed with HTTP %s: %s", resp.status_code, resp.text
                 )
                 resp.raise_for_status()
 
             data = resp.json()
             request_id = data.get("request_id")
             if not request_id:
-                raise ValueError(f"No request_id from Higgsfield: {data}")
-            logger.info("Higgsfield queued request_id=%s", request_id)
+                raise ValueError(f"No request_id returned from Higgsfield: {data}")
+            logger.info("Higgsfield generation successfully queued with request_id=%s", request_id)
             return request_id
 
     async def check_status(self, request_id: str) -> dict:
@@ -106,7 +117,7 @@ class HiggsfieldProvider:
             resp = await client.get(endpoint, headers=self.headers, timeout=30.0)
             if resp.status_code >= 400:
                 logger.error(
-                    "Higgsfield status failed: %s %s", resp.status_code, resp.text
+                    "Higgsfield status check failed with HTTP %s: %s", resp.status_code, resp.text
                 )
                 resp.raise_for_status()
 
@@ -124,7 +135,7 @@ class HiggsfieldProvider:
                 video = video or nested.get("video")
 
             if status == "completed":
-                if images and isinstance(images, list) and images[0].get("url"):
+                if images and isinstance(images, list) and isinstance(images[0], dict) and images[0].get("url"):
                     result["url"] = images[0]["url"]
                 elif isinstance(video, dict) and video.get("url"):
                     result["url"] = video["url"]

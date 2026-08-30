@@ -22,8 +22,19 @@ with no prior context on this conversation.
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Frontend stack, project structure, component architecture, the page → hook → service contract, data models |
 | [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) | Design tokens, typography, spacing, motion rules, accent discipline, anti-patterns that must not be reintroduced |
 | [`API_CONTRACTS.md`](./API_CONTRACTS.md) | The mock ⇄ future-FastAPI service contracts, request/response shapes, how the data boundary works |
-| [`DEVELOPMENT.md`](./DEVELOPMENT.md) | How to run locally, how to build, environment variables, known TODOs, PLANNED integrations |
+| [`DEVELOPMENT.md`](./DEVELOPMENT.md) | How to run locally, how to build, environment variables, known TODOs, PLANNED integrations, status reporting rules |
+
+## Status & Reporting Rules
+
+**Rule**: Never claim “zero bugs,” “fully functional,” or “production healthy” from code inspection alone.
+
+When reporting status, changes, or PRs:
+1. **What changed** (files modified)
+2. **What was verified** (browser / curl / unit tests / none)
+3. **What remains unverified** (production / end-to-end flows not yet tested)
+4. **P0 next step only**
 
 `main` will automatically deploy.
 
 [Continue working on v0 →](https://v0.app/chat/projects/prj_EHmR27b76XzctNqInu1YZp1CDzTB)
+

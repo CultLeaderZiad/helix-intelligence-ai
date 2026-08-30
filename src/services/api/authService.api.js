@@ -59,8 +59,9 @@ const authService = {
   /**
    * Resolve the persisted session from the stored Bearer token.
    * Returns null (not throws) when unauthenticated — that is normal.
+   * Retries once automatically after 2.5s on network error (free tier cold start).
    */
-  async getSession() {
+  async getSession(isRetry = false) {
     const token = getStoredToken()
     if (!token) return null
 
@@ -70,6 +71,12 @@ const authService = {
     } catch (err) {
       if (err?.status === 401 || err?.status === 403) {
         clearToken()
+        return null
+      }
+      // Retry once automatically on network error / gateway timeout during cold start
+      if (!isRetry && (err?.code === "network_error" || [502, 503, 504].includes(err?.status))) {
+        await new Promise((resolve) => setTimeout(resolve, 2500))
+        return this.getSession(true)
       }
       return null
     }

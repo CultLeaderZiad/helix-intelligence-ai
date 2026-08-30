@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Field"
 import { cn } from "@/lib/utils"
 
-export default function UpdatesPage() {
+export function UpdatesPage() {
   const [updates, setUpdates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -467,3 +467,5 @@ export default function UpdatesPage() {
     </div>
   )
 }
+
+export default UpdatesPage

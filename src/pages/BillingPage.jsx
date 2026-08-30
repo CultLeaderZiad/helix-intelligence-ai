@@ -12,7 +12,7 @@ import {
   ShieldCheck 
 } from "lucide-react"
 
-export default function BillingPage() {
+export function BillingPage() {
   const [billing, setBilling] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -181,3 +181,5 @@ export default function BillingPage() {
     </div>
   )
 }
+
+export default BillingPage

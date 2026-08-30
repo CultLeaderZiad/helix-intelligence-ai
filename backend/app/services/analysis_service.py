@@ -1,29 +1,48 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from fastapi import HTTPException
+import datetime
+
 from app.schemas.analysis import Insight
 from app.models.ai_insight import AIInsight
 from app.models.creative import Creative
 from app.core.config import settings
-import datetime
-
 from app.schemas.common import Paginated
-from sqlalchemy import func
 from app.services.ai.ai_router import AIRouter
 from app.models.user import User
+from app.services.billing_service import (
+    assert_can_spend,
+    charge,
+    ANALYSIS_PATTERN_CREDIT_COST,
+    ESTIMATED_PROVIDER_COSTS
+)
 
-async def generate_insight_for_creative(db: AsyncSession, creative_id: str, user: User, byok_key: str = None, byok_provider: str = None) -> Insight:
-    # Fetch creative
+async def generate_insight_for_creative(
+    db: AsyncSession,
+    creative_id: str,
+    user: User,
+    byok_key: str = None,
+    byok_provider: str = None
+) -> Insight:
+    # 1. Fetch creative
     result = await db.execute(select(Creative).where(Creative.id == creative_id))
     creative_model = result.scalar_one_or_none()
     if not creative_model:
         raise HTTPException(status_code=404, detail="Creative not found")
+
+    # 2. Server-side credit & feature gate (if not using BYOK)
+    cost = 0.0 if (byok_key and byok_provider) else ANALYSIS_PATTERN_CREDIT_COST
+    org, plan = await assert_can_spend(
+        db,
+        user=user,
+        required_credits=cost,
+        feature_name="intelligence",
+        lock_row=True
+    )
         
     provider = await AIRouter.get_provider_for_user(db, user, byok_key, byok_provider)
     
-    # We map the SQLAlchemy Creative model to the Pydantic schema for the provider
     from app.schemas.creative import Creative as CreativeSchema, Scores, CreativeMetrics
-    # simplified mapping
     creative_schema = CreativeSchema(
         id=creative_model.id,
         brand_id=creative_model.brand_id,
@@ -43,10 +62,26 @@ async def generate_insight_for_creative(db: AsyncSession, creative_id: str, user
     
     try:
         insight_schema = await provider.generate_insight(creative_schema)
-        # Log usage
-        await AIRouter.log_usage(db, user.id, getattr(provider, "model", "unknown"), tokens=0)
+        provider_name = getattr(provider, "model", "unknown")
         
-        # Save to DB
+        # 3. Deduct credit and log usage
+        if cost > 0:
+            await charge(
+                db=db,
+                org=org,
+                user_id=user.id,
+                amount=cost,
+                provider=provider_name,
+                operation="ai_insight",
+                units=1.0,
+                cost_usd=ESTIMATED_PROVIDER_COSTS.get("groq_tokens", 0.0006) * 1000,
+                job_id=None,
+                metadata={"creative_id": creative_id, "kind": insight_schema.kind}
+            )
+        else:
+            await AIRouter.log_usage(db, user.id, provider_name, org_id=org.id, tokens=0)
+        
+        # 4. Save to DB
         new_insight = AIInsight(
             id=insight_schema.id,
             creative_id=creative_id,
@@ -60,6 +95,8 @@ async def generate_insight_for_creative(db: AsyncSession, creative_id: str, user
         await db.commit()
         
         return insight_schema
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
         
@@ -161,5 +198,3 @@ async def list_insights(db: AsyncSession, page: int = 1, page_size: int = 20) ->
         page_size=page_size,
         has_more=(offset + page_size) < total
     )
-
-
