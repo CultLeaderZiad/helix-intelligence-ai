@@ -7,6 +7,7 @@ import { TelemetryProvider } from "@/app/TelemetryContext"
 import { NAV_SECTIONS } from "@/app/navigation"
 import { ADMIN_NAV_ITEMS } from "@/app/admin/adminNavigation"
 import { AuthProvider } from "@/context/AuthContext"
+import { SearchProvider } from "@/context/SearchContext"
 import { LandingPage } from "@/pages/LandingPage"
 
 // ── Lazy-loaded page chunks ──────────────────────────────────────
@@ -26,13 +27,16 @@ const SignInPage = lazy(() => import("@/pages/auth/SignInPage").then(m => ({ def
 const SignUpPage = lazy(() => import("@/pages/auth/SignUpPage").then(m => ({ default: m.SignUpPage })))
 const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })))
 const DiscoverPage = lazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
-const PendingLoopPage = lazy(() => import("@/pages/PendingLoopPage").then(m => ({ default: m.PendingLoopPage })))
-const NotFoundPage = lazy(() => import("@/pages/NotFoundPage").then(m => ({ default: m.NotFoundPage })))
-const SwipeFilesPage = lazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
+const IntelligencePage = lazy(() => import("@/pages/IntelligencePage").then(m => ({ default: m.IntelligencePage })))
+const PerformancePage = lazy(() => import("@/pages/PerformancePage").then(m => ({ default: m.PerformancePage })))
 const CreatePage = lazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
+const GuidePage = lazy(() => import("@/pages/GuidePage").then(m => ({ default: m.GuidePage })))
+const SwipeFilesPage = lazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
 const BillingPage = lazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
 const ApiKeysPage = lazy(() => import("@/pages/ApiKeysPage").then(m => ({ default: m.ApiKeysPage })))
 const TeamPage = lazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamPage })))
+const PendingLoopPage = lazy(() => import("@/pages/PendingLoopPage").then(m => ({ default: m.PendingLoopPage })))
+const NotFoundPage = lazy(() => import("@/pages/NotFoundPage").then(m => ({ default: m.NotFoundPage })))
 const OverviewPage = lazy(() => import("@/pages/admin/OverviewPage").then(m => ({ default: m.OverviewPage })))
 const AdminPendingPage = lazy(() => import("@/pages/admin/AdminPendingPage").then(m => ({ default: m.AdminPendingPage })))
 const OrganizationsPage = lazy(() => import("@/pages/admin/OrganizationsPage").then(m => ({ default: m.OrganizationsPage })))
@@ -42,19 +46,14 @@ const FeatureFlagsPage = lazy(() => import("@/pages/admin/FeatureFlagsPage").the
 const UsersPage = lazy(() => import("@/pages/admin/UsersPage").then(m => ({ default: m.UsersPage })))
 const UpdatesPage = lazy(() => import("@/pages/admin/UpdatesPage").then(m => ({ default: m.UpdatesPage })))
 
-/**
- * Root component. Deliberately thin: it mounts shell-level providers,
- * the chrome, and the route table — nothing else. `BrowserRouter` lives
- * in main.jsx so this component stays testable without a router mock.
- *
- * Routes are derived from NAV_SECTIONS so a loop can never exist in the
- * sidebar without a matching route.
- */
 const PUBLIC_TITLES = {
   "/sign-in": "Sign in",
   "/sign-up": "Create account",
   "/forgot-password": "Reset password",
   "/swipe-files": "Swipe Files",
+  "/guide": "Playbook & Guide",
+  "/intelligence": "Intelligence & Patterns",
+  "/performance": "Performance & Fatigue",
   "/billing": "Billing & Usage",
   "/api-keys": "API Keys",
   "/team": "Team Members",
@@ -64,7 +63,6 @@ function DocumentTitle() {
   const { pathname } = useLocation()
 
   useEffect(() => {
-    // Longest-match so /admin/organizations beats /admin before "/".
     const adminItem = [...ADMIN_NAV_ITEMS]
       .sort((a, b) => b.path.length - a.path.length)
       .find((i) => pathname === i.path || pathname.startsWith(`${i.path}/`))
@@ -107,57 +105,63 @@ export default function App() {
   return (
     <TelemetryProvider>
       <AuthProvider>
-        <DocumentTitle />
-        <Suspense fallback={<PageLoader />}>
-        <Routes>
-          {/* Public front door. Fully ungated — the marketing surface the
-              header nav points at. Auth pages are reached only by choice. */}
-          <Route path="/" element={<LandingPage />} />
+        <SearchProvider>
+          <DocumentTitle />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public front door */}
+              <Route path="/" element={<LandingPage />} />
 
-          <Route path="/sign-in" element={<SignInPage />} />
-          <Route path="/sign-up" element={<SignUpPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/sign-in" element={<SignInPage />} />
+              <Route path="/sign-up" element={<SignUpPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-          {/* Admin console — admin role only; customers bounce to APP_HOME. */}
-          <Route element={<ProtectedRoute requireRole="admin" />}>
-            <Route element={<AdminShellLayout />}>
-              <Route path="/admin" element={<OverviewPage />} />
-              <Route path="/admin/organizations" element={<OrganizationsPage />} />
-              <Route path="/admin/subscriptions" element={<SubscriptionsPlansPage />} />
-              <Route path="/admin/usage" element={<UsagePage />} />
-              <Route path="/admin/feature-flags" element={<FeatureFlagsPage />} />
-              <Route path="/admin/users" element={<UsersPage />} />
-              <Route path="/admin/updates" element={<UpdatesPage />} />
-              {ADMIN_NAV_ITEMS.filter((i) => !i.built).map((item) => (
-                <Route
-                  key={item.key}
-                  path={item.path}
-                  element={<AdminPendingPage itemKey={item.key} />}
-                />
-              ))}
-            </Route>
-          </Route>
+              {/* Admin console — admin role only */}
+              <Route element={<ProtectedRoute requireRole="admin" />}>
+                <Route element={<AdminShellLayout />}>
+                  <Route path="/admin" element={<OverviewPage />} />
+                  <Route path="/admin/guide" element={<GuidePage />} />
+                  <Route path="/admin/organizations" element={<OrganizationsPage />} />
+                  <Route path="/admin/subscriptions" element={<SubscriptionsPlansPage />} />
+                  <Route path="/admin/usage" element={<UsagePage />} />
+                  <Route path="/admin/feature-flags" element={<FeatureFlagsPage />} />
+                  <Route path="/admin/users" element={<UsersPage />} />
+                  <Route path="/admin/updates" element={<UpdatesPage />} />
+                  {ADMIN_NAV_ITEMS.filter((i) => !i.built).map((item) => (
+                    <Route
+                      key={item.key}
+                      path={item.path}
+                      element={<AdminPendingPage itemKey={item.key} />}
+                    />
+                  ))}
+                </Route>
+              </Route>
 
-          <Route element={<ProtectedRoute />}>
-            <Route element={<AuthenticatedShell />}>
-              <Route path="/discover" element={<DiscoverPage />} />
-              <Route path="/swipe-files" element={<SwipeFilesPage />} />
-              <Route path="/create" element={<CreatePage />} />
-              <Route path="/billing" element={<BillingPage />} />
-              <Route path="/api-keys" element={<ApiKeysPage />} />
-              <Route path="/team" element={<TeamPage />} />
-              {NAV_SECTIONS.filter((s) => s.status === "pending").map((section) => (
-                <Route
-                  key={section.key}
-                  path={section.path}
-                  element={<PendingLoopPage sectionKey={section.key} />}
-                />
-              ))}
-              <Route path="*" element={<NotFoundPage />} />
-            </Route>
-          </Route>
-        </Routes>
-        </Suspense>
+              {/* Customer authenticated app */}
+              <Route element={<ProtectedRoute />}>
+                <Route element={<AuthenticatedShell />}>
+                  <Route path="/discover" element={<DiscoverPage />} />
+                  <Route path="/intelligence" element={<IntelligencePage />} />
+                  <Route path="/create" element={<CreatePage />} />
+                  <Route path="/performance" element={<PerformancePage />} />
+                  <Route path="/swipe-files" element={<SwipeFilesPage />} />
+                  <Route path="/guide" element={<GuidePage />} />
+                  <Route path="/billing" element={<BillingPage />} />
+                  <Route path="/api-keys" element={<ApiKeysPage />} />
+                  <Route path="/team" element={<TeamPage />} />
+                  {NAV_SECTIONS.filter((s) => s.status === "pending").map((section) => (
+                    <Route
+                      key={section.key}
+                      path={section.path}
+                      element={<PendingLoopPage sectionKey={section.key} />}
+                    />
+                  ))}
+                  <Route path="*" element={<NotFoundPage />} />
+                </Route>
+              </Route>
+            </Routes>
+          </Suspense>
+        </SearchProvider>
       </AuthProvider>
     </TelemetryProvider>
   )

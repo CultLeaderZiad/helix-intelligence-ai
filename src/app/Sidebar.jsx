@@ -119,6 +119,30 @@ export function Sidebar({ onOpenCommand, className }) {
         )}
 
         <NavLink
+          to="/guide"
+          className={({ isActive }) =>
+            cn(
+              "group flex items-center gap-2 rounded-sm px-1.5 py-[7px] text-[13px] transition-colors",
+              isActive
+                ? "bg-surface-3 text-text"
+                : "text-text-muted hover:bg-surface-2 hover:text-text",
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <HelpCircle
+                className={cn(
+                  "h-3.5 w-3.5 shrink-0",
+                  isActive ? "text-accent" : "text-text-faint",
+                )}
+              />
+              <span className="flex-1 truncate">App Guide & Loops</span>
+            </>
+          )}
+        </NavLink>
+
+        <NavLink
           to="/billing"
           className={({ isActive }) =>
             cn(

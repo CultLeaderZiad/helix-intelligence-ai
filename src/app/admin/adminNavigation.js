@@ -10,17 +10,12 @@ import {
   Flag,
   ScrollText,
   Bell,
+  BookOpen,
 } from "lucide-react"
 
 /**
  * The admin console's rail. Single source of truth for the sidebar, the
- * route table, and the document title — the same discipline NAV_SECTIONS
- * enforces for the customer app, so an admin route can never appear in
- * one surface and be missing from another.
- *
- * `built` marks which surfaces have a real implementation this pass.
- * Everything else routes to a placeholder rather than a faked screen.
- * Groups render with the `// LABEL` monospace treatment.
+ * route table, and the document title.
  */
 export const ADMIN_HOME = "/admin"
 
@@ -34,6 +29,13 @@ export const ADMIN_NAV_GROUPS = [
         label: "Dashboard",
         icon: LayoutDashboard,
         end: true,
+        built: true,
+      },
+      {
+        key: "admin-guide",
+        path: "/admin/guide",
+        label: "Operating Playbook",
+        icon: BookOpen,
         built: true,
       },
     ],

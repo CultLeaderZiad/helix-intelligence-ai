@@ -1,4 +1,4 @@
-import { Radar, Network, PenLine, Activity } from "lucide-react"
+import { Radar, Network, PenLine, Activity, BookOpen } from "lucide-react"
 
 /**
  * The four loops of the product. Single source of truth for the sidebar,
@@ -20,7 +20,7 @@ export const NAV_SECTIONS = [
     label: "Intelligence",
     icon: Network,
     description: "Mine recurring patterns across a discovered corpus.",
-    status: "pending",
+    status: "live",
   },
   {
     key: "create",
@@ -36,6 +36,6 @@ export const NAV_SECTIONS = [
     label: "Performance",
     icon: Activity,
     description: "Feed live outcomes back into the scoring model.",
-    status: "pending",
+    status: "live",
   },
 ]
