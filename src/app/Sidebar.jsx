@@ -3,12 +3,14 @@ import { NavLink, useNavigate } from "react-router-dom"
 import { LogOut, Bookmark, CreditCard, Users, Key, Shield, HelpCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
+import { useLanguage } from "@/context/LanguageContext"
 import { NAV_SECTIONS } from "./navigation"
 import { KeyHint } from "@/components/ui/KeyHint"
 import { NotificationBell } from "@/components/NotificationBell"
 
 export function Sidebar({ onOpenCommand, className }) {
   const { user, signOut, updateUser } = useAuth()
+  const { t } = useLanguage()
   const [signingOut, setSigningOut] = useState(false)
   const navigate = useNavigate()
 
@@ -34,7 +36,7 @@ export function Sidebar({ onOpenCommand, className }) {
   return (
     <nav
       className={cn(
-        "flex w-[196px] shrink-0 flex-col border-r border-border bg-surface",
+        "flex w-[210px] shrink-0 flex-col border-r border-border bg-surface select-none",
         className,
       )}
       aria-label="Primary"
@@ -46,60 +48,56 @@ export function Sidebar({ onOpenCommand, className }) {
             alt="Helix"
             className="h-4 w-4 shrink-0 rounded-[3px] object-contain"
           />
-          <span className="truncate text-[13px] font-medium tracking-tight text-text font-mono">
-            Helix Intelligence
+          <span className="truncate text-[13px] font-bold tracking-tight text-text font-mono">
+            {t("brandName", "Helix Intelligence")}
           </span>
         </div>
       </div>
 
       <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
-        <p className="label-mono px-1.5 pb-1.5 pt-1">Loops</p>
-        {NAV_SECTIONS.map((section) => (
-          <NavLink
-            key={section.key}
-            to={section.path}
-            id={section.path === "/discover" ? "tour-discover-nav" : undefined}
-            className={({ isActive }) =>
-              cn(
-                "group flex items-center gap-2 rounded-sm px-1.5 py-[7px] text-[13px] transition-colors",
-                isActive
-                  ? "bg-surface-3 text-text"
-                  : "text-text-muted hover:bg-surface-2 hover:text-text",
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <section.icon
-                  className={cn(
-                    "h-3.5 w-3.5 shrink-0",
-                    isActive ? "text-accent" : "text-text-faint",
-                  )}
-                  aria-hidden="true"
-                />
-                <span className="flex-1 truncate">{section.label}</span>
-                {section.status === "pending" ? (
-                  <span
-                    className="h-1 w-1 shrink-0 rounded-full bg-border-strong"
-                    title="No data source connected"
-                    aria-label="No data source connected"
+        <p className="label-mono px-1.5 pb-1.5 pt-1 text-text-faint">{t("loops", "LOOPS")}</p>
+        {NAV_SECTIONS.map((section) => {
+          const label = t(section.key, section.label)
+          return (
+            <NavLink
+              key={section.key}
+              to={section.path}
+              id={section.path === "/discover" ? "tour-discover-nav" : undefined}
+              className={({ isActive }) =>
+                cn(
+                  "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
+                  isActive
+                    ? "bg-surface-3 text-text font-semibold shadow-xs"
+                    : "text-text-muted hover:bg-surface-2 hover:text-text",
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <section.icon
+                    className={cn(
+                      "h-4 w-4 shrink-0",
+                      isActive ? "text-accent" : "text-text-faint",
+                    )}
+                    aria-hidden="true"
                   />
-                ) : null}
-              </>
-            )}
-          </NavLink>
-        ))}
+                  <span className="flex-1 truncate">{label}</span>
+                </>
+              )}
+            </NavLink>
+          )
+        })}
 
-        <p className="label-mono px-1.5 pb-1.5 pt-4">Workspace</p>
+        <p className="label-mono px-1.5 pb-1.5 pt-4 text-text-faint">{t("workspace", "WORKSPACE")}</p>
 
         {showSwipeFiles && (
           <NavLink
             to="/swipe-files"
             className={({ isActive }) =>
               cn(
-                "group flex items-center gap-2 rounded-sm px-1.5 py-[7px] text-[13px] transition-colors",
+                "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
                 isActive
-                  ? "bg-surface-3 text-text"
+                  ? "bg-surface-3 text-text font-semibold shadow-xs"
                   : "text-text-muted hover:bg-surface-2 hover:text-text",
               )
             }
@@ -108,11 +106,11 @@ export function Sidebar({ onOpenCommand, className }) {
               <>
                 <Bookmark
                   className={cn(
-                    "h-3.5 w-3.5 shrink-0",
+                    "h-4 w-4 shrink-0",
                     isActive ? "text-accent" : "text-text-faint",
                   )}
                 />
-                <span className="flex-1 truncate">Swipe Files</span>
+                <span className="flex-1 truncate">{t("swipeFiles", "Swipe Files")}</span>
               </>
             )}
           </NavLink>
@@ -122,9 +120,9 @@ export function Sidebar({ onOpenCommand, className }) {
           to="/guide"
           className={({ isActive }) =>
             cn(
-              "group flex items-center gap-2 rounded-sm px-1.5 py-[7px] text-[13px] transition-colors",
+              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
               isActive
-                ? "bg-surface-3 text-text"
+                ? "bg-surface-3 text-text font-semibold shadow-xs"
                 : "text-text-muted hover:bg-surface-2 hover:text-text",
             )
           }
@@ -133,11 +131,11 @@ export function Sidebar({ onOpenCommand, className }) {
             <>
               <HelpCircle
                 className={cn(
-                  "h-3.5 w-3.5 shrink-0",
+                  "h-4 w-4 shrink-0",
                   isActive ? "text-accent" : "text-text-faint",
                 )}
               />
-              <span className="flex-1 truncate">App Guide & Loops</span>
+              <span className="flex-1 truncate">{t("guide", "App Guide & Loops")}</span>
             </>
           )}
         </NavLink>
@@ -146,9 +144,9 @@ export function Sidebar({ onOpenCommand, className }) {
           to="/billing"
           className={({ isActive }) =>
             cn(
-              "group flex items-center gap-2 rounded-sm px-1.5 py-[7px] text-[13px] transition-colors",
+              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
               isActive
-                ? "bg-surface-3 text-text"
+                ? "bg-surface-3 text-text font-semibold shadow-xs"
                 : "text-text-muted hover:bg-surface-2 hover:text-text",
             )
           }
@@ -157,11 +155,11 @@ export function Sidebar({ onOpenCommand, className }) {
             <>
               <CreditCard
                 className={cn(
-                  "h-3.5 w-3.5 shrink-0",
+                  "h-4 w-4 shrink-0",
                   isActive ? "text-accent" : "text-text-faint",
                 )}
               />
-              <span className="flex-1 truncate">Billing & Meter</span>
+              <span className="flex-1 truncate">{t("billing", "Billing & Meter")}</span>
             </>
           )}
         </NavLink>
@@ -171,9 +169,9 @@ export function Sidebar({ onOpenCommand, className }) {
             to="/team"
             className={({ isActive }) =>
               cn(
-                "group flex items-center gap-2 rounded-sm px-1.5 py-[7px] text-[13px] transition-colors",
+                "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
                 isActive
-                  ? "bg-surface-3 text-text"
+                  ? "bg-surface-3 text-text font-semibold shadow-xs"
                   : "text-text-muted hover:bg-surface-2 hover:text-text",
               )
             }
@@ -182,11 +180,11 @@ export function Sidebar({ onOpenCommand, className }) {
               <>
                 <Users
                   className={cn(
-                    "h-3.5 w-3.5 shrink-0",
+                    "h-4 w-4 shrink-0",
                     isActive ? "text-accent" : "text-text-faint",
                   )}
                 />
-                <span className="flex-1 truncate">Team Members</span>
+                <span className="flex-1 truncate">{t("team", "Team Members")}</span>
               </>
             )}
           </NavLink>
@@ -197,9 +195,9 @@ export function Sidebar({ onOpenCommand, className }) {
             to="/api-keys"
             className={({ isActive }) =>
               cn(
-                "group flex items-center gap-2 rounded-sm px-1.5 py-[7px] text-[13px] transition-colors",
+                "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
                 isActive
-                  ? "bg-surface-3 text-text"
+                  ? "bg-surface-3 text-text font-semibold shadow-xs"
                   : "text-text-muted hover:bg-surface-2 hover:text-text",
               )
             }
@@ -208,11 +206,11 @@ export function Sidebar({ onOpenCommand, className }) {
               <>
                 <Key
                   className={cn(
-                    "h-3.5 w-3.5 shrink-0",
+                    "h-4 w-4 shrink-0",
                     isActive ? "text-accent" : "text-text-faint",
                   )}
                 />
-                <span className="flex-1 truncate">API Keys</span>
+                <span className="flex-1 truncate">{t("apiKeys", "API Keys")}</span>
               </>
             )}
           </NavLink>
@@ -223,15 +221,15 @@ export function Sidebar({ onOpenCommand, className }) {
             to="/admin"
             className={({ isActive }) =>
               cn(
-                "group flex items-center gap-2 rounded-sm px-1.5 py-[7px] text-[13px] transition-colors mt-2 border-t border-border/50 pt-2",
+                "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors mt-2 border-t border-border/50 pt-2",
                 isActive
-                  ? "bg-amber-500/10 text-amber-300"
-                  : "text-amber-400/70 hover:bg-surface-2 hover:text-amber-300",
+                  ? "bg-amber-500/10 text-amber-300 font-bold"
+                  : "text-amber-400/80 hover:bg-surface-2 hover:text-amber-300",
               )
             }
           >
-            <Shield className="h-3.5 w-3.5 shrink-0 text-amber-400" />
-            <span className="flex-1 truncate font-medium">Admin Center</span>
+            <Shield className="h-4 w-4 shrink-0 text-amber-400" />
+            <span className="flex-1 truncate">{t("adminConsole", "Admin Center")}</span>
           </NavLink>
         )}
       </div>
@@ -239,13 +237,13 @@ export function Sidebar({ onOpenCommand, className }) {
       <div className="flex shrink-0 flex-col gap-2 border-t border-border p-2">
         <div className="flex items-center gap-2 px-1.5">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs text-text">{user?.name || user?.email}</p>
+            <p className="truncate text-xs font-semibold text-text">{user?.name || user?.email}</p>
             <div className="flex items-center gap-1.5">
               <span className="truncate font-mono text-[10px] uppercase tracking-[0.08em] text-text-faint">
                 {user?.role}
               </span>
               {user?.credit_balance !== undefined && (
-                <span className="text-[10px] font-mono text-amber-400 font-bold">
+                <span className="text-[10px] font-mono text-accent font-bold">
                   · {user.credit_balance.toFixed(1)}cr
                 </span>
               )}
@@ -275,16 +273,9 @@ export function Sidebar({ onOpenCommand, className }) {
             <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
         </div>
-        <button
-          type="button"
-          onClick={onOpenCommand}
-          className="flex w-full items-center gap-2 rounded-sm border border-border bg-surface-2 px-1.5 py-[6px] text-left text-xs text-text-muted transition-colors hover:border-border-strong hover:text-text"
-        >
-          <span className="flex-1 truncate">Command</span>
-          <KeyHint>⌘</KeyHint>
-          <KeyHint>K</KeyHint>
-        </button>
       </div>
     </nav>
   )
 }
+
+export default Sidebar

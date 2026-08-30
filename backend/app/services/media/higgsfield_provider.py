@@ -16,21 +16,30 @@ from app.services.media.higgsfield_registry import (
 
 class HiggsfieldProvider:
     def __init__(self):
-        raw_key_id = getattr(settings, "HF_API_KEY_ID", "") or ""
-        raw_key_secret = getattr(settings, "HF_API_KEY_SECRET", "") or ""
-        self.key_id = raw_key_id.strip().strip('"\'')
-        self.key_secret = raw_key_secret.strip().strip('"\'')
+        raw_key_id = (getattr(settings, "HF_API_KEY_ID", "") or "").strip().strip('"\'')
+        raw_key_secret = (getattr(settings, "HF_API_KEY_SECRET", "") or "").strip().strip('"\'')
+        
+        # If user entered key_id:key_secret together in one field
+        if ":" in raw_key_id and not raw_key_secret:
+            parts = raw_key_id.split(":", 1)
+            raw_key_id = parts[0].strip()
+            raw_key_secret = parts[1].strip()
+
+        self.key_id = raw_key_id
+        self.key_secret = raw_key_secret
 
     @property
     def headers(self) -> dict:
         if not self.key_id or not self.key_secret:
             raise ValueError(
-                "Higgsfield API credentials not configured "
-                "(HF_API_KEY_ID / HF_API_KEY_SECRET)"
+                "Higgsfield API credentials not configured. Please verify HF_API_KEY_ID and HF_API_KEY_SECRET on Render."
             )
         # Official Auth format: Authorization: Key {HF_API_KEY_ID}:{HF_API_KEY_SECRET} (NOT Bearer)
+        # We also pass the hf-api-key and hf-secret headers for universal gateway compatibility
         return {
             "Authorization": f"Key {self.key_id}:{self.key_secret}",
+            "hf-api-key": self.key_id,
+            "hf-secret": self.key_secret,
             "Content-Type": "application/json",
             "Accept": "application/json",
         }

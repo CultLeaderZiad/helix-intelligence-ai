@@ -40,9 +40,11 @@ const EMPTY_FILTERS = {
  * ============================================================
  */
 import { useSearchContext } from "@/context/SearchContext"
+import { useLanguage } from "@/context/LanguageContext"
 
 export function DiscoverPage() {
   const { latestSearch, saveCompletedSearch, selectActiveCreative } = useSearchContext()
+  const { t } = useLanguage()
   const [query, setQuery] = useState(() => latestSearch?.query || "")
   const [sort, setSort] = useState("composite_desc")
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
@@ -139,13 +141,13 @@ export function DiscoverPage() {
         trail={["Helix", "Discover"]}
         meta={
           phase === PHASE.READY && results
-            ? `${formatInt(results.total)} ${results.total === 1 ? "record" : "records"} · ${formatDuration(results.took_ms)}`
-            : "no result set"
+            ? `${formatInt(results.total)} ${results.total === 1 ? t("record", "record") : t("records", "records")} · ${formatDuration(results.took_ms)}`
+            : t("noResultSet", "no result set")
         }
         actions={
           phase === PHASE.READY ? (
             <Button size="xs" variant="ghost" onClick={cancel}>
-              Clear set
+              {t("clearSet", "Clear set")}
             </Button>
           ) : null
         }
