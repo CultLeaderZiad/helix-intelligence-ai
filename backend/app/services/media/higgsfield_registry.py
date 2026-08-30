@@ -146,3 +146,8 @@ def list_available_capabilities() -> List[Dict[str, Any]]:
     return [
         {"capability": k, **v} for k, v in SEMANTIC_CAPABILITIES.items()
     ]
+
+# Backward compatibility aliases
+resolve_mode_spec = resolve_capability
+MODEL_REGISTRY = SEMANTIC_CAPABILITIES
+
