@@ -1,5 +1,6 @@
 import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { LanguageSwitcher } from "@/components/LanguageSwitcher"
 
 /**
  * Top breadcrumb strip. Purely presentational: a page passes the trail it
@@ -47,7 +48,10 @@ export function BreadcrumbBar({ trail = [], meta, actions, className }) {
         </>
       ) : null}
 
-      {actions ? <div className="ml-auto flex items-center gap-1.5">{actions}</div> : null}
+      <div className="ml-auto flex items-center gap-2">
+        {actions ? <div className="flex items-center gap-1.5">{actions}</div> : null}
+        <LanguageSwitcher />
+      </div>
     </div>
   )
 }

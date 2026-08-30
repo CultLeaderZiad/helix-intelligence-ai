@@ -84,10 +84,11 @@ export function useMediaGenerate() {
 
       try {
         const newJob = await mediaService.generate(params)
+        const jobId = newJob.job_id || newJob.id
         setJob(newJob)
-        activeJobIdRef.current = newJob.job_id
+        activeJobIdRef.current = jobId
         setPhase(PHASE.RUNNING)
-        checkJobStatus(newJob.job_id)
+        checkJobStatus(jobId)
       } catch (err) {
         setError(err)
         setPhase(PHASE.ERROR)

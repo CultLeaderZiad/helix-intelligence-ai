@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 from datetime import datetime
 
@@ -10,6 +10,7 @@ class MediaGenerationRequest(BaseModel):
 
 class MediaGenerationJobResponse(BaseModel):
     id: str
+    job_id: Optional[str] = None
     status: str
     prompt: str
     provider: str
@@ -22,3 +23,8 @@ class MediaGenerationJobResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    def __init__(self, **data):
+        if "id" in data and "job_id" not in data:
+            data["job_id"] = data["id"]
+        super().__init__(**data)

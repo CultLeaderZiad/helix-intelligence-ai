@@ -2,10 +2,14 @@ import { request } from "../http"
 
 export const mediaService = {
   generate: async (params) => {
-    return request("/media/jobs", {
+    const res = await request("/media/jobs", {
       method: "POST",
       body: JSON.stringify(params),
     })
+    return {
+      ...res,
+      job_id: res.id || res.job_id,
+    }
   },
   
   getJob: async (jobId) => {
@@ -14,7 +18,10 @@ export const mediaService = {
     if (job.status === "completed") {
       job.status = "succeeded"
     }
-    return job
+    return {
+      ...job,
+      job_id: job.id || job.job_id,
+    }
   },
   
   getJobResult: async (jobId) => {

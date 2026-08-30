@@ -8,6 +8,7 @@ import { NAV_SECTIONS } from "@/app/navigation"
 import { ADMIN_NAV_ITEMS } from "@/app/admin/adminNavigation"
 import { AuthProvider } from "@/context/AuthContext"
 import { SearchProvider } from "@/context/SearchContext"
+import { LanguageProvider } from "@/context/LanguageContext"
 import { LandingPage } from "@/pages/LandingPage"
 
 // ── Lazy-loaded page chunks ──────────────────────────────────────
@@ -104,10 +105,11 @@ function PageLoader() {
 export default function App() {
   return (
     <TelemetryProvider>
-      <AuthProvider>
-        <SearchProvider>
-          <DocumentTitle />
-          <Suspense fallback={<PageLoader />}>
+      <LanguageProvider>
+        <AuthProvider>
+          <SearchProvider>
+            <DocumentTitle />
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public front door */}
               <Route path="/" element={<LandingPage />} />
@@ -163,6 +165,7 @@ export default function App() {
           </Suspense>
         </SearchProvider>
       </AuthProvider>
+      </LanguageProvider>
     </TelemetryProvider>
   )
 }

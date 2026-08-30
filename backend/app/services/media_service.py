@@ -217,11 +217,9 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
     return job
 
 async def get_media_job(db: AsyncSession, user: User, job_id: str) -> MediaGenerationJob:
-    org = await get_or_create_default_org(db, user)
-    
     result = await db.execute(
         select(MediaGenerationJob)
-        .where(MediaGenerationJob.id == job_id, MediaGenerationJob.org_id == org.id)
+        .where(MediaGenerationJob.id == job_id)
     )
     job = result.scalar_one_or_none()
     return job

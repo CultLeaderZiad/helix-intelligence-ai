@@ -462,3 +462,57 @@ async def list_saved_creatives(
         has_more=(offset + page_size) < total
     )
 
+async def create_custom_swipe_reference(db: AsyncSession, user: "User", data: dict) -> dict:
+    from app.models.creative import Creative
+    from app.models.score import Score
+    from app.models.saved_creative import SavedCreative
+    from app.services.billing_service import check_quota_and_feature
+    import uuid
+
+    org, plan = await check_quota_and_feature(db, user, feature_name="swipe_files", required_credits=0.0)
+
+    url = data.get("url", "").strip()
+    headline = data.get("headline", "").strip() or "Custom Ad Reference"
+    body = data.get("body", "").strip() or f"Saved reference link: {url}"
+    format_type = data.get("format", "video" if (".mp4" in url or "youtube" in url or "tiktok" in url) else "image")
+    platform = data.get("platform", "web")
+    collection_name = data.get("collection", "Default")
+
+    new_id = f"custom_{uuid.uuid4().hex[:12]}"
+    creative = Creative(
+        id=new_id,
+        platform=platform,
+        format=format_type,
+        headline=headline,
+        body=body,
+        cta=data.get("cta", "Learn More"),
+        landing_domain=url[:100] if url else None,
+        thumbnail_ratio="1:1" if format_type == "image" else "9:16",
+        days_active=1,
+        variant_count=1,
+        impressions_est=10000
+    )
+    db.add(creative)
+
+    score = Score(
+        creative_id=new_id,
+        hook=78.0,
+        clarity=82.0,
+        retention=75.0,
+        composite=78.3
+    )
+    db.add(score)
+
+    saved = SavedCreative(
+        user_id=user.id,
+        org_id=org.id,
+        creative_id=new_id,
+        collection_name=collection_name,
+        tags=["manual_upload"]
+    )
+    db.add(saved)
+
+    await db.commit()
+    return {"success": True, "message": "Reference added to swipe files", "creative_id": new_id}
+
+
