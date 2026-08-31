@@ -6,11 +6,10 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
-from app.db.session import get_db
+from app.core.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.workspace_credential import WorkspaceProviderCredential
-from app.services.auth_middleware import get_current_user
 from app.services.billing_service import get_or_create_default_org
 from app.services.security_service import encrypt_secret, mask_api_key
 from app.services.ai.gemini_provider import GeminiProvider
