@@ -536,7 +536,7 @@ async def get_trial_usage_summary(db: AsyncSession, user: User, org: Optional[Or
         await _ensure_daily_image_reset(db, org)
 
     is_admin = getattr(user, "role", None) == "admin"
-    is_trial = org.plan == "trial" or org.plan_id.startswith("plan_trial")
+    is_trial = org.plan == "trial" or bool(org.plan_id and org.plan_id.startswith("plan_trial"))
     active = is_trial_active(user)
     days_left = get_trial_days_remaining(user)
 

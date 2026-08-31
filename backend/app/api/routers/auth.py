@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+import datetime
+
 from app.db.session import async_session_maker
 from app.schemas.auth import UserCreate, UserLogin, SessionResponse
 from app.services import auth_service, billing_service
@@ -13,7 +15,9 @@ router = APIRouter()
 
 async def build_session_response(db: AsyncSession, user: User, access_token: str = None) -> SessionResponse:
     org = await billing_service.get_or_create_default_org(db, user)
-    plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
+    plan = None
+    if org.plan_id:
+        plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
     if not plan:
         plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
 
@@ -21,7 +25,6 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     if org.custom_feature_flags:
         effective_flags.update(org.custom_feature_flags)
 
-    import datetime
     now = datetime.datetime.now(datetime.timezone.utc)
     trial_days_remaining = None
     if user.trial_expires_at:
@@ -34,8 +37,8 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     from app.services.billing_service import _ensure_daily_reset, _utc_midnight, get_trial_usage_summary
     await _ensure_daily_reset(db, org)
     daily_limit = getattr(plan, "daily_credit_limit", None) if plan else None
-    daily_used = round(float(org.daily_credits_used_today), 2)
-    daily_remaining = round(max(0, (daily_limit or 0) - daily_used), 2) if daily_limit else None
+    daily_used = round(float(org.daily_credits_used_today or 0.0), 2)
+    daily_remaining = round(max(0.0, (daily_limit or 0.0) - daily_used), 2) if daily_limit is not None else None
     daily_resets_at = None
     if daily_limit:
         daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
@@ -43,7 +46,7 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     trial_summary = await get_trial_usage_summary(db, user, org)
 
     # Administrator Full Privilege Override
-    credit_balance = round(float(org.credit_balance), 2)
+    credit_balance = round(float(org.credit_balance or 0.0), 2)
     if user.role == "admin":
         effective_flags = {
             "discover": True,
@@ -76,14 +79,14 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         daily_credits_used=daily_used,
         daily_credits_remaining=daily_remaining,
         daily_credits_resets_at_utc=daily_resets_at,
-        trial_active=trial_summary["trial_active"],
-        images_used_today=trial_summary["images_used_today"],
-        images_daily_limit=trial_summary["images_daily_limit"],
-        images_remaining_today=trial_summary["images_remaining_today"],
-        images_trial_total=trial_summary["images_trial_total"],
-        trial_ends_at=trial_summary["trial_ends_at"],
-        requires_plan=trial_summary["requires_plan"],
-        plan_id=org.plan_id,
+        trial_active=trial_summary.get("trial_active", True),
+        images_used_today=trial_summary.get("images_used_today", 0),
+        images_daily_limit=trial_summary.get("images_daily_limit", 5),
+        images_remaining_today=trial_summary.get("images_remaining_today", 5),
+        images_trial_total=trial_summary.get("images_trial_total", 0),
+        trial_ends_at=trial_summary.get("trial_ends_at"),
+        requires_plan=trial_summary.get("requires_plan", False),
+        plan_id=org.plan_id or "plan_trial_default",
         has_completed_onboarding=getattr(user, "has_completed_onboarding", False)
     )
 
@@ -121,7 +124,7 @@ async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
         raise
     except Exception as e:
         logger.exception(f"Sign-in failed for {user_in.email}: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error during sign-in")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error during sign-in: {type(e).__name__}: {e}")
 
 @router.post("/sign-out")
 async def signout():
@@ -146,16 +149,13 @@ from app.core.config import settings
 async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     body = await request.body()
     
-    # Optional: Verify webhook signature if secret is configured
     signature = request.headers.get("better-auth-signature")
     if settings.NEON_WEBHOOK_SECRET and signature:
-        # Standard HMAC SHA256 signature verification (adjust if Neon uses different hashing)
         expected_signature = hmac.new(
             settings.NEON_WEBHOOK_SECRET.encode(),
             body,
             hashlib.sha256
         ).hexdigest()
-        # In a real app we'd compare these securely, but for now just log it
         import logging
         logging.info(f"Webhook signature check. Received: {signature}, Expected: {expected_signature}")
 
@@ -177,13 +177,10 @@ async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)
         if not user_id or not email:
             raise HTTPException(status_code=400, detail="Missing user_id or email")
             
-        # Check if user already exists
         result = await db.execute(select(User).where(User.id == user_id))
         existing_user = result.scalar_one_or_none()
         
         if not existing_user:
-            # Create user in our database using the same ID from Neon Auth
-            import datetime
             now = datetime.datetime.now(datetime.timezone.utc)
             trial_expires = now + datetime.timedelta(days=14)
 
@@ -198,7 +195,6 @@ async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)
             db.add(new_user)
             await db.commit()
             
-            # Setup billing/organization via billing_service
             await billing_service.get_or_create_default_org(db, new_user)
             
             return {"message": "User synchronized successfully"}

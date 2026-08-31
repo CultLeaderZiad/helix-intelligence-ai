@@ -35,7 +35,7 @@ async def resolve_image_provider(
       - Paid workspaces / Admins may use BYOK if explicitly configured and selected.
       - If BYOK is active, returns GeminiProvider initialized with the decrypted workspace key.
     """
-    is_trial = is_trial_active(user) and (org.plan == "trial" or org.plan_id.startswith("plan_trial"))
+    is_trial = is_trial_active(user) and (org.plan == "trial" or bool(org.plan_id and org.plan_id.startswith("plan_trial")))
     is_admin = getattr(user, "role", "") == "admin"
 
     # Trial accounts always use managed provider
