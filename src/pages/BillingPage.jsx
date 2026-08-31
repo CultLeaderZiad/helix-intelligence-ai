@@ -125,6 +125,91 @@ export function BillingPage() {
         <div>Saved Swipe Files: <strong className="text-emerald-400">0.0 credits (Free)</strong></div>
       </div>
 
+      {/* Available Plans Section */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-mono uppercase tracking-wider text-slate-400">
+          Available Subscription Plans
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Free Trial */}
+          <div className={`p-6 rounded-xl border flex flex-col justify-between ${
+            billing?.plan_type === "trial" || !billing?.plan_type
+              ? "bg-slate-900/90 border-indigo-500/40 ring-1 ring-indigo-500/20"
+              : "bg-slate-900/60 border-slate-800"
+          }`}>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-slate-200">7-Day Free Trial</span>
+                {billing?.plan_type === "trial" && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-semibold uppercase">Current</span>
+                )}
+              </div>
+              <div className="text-2xl font-bold text-slate-100">$0 <span className="text-xs text-slate-400 font-normal">/ 7 days</span></div>
+              <ul className="text-xs text-slate-300 space-y-2 pt-2 border-t border-slate-800/60">
+                <li className="flex items-center gap-2">✓ <strong>5 AI Images / day</strong></li>
+                <li className="flex items-center gap-2">✓ 25 Total Image trial cap</li>
+                <li className="flex items-center gap-2">✓ Competitor Ad Discover Scrapes</li>
+                <li className="flex items-center gap-2 text-slate-500">✕ Video Motion (Locked)</li>
+              </ul>
+            </div>
+            <button
+              disabled={true}
+              className="mt-6 w-full py-2 rounded-lg bg-slate-800 text-slate-400 text-xs font-semibold cursor-default"
+            >
+              {billing?.plan_type === "trial" ? "Active Plan" : "Trial Expired"}
+            </button>
+          </div>
+
+          {/* Starter Plan */}
+          <div className="p-6 rounded-xl border border-slate-800 bg-slate-900/60 hover:border-slate-700 transition flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-slate-200">Growth Plan</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold uppercase">Popular</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-100">$49 <span className="text-xs text-slate-400 font-normal">/ month</span></div>
+              <ul className="text-xs text-slate-300 space-y-2 pt-2 border-t border-slate-800/60">
+                <li className="flex items-center gap-2">✓ <strong>50 AI Images / day</strong></li>
+                <li className="flex items-center gap-2">✓ <strong>10 AI Video spots / day</strong></li>
+                <li className="flex items-center gap-2">✓ Unlimited Discover Scrapes</li>
+                <li className="flex items-center gap-2">✓ Full Hook & Angle Mining</li>
+              </ul>
+            </div>
+            <a
+              href="mailto:support@helixintelligence.ai?subject=Upgrade to Growth Plan"
+              className="mt-6 w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-center text-xs font-semibold shadow-md transition"
+            >
+              Upgrade to Growth
+            </a>
+          </div>
+
+          {/* Scale Plan */}
+          <div className="p-6 rounded-xl border border-slate-800 bg-slate-900/60 hover:border-slate-700 transition flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold text-slate-200">Scale / Agency</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 font-semibold uppercase">High Volume</span>
+              </div>
+              <div className="text-2xl font-bold text-slate-100">$199 <span className="text-xs text-slate-400 font-normal">/ month</span></div>
+              <ul className="text-xs text-slate-300 space-y-2 pt-2 border-t border-slate-800/60">
+                <li className="flex items-center gap-2">✓ <strong>Unlimited AI Images</strong></li>
+                <li className="flex items-center gap-2">✓ <strong>50 AI Videos / day</strong></li>
+                <li className="flex items-center gap-2">✓ Team Multi-User Workspaces</li>
+                <li className="flex items-center gap-2">✓ Dedicated API & Webhooks</li>
+              </ul>
+            </div>
+            <a
+              href="mailto:support@helixintelligence.ai?subject=Upgrade to Scale Plan"
+              className="mt-6 w-full py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-center text-xs font-semibold border border-slate-700 transition"
+            >
+              Contact Sales
+            </a>
+          </div>
+
+        </div>
+      </div>
+
       {/* Usage Logs */}
       <div className="space-y-4">
         <h3 className="text-sm font-mono uppercase tracking-wider text-slate-400">
