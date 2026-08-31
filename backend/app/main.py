@@ -1,11 +1,44 @@
+import os
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+
 from app.core.config import settings, cors_origins
-from app.api.routers import auth, discover, creatives, analysis, admin, health, account, notifications
+from app.db.session import engine
+from app.db.base import Base
+import app.models
+
+from app.api.routers import (
+    auth,
+    discover,
+    creatives,
+    analysis,
+    admin,
+    health,
+    account,
+    notifications,
+    media,
+    webhooks,
+    updates,
+    higgsfield,
+    providers
+)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ensure all database tables exist on startup
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        print("Database startup sync error:", e)
+    yield
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan
 )
 
 # Set all CORS enabled origins
@@ -27,11 +60,6 @@ app.include_router(creatives.router, prefix=f"{settings.API_V1_STR}/creatives", 
 app.include_router(creatives.brands_router, prefix=f"{settings.API_V1_STR}/brands", tags=["brands"])
 app.include_router(creatives.patterns_router, prefix=f"{settings.API_V1_STR}/patterns", tags=["patterns"])
 app.include_router(analysis.insights_router, prefix=f"{settings.API_V1_STR}/insights", tags=["insights"])
-from app.api.routers import media, webhooks
-from fastapi.staticfiles import StaticFiles
-import os
-
-from app.api.routers import updates, higgsfield, providers
 app.include_router(media.router, prefix=f"{settings.API_V1_STR}/media", tags=["media"])
 app.include_router(providers.router, prefix=f"{settings.API_V1_STR}", tags=["providers"])
 app.include_router(webhooks.router, prefix=f"{settings.API_V1_STR}/webhooks", tags=["webhooks"])
