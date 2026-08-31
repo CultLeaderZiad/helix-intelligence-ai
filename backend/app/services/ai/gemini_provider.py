@@ -142,87 +142,65 @@ class GeminiProvider(AIProvider):
             }
         }
 
-        # Secondary fallback attempt using generateContent
-        generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.image_model}:generateContent?key={self.api_key}"
-        generate_payload = {
-            "contents": [{"parts": parts}],
-            "generationConfig": {
-                "responseMimeType": "image/png"
-            }
-        }
+        # Models to try for image generation
+        candidate_models = [self.image_model]
+        for fallback in ["gemini-2.5-flash-image", "gemini-3.1-flash-lite-image", "gemini-3-pro-image"]:
+            if fallback not in candidate_models:
+                candidate_models.append(fallback)
 
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            # 1. Try predict format
-            try:
-                resp = await client.post(
-                    predict_url,
-                    headers={"Content-Type": "application/json"},
-                    json=predict_payload
-                )
-                if resp.status_code == 200:
-                    data = resp.json()
-                    predictions = data.get("predictions", [])
-                    if predictions and isinstance(predictions, list):
-                        img_dict = predictions[0]
-                        b64_str = img_dict.get("bytesBase64Encoded") or img_dict.get("image", {}).get("imageBytes")
-                        if b64_str:
-                            image_bytes = base64.b64decode(b64_str)
-                            return {
-                                "provider": "gemini",
-                                "model": self.image_model,
-                                "media_type": "image",
-                                "mime_type": "image/png",
-                                "data": image_bytes,
-                                "metadata": {
-                                    "prompt": prompt,
-                                    "aspect_ratio": target_ratio,
-                                    "model": self.image_model
-                                }
-                            }
-            except Exception as e:
-                logger.warning("Gemini predict endpoint error: %s. Trying generateContent fallback...", e)
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            last_error = None
+            for model_name in candidate_models:
+                generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+                generate_payload = {
+                    "contents": [{"parts": parts}]
+                }
 
-            # 2. Try generateContent format
-            try:
-                resp2 = await client.post(
-                    generate_url,
-                    headers={"Content-Type": "application/json"},
-                    json=generate_payload
-                )
-                if resp2.status_code == 429:
-                    raise Exception("provider_rate_limited")
-                if resp2.status_code == 200:
-                    data = resp2.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        for part in candidates[0].get("content", {}).get("parts", []):
-                            inline = part.get("inlineData") or part.get("inline_data")
-                            if inline and inline.get("data"):
-                                mime_type = inline.get("mimeType") or inline.get("mime_type") or "image/png"
-                                image_bytes = base64.b64decode(inline["data"])
-                                return {
-                                    "provider": "gemini",
-                                    "model": self.image_model,
-                                    "media_type": "image",
-                                    "mime_type": mime_type,
-                                    "data": image_bytes,
-                                    "metadata": {
-                                        "prompt": prompt,
-                                        "aspect_ratio": target_ratio,
-                                        "model": self.image_model
+                try:
+                    resp = await client.post(
+                        generate_url,
+                        headers={"Content-Type": "application/json"},
+                        json=generate_payload
+                    )
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            for part in candidates[0].get("content", {}).get("parts", []):
+                                inline = part.get("inlineData") or part.get("inline_data")
+                                if inline and inline.get("data"):
+                                    mime_type = inline.get("mimeType") or inline.get("mime_type") or "image/png"
+                                    image_bytes = base64.b64decode(inline["data"])
+                                    return {
+                                        "provider": "gemini",
+                                        "model": model_name,
+                                        "media_type": "image",
+                                        "mime_type": mime_type,
+                                        "data": image_bytes,
+                                        "metadata": {
+                                            "prompt": prompt,
+                                            "aspect_ratio": target_ratio,
+                                            "model": model_name
+                                        }
                                     }
-                                }
-                elif resp2.status_code == 429:
-                    raise Exception("provider_rate_limited")
-                elif resp2.status_code == 400:
-                    err_msg = resp2.json().get("error", {}).get("message", resp2.text[:100])
-                    raise ValueError(f"Gemini API 400 Bad Request: {err_msg}")
-                elif resp2.status_code == 403 or resp2.status_code == 401:
-                    raise ValueError("Gemini API key is invalid or unauthorized")
-            except Exception as e:
-                if "provider_rate_limited" in str(e):
-                    raise
-                logger.error("Gemini generateContent error: %s", e)
-                raise
+                    elif resp.status_code == 429:
+                        last_error = "Gemini API quota exceeded or rate limit reached. Please check your Google AI Studio quota."
+                        continue
+                    elif resp.status_code == 400:
+                        err_msg = resp.json().get("error", {}).get("message", resp.text[:120])
+                        last_error = f"Gemini API 400 Bad Request: {err_msg}"
+                        continue
+                    elif resp.status_code in (401, 403):
+                        raise ValueError("Gemini API key is invalid or unauthorized")
+                    else:
+                        last_error = f"Gemini API returned HTTP {resp.status_code}"
+                except Exception as e:
+                    if "unauthorized" in str(e).lower() or "invalid" in str(e).lower():
+                        raise
+                    last_error = str(e)
+                    logger.warning("Error with model %s: %s", model_name, e)
+
+            if last_error:
+                raise ValueError(last_error)
 
         raise ValueError("Gemini image generation did not return image data")
