@@ -2,21 +2,17 @@ import { useState, useEffect } from "react"
 import { useSearchParams, useNavigate, Link } from "react-router-dom"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import {
-  PenLine,
   Play,
   Image as ImageIcon,
-  CheckCircle,
   AlertCircle,
   Loader,
   Sparkles,
   Video,
-  Film,
   Wand2,
   ChevronDown,
-  Layers,
-  Zap,
   ArrowRight,
-  Lock
+  Lock,
+  RefreshCw
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { creativeService } from "@/services"
@@ -60,7 +56,6 @@ export function CreatePage() {
   const [aspectRatio, setAspectRatio] = useState("1:1")
   const [brief, setBrief] = useState("")
   const [startImageUrl, setStartImageUrl] = useState("")
-  const [endImageUrl, setEndImageUrl] = useState("")
   const [showAdPicker, setShowAdPicker] = useState(false)
   
   const { phase, job, result, error, submit, cancel, isBusy } = useMediaGenerate()
@@ -128,7 +123,6 @@ export function CreatePage() {
       params.start_image_url = startImageUrl.trim()
       params.reference_images.push(startImageUrl.trim())
     }
-    if (endImageUrl.trim()) params.end_image_url = endImageUrl.trim()
 
     submit({
       prompt: brief,
@@ -138,7 +132,12 @@ export function CreatePage() {
     })
   }
 
-  const isModeRequiringFrames = selectedMode === "before_after" || selectedMode === "controlled_video"
+  // Safe string conversion for error messages to prevent React crashes
+  const displayErrorMessage = error
+    ? (typeof error === "string" 
+        ? error 
+        : error?.message || error?.detail?.message || "Generation request failed. Please try again.")
+    : null
 
   let displayUrl = null
   let isVideo = false
@@ -148,6 +147,9 @@ export function CreatePage() {
       isVideo = true
     } else if (result.type === "image" && result.image?.url) {
       displayUrl = result.image.url
+    } else if (result.url) {
+      displayUrl = result.url
+      isVideo = displayUrl.endsWith(".mp4") || displayUrl.includes("video")
     } else if (result.result_url) {
       displayUrl = result.result_url
       isVideo = displayUrl.endsWith(".mp4")
@@ -454,11 +456,14 @@ export function CreatePage() {
                       {job?.status ? `Status: ${job.status}` : "Synthesizing image concept..."}
                     </span>
                   </div>
-                ) : error ? (
-                  <div className="flex flex-col items-center gap-2 text-center p-4">
+                ) : displayErrorMessage ? (
+                  <div className="flex flex-col items-center gap-3 text-center p-4">
                     <AlertCircle className="h-8 w-8 text-destructive" />
-                    <span className="text-xs font-bold text-destructive">Generation Error</span>
-                    <p className="text-[11px] text-text-muted max-w-xs">{error}</p>
+                    <span className="text-xs font-bold text-destructive">Generation Issue</span>
+                    <p className="text-[11px] text-text-muted max-w-xs">{displayErrorMessage}</p>
+                    <Button size="xs" variant="outline" onClick={handleGenerate} className="gap-1 text-xs mt-2">
+                      <RefreshCw className="w-3 h-3" /> Retry Generation
+                    </Button>
                   </div>
                 ) : displayUrl ? (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-3">
@@ -496,3 +501,5 @@ export function CreatePage() {
     </div>
   )
 }
+
+export default CreatePage

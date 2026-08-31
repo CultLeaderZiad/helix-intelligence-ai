@@ -41,24 +41,34 @@ export function useMediaGenerate() {
 
         setJob(currentJob)
 
-        if (currentJob.status === "succeeded") {
+        if (currentJob.status === "succeeded" || currentJob.status === "completed") {
           setPhase(PHASE.FETCHING_RESULTS)
-          const finalResult = await mediaService.getJobResult(jobId)
-          if (activeJobIdRef.current !== jobId) return
-          
-          setResult(finalResult)
+          try {
+            const finalResult = await mediaService.getJobResult(jobId)
+            if (activeJobIdRef.current !== jobId) return
+            setResult(finalResult)
+          } catch (e) {
+            if (currentJob.result_url) {
+              setResult({
+                type: "image",
+                url: currentJob.result_url,
+                images: [{ url: currentJob.result_url }]
+              })
+            }
+          }
           setPhase(PHASE.READY)
           stopPolling()
         } else if (currentJob.status === "failed") {
-          setError(new Error(currentJob.error_message || "Generation failed"))
+          const errStr = currentJob.error_message || "Generation failed"
+          setError(errStr)
           setPhase(PHASE.ERROR)
           stopPolling()
         } else if (currentJob.status === "canceled") {
-          setError(new Error("Generation canceled"))
+          setError("Generation canceled")
           setPhase(PHASE.ERROR)
           stopPolling()
         } else if (currentJob.status === "nsfw") {
-          setError(new Error(currentJob.error_message || "Prompt flagged as NSFW. Generation aborted."))
+          setError(currentJob.error_message || "Prompt flagged as NSFW. Generation aborted.")
           setPhase(PHASE.ERROR)
           stopPolling()
         } else {
@@ -67,7 +77,8 @@ export function useMediaGenerate() {
         }
       } catch (err) {
         if (activeJobIdRef.current !== jobId) return
-        setError(err)
+        const msg = err?.message || (typeof err === "string" ? err : "Failed to check generation status")
+        setError(msg)
         setPhase(PHASE.ERROR)
         stopPolling()
       }
@@ -90,7 +101,8 @@ export function useMediaGenerate() {
         setPhase(PHASE.RUNNING)
         checkJobStatus(jobId)
       } catch (err) {
-        setError(err)
+        const msg = err?.message || (typeof err === "string" ? err : "Generation request failed")
+        setError(msg)
         setPhase(PHASE.ERROR)
         activeJobIdRef.current = null
       }
