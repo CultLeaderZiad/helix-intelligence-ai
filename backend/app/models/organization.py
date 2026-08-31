@@ -19,6 +19,7 @@ class Organization(Base):
     daily_credits_used_today = Column(Float, default=0.0, nullable=False)
     daily_credits_reset_at = Column(DateTime(timezone=True), nullable=True) # last UTC midnight when daily counter was reset
     images_generated_today = Column(Float, default=0.0, nullable=False)
+    videos_generated_today = Column(Float, default=0.0, nullable=False)
     images_today_date = Column(String, nullable=True) # YYYY-MM-DD
     images_trial_total = Column(Float, default=0.0, nullable=False)
     custom_feature_flags = Column(JSON, default=dict, nullable=True)

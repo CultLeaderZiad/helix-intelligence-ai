@@ -7,8 +7,9 @@ logger = logging.getLogger(__name__)
 
 class PollinationsProvider:
     """
-    Completely free image generation provider using Pollinations.ai.
-    Requires no API keys and has no hard rate limits.
+    Completely free image & video generation provider using Pollinations.ai.
+    Uses the authenticated gen.pollinations.ai API if a key is provided,
+    otherwise falls back to the anonymous image.pollinations.ai endpoint.
     """
     
     def __init__(self):
@@ -16,14 +17,22 @@ class PollinationsProvider:
         
     @property
     def is_configured(self) -> bool:
-        return True  # Always configured since it requires no keys
+        return True  # Always configured since it requires no keys (acts as free tier)
 
     async def test_connection(self) -> Dict[str, Any]:
         """
         Lightweight connection test for Pollinations.
         """
+        from app.core.config import settings
+        headers = {}
+        if settings.POLLINATIONS_API_KEY:
+            url = "https://gen.pollinations.ai/image/test"
+            headers["Authorization"] = f"Bearer {settings.POLLINATIONS_API_KEY}"
+        else:
+            url = "https://image.pollinations.ai/prompt/test"
+            
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get("https://image.pollinations.ai/prompt/test")
+            resp = await client.get(url, headers=headers)
             if resp.status_code == 200:
                 return {
                     "status": "connected",
@@ -37,9 +46,9 @@ class PollinationsProvider:
         """
         Generates an image using Pollinations.
         """
+        from app.core.config import settings
         logger.info("Generating image with Pollinations: %s", prompt[:50])
         
-        # Pollinations supports direct URL encoding of the prompt
         encoded_prompt = quote(prompt)
         
         # Default dimensions for 1:1
@@ -56,11 +65,16 @@ class PollinationsProvider:
         elif aspect_ratio == "4:3":
             width, height = 1024, 768
             
-        url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&nologo=true"
+        headers = {}
+        if settings.POLLINATIONS_API_KEY:
+            url = f"https://gen.pollinations.ai/image/{encoded_prompt}?width={width}&height={height}&nologo=true"
+            headers["Authorization"] = f"Bearer {settings.POLLINATIONS_API_KEY}"
+        else:
+            url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&nologo=true"
         
         async with httpx.AsyncClient(timeout=60.0) as client:
             try:
-                resp = await client.get(url)
+                resp = await client.get(url, headers=headers)
                 if resp.status_code == 200:
                     image_bytes = resp.content
                     return {
@@ -85,3 +99,53 @@ class PollinationsProvider:
             except Exception as e:
                 logger.error("Pollinations generation error: %s", e)
                 raise ValueError(f"Image generation failed: {str(e)}")
+
+    async def generate_video(self, prompt: str, **kwargs) -> Dict[str, Any]:
+        """
+        Generates a video using Pollinations /video/{prompt} endpoint.
+        """
+        from app.core.config import settings
+        logger.info("Generating video with Pollinations: %s", prompt[:50])
+        
+        encoded_prompt = quote(prompt)
+        
+        model = kwargs.get("model", "wan-fast")
+        duration = kwargs.get("duration", 5)
+        
+        aspect_ratio = kwargs.get("aspect_ratio", "16:9")
+        
+        url = f"https://gen.pollinations.ai/video/{encoded_prompt}?model={model}&duration={duration}&aspectRatio={aspect_ratio}&audio=false&nologo=true"
+        
+        headers = {}
+        if settings.POLLINATIONS_API_KEY:
+            headers["Authorization"] = f"Bearer {settings.POLLINATIONS_API_KEY}"
+            
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            try:
+                resp = await client.get(url, headers=headers)
+                if resp.status_code == 200:
+                    video_bytes = resp.content
+                    return {
+                        "provider": "pollinations",
+                        "model": model,
+                        "media_type": "video",
+                        "mime_type": "video/mp4",
+                        "data": video_bytes,
+                        "metadata": {
+                            "prompt": prompt,
+                            "aspect_ratio": aspect_ratio,
+                            "model": model,
+                            "duration": duration
+                        }
+                    }
+                elif resp.status_code == 402:
+                    raise ValueError("Insufficient Pollen balance on the Pollinations API key to run this model.")
+                elif resp.status_code == 429:
+                    raise ValueError("Pollinations API rate limit reached. Please try again later.")
+                else:
+                    raise ValueError(f"Pollinations API error: HTTP {resp.status_code}")
+            except httpx.TimeoutException:
+                raise ValueError("Pollinations API request timed out after 120 seconds.")
+            except Exception as e:
+                logger.error("Pollinations video generation error: %s", e)
+                raise ValueError(f"Video generation failed: {str(e)}")

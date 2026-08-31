@@ -68,9 +68,21 @@ export function CreatePage() {
 
   const isTrial = user?.plan_id?.startsWith("plan_trial") || user?.plan === "trial" || user?.role !== "admin"
   const isAdmin = user?.role === "admin"
-  const usedToday = user?.images_used_today || 0
-  const dailyLimit = user?.images_daily_limit || 5
-  const remainingToday = user?.images_remaining_today !== undefined ? user.images_remaining_today : (dailyLimit - usedToday)
+  
+  // Image Limits
+  const imagesUsedToday = user?.images_used_today || 0
+  const imagesDailyLimit = user?.images_daily_limit || 5
+  const imagesRemainingToday = user?.images_remaining_today !== undefined ? user.images_remaining_today : (imagesDailyLimit - imagesUsedToday)
+  
+  // Video Limits
+  const videosUsedToday = user?.videos_used_today || 0
+  const videosDailyLimit = user?.videos_daily_limit || 3
+  const videosRemainingToday = user?.videos_remaining_today !== undefined ? user.videos_remaining_today : (videosDailyLimit - videosUsedToday)
+  
+  const remainingToday = activeCategory === "video" ? videosRemainingToday : imagesRemainingToday
+  const dailyLimit = activeCategory === "video" ? videosDailyLimit : imagesDailyLimit
+  const usedToday = activeCategory === "video" ? videosUsedToday : imagesUsedToday
+  
   const daysLeft = user?.trial_days_remaining !== undefined ? user.trial_days_remaining : 7
   const isTrialExpired = user?.requires_plan || (isTrial && !isAdmin && daysLeft <= 0)
   const isDailyLimitReached = isTrial && !isAdmin && remainingToday <= 0
@@ -101,9 +113,6 @@ export function CreatePage() {
   }
 
   const handleCategoryChange = (category) => {
-    if (category === "video" && isTrial && !isAdmin) {
-      return // Locked on trial
-    }
     setActiveCategory(category)
     if (category === "image") {
       setSelectedMode("premium_ad")
@@ -208,15 +217,15 @@ export function CreatePage() {
                     {isTrialExpired 
                       ? "7-Day Free Trial Ended" 
                       : isDailyLimitReached 
-                      ? "Daily Image Limit Reached (5/5)" 
-                      : `7-Day Free Trial: ${usedToday} of ${dailyLimit} images used today`}
+                      ? `Daily ${activeCategory === "video" ? "Video" : "Image"} Limit Reached (${usedToday}/${dailyLimit})` 
+                      : `7-Day Free Trial: ${usedToday} of ${dailyLimit} ${activeCategory === "video" ? "videos" : "images"} used today`}
                   </span>
                   <span className="text-[11px] text-text-muted">
                     {isTrialExpired 
                       ? "Upgrade to a paid plan to unlock unlimited image and video creation." 
                       : isDailyLimitReached 
-                      ? "Your daily allowance resets at 00:00 UTC. Upgrade for 50+ images/day." 
-                      : `${daysLeft} days remaining · Video motion unlocked on paid plans.`}
+                      ? `Your daily allowance resets at 00:00 UTC. Upgrade for 50+ ${activeCategory === "video" ? "videos" : "images"}/day.` 
+                      : `${daysLeft} days remaining · ${activeCategory === "video" ? "Video motion trial active (3/day)." : "Video motion trial also active (3/day)."}`}
                   </span>
                 </div>
               </div>
@@ -304,17 +313,14 @@ export function CreatePage() {
                 <button
                   type="button"
                   onClick={() => handleCategoryChange("video")}
-                  disabled={isTrial && !isAdmin}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-md transition-colors ${
                     activeCategory === "video"
                       ? "bg-surface-3 text-text shadow-sm border border-border"
-                      : isTrial && !isAdmin
-                      ? "text-text-faint opacity-60 cursor-not-allowed"
                       : "text-text-muted hover:text-text"
                   }`}
                 >
-                  {isTrial && !isAdmin ? <Lock className="h-3.5 w-3.5 text-text-faint" /> : <Video className="h-4 w-4 text-accent" />}
-                  Video Motion {isTrial && !isAdmin && <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-text-faint ml-1">Paid Plan</span>}
+                  <Video className="h-4 w-4 text-accent" />
+                  Video Motion {isTrial && !isAdmin && <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-accent ml-1 font-mono font-bold">3/day Trial</span>}
                 </button>
               </div>
 
@@ -496,16 +502,16 @@ export function CreatePage() {
                 {isBusy ? (
                   <>
                     <Loader className="h-4 w-4 animate-spin text-black" />
-                    Generating Creative with Gemini AI...
+                    {customApiKey.trim() ? "Generating with Gemini..." : "Generating Image..."}
                   </>
                 ) : isTrialExpired ? (
                   "Trial Ended — Select a Plan to Generate"
                 ) : isDailyLimitReached ? (
-                  "Daily Limit Reached (5/5 Images Used Today)"
+                  `Daily Limit Reached (${usedToday}/${dailyLimit} ${activeCategory === "video" ? "Videos" : "Images"} Used Today)`
                 ) : (
                   <>
                     <Wand2 className="h-4 w-4 text-black" />
-                    Generate Image with Gemini AI
+                    {customApiKey.trim() ? "Generate with Gemini" : "Generate Image"}
                   </>
                 )}
               </Button>

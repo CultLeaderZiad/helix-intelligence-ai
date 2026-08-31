@@ -524,6 +524,7 @@ async def _ensure_daily_image_reset(db: AsyncSession, org: Organization) -> None
     today_str = now.strftime("%Y-%m-%d")
     if org.images_today_date != today_str:
         org.images_generated_today = 0.0
+        org.videos_generated_today = 0.0
         org.images_today_date = today_str
         await db.flush()
 
@@ -549,6 +550,13 @@ async def get_trial_usage_summary(db: AsyncSession, user: User, org: Optional[Or
     total_used = int(getattr(org, "images_trial_total", 0) or 0)
     requires_plan = (not is_admin) and is_trial and (not active or total_used >= settings.TRIAL_IMAGES_TOTAL)
 
+    # Video limits
+    video_daily_limit = 3 if is_trial else 50
+    if is_admin:
+        video_daily_limit = 99999
+    videos_used_today = int(getattr(org, "videos_generated_today", 0) or 0)
+    videos_remaining_today = max(0, video_daily_limit - videos_used_today)
+
     return {
         "trial_active": active if is_trial else True,
         "trial_days_remaining": days_left,
@@ -556,6 +564,9 @@ async def get_trial_usage_summary(db: AsyncSession, user: User, org: Optional[Or
         "images_daily_limit": daily_limit,
         "images_remaining_today": remaining_today,
         "images_trial_total": total_used,
+        "videos_used_today": videos_used_today,
+        "videos_daily_limit": video_daily_limit,
+        "videos_remaining_today": videos_remaining_today,
         "trial_ends_at": user.trial_expires_at.isoformat() + "Z" if user.trial_expires_at else None,
         "requires_plan": requires_plan
     }
@@ -596,16 +607,18 @@ async def assert_can_generate_image(
     used_today = int(getattr(org, "images_generated_today", 0) or 0)
     total_used = int(getattr(org, "images_trial_total", 0) or 0)
 
-    # 1. Video blocking on trial
+    # 1. Video limit on trial (allow 1-3 video generations per day)
     if is_trial and media_type.lower() in ("video", "controlled_video", "before_after", "quick_video", "premium_video"):
-        raise HTTPException(
-            status_code=402,
-            detail={
-                "code": "video_not_allowed",
-                "message": "Video generation is available exclusively on paid plans. Upgrade to unlock AI video creation.",
-                "trial_days_remaining": days_remaining
-            }
-        )
+        videos_used_today = int(getattr(org, "videos_generated_today", 0) or 0)
+        if videos_used_today >= 3:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "code": "video_limit_reached",
+                    "message": "You've reached your free daily limit of 3 videos. Upgrade to a paid plan for unlimited video creation.",
+                    "trial_days_remaining": days_remaining
+                }
+            )
 
     # 2. Check 7-Day Trial Expiration
     if is_trial and not is_trial_active(user):
@@ -684,6 +697,39 @@ async def record_image_generated(
         metadata_json={
             "images_generated_today": int(org.images_generated_today),
             "images_trial_total": int(org.images_trial_total)
+        }
+    )
+    db.add(log)
+    await db.commit()
+    await db.refresh(org)
+    return log
+
+
+async def record_video_generated(
+    db: AsyncSession,
+    user: User,
+    org: Organization,
+    job_id: Optional[str] = None,
+    cost_usd: float = 0.00
+) -> UsageLog:
+    """
+    Increments daily video counter and logs usage.
+    """
+    await _ensure_daily_image_reset(db, org)
+    org.videos_generated_today = (getattr(org, "videos_generated_today", 0) or 0) + 1.0
+
+    log = UsageLog(
+        org_id=org.id,
+        user_id=user.id,
+        job_id=job_id,
+        provider="pollinations",
+        operation="media_generate_video",
+        units=1.0,
+        cost_usd=cost_usd,
+        credits_deducted=0.0,
+        requests_used=1,
+        metadata_json={
+            "videos_generated_today": int(org.videos_generated_today),
         }
     )
     db.add(log)

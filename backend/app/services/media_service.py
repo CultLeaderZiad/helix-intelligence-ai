@@ -13,6 +13,7 @@ from app.services.billing_service import (
     get_or_create_default_org,
     assert_can_generate_image,
     record_image_generated,
+    record_video_generated,
 )
 from app.services.provider_resolver import resolve_image_provider
 from app.services.ai.gemini_provider import GeminiProvider
@@ -78,26 +79,50 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
             if params.get("start_image_url"):
                 reference_images.append(params.get("start_image_url"))
 
-            gen_result = await provider_instance.generate_image(
-                prompt=job.prompt,
-                reference_images=reference_images,
-                aspect_ratio=aspect_ratio,
-            )
+            mode = params.get("mode")
+            mode_spec = resolve_mode_spec(mode) if mode else {}
+            media_category = mode_spec.get("output_type", "image")
 
-            # Store binary image
-            image_bytes = gen_result.get("data")
-            mime_type = gen_result.get("mime_type", "image/png")
-            final_url = await store_media_bytes(job.id, image_bytes, mime_type)
+            if media_category == "video":
+                # If provider is Pollinations, use it. Otherwise fallback to Pollinations for video
+                if hasattr(provider_instance, "generate_video"):
+                    gen_result = await provider_instance.generate_video(
+                        prompt=job.prompt,
+                        aspect_ratio=aspect_ratio,
+                        model=params.get("custom_model") or "wan-fast"
+                    )
+                else:
+                    from app.services.ai.pollinations_provider import PollinationsProvider
+                    temp_provider = PollinationsProvider()
+                    gen_result = await temp_provider.generate_video(
+                        prompt=job.prompt,
+                        aspect_ratio=aspect_ratio,
+                        model=params.get("custom_model") or "wan-fast"
+                    )
+            else:
+                gen_result = await provider_instance.generate_image(
+                    prompt=job.prompt,
+                    reference_images=reference_images,
+                    aspect_ratio=aspect_ratio,
+                )
+
+            # Store binary media
+            media_bytes = gen_result.get("data")
+            mime_type = gen_result.get("mime_type", "video/mp4" if media_category == "video" else "image/png")
+            final_url = await store_media_bytes(job.id, media_bytes, mime_type)
 
             job.status = "completed"
             job.result_url = final_url
             await db.commit()
 
             # Increment usage counters only on success
-            await record_image_generated(db, user, org, job_id=job.id)
+            if media_category == "video":
+                await record_video_generated(db, user, org, job_id=job.id)
+            else:
+                await record_image_generated(db, user, org, job_id=job.id)
 
             logger.info(
-                "Gemini image job %s completed successfully (%s mode): %s",
+                "Gemini/Pollinations job %s completed successfully (%s mode): %s",
                 job_id,
                 credential_mode,
                 final_url

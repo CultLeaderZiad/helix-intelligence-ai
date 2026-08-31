@@ -27,6 +27,7 @@ async def store_media_bytes(job_id: str, data: bytes, mime_type: str = "image/pn
 
     app_url = os.environ.get("VITE_API_BASE_URL", "http://localhost:8000/api")
     app_url = app_url.replace("/api", "")
+    final_url = f"{app_url}/uploads/{filename}"
     return final_url
 
 async def store_media_from_url(job_id: str, source_url: str) -> str:

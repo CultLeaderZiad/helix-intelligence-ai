@@ -37,6 +37,7 @@ async def lifespan(app: FastAPI):
             # 2. Run non-destructive column migrations on existing PostgreSQL tables
             migrations = [
                 "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS images_generated_today FLOAT DEFAULT 0.0;",
+                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS videos_generated_today FLOAT DEFAULT 0.0;",
                 "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS images_today_date VARCHAR(32) DEFAULT '';",
                 "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS images_trial_total FLOAT DEFAULT 0.0;",
                 "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS custom_feature_flags JSON DEFAULT '{}'::json;",
