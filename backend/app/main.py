@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from app.core.config import settings, cors_origins
 from app.db.session import engine
@@ -27,10 +28,28 @@ from app.api.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure all database tables exist on startup
+    # Ensure all database tables and missing columns exist on startup
     try:
         async with engine.begin() as conn:
+            # 1. Create all missing tables (e.g. workspace_provider_credentials)
             await conn.run_sync(Base.metadata.create_all)
+
+            # 2. Run non-destructive column migrations on existing PostgreSQL tables
+            migrations = [
+                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS images_generated_today FLOAT DEFAULT 0.0;",
+                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS images_today_date VARCHAR(32) DEFAULT '';",
+                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS images_trial_total FLOAT DEFAULT 0.0;",
+                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS custom_feature_flags JSON DEFAULT '{}'::json;",
+                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS status VARCHAR(64) DEFAULT 'active';",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMPTZ;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMPTZ;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS has_completed_onboarding BOOLEAN DEFAULT FALSE;",
+            ]
+            for query in migrations:
+                try:
+                    await conn.execute(text(query))
+                except Exception as col_err:
+                    print(f"Migration note for query: {query}:", col_err)
     except Exception as e:
         print("Database startup sync error:", e)
     yield
