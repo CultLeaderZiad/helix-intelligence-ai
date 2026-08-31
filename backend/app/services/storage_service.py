@@ -14,41 +14,34 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-async def store_media_from_url(job_id: str, source_url: str):
+async def store_media_bytes(job_id: str, data: bytes, mime_type: str = "image/png") -> str:
     """
-    Downloads media from Higgsfield and stores it.
-    Since we don't have S3 credentials, we store it in a local static directory.
-    WARNING: On Render free tier, this is ephemeral and will be wiped.
+    Persists binary image bytes directly to local storage and returns public URL.
+    """
+    ext = ".jpg" if "jpeg" in mime_type or "jpg" in mime_type else ".webp" if "webp" in mime_type else ".png"
+    filename = f"{job_id}_{uuid.uuid4().hex[:8]}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+
+    with open(file_path, "wb") as f:
+        f.write(data)
+
+    app_url = os.environ.get("VITE_API_BASE_URL", "http://localhost:8000/api")
+    app_url = app_url.replace("/api", "")
+    return final_url
+
+async def store_media_from_url(job_id: str, source_url: str) -> str:
+    """
+    Downloads media from an external URL and stores it locally.
     """
     try:
         logger.info(f"Downloading media for job {job_id} from {source_url}")
         async with httpx.AsyncClient() as client:
             response = await client.get(source_url)
             response.raise_for_status()
-            
             content_type = response.headers.get("content-type", "")
-            ext = ".mp4" if "video" in content_type else ".png" if "png" in content_type else ".jpg"
-            
-            filename = f"{job_id}_{uuid.uuid4().hex[:8]}{ext}"
-            file_path = os.path.join(UPLOAD_DIR, filename)
-            
-            with open(file_path, "wb") as f:
-                f.write(response.content)
-                
-            # Base URL for static files (assumes we mount /uploads in main.py)
-            # Default to Render URL or localhost depending on environment
-            app_url = os.environ.get("VITE_API_BASE_URL", "http://localhost:8000/api")
-            app_url = app_url.replace("/api", "")
-            
-            final_url = f"{app_url}/uploads/{filename}"
-            logger.info(f"Stored media for job {job_id} at {final_url}")
-            
-            # Update DB with new URL
-            async with async_session_maker() as db:
-                result = await db.execute(select(MediaGenerationJob).where(MediaGenerationJob.id == job_id))
-                job = result.scalar_one_or_none()
-                if job:
-                    job.result_url = final_url
-                    await db.commit()
+            return await store_media_bytes(job_id, response.content, content_type)
     except Exception as e:
         logger.error(f"Failed to download/store media for job {job_id}: {e}")
+        return source_url
+
+

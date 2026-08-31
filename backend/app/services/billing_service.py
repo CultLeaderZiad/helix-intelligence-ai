@@ -453,6 +453,8 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
     if daily_limit:
         daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
 
+    trial_summary = await get_trial_usage_summary(db, user, org)
+
     return {
         "org_id": org.id,
         "org_name": org.name,
@@ -468,6 +470,12 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
         "daily_credits_used": daily_used,
         "daily_credits_remaining": daily_remaining,
         "daily_credits_resets_at_utc": daily_resets_at,
+        "trial_active": trial_summary["trial_active"],
+        "images_used_today": trial_summary["images_used_today"],
+        "images_daily_limit": trial_summary["images_daily_limit"],
+        "images_remaining_today": trial_summary["images_remaining_today"],
+        "images_trial_total": trial_summary["images_trial_total"],
+        "requires_plan": trial_summary["requires_plan"],
         "feature_flags": plan.feature_flags or {},
         "recent_usage": [
             {
@@ -483,3 +491,203 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
             for l in logs
         ]
     }
+
+
+def is_trial_active(user: User) -> bool:
+    """Returns True if the user is within their active 7-day trial window."""
+    if not user.trial_expires_at:
+        return True
+    now = datetime.datetime.now(datetime.timezone.utc)
+    trial_exp = user.trial_expires_at
+    if trial_exp.tzinfo is None:
+        trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
+    return now <= trial_exp
+
+
+def get_trial_days_remaining(user: User) -> int:
+    """Calculates remaining days in trial."""
+    if not user.trial_expires_at:
+        return settings.TRIAL_DAYS
+    now = datetime.datetime.now(datetime.timezone.utc)
+    trial_exp = user.trial_expires_at
+    if trial_exp.tzinfo is None:
+        trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
+    if now > trial_exp:
+        return 0
+    delta = trial_exp - now
+    return max(0, delta.days + (1 if delta.seconds > 0 else 0))
+
+
+async def _ensure_daily_image_reset(db: AsyncSession, org: Organization) -> None:
+    """Resets org.images_generated_today at UTC date boundaries."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    today_str = now.strftime("%Y-%m-%d")
+    if org.images_today_date != today_str:
+        org.images_generated_today = 0.0
+        org.images_today_date = today_str
+        await db.flush()
+
+
+async def get_trial_usage_summary(db: AsyncSession, user: User, org: Optional[Organization] = None) -> Dict[str, Any]:
+    """Returns normalized image usage metrics for trial/paid user."""
+    if not org:
+        org = await get_or_create_default_org(db, user, lock_row=False)
+    else:
+        await _ensure_daily_image_reset(db, org)
+
+    is_admin = getattr(user, "role", None) == "admin"
+    is_trial = org.plan == "trial" or org.plan_id.startswith("plan_trial")
+    active = is_trial_active(user)
+    days_left = get_trial_days_remaining(user)
+
+    daily_limit = settings.TRIAL_IMAGES_PER_DAY if is_trial else settings.PAID_IMAGES_PER_DAY
+    if is_admin:
+        daily_limit = 99999
+
+    used_today = int(getattr(org, "images_generated_today", 0) or 0)
+    remaining_today = max(0, daily_limit - used_today)
+    total_used = int(getattr(org, "images_trial_total", 0) or 0)
+    requires_plan = (not is_admin) and is_trial and (not active or total_used >= settings.TRIAL_IMAGES_TOTAL)
+
+    return {
+        "trial_active": active if is_trial else True,
+        "trial_days_remaining": days_left,
+        "images_used_today": used_today,
+        "images_daily_limit": daily_limit,
+        "images_remaining_today": remaining_today,
+        "images_trial_total": total_used,
+        "trial_ends_at": user.trial_expires_at.isoformat() + "Z" if user.trial_expires_at else None,
+        "requires_plan": requires_plan
+    }
+
+
+async def assert_can_generate_image(
+    db: AsyncSession,
+    user: User,
+    org: Optional[Organization] = None,
+    media_type: str = "image",
+    lock_row: bool = True
+) -> Tuple[Organization, Plan]:
+    """
+    Strict server-side gatekeeper for Gemini Trial Image Generation.
+    Guarantees:
+    - 7-day trial expiry -> 402 HTTP (code: trial_expired)
+    - 5 images/day limit -> 402 HTTP (code: daily_limit)
+    - 25 total images cap -> 402 HTTP (code: trial_total_limit)
+    - Video on trial -> 402 HTTP (code: video_not_allowed)
+    - Paid plans / Admin -> Bypass trial limitations
+    """
+    if not org:
+        org = await get_or_create_default_org(db, user, lock_row=lock_row)
+    else:
+        await _ensure_daily_image_reset(db, org)
+
+    # 0. Administrator bypass
+    if getattr(user, "role", None) == "admin":
+        admin_plan = Plan(id="plan_admin", name="Admin", type="admin", credit_allowance=999999)
+        return org, admin_plan
+
+    # Fetch user plan
+    plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
+    plan = plan_result.scalar_one_or_none()
+    is_trial = (plan is None) or (plan.type == "trial") or (org.plan == "trial")
+
+    days_remaining = get_trial_days_remaining(user)
+    used_today = int(getattr(org, "images_generated_today", 0) or 0)
+    total_used = int(getattr(org, "images_trial_total", 0) or 0)
+
+    # 1. Video blocking on trial
+    if is_trial and media_type.lower() in ("video", "controlled_video", "before_after", "quick_video", "premium_video"):
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "video_not_allowed",
+                "message": "Video generation is available exclusively on paid plans. Upgrade to unlock AI video creation.",
+                "trial_days_remaining": days_remaining
+            }
+        )
+
+    # 2. Check 7-Day Trial Expiration
+    if is_trial and not is_trial_active(user):
+        org.status = "trial_expired"
+        await db.commit()
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "trial_expired",
+                "message": "Your 7-day free trial has ended. Select a plan to continue creating AI ads.",
+                "images_used_today": used_today,
+                "images_daily_limit": settings.TRIAL_IMAGES_PER_DAY,
+                "images_remaining_today": 0,
+                "trial_days_remaining": 0
+            }
+        )
+
+    # 3. Check 25-image total trial cap
+    if is_trial and total_used >= settings.TRIAL_IMAGES_TOTAL:
+        org.status = "quota_exhausted"
+        await db.commit()
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "trial_total_limit",
+                "message": f"You've reached your total trial allowance of {settings.TRIAL_IMAGES_TOTAL} images. Upgrade to continue creating.",
+                "images_used_today": used_today,
+                "images_daily_limit": settings.TRIAL_IMAGES_PER_DAY,
+                "images_remaining_today": 0,
+                "trial_days_remaining": days_remaining
+            }
+        )
+
+    # 4. Check Daily Limit (5 images/day on trial, 50 on paid)
+    daily_limit = settings.TRIAL_IMAGES_PER_DAY if is_trial else settings.PAID_IMAGES_PER_DAY
+    if used_today >= daily_limit:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "daily_limit",
+                "message": f"You've reached today's limit of {daily_limit} images. Your quota resets at 00:00 UTC.",
+                "images_used_today": used_today,
+                "images_daily_limit": daily_limit,
+                "images_remaining_today": 0,
+                "trial_days_remaining": days_remaining
+            }
+        )
+
+    return org, plan or Plan(id="plan_trial_default", name="7-Day Free Trial", type="trial")
+
+
+async def record_image_generated(
+    db: AsyncSession,
+    user: User,
+    org: Organization,
+    job_id: Optional[str] = None,
+    cost_usd: float = 0.00
+) -> UsageLog:
+    """
+    Increments daily and total image counters and logs usage.
+    """
+    await _ensure_daily_image_reset(db, org)
+    org.images_generated_today = (getattr(org, "images_generated_today", 0) or 0) + 1.0
+    org.images_trial_total = (getattr(org, "images_trial_total", 0) or 0) + 1.0
+
+    log = UsageLog(
+        org_id=org.id,
+        user_id=user.id,
+        job_id=job_id,
+        provider="gemini",
+        operation="media_generate_image",
+        units=1.0,
+        cost_usd=cost_usd,
+        credits_deducted=0.0,
+        requests_used=1,
+        metadata_json={
+            "images_generated_today": int(org.images_generated_today),
+            "images_trial_total": int(org.images_trial_total)
+        }
+    )
+    db.add(log)
+    await db.commit()
+    await db.refresh(org)
+    return log
+

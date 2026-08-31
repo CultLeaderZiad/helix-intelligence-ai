@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException
@@ -9,6 +10,8 @@ from app.schemas.media import MediaGenerationRequest
 from app.models.user import User
 from app.services.billing_service import (
     get_or_create_default_org,
+    assert_can_generate_image,
+    record_image_generated,
     assert_can_spend,
     charge,
     refund,
@@ -16,161 +19,183 @@ from app.services.billing_service import (
     CREATE_VIDEO_CREDIT_COST,
     ESTIMATED_PROVIDER_COSTS,
 )
+from app.services.ai.gemini_provider import GeminiProvider
+from app.services.storage_service import store_media_bytes
 from app.services.media.higgsfield_provider import HiggsfieldProvider
 from app.services.media.higgsfield_registry import resolve_mode_spec
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-async def mock_generate_media_task(job_id: str):
+async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
     """
-    Simulates a background generation task.
+    Executes synchronous/async Gemini image generation in background task.
+    Persists binary image bytes and updates MediaGenerationJob status.
+    Increments daily usage counter only upon verified success.
     """
-    await asyncio.sleep(5)
-    
     from app.db.session import async_session_maker
+    gemini = GeminiProvider()
+
     async with async_session_maker() as db:
         result = await db.execute(select(MediaGenerationJob).where(MediaGenerationJob.id == job_id))
         job = result.scalar_one_or_none()
-        
-        if job:
+        if not job:
+            return
+
+        user_result = await db.execute(select(User).where(User.id == user_id))
+        user = user_result.scalar_one_or_none()
+
+        org_result = await db.execute(select(from_obj=None, entity=None).where(True) if False else select(User).where(User.id == user_id))
+        # Fetch organization
+        from app.models.organization import Organization
+        org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+
+        job.status = "running"
+        await db.commit()
+
+        try:
+            params = job.parameters or {}
+            aspect_ratio = params.get("aspect_ratio", "1:1")
+            reference_images = params.get("reference_images") or []
+            if params.get("start_image_url"):
+                reference_images.append(params.get("start_image_url"))
+
+            gen_result = await gemini.generate_image(
+                prompt=job.prompt,
+                reference_images=reference_images,
+                aspect_ratio=aspect_ratio,
+            )
+
+            # Store binary image
+            image_bytes = gen_result.get("data")
+            mime_type = gen_result.get("mime_type", "image/png")
+            final_url = await store_media_bytes(job.id, image_bytes, mime_type)
+
             job.status = "completed"
-            job.result_url = "https://www.w3schools.com/html/mov_bbb.mp4" # Mock video
+            job.result_url = final_url
             await db.commit()
+
+            # Increment usage counters only on success
+            if user and org:
+                await record_image_generated(db, user, org, job_id=job.id)
+
+            logger.info("Gemini image job %s completed successfully: %s", job_id, final_url)
+
+        except Exception as e:
+            logger.error("Gemini image generation failed for job %s: %s", job_id, str(e))
+            job.status = "failed"
+            err_msg = str(e)
+            if "provider_rate_limited" in err_msg or "429" in err_msg:
+                job.error_message = "Gemini provider is currently rate-limited. Please try again shortly."
+            elif "API key" in err_msg:
+                job.error_message = "Gemini API key is invalid or unauthorized."
+            else:
+                job.error_message = err_msg[:200]
+            await db.commit()
+
 
 async def higgsfield_generate_media_task(job_id: str):
     from app.db.session import async_session_maker
-    
     provider = HiggsfieldProvider()
-    
+
     async with async_session_maker() as db:
         result = await db.execute(select(MediaGenerationJob).where(MediaGenerationJob.id == job_id))
         job = result.scalar_one_or_none()
-        
         if not job:
             return
-            
+
         try:
-            # 1. Start generation
-            from app.core.config import settings
-            logger.info(f"Starting Higgsfield generation for job {job_id}")
-            
-            # Construct webhook URL using PUBLIC_API_BASE_URL
+            logger.info("Starting Higgsfield generation for job %s", job_id)
             webhook_url = f"{settings.PUBLIC_API_BASE_URL}/webhooks/higgsfield"
-            
             params = job.parameters or {}
-            
+
             request_id = await provider.generate_media(
-                job.prompt, 
+                job.prompt,
                 params,
                 webhook_url=webhook_url
             )
-            
+
             job.provider_job_id = request_id
             job.status = "in_progress"
             await db.commit()
-            
-            # 2. Polling fallback
-            max_attempts = 60
-            for attempt in range(max_attempts):
+
+            # Polling fallback
+            for _ in range(60):
                 await asyncio.sleep(2.0)
-                
-                # Check DB first to see if webhook already processed it
                 await db.refresh(job)
                 if job.status in ["completed", "failed", "nsfw"]:
-                    logger.info(f"Job {job_id} already completed by webhook (status: {job.status})")
                     return
-                
+
                 status_info = await provider.check_status(request_id)
                 status = status_info.get("status")
-                
+
                 if status == "completed":
                     job.status = "completed"
                     result_url = status_info.get("url")
                     if result_url:
                         job.result_url = result_url
                     await db.commit()
-                    logger.info(f"Job {job_id} completed successfully via polling fallback")
                     return
                 elif status in ["failed", "nsfw"]:
                     job.status = "failed"
                     job.error_message = f"Higgsfield status: {status}"
                     await db.commit()
-                    logger.error(f"Job {job_id} failed with status: {status}")
                     return
-                    
-            # Timeout
+
             job.status = "failed"
             job.error_message = "Polling timed out"
             await db.commit()
-            
+
         except Exception as e:
-            logger.error(f"Error in Higgsfield generation task: {e}")
+            logger.error("Error in Higgsfield generation task: %s", e)
             job.status = "failed"
-            job.error_message = str(e)
+            job.error_message = str(e)[:200]
             await db.commit()
 
-async def pollinations_generate_media_task(job_id: str):
-    """
-    Fallback using Pollinations AI.
-    """
-    from app.db.session import async_session_maker
-    import urllib.parse
-    
+
+async def mock_generate_media_task(job_id: str):
     await asyncio.sleep(2)
-    
+    from app.db.session import async_session_maker
     async with async_session_maker() as db:
         result = await db.execute(select(MediaGenerationJob).where(MediaGenerationJob.id == job_id))
         job = result.scalar_one_or_none()
-        
         if job:
             job.status = "completed"
-            prompt_encoded = urllib.parse.quote(job.prompt or "abstract art")
-            job.result_url = f"https://image.pollinations.ai/prompt/{prompt_encoded}?width=1024&height=1024&nologo=true"
-            
-            from app.services.storage_service import store_media_from_url
-            asyncio.create_task(store_media_from_url(job.id, job.result_url))
-            
+            job.result_url = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1024"
             await db.commit()
-
-async def aihubmix_generate_media_task(job_id: str):
-    await pollinations_generate_media_task(job_id)
 
 
 async def create_media_job(db: AsyncSession, user: User, request: MediaGenerationRequest) -> MediaGenerationJob:
-    from app.core.config import settings
-
-    # 1. Resolve Mode & Credit Cost
+    """
+    Creates and initiates a media generation job.
+    Uses Gemini for all image generations on trial, enforcing strict server-side limits.
+    """
     parameters = dict(request.parameters or {})
     if request.mode and "mode" not in parameters:
         parameters["mode"] = request.mode
-    
+
     mode = parameters.get("mode") or request.mode or "premium_ad"
     mode_spec = resolve_mode_spec(mode)
-    is_video = mode_spec.get("category") == "video"
-    credit_cost = CREATE_VIDEO_CREDIT_COST if is_video else CREATE_IMAGE_CREDIT_COST
+    media_category = mode_spec.get("output_type", "image")
 
-    # 2. Server-side Quota & Feature Flag Enforcement
-    org, plan = await assert_can_spend(
+    # 1. Strict Server-side Trial & Quota Gatekeeper
+    org, plan = await assert_can_generate_image(
         db,
         user=user,
-        required_credits=credit_cost,
-        feature_name="create",
+        media_type=media_category,
         lock_row=True
     )
-    
-    provider = (request.provider or "higgsfield").lower()
-    if provider == "mock" and not settings.USE_MOCKS:
-        raise HTTPException(
-            status_code=400,
-            detail="Mock media provider is disabled. Use provider=higgsfield.",
-        )
-    if provider == "higgsfield":
-        if not settings.HF_API_KEY_ID or not settings.HF_API_KEY_SECRET:
-            raise HTTPException(
-                status_code=503,
-                detail="Higgsfield is not configured on this server.",
-            )
 
+    requested_provider = (request.provider or "gemini").lower()
+    is_trial = (plan.type == "trial") or (org.plan == "trial")
+
+    # For trial users, Gemini is the mandatory image provider (Higgsfield disabled)
+    provider = "gemini" if (is_trial or requested_provider in ("gemini", "default", "higgsfield")) else requested_provider
+
+    if provider == "mock" and not settings.USE_MOCKS:
+        provider = "gemini"
+
+    # 2. Persist MediaGenerationJob
     job = MediaGenerationJob(
         user_id=user.id,
         org_id=org.id,
@@ -179,47 +204,27 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
         parameters=parameters,
         status="pending"
     )
-    
     db.add(job)
     await db.commit()
     await db.refresh(job)
 
-    # 3. Upfront Atomic Deduction
-    await charge(
-        db=db,
-        org=org,
-        user_id=user.id,
-        amount=credit_cost,
-        provider=provider,
-        operation="media_generate_video" if is_video else "media_generate_image",
-        units=1.0,
-        cost_usd=ESTIMATED_PROVIDER_COSTS.get("higgsfield_video" if is_video else "higgsfield_image", 0.02),
-        job_id=job.id,
-        metadata={"mode": mode, "prompt": request.prompt, "provider": provider}
-    )
-    
-    # 4. Dispatch Generation Task
-    if provider == "mock" and settings.USE_MOCKS:
-        asyncio.create_task(mock_generate_media_task(job.id))
-    elif provider == "higgsfield":
+    # 3. Dispatch Provider Task
+    if provider == "gemini":
+        asyncio.create_task(gemini_generate_media_task(job.id, user.id, org.id))
+    elif provider == "higgsfield" and not is_trial:
         asyncio.create_task(higgsfield_generate_media_task(job.id))
-    elif provider == "pollinations":
-        asyncio.create_task(pollinations_generate_media_task(job.id))
-    elif provider == "aihubmix":
-        asyncio.create_task(aihubmix_generate_media_task(job.id))
+    elif provider == "mock":
+        asyncio.create_task(mock_generate_media_task(job.id))
     else:
-        job.status = "failed"
-        job.error_message = f"Unknown provider: {provider}"
-        await db.commit()
-        # Refund credits if provider is unknown
-        await refund(db, org.id, credit_cost, f"unknown_provider_{provider}", job.id)
-        
+        # Fallback to Gemini
+        asyncio.create_task(gemini_generate_media_task(job.id, user.id, org.id))
+
     return job
 
-async def get_media_job(db: AsyncSession, user: User, job_id: str) -> MediaGenerationJob:
+
+async def get_media_job(db: AsyncSession, user: User, job_id: str) -> Optional[MediaGenerationJob]:
     result = await db.execute(
-        select(MediaGenerationJob)
-        .where(MediaGenerationJob.id == job_id)
+        select(MediaGenerationJob).where(MediaGenerationJob.id == job_id)
     )
     job = result.scalar_one_or_none()
     return job

@@ -30,6 +30,14 @@ class SessionResponse(BaseModel):
     daily_credits_used: Optional[float] = None
     daily_credits_remaining: Optional[float] = None
     daily_credits_resets_at_utc: Optional[str] = None
+    trial_active: Optional[bool] = True
+    images_used_today: Optional[int] = 0
+    images_daily_limit: Optional[int] = 5
+    images_remaining_today: Optional[int] = 5
+    images_trial_total: Optional[int] = 0
+    trial_ends_at: Optional[str] = None
+    requires_plan: Optional[bool] = False
     plan_id: Optional[str] = None
     has_completed_onboarding: bool = False
+
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useSearchParams, useNavigate } from "react-router-dom"
+import { useSearchParams, useNavigate, Link } from "react-router-dom"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import {
   PenLine,
@@ -15,30 +15,33 @@ import {
   ChevronDown,
   Layers,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Lock
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { creativeService } from "@/services"
-import { useMediaGenerate, PHASE } from "@/hooks/useMediaGenerate"
+import { useMediaGenerate } from "@/hooks/useMediaGenerate"
 import { useSearchContext } from "@/context/SearchContext"
+import { useAuth } from "@/context/AuthContext"
 
 const CREATIVE_MODES = {
   image: [
-    { id: "premium_ad", label: "Premium Ad (3.0 cr)", desc: "Soul 2 photorealistic commercial still (Default)" },
-    { id: "quick_concept", label: "Quick Concept (3.0 cr)", desc: "Popcorn fast ideation & variations" },
-    { id: "cinematic_ad", label: "Cinematic Ad (3.0 cr)", desc: "Soul Cinema luxury & dramatic lighting" },
-    { id: "storyboard", label: "Storyboard (3.0 cr)", desc: "Popcorn multi-angle narrative sequence" },
+    { id: "premium_ad", label: "Commercial Ad Still (Default)", desc: "High-contrast photorealistic ad creative" },
+    { id: "quick_concept", label: "Quick Concept", desc: "Fast ideation & concept variations" },
+    { id: "cinematic_ad", label: "Cinematic Luxury", desc: "Dramatic lighting & editorial scene" },
+    { id: "storyboard", label: "Storyboard Frame", desc: "Narrative scene keyframe" },
   ],
   video: [
-    { id: "quick_video", label: "Quick Video (8.0 cr)", desc: "DoP Turbo fast motion for social testing" },
-    { id: "premium_video", label: "Premium Video (8.0 cr)", desc: "DoP Standard high-fidelity commercial" },
-    { id: "before_after", label: "Before → After (8.0 cr)", desc: "DoP FLF transition between two states", requiresFrames: true },
-    { id: "controlled_video", label: "Controlled Video (8.0 cr)", desc: "DoP Standard Keyframed brand video", requiresFrames: true },
+    { id: "quick_video", label: "Quick Motion", desc: "Dynamic motion for social ads" },
+    { id: "premium_video", label: "Commercial Video", desc: "High-fidelity commercial spot" },
+    { id: "before_after", label: "Before → After", desc: "Transition between two keyframe states", requiresFrames: true },
+    { id: "controlled_video", label: "Keyframed Video", desc: "Precise brand keyframe motion", requiresFrames: true },
   ]
 }
 
 const ASPECT_RATIOS = [
   { id: "1:1", label: "1:1 Square (Feed / Instagram)" },
+  { id: "4:5", label: "4:5 Vertical (Instagram Feed)" },
   { id: "9:16", label: "9:16 Vertical (Stories / TikTok / Reels)" },
   { id: "16:9", label: "16:9 Landscape (YouTube / Desktop)" },
 ]
@@ -48,6 +51,7 @@ export function CreatePage() {
   const sourceId = searchParams.get("sourceId")
   const navigate = useNavigate()
   
+  const { user } = useAuth()
   const { latestSearch, activeCreative, selectActiveCreative } = useSearchContext()
   
   const [sourceCreative, setSourceCreative] = useState(null)
@@ -60,6 +64,15 @@ export function CreatePage() {
   const [showAdPicker, setShowAdPicker] = useState(false)
   
   const { phase, job, result, error, submit, cancel, isBusy } = useMediaGenerate()
+
+  const isTrial = user?.plan_id?.startsWith("plan_trial") || user?.plan === "trial" || user?.role !== "admin"
+  const isAdmin = user?.role === "admin"
+  const usedToday = user?.images_used_today || 0
+  const dailyLimit = user?.images_daily_limit || 5
+  const remainingToday = user?.images_remaining_today !== undefined ? user.images_remaining_today : (dailyLimit - usedToday)
+  const daysLeft = user?.trial_days_remaining !== undefined ? user.trial_days_remaining : 7
+  const isTrialExpired = user?.requires_plan || (isTrial && !isAdmin && daysLeft <= 0)
+  const isDailyLimitReached = isTrial && !isAdmin && remainingToday <= 0
 
   // Load source creative if sourceId is in URL
   useEffect(() => {
@@ -79,14 +92,17 @@ export function CreatePage() {
   function applyCreativeToBrief(creative) {
     setSourceCreative(creative)
     const headline = creative.headline ? `Headline: "${creative.headline}"` : ""
-    const hook = creative.scores?.hook ? `[Hook score: ${creative.scores.hook}]` : ""
+    const hook = creative.scores?.hook ? `[Hook angle: ${creative.scores.hook}]` : ""
     const cta = creative.cta ? `Call-to-action: "${creative.cta}"` : ""
     setBrief(
-      `Editorial commercial ad still remixing competitor pattern.\n${headline} ${hook}\n${cta}\nSetting: modern minimalist studio, bold dramatic side lighting, high contrast, clean background, 35mm photography, 8k commercial quality, no watermarks.`
+      `Commercial advertising image remixing competitor campaign.\n${headline} ${hook}\n${cta}\nVisual direction: modern minimalist studio, bold dramatic side lighting, high contrast commercial photography, 8k resolution, photorealistic, clean presentation.`
     )
   }
 
   const handleCategoryChange = (category) => {
+    if (category === "video" && isTrial && !isAdmin) {
+      return // Locked on trial
+    }
     setActiveCategory(category)
     if (category === "image") {
       setSelectedMode("premium_ad")
@@ -98,21 +114,25 @@ export function CreatePage() {
   }
 
   const handleGenerate = () => {
-    if (!brief.trim()) return
+    if (!brief.trim() || isDailyLimitReached || isTrialExpired) return
     
     const params = {
       mode: selectedMode,
       aspect_ratio: aspectRatio,
       kind: activeCategory,
-      source_creative_id: sourceCreative?.id || sourceId
+      source_creative_id: sourceCreative?.id || sourceId,
+      reference_images: []
     }
 
-    if (startImageUrl.trim()) params.start_image_url = startImageUrl.trim()
+    if (startImageUrl.trim()) {
+      params.start_image_url = startImageUrl.trim()
+      params.reference_images.push(startImageUrl.trim())
+    }
     if (endImageUrl.trim()) params.end_image_url = endImageUrl.trim()
 
     submit({
       prompt: brief,
-      provider: "higgsfield",
+      provider: "gemini",
       mode: selectedMode,
       parameters: params
     })
@@ -142,7 +162,11 @@ export function CreatePage() {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       <BreadcrumbBar
         trail={["Helix", "Create", "Remix Studio"]}
-        meta={activeCategory === "video" ? "Higgsfield DoP (8.0 cr)" : "Higgsfield Soul v2 (3.0 cr)"}
+        meta={
+          isAdmin 
+            ? "Gemini Flash Image · Admin Unlimited"
+            : `Trial: ${usedToday}/${dailyLimit} images today · ${daysLeft} days left`
+        }
         actions={
           latestSearch ? (
             <Button size="xs" variant="ghost" onClick={() => navigate("/discover")}>
@@ -154,6 +178,45 @@ export function CreatePage() {
 
       <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
         <div className="flex flex-col gap-6">
+
+          {/* Trial Usage Indicator Bar */}
+          {isTrial && !isAdmin && (
+            <div className={`rounded-lg border p-4 flex items-center justify-between ${
+              isTrialExpired 
+                ? "border-destructive/40 bg-destructive/10 text-destructive"
+                : isDailyLimitReached
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                : "border-primary/30 bg-primary/5 text-primary-light"
+            }`}>
+              <div className="flex items-center gap-3">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-text">
+                    {isTrialExpired 
+                      ? "7-Day Free Trial Ended" 
+                      : isDailyLimitReached 
+                      ? "Daily Image Limit Reached (5/5)" 
+                      : `7-Day Free Trial: ${usedToday} of ${dailyLimit} images used today`}
+                  </span>
+                  <span className="text-[11px] text-text-muted">
+                    {isTrialExpired 
+                      ? "Upgrade to a paid plan to unlock unlimited image and video creation." 
+                      : isDailyLimitReached 
+                      ? "Your daily allowance resets at 00:00 UTC. Upgrade for 50+ images/day." 
+                      : `${daysLeft} days remaining · Video motion unlocked on paid plans.`}
+                  </span>
+                </div>
+              </div>
+
+              {(isTrialExpired || isDailyLimitReached) && (
+                <Link to="/billing">
+                  <Button size="xs" variant="primary" className="font-semibold gap-1 text-black">
+                    Upgrade Plan <ArrowRight className="w-3.5 h-3.5" />
+                  </Button>
+                </Link>
+              )}
+            </div>
+          )}
 
           {/* Quick Discovered Ads Selector Bar */}
           {discoveredItems.length > 0 && (
@@ -223,25 +286,28 @@ export function CreatePage() {
                   }`}
                 >
                   <ImageIcon className="h-4 w-4 text-accent" />
-                  Image Still (3.0 cr)
+                  Image Creative
                 </button>
                 <button
                   type="button"
                   onClick={() => handleCategoryChange("video")}
+                  disabled={isTrial && !isAdmin}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-semibold rounded-md transition-colors ${
                     activeCategory === "video"
                       ? "bg-surface-3 text-text shadow-sm border border-border"
+                      : isTrial && !isAdmin
+                      ? "text-text-faint opacity-60 cursor-not-allowed"
                       : "text-text-muted hover:text-text"
                   }`}
                 >
-                  <Video className="h-4 w-4 text-accent" />
-                  Video Motion (8.0 cr)
+                  {isTrial && !isAdmin ? <Lock className="h-3.5 w-3.5 text-text-faint" /> : <Video className="h-4 w-4 text-accent" />}
+                  Video Motion {isTrial && !isAdmin && <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-text-faint ml-1">Paid Plan</span>}
                 </button>
               </div>
 
               {/* Mode Selection */}
               <div className="flex flex-col gap-2">
-                <label className="label-mono text-text">Creative Mode</label>
+                <label className="label-mono text-text">Creative Style</label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {CREATIVE_MODES[activeCategory].map((mode) => (
                     <button
@@ -281,32 +347,6 @@ export function CreatePage() {
                   ))}
                 </div>
               </div>
-
-              {/* Keyframe Reference Inputs */}
-              {isModeRequiringFrames && (
-                <div className="flex flex-col gap-3 p-4 rounded-lg border border-accent/30 bg-accent/5">
-                  <div className="flex items-center gap-2 text-xs font-bold text-accent">
-                    <Film className="h-4 w-4" />
-                    Keyframe References (First & Last Frame)
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <input
-                      type="url"
-                      placeholder="Start Image URL (e.g. initial problem state)"
-                      value={startImageUrl}
-                      onChange={(e) => setStartImageUrl(e.target.value)}
-                      className="w-full text-xs rounded border border-border bg-bg p-2.5 text-text placeholder-text-faint focus:border-accent focus:outline-none font-mono"
-                    />
-                    <input
-                      type="url"
-                      placeholder="End Image URL (e.g. final solved state)"
-                      value={endImageUrl}
-                      onChange={(e) => setEndImageUrl(e.target.value)}
-                      className="w-full text-xs rounded border border-border bg-bg p-2.5 text-text placeholder-text-faint focus:border-accent focus:outline-none font-mono"
-                    />
-                  </div>
-                </div>
-              )}
 
               {/* Active Source Creative Card */}
               {sourceCreative && (
@@ -355,8 +395,20 @@ export function CreatePage() {
                   rows={5}
                   value={brief}
                   onChange={(e) => setBrief(e.target.value)}
-                  placeholder="Describe the visual composition, lighting, camera angle, subject, and scene..."
+                  placeholder="Describe the product, visual composition, lighting, camera angle, subject, and scene..."
                   className="w-full text-xs rounded-lg border border-border bg-surface p-3.5 text-text placeholder-text-faint focus:border-accent focus:outline-none font-sans leading-relaxed"
+                />
+              </div>
+
+              {/* Optional Reference Image */}
+              <div className="flex flex-col gap-2">
+                <label className="label-mono text-text">Reference Image URL (Optional)</label>
+                <input
+                  type="url"
+                  placeholder="https://example.com/product-or-style-reference.jpg"
+                  value={startImageUrl}
+                  onChange={(e) => setStartImageUrl(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-border bg-surface p-3 text-text placeholder-text-faint focus:border-accent focus:outline-none font-mono"
                 />
               </div>
 
@@ -365,18 +417,22 @@ export function CreatePage() {
                 size="md"
                 variant="primary"
                 onClick={handleGenerate}
-                disabled={isBusy || !brief.trim()}
+                disabled={isBusy || !brief.trim() || isDailyLimitReached || isTrialExpired}
                 className="w-full flex items-center justify-center gap-2 text-sm font-bold shadow-lg"
               >
                 {isBusy ? (
                   <>
                     <Loader className="h-4 w-4 animate-spin text-black" />
-                    Generating Media with Higgsfield...
+                    Generating Creative with Gemini AI...
                   </>
+                ) : isTrialExpired ? (
+                  "Trial Ended — Select a Plan to Generate"
+                ) : isDailyLimitReached ? (
+                  "Daily Limit Reached (5/5 Images Used Today)"
                 ) : (
                   <>
                     <Wand2 className="h-4 w-4 text-black" />
-                    Generate with Higgsfield ({activeCategory === "video" ? "8.0 cr" : "3.0 cr"})
+                    Generate Image with Gemini AI
                   </>
                 )}
               </Button>
@@ -393,54 +449,41 @@ export function CreatePage() {
                       <div className="h-12 w-12 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
                       <Sparkles className="h-5 w-5 text-accent absolute inset-0 m-auto animate-pulse" />
                     </div>
-                    <span className="text-xs font-semibold text-text">Higgsfield AI Processing</span>
+                    <span className="text-xs font-semibold text-text">Gemini AI Generating Visual</span>
                     <span className="text-[11px] font-mono text-text-muted">
-                      {job?.status ? `Status: ${job.status}` : "Dispatching job to Higgsfield..."}
+                      {job?.status ? `Status: ${job.status}` : "Synthesizing image concept..."}
                     </span>
                   </div>
                 ) : error ? (
-                  <div className="flex flex-col items-center gap-2 p-4 text-center">
-                    <AlertCircle className="h-8 w-8 text-danger" />
-                    <span className="text-xs font-bold text-danger">Generation Failed</span>
-                    <span className="text-[11px] text-text-muted max-w-xs">{error.message || String(error)}</span>
+                  <div className="flex flex-col items-center gap-2 text-center p-4">
+                    <AlertCircle className="h-8 w-8 text-destructive" />
+                    <span className="text-xs font-bold text-destructive">Generation Error</span>
+                    <p className="text-[11px] text-text-muted max-w-xs">{error}</p>
                   </div>
                 ) : displayUrl ? (
-                  <div className="flex flex-col gap-3 w-full h-full items-center justify-center">
-                    {isVideo ? (
-                      <video
-                        src={displayUrl}
-                        controls
-                        autoPlay
-                        loop
-                        className="max-h-[380px] w-full rounded-md object-contain border border-border"
-                      />
-                    ) : (
-                      <img
-                        src={displayUrl}
-                        alt="Generated Creative"
-                        className="max-h-[380px] w-full rounded-md object-contain border border-border"
-                      />
-                    )}
-                    <div className="flex items-center gap-2 w-full justify-between pt-2">
-                      <span className="text-[10px] font-mono text-success flex items-center gap-1">
-                        <CheckCircle className="h-3 w-3" /> Completed
-                      </span>
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+                    <img
+                      src={displayUrl}
+                      alt="Generated AI Creative"
+                      className="max-h-[320px] w-auto rounded-lg object-contain border border-border shadow-md"
+                    />
+                    <div className="flex items-center gap-2">
                       <a
                         href={displayUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[11px] font-mono text-accent hover:underline flex items-center gap-1"
+                        className="text-xs font-mono text-accent hover:underline flex items-center gap-1"
                       >
                         Open Full Asset <ArrowRight className="h-3 w-3" />
                       </a>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center gap-2 text-center text-text-faint p-6">
-                    <ImageIcon className="h-10 w-10 stroke-[1.5]" />
-                    <span className="text-xs font-medium text-text-muted">Asset Preview Ready</span>
-                    <span className="text-[11px] text-text-faint max-w-xs">
-                      Configure your prompt or pick a competitor ad above and click generate.
+                  <div className="flex flex-col items-center gap-2 text-center text-text-faint">
+                    <ImageIcon className="h-10 w-10 opacity-30" />
+                    <span className="text-xs">Generated output will render here</span>
+                    <span className="text-[11px] text-text-muted max-w-xs">
+                      Select a competitor ad above or describe your creative brief to generate
                     </span>
                   </div>
                 )}
@@ -453,5 +496,3 @@ export function CreatePage() {
     </div>
   )
 }
-
-export default CreatePage

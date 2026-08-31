@@ -202,55 +202,40 @@ curl -s -w "\nHTTP %{http_code}\n" -X POST \
 
 ---
 
-## Database (Neon)
+## 7-Day Trial & Gemini Image Generation
 
-The FastAPI backend is backed by Neon Postgres. The `plan_trial_default` plan row must exist for full session responses. If missing, the backend returns a graceful minimal session.
+HELIX provides a 7-day free trial with daily image creation powered by the existing `GEMINI_API_KEY`:
 
-The frontend has **no** direct database dependency.
+### Entitlement Rules:
+- **Trial Duration**: 7 days from signup (`trial_started_at` to `trial_expires_at`).
+- **Trial Daily Quota**: 5 image generations per UTC day (resets at 00:00 UTC).
+- **Trial Total Cap**: 25 total image generations across the entire trial.
+- **Video Generation**: Disabled during trial; available exclusively on paid plans.
+- **Paid Plans**: 50+ images per day.
+- **Admin Users**: Unlimited bypass across all features.
 
-## Adding a page (Lazy Loading Convention)
+### Environment Configuration:
+- `GEMINI_API_KEY`: *(Required server-side only)* Google Gemini API key. Never exposed to browser or client.
+- `GEMINI_IMAGE_MODEL`: `gemini-3.1-flash-image` (default stable image model).
+- `TRIAL_DAYS`: `7`
+- `TRIAL_IMAGES_PER_DAY`: `5`
+- `TRIAL_IMAGES_TOTAL`: `25`
+- `PAID_IMAGES_PER_DAY`: `50`
 
-To ensure pages never render blank due to missing `default` exports in React.lazy chunks:
+### Running the Gemini Image Live Smoke Test:
+To execute a real development smoke test against Google Gemini's image API:
+```bash
+ENABLE_GEMINI_LIVE_TEST=true python backend/scripts/test_gemini_image_live.py
+```
 
-1. **Page Component Export**:
-   Always export as a named function (`export function FooPage() { ... }`).
-   Optionally also provide a default export (`export default FooPage`).
+### Running the Test Suites:
+```bash
+# Run Gemini Trial & Entitlement suite
+python backend/tests/test_gemini_trial_suite.py
 
-2. **Route Import in `src/App.jsx`**:
-   Always map the dynamic import with `.then()`:
-   ```js
-   const FooPage = lazy(() => import("@/pages/FooPage").then(m => ({ default: m.FooPage })))
-   ```
+# Run Higgsfield Diagnostic suite
+python backend/tests/test_higgsfield_suite.py
+```
 
-3. **Checklist when adding a new route**:
-   - [ ] Page created in `src/pages/` with `export function <Name>Page()`
-   - [ ] Imported in `src/App.jsx` via `lazy(() => import(...).then(m => ({ default: m.<Name>Page })))`
-   - [ ] Route added inside appropriate `<Route>` group with `<Route path="..." element={<NamePage />} />`
-   - [ ] Verified via `pnpm build` and browser hard refresh
-
-## Status Reporting Rules (Agents & Humans)
-
-### Core Rule
-**Never claim “zero bugs,” “fully functional,” or “production healthy” from code inspection alone.**
-
-### Allowed claims after code-only review
-- "Fixed X in file Y"
-- "Routes render; export/import consistent"
-- "Build passes"
-
-### Evidence required for stronger claims
-| Claim | Evidence required |
-|---|---|
-| **Auth works** | Smoke test A passed on production URLs |
-| **Discover works** | Smoke test B with `DATA_SOURCE=api` |
-| **Create works** | Smoke test C with real `result_url` |
-| **App healthy** | A + B + C passed in last 24h |
-
-### Report Format
-When reporting task completion, summaries, or pull requests, structure your response as:
-1. **What changed** (files modified/created)
-2. **What was verified** (browser / curl / unit test / none)
-3. **What remains unverified** (environments or flows not tested)
-4. **P0 next step only** (the immediate next priority action)
 
 

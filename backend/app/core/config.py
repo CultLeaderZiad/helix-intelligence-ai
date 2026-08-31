@@ -68,6 +68,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_IMAGE_MODEL: str = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
     SCRAPEGRAPH_API_KEY: str = os.getenv("SCRAPEGRAPH_API_KEY", "")
     META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
     BRIGHTDATA_API_KEY: str = os.getenv("BRIGHTDATA_API_KEY", "")
@@ -76,11 +77,18 @@ class Settings(BaseSettings):
     TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
     HF_API_KEY_ID: str = os.getenv("HF_API_KEY_ID", "") or os.getenv("HIGGSFIELD_API_KEY_ID", "") or os.getenv("HIGGSFIELD_API_KEY", "")
     HF_API_KEY_SECRET: str = os.getenv("HF_API_KEY_SECRET", "") or os.getenv("HIGGSFIELD_API_KEY_SECRET", "") or os.getenv("HIGGSFIELD_API_SECRET", "") or os.getenv("HIGGSFIELD_SECRET", "")
-    # Public API origin used to build Higgsfield webhook URLs (no trailing slash issues)
+    HIGGSFIELD_BASE_URL: str = os.getenv("HIGGSFIELD_BASE_URL", "https://platform.higgsfield.ai").rstrip("/")
+    # Public API origin used to build webhook URLs
     PUBLIC_API_BASE_URL: str = os.getenv(
         "PUBLIC_API_BASE_URL",
         "https://helix-intelligence-ai.onrender.com/api",
     ).rstrip("/")
+
+    # 7-DAY TRIAL & MEDIA GENERATION LIMITS
+    TRIAL_DAYS: int = int(os.getenv("TRIAL_DAYS", "7"))
+    TRIAL_IMAGES_PER_DAY: int = int(os.getenv("TRIAL_IMAGES_PER_DAY", "5"))
+    TRIAL_IMAGES_TOTAL: int = int(os.getenv("TRIAL_IMAGES_TOTAL", "25"))
+    PAID_IMAGES_PER_DAY: int = int(os.getenv("PAID_IMAGES_PER_DAY", "50"))
 
     model_config = SettingsConfigDict(
         case_sensitive=True,
