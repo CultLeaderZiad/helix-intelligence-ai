@@ -13,7 +13,7 @@ class GeminiProvider(AIProvider):
         raw_key = api_key or getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GEMINI_API_KEY", "")
         self.api_key = raw_key.strip().strip('"\'') if raw_key else ""
         self.model = "gemini-flash-latest"
-        self.image_model = getattr(settings, "GEMINI_IMAGE_MODEL", "gemini-3.1-flash-lite-image")
+        self.image_model = getattr(settings, "GEMINI_IMAGE_MODEL", "gemini-2.0-flash-lite-preview-02-05")
         self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
         
     @property
@@ -143,7 +143,7 @@ class GeminiProvider(AIProvider):
 
         # Models to try for image generation
         candidate_models = [self.image_model]
-        for fallback in ["gemini-2.5-flash-image", "gemini-3.1-flash-lite-image", "gemini-3-pro-image"]:
+        for fallback in ["gemini-2.5-flash-image", "gemini-2.0-flash-lite-preview-02-05", "gemini-3-pro-image"]:
             if fallback not in candidate_models:
                 candidate_models.append(fallback)
 

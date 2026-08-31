@@ -61,7 +61,7 @@ export function CreatePage() {
   const [startImageUrl, setStartImageUrl] = useState("")
   const [showAdPicker, setShowAdPicker] = useState(false)
   const [customApiKey, setCustomApiKey] = useState("")
-  const [customModel, setCustomModel] = useState("gemini-3.1-flash-lite-image")
+  const [customModel, setCustomModel] = useState("gemini-2.0-flash-lite-preview-02-05")
   const [showAdvanced, setShowAdvanced] = useState(false)
   
   const { phase, job, result, error, submit, cancel, isBusy } = useMediaGenerate()
@@ -473,7 +473,7 @@ export function CreatePage() {
                           onChange={(e) => setCustomModel(e.target.value)}
                           className="w-full text-xs rounded-md border border-border bg-surface p-2.5 text-text focus:border-accent focus:outline-none"
                         >
-                          <option value="gemini-3.1-flash-lite-image">gemini-3.1-flash-lite-image (Fastest, Lowest Cost)</option>
+                          <option value="gemini-2.0-flash-lite-preview-02-05">gemini-2.0-flash-lite (Fastest, Lowest Cost)</option>
                           <option value="gemini-2.5-flash-image">gemini-2.5-flash-image (Balanced)</option>
                           <option value="gemini-3.1-flash-image">gemini-3.1-flash-image (High Quality)</option>
                           <option value="gemini-3-pro-image">gemini-3-pro-image (Pro Quality)</option>
