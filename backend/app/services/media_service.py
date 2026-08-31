@@ -52,8 +52,20 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
         # Resolve provider (Managed or BYOK)
         provider_instance, credential_mode = await resolve_image_provider(db, user, org)
 
-        job.status = "running"
         params = dict(job.parameters or {})
+        
+        # Override with per-request BYOK if provided in parameters
+        custom_api_key = params.get("custom_api_key")
+        custom_model = params.get("custom_model")
+        
+        if custom_api_key:
+            provider_instance = GeminiProvider(api_key=custom_api_key)
+            credential_mode = "byok_request"
+            
+        if custom_model:
+            provider_instance.image_model = custom_model
+
+        job.status = "running"
         params["credential_mode"] = credential_mode
         params["model"] = provider_instance.image_model
         job.parameters = params

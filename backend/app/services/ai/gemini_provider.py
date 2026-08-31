@@ -131,8 +131,7 @@ class GeminiProvider(AIProvider):
                     except Exception as err:
                         logger.warning("Failed to fetch reference image %s: %s", ref_url, err)
 
-        # Primary attempt using Imagen / Gemini Flash Image endpoint (:predict)
-        predict_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.image_model}:predict?key={self.api_key}"
+        # Primary attempt using Imagen endpoint (:predict) if the model is an imagen model
         predict_payload = {
             "instances": [{"prompt": prompt}],
             "parameters": {
@@ -151,38 +150,65 @@ class GeminiProvider(AIProvider):
         async with httpx.AsyncClient(timeout=60.0) as client:
             last_error = None
             for model_name in candidate_models:
-                generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
-                generate_payload = {
-                    "contents": [{"parts": parts}]
-                }
+                is_imagen = "imagen" in model_name.lower()
+                
+                if is_imagen:
+                    generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:predict?key={self.api_key}"
+                    generate_payload_data = predict_payload
+                else:
+                    generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+                    generate_payload_data = {
+                        "contents": [{"parts": parts}]
+                    }
 
                 try:
                     resp = await client.post(
                         generate_url,
                         headers={"Content-Type": "application/json"},
-                        json=generate_payload
+                        json=generate_payload_data
                     )
                     if resp.status_code == 200:
                         data = resp.json()
-                        candidates = data.get("candidates", [])
-                        if candidates:
-                            for part in candidates[0].get("content", {}).get("parts", []):
-                                inline = part.get("inlineData") or part.get("inline_data")
-                                if inline and inline.get("data"):
-                                    mime_type = inline.get("mimeType") or inline.get("mime_type") or "image/png"
-                                    image_bytes = base64.b64decode(inline["data"])
-                                    return {
-                                        "provider": "gemini",
-                                        "model": model_name,
-                                        "media_type": "image",
-                                        "mime_type": mime_type,
-                                        "data": image_bytes,
-                                        "metadata": {
-                                            "prompt": prompt,
-                                            "aspect_ratio": target_ratio,
-                                            "model": model_name
-                                        }
+                        
+                        if is_imagen:
+                            # Imagen response structure
+                            predictions = data.get("predictions", [])
+                            if predictions and predictions[0].get("bytesBase64Encoded"):
+                                mime_type = predictions[0].get("mimeType", "image/png")
+                                image_bytes = base64.b64decode(predictions[0]["bytesBase64Encoded"])
+                                return {
+                                    "provider": "gemini",
+                                    "model": model_name,
+                                    "media_type": "image",
+                                    "mime_type": mime_type,
+                                    "data": image_bytes,
+                                    "metadata": {
+                                        "prompt": prompt,
+                                        "aspect_ratio": target_ratio,
+                                        "model": model_name
                                     }
+                                }
+                        else:
+                            # Gemini generateContent response structure
+                            candidates = data.get("candidates", [])
+                            if candidates:
+                                for part in candidates[0].get("content", {}).get("parts", []):
+                                    inline = part.get("inlineData") or part.get("inline_data")
+                                    if inline and inline.get("data"):
+                                        mime_type = inline.get("mimeType") or inline.get("mime_type") or "image/png"
+                                        image_bytes = base64.b64decode(inline["data"])
+                                        return {
+                                            "provider": "gemini",
+                                            "model": model_name,
+                                            "media_type": "image",
+                                            "mime_type": mime_type,
+                                            "data": image_bytes,
+                                            "metadata": {
+                                                "prompt": prompt,
+                                                "aspect_ratio": target_ratio,
+                                                "model": model_name
+                                            }
+                                        }
                     elif resp.status_code == 429:
                         last_error = "Gemini API quota exceeded or rate limit reached. Please check your Google AI Studio quota."
                         continue

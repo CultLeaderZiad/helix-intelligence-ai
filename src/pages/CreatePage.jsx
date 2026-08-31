@@ -12,7 +12,10 @@ import {
   ChevronDown,
   ArrowRight,
   Lock,
-  RefreshCw
+  RefreshCw,
+  Settings2,
+  Key,
+  HelpCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { creativeService } from "@/services"
@@ -57,6 +60,9 @@ export function CreatePage() {
   const [brief, setBrief] = useState("")
   const [startImageUrl, setStartImageUrl] = useState("")
   const [showAdPicker, setShowAdPicker] = useState(false)
+  const [customApiKey, setCustomApiKey] = useState("")
+  const [customModel, setCustomModel] = useState("gemini-3.1-flash-lite-image")
+  const [showAdvanced, setShowAdvanced] = useState(false)
   
   const { phase, job, result, error, submit, cancel, isBusy } = useMediaGenerate()
 
@@ -122,6 +128,11 @@ export function CreatePage() {
     if (startImageUrl.trim()) {
       params.start_image_url = startImageUrl.trim()
       params.reference_images.push(startImageUrl.trim())
+    }
+
+    if (customApiKey.trim()) {
+      params.custom_api_key = customApiKey.trim()
+      params.custom_model = customModel
     }
 
     submit({
@@ -412,6 +423,66 @@ export function CreatePage() {
                   onChange={(e) => setStartImageUrl(e.target.value)}
                   className="w-full text-xs rounded-lg border border-border bg-surface p-3 text-text placeholder-text-faint focus:border-accent focus:outline-none font-mono"
                 />
+              </div>
+
+              {/* Bring Your Own Key / Advanced Options */}
+              <div className="flex flex-col gap-2 border-t border-border pt-4 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center gap-2 text-xs font-semibold text-text-muted hover:text-text transition-colors w-fit"
+                >
+                  <Settings2 className="w-3.5 h-3.5" />
+                  Bring Your Own Key (BYOK) & Advanced Options
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+                </button>
+
+                {showAdvanced && (
+                  <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface-2 p-4 mt-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Key className="w-4 h-4 text-accent" />
+                        <label className="text-xs font-bold text-text">Custom Gemini API Key</label>
+                      </div>
+                      <a 
+                        href="https://aistudio.google.com/app/apikey" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex items-center gap-1 text-[11px] text-accent hover:underline"
+                      >
+                        <HelpCircle className="w-3 h-3" /> Get a Free Key Guide
+                      </a>
+                    </div>
+                    <p className="text-[11px] text-text-muted -mt-2">
+                      Input your own API key to bypass limits or access premium models. Your key is only used for this session and is never stored permanently.
+                    </p>
+                    
+                    <input
+                      type="password"
+                      placeholder="AIzaSy..."
+                      value={customApiKey}
+                      onChange={(e) => setCustomApiKey(e.target.value)}
+                      className="w-full text-xs rounded-md border border-border bg-surface p-2.5 text-text focus:border-accent focus:outline-none font-mono"
+                    />
+
+                    {customApiKey && (
+                      <div className="flex flex-col gap-2 mt-2">
+                        <label className="text-xs font-bold text-text">Select Premium Model</label>
+                        <select
+                          value={customModel}
+                          onChange={(e) => setCustomModel(e.target.value)}
+                          className="w-full text-xs rounded-md border border-border bg-surface p-2.5 text-text focus:border-accent focus:outline-none"
+                        >
+                          <option value="gemini-3.1-flash-lite-image">gemini-3.1-flash-lite-image (Fastest, Lowest Cost)</option>
+                          <option value="gemini-2.5-flash-image">gemini-2.5-flash-image (Balanced)</option>
+                          <option value="gemini-3.1-flash-image">gemini-3.1-flash-image (High Quality)</option>
+                          <option value="gemini-3-pro-image">gemini-3-pro-image (Pro Quality)</option>
+                          <option value="imagen-3.0-generate-002">imagen-3.0-generate-002 (Best for Photorealism)</option>
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Submit Button */}
