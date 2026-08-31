@@ -31,8 +31,9 @@ from app.api.routers import media, webhooks
 from fastapi.staticfiles import StaticFiles
 import os
 
-from app.api.routers import updates, higgsfield
+from app.api.routers import updates, higgsfield, providers
 app.include_router(media.router, prefix=f"{settings.API_V1_STR}/media", tags=["media"])
+app.include_router(providers.router, prefix=f"{settings.API_V1_STR}", tags=["providers"])
 app.include_router(webhooks.router, prefix=f"{settings.API_V1_STR}/webhooks", tags=["webhooks"])
 app.include_router(updates.router, prefix=f"{settings.API_V1_STR}/updates", tags=["updates"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])

@@ -9,8 +9,8 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 class GeminiProvider(AIProvider):
-    def __init__(self):
-        raw_key = getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GEMINI_API_KEY", "")
+    def __init__(self, api_key: Optional[str] = None):
+        raw_key = api_key or getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GEMINI_API_KEY", "")
         self.api_key = raw_key.strip().strip('"\'') if raw_key else ""
         self.model = "gemini-flash-latest"
         self.image_model = getattr(settings, "GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
@@ -19,6 +19,32 @@ class GeminiProvider(AIProvider):
     @property
     def is_configured(self) -> bool:
         return bool(self.api_key)
+
+    async def test_connection(self) -> Dict[str, Any]:
+        """
+        Lightweight connection and authentication test for Gemini API.
+        Does NOT generate an expensive image.
+        Never logs or exposes the API key.
+        """
+        if not self.is_configured:
+            raise ValueError("No Gemini API key provided")
+            
+        test_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={self.api_key}"
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(test_url)
+            if resp.status_code == 200:
+                return {
+                    "status": "connected",
+                    "provider": "google_gemini",
+                    "model": self.image_model,
+                    "message": "Successfully authenticated with Google Gemini"
+                }
+            elif resp.status_code in (401, 403):
+                raise ValueError("Authentication failed: invalid or unauthorized Gemini API key")
+            elif resp.status_code == 429:
+                raise ValueError("Gemini API rate limit exceeded or quota exhausted")
+            else:
+                raise ValueError(f"Gemini API returned error {resp.status_code}")
 
     async def _call_api(self, messages: List[dict]) -> str:
         if not self.is_configured:

@@ -8,18 +8,13 @@ from fastapi import HTTPException
 from app.models.media_job import MediaGenerationJob
 from app.schemas.media import MediaGenerationRequest
 from app.models.user import User
+from app.models.organization import Organization
 from app.services.billing_service import (
     get_or_create_default_org,
     assert_can_generate_image,
     record_image_generated,
-    assert_can_spend,
-    charge,
-    refund,
-    CREATE_IMAGE_CREDIT_COST,
-    CREATE_VIDEO_CREDIT_COST,
-    ESTIMATED_PROVIDER_COSTS,
 )
-from app.services.ai.gemini_provider import GeminiProvider
+from app.services.provider_resolver import resolve_image_provider
 from app.services.storage_service import store_media_bytes
 from app.services.media.higgsfield_provider import HiggsfieldProvider
 from app.services.media.higgsfield_registry import resolve_mode_spec
@@ -30,11 +25,11 @@ logger = logging.getLogger(__name__)
 async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
     """
     Executes synchronous/async Gemini image generation in background task.
+    Resolves Managed vs BYOK provider without leaking credentials.
     Persists binary image bytes and updates MediaGenerationJob status.
     Increments daily usage counter only upon verified success.
     """
     from app.db.session import async_session_maker
-    gemini = GeminiProvider()
 
     async with async_session_maker() as db:
         result = await db.execute(select(MediaGenerationJob).where(MediaGenerationJob.id == job_id))
@@ -45,22 +40,32 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
         user_result = await db.execute(select(User).where(User.id == user_id))
         user = user_result.scalar_one_or_none()
 
-        org_result = await db.execute(select(from_obj=None, entity=None).where(True) if False else select(User).where(User.id == user_id))
-        # Fetch organization
-        from app.models.organization import Organization
-        org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+        org_result = await db.execute(select(Organization).where(Organization.id == org_id))
+        org = org_result.scalar_one_or_none()
+
+        if not user or not org:
+            job.status = "failed"
+            job.error_message = "User or organization not found"
+            await db.commit()
+            return
+
+        # Resolve provider (Managed or BYOK)
+        provider_instance, credential_mode = await resolve_image_provider(db, user, org)
 
         job.status = "running"
+        params = dict(job.parameters or {})
+        params["credential_mode"] = credential_mode
+        params["model"] = provider_instance.image_model
+        job.parameters = params
         await db.commit()
 
         try:
-            params = job.parameters or {}
             aspect_ratio = params.get("aspect_ratio", "1:1")
-            reference_images = params.get("reference_images") or []
+            reference_images = list(params.get("reference_images") or [])
             if params.get("start_image_url"):
                 reference_images.append(params.get("start_image_url"))
 
-            gen_result = await gemini.generate_image(
+            gen_result = await provider_instance.generate_image(
                 prompt=job.prompt,
                 reference_images=reference_images,
                 aspect_ratio=aspect_ratio,
@@ -76,21 +81,30 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
             await db.commit()
 
             # Increment usage counters only on success
-            if user and org:
-                await record_image_generated(db, user, org, job_id=job.id)
+            await record_image_generated(db, user, org, job_id=job.id)
 
-            logger.info("Gemini image job %s completed successfully: %s", job_id, final_url)
+            logger.info(
+                "Gemini image job %s completed successfully (%s mode): %s",
+                job_id,
+                credential_mode,
+                final_url
+            )
 
         except Exception as e:
             logger.error("Gemini image generation failed for job %s: %s", job_id, str(e))
             job.status = "failed"
             err_msg = str(e)
-            if "provider_rate_limited" in err_msg or "429" in err_msg:
+            
+            if credential_mode == "byok":
+                # Explicit error for customer BYOK key — NO SILENT FALLBACK
+                job.error_message = "Your connected Gemini account is unavailable. Check your API key or Google quota."
+            elif "provider_rate_limited" in err_msg or "429" in err_msg:
                 job.error_message = "Gemini provider is currently rate-limited. Please try again shortly."
             elif "API key" in err_msg:
                 job.error_message = "Gemini API key is invalid or unauthorized."
             else:
                 job.error_message = err_msg[:200]
+                
             await db.commit()
 
 

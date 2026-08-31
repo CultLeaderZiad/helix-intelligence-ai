@@ -62,14 +62,11 @@ All generation and entitlement gatekeeper failures return machine-readable JSON 
 }
 ```
 
-### Insufficient Plan Credits (HTTP 402)
+### BYOK Key Error / Quota Exhausted (No Silent Fallback) (HTTP 400 / 502)
 ```json
 {
-  "code": "insufficient_credits",
-  "message": "Not enough credits for this action (0.0 available, 3.0 required). Upgrade or wait for trial reset.",
-  "credit_balance": 0.0,
-  "required": 3.0,
-  "plan_name": "7-Day Free Trial"
+  "code": "byok_provider_unavailable",
+  "message": "Your connected Gemini account is unavailable. Check your API key or Google quota."
 }
 ```
 
@@ -109,7 +106,7 @@ All generation and entitlement gatekeeper failures return machine-readable JSON 
   "provider": "gemini",
   "created_at": "2026-08-31T04:00:00Z",
   "updated_at": "2026-08-31T04:00:00Z",
-  "parameters": { ... }
+  "parameters": { "credential_mode": "managed", "model": "gemini-3.1-flash-image" }
 }
 ```
 
@@ -129,8 +126,72 @@ All generation and entitlement gatekeeper failures return machine-readable JSON 
 
 ---
 
-## 4. Provider & Model Architecture
+## 4. Workspace BYOK Endpoints (Google Gemini)
 
-- **Image Provider**: `GeminiProvider` using Google Gemini API (`gemini-3.1-flash-image`).
-- **Vision & Analysis**: `GeminiProvider` multimodal vision analysis.
-- **Provider Quota vs Application Quota**: Google provider free-tier/model availability is separate from application-level trial limits. Rate limit responses (HTTP 429) do not consume user daily image allowance.
+### Get Workspace Providers
+`GET /api/workspaces/providers`
+
+**Response (200 OK):**
+```json
+{
+  "workspace_id": "org_uuid",
+  "workspace_name": "Acme Agency's Workspace",
+  "providers": [
+    {
+      "provider": "google_gemini",
+      "name": "Google Gemini",
+      "supported_models": ["gemini-3.1-flash-image", "gemini-flash-latest"],
+      "default_image_model": "gemini-3.1-flash-image",
+      "credential_mode": "byok",
+      "is_byok_configured": true,
+      "status": "connected",
+      "masked_key": "••••••••9988",
+      "last_tested_at": "2026-08-31T04:20:00Z"
+    }
+  ]
+}
+```
+
+### Connect / Encrypt Gemini BYOK Key
+`POST /api/workspaces/provider-credentials/google-gemini`
+
+**Request Body:**
+```json
+{
+  "api_key": "AIzaSy...",
+  "credential_mode": "byok"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "status": "connected",
+  "provider": "google_gemini",
+  "credential_mode": "byok",
+  "masked_key": "••••••••1234",
+  "message": "Gemini API key encrypted and connected successfully"
+}
+```
+
+### Remove BYOK Key
+`DELETE /api/workspaces/provider-credentials/google-gemini`
+
+**Response (200 OK):**
+```json
+{
+  "status": "deleted",
+  "provider": "google_gemini",
+  "credential_mode": "managed",
+  "message": "Gemini BYOK key removed. Workspace restored to HELIX Managed provider."
+}
+```
+
+---
+
+## 5. Security & Provider Resolution Guarantees
+
+1. **Server-Side Encryption**: All customer BYOK keys are encrypted at rest using AES / Fernet ciphers derived from the server's `SECRET_KEY`.
+2. **Never Exposed**: Plaintext keys are NEVER returned in API responses, logs, or stored in frontend state. Responses only display masked suffixes (`••••••••abcd`).
+3. **Trial Isolation**: Trial users always use HELIX Managed Gemini.
+4. **No Silent Fallback**: If a paid workspace configures BYOK and the customer's Google project fails or runs out of quota, HELIX returns an explicit notice and never silently bills HELIX infrastructure.

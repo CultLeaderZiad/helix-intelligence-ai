@@ -16,3 +16,4 @@ from .api_usage import ExternalApiUsage
 from .media_job import MediaGenerationJob
 from .webhook_event import WebhookEvent
 from .app_update import AppUpdate
+from .workspace_credential import WorkspaceProviderCredential
