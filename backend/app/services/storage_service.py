@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 # Temporary local storage location for Render. 
 # WARNING: This will be wiped upon instance restart/deploy!
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 async def store_media_bytes(job_id: str, data: bytes, mime_type: str = "image/png") -> str:

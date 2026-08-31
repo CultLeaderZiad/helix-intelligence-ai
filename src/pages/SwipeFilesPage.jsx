@@ -3,6 +3,7 @@ import { creativeService } from "@/services"
 import { useAuth } from "@/context/AuthContext"
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
+import { API_BASE_URL } from "@/services/config"
 import { 
   Bookmark, 
   Trash2, 
@@ -42,6 +43,7 @@ export function SwipeFilesPage() {
   const [customFormat, setCustomFormat] = useState("video")
   const [isSubmittingCustom, setIsSubmittingCustom] = useState(false)
   const [isSavingBulk, setIsSavingBulk] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
 
   // Check if swipe_files feature flag is enabled
   const isFeatureEnabled = user?.feature_flags?.swipe_files !== false
@@ -83,6 +85,46 @@ export function SwipeFilesPage() {
       setCreatives((prev) => prev.filter((c) => c.id !== creativeId))
     } catch (err) {
       alert(err.message || "Failed to remove creative")
+    }
+  }
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+
+    const MAX_SIZE = 2 * 1024 * 1024 // 2MB
+    if (file.size > MAX_SIZE) {
+      alert("File size exceeds 2MB limit. Please upload a smaller image to protect cache and avoid server corruption.")
+      return
+    }
+
+    setIsUploading(true)
+    const formData = new FormData()
+    formData.append("file", file)
+
+    try {
+      const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
+      const response = await fetch(`${API_BASE_URL}/media/upload`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.detail || "Upload failed")
+      }
+
+      const data = await response.json()
+      setCustomUrl(data.url)
+      setCustomFormat("image")
+      showToast("Image file uploaded successfully!")
+    } catch (err) {
+      alert(err.message || "Failed to upload image file")
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -250,6 +292,37 @@ export function SwipeFilesPage() {
                 />
               </div>
 
+              <div className="flex flex-col gap-2">
+                <label className="label-mono text-text">Or Attach Image File (max 2MB)</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/jpg, image/webp"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="swipe-file-upload"
+                    disabled={isUploading}
+                  />
+                  <label
+                    htmlFor="swipe-file-upload"
+                    className="flex items-center gap-2 px-3 py-2 border border-border rounded bg-surface-2 text-xs font-semibold text-text cursor-pointer hover:bg-surface-3 transition"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-accent" />
+                    {isUploading ? "Uploading..." : "Choose Image"}
+                  </label>
+                  {customUrl && customUrl.startsWith("http") && (
+                    <div className="flex items-center gap-2">
+                      <img 
+                        src={customUrl} 
+                        alt="Attached Preview" 
+                        className="h-8 w-8 object-cover rounded border border-border"
+                      />
+                      <span className="text-[11px] text-accent font-mono">Attached successfully</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div>
                 <label className="label-mono text-text">{t("headlineAngle", "Headline / Hook / Angle")}</label>
                 <input
@@ -336,6 +409,15 @@ export function SwipeFilesPage() {
               key={c.id}
               className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm hover:border-border-strong transition flex flex-col justify-between"
             >
+              {c.landing_domain && (c.landing_domain.startsWith("http") || c.landing_domain.includes("/uploads/")) && (
+                <div className="w-full h-48 bg-surface-2 border-b border-border relative overflow-hidden flex items-center justify-center">
+                  <img
+                    src={c.landing_domain}
+                    alt={c.headline || "Uploaded Ad Image"}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
               <div className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-1.5 text-xs font-mono font-medium px-2 py-0.5 rounded bg-surface-2 text-text border border-border uppercase">
