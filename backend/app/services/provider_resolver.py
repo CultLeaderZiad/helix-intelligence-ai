@@ -6,7 +6,7 @@ based on workspace subscription tier, settings, and entitlement rules.
 """
 
 import logging
-from typing import Tuple
+from typing import Tuple, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException, status
@@ -15,6 +15,7 @@ from app.models.user import User
 from app.models.organization import Organization
 from app.models.workspace_credential import WorkspaceProviderCredential
 from app.services.ai.gemini_provider import GeminiProvider
+from app.services.ai.pollinations_provider import PollinationsProvider
 from app.services.security_service import decrypt_secret
 from app.services.billing_service import is_trial_active
 
@@ -24,7 +25,7 @@ async def resolve_image_provider(
     db: AsyncSession,
     user: User,
     org: Organization
-) -> Tuple[GeminiProvider, str]:
+) -> Tuple[Any, str]:
     """
     Resolves the appropriate GeminiProvider instance and credential mode.
     Returns:
@@ -40,7 +41,7 @@ async def resolve_image_provider(
 
     # Trial accounts always use managed provider
     if is_trial and not is_admin:
-        return GeminiProvider(), "managed"
+        return PollinationsProvider(), "managed"
 
     # Query workspace provider credential
     stmt = select(WorkspaceProviderCredential).where(
@@ -65,5 +66,5 @@ async def resolve_image_provider(
                 }
             )
 
-    # Default to HELIX Managed Provider
-    return GeminiProvider(), "managed"
+    # Default to HELIX Managed Provider (now Pollinations instead of Gemini to avoid quota)
+    return PollinationsProvider(), "managed"

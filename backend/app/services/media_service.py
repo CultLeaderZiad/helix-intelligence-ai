@@ -15,6 +15,7 @@ from app.services.billing_service import (
     record_image_generated,
 )
 from app.services.provider_resolver import resolve_image_provider
+from app.services.ai.gemini_provider import GeminiProvider
 from app.services.storage_service import store_media_bytes
 from app.services.media.higgsfield_provider import HiggsfieldProvider
 from app.services.media.higgsfield_registry import resolve_mode_spec
