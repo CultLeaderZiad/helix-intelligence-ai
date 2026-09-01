@@ -27,6 +27,9 @@ export function PerformancePage() {
 
   const [creatives, setCreatives] = useState([])
   const [loading, setLoading] = useState(true)
+  const [savedIds, setSavedIds] = useState(() => new Set())
+  const [filterFormat, setFilterFormat] = useState("ALL")
+  const [minDays, setMinDays] = useState(0)
   const [quickQuery, setQuickQuery] = useState("")
   const [strategyNotes, setStrategyNotes] = useState(() => {
     try {

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { LogOut, Bookmark, CreditCard, Users, Key, Shield, HelpCircle, UserCheck, MessageSquare, Settings } from "lucide-react"
+import { LogOut, Bookmark, CreditCard, Users, Key, Shield, HelpCircle, UserCheck, MessageSquare, Settings, Bell, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
@@ -117,6 +117,30 @@ export function Sidebar({ onOpenCommand, className }) {
         )}
 
         <NavLink
+          to="/dashboard"
+          className={({ isActive }) =>
+            cn(
+              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
+              isActive
+                ? "bg-surface-3 text-text font-semibold shadow-xs"
+                : "text-text-muted hover:bg-surface-2 hover:text-text",
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <Activity
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  isActive ? "text-accent" : "text-text-faint",
+                )}
+              />
+              <span className="flex-1 truncate">{t("dashboard", "Dashboard")}</span>
+            </>
+          )}
+        </NavLink>
+
+        <NavLink
           to="/guide"
           className={({ isActive }) =>
             cn(
@@ -208,6 +232,30 @@ export function Sidebar({ onOpenCommand, className }) {
                 )}
               />
               <span className="flex-1 truncate">{t("settings", "Profile & Settings")}</span>
+            </>
+          )}
+        </NavLink>
+
+        <NavLink
+          to="/notifications"
+          className={({ isActive }) =>
+            cn(
+              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
+              isActive
+                ? "bg-surface-3 text-text font-semibold shadow-xs"
+                : "text-text-muted hover:bg-surface-2 hover:text-text",
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <Bell
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  isActive ? "text-accent" : "text-text-faint",
+                )}
+              />
+              <span className="flex-1 truncate">{t("messages", "Messages & Updates")}</span>
             </>
           )}
         </NavLink>

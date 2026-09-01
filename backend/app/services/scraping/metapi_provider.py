@@ -73,11 +73,11 @@ class MetapiProvider(ScraperProvider):
                     return []
 
                 # 2. Poll Task Status
-                max_attempts = 15
+                max_attempts = 25
                 for attempt in range(max_attempts):
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(1.5)
                     if progress_callback:
-                        await progress_callback(attempt * 2, "Waiting for Metapi trace results...")
+                        await progress_callback(int(attempt * 1.5), "Scraping live Meta Ad Library via Metapi...")
                         
                     status_resp = await client.get(f"https://api.metapi.io/v1/tasks/{task_id}/status", headers=headers)
                     if status_resp.status_code == 200:
@@ -85,7 +85,7 @@ class MetapiProvider(ScraperProvider):
                         status = status_data.get("status")
                         if status == "succeeded":
                             break
-                        elif status == "failed":
+                        elif status in ("failed", "error"):
                             logger.error(f"Metapi task failed: {status_data}")
                             return []
                     
@@ -93,7 +93,12 @@ class MetapiProvider(ScraperProvider):
                 results_resp = await client.get(f"https://api.metapi.io/v1/tasks/{task_id}/results", headers=headers)
                 if results_resp.status_code == 200:
                     results_data = results_resp.json()
-                    results = results_data.get("data", [])
+                    if isinstance(results_data, dict):
+                        results = results_data.get("data") or results_data.get("results") or []
+                    elif isinstance(results_data, list):
+                        results = results_data
+                    else:
+                        results = []
                     
                     if len(results) > max_records:
                         results = results[:max_records]
@@ -115,32 +120,53 @@ class MetapiProvider(ScraperProvider):
         for item in items:
             page_name = item.get("provider_page_name") or brand_name
             
-            video_hd = item.get("video_hd_url", [])
-            video_sd = item.get("video_sd_url", [])
-            has_video = bool(video_hd or video_sd)
+            video_hd = item.get("video_hd_url") or []
+            video_sd = item.get("video_sd_url") or []
+            video_previews = item.get("video_previews") or []
+            orig_images = item.get("original_image_url") or []
+            
+            has_video = bool(video_hd or video_sd or video_previews)
             format_type = "video" if has_video else "image"
             
-            bodies = item.get("bodies", [])
-            body = bodies[0] if bodies else ""
+            bodies = item.get("bodies") or []
+            body = bodies[0] if (bodies and len(bodies) > 0) else ""
             
-            titles = item.get("creative_link_titles", [])
-            title = titles[0] if titles else ""
+            titles = item.get("creative_link_titles") or []
+            captions = item.get("captions") or []
+            title = titles[0] if (titles and len(titles) > 0) else (captions[0] if (captions and len(captions) > 0) else "")
             
-            headline = title or (body[:60] if body else "")
+            headline = title or (body[:70] if body else f"{brand_name} Ad")
             
             landing_url = item.get("query_params")
+            if not landing_url and captions and len(captions) > 0:
+                cap = captions[0]
+                landing_url = f"https://{cap}" if not cap.startswith("http") else cap
             
-            cta = item.get("cta_text") or "Learn More"
+            cta = item.get("cta_text") or "Shop Now"
             
             start_date = item.get("creation_time") or item.get("delivery_start_time") or now.isoformat()
             end_date = item.get("delivery_stop_time") or now.isoformat()
             
             days_active = 1
             try:
-                dt_start = datetime.fromisoformat(start_date.replace("Z", "+00:00").split("+")[0])
-                days_active = max(1, (now.replace(tzinfo=None) - dt_start).days)
+                dt_clean = start_date.replace("Z", "+00:00").split("+")[0]
+                dt_start = datetime.fromisoformat(dt_clean)
+                days_active = max(1, (now - dt_start).days)
             except Exception:
                 days_active = 1
+
+            # Pick best media URL
+            media_url = None
+            if video_hd and len(video_hd) > 0:
+                media_url = video_hd[0]
+            elif video_sd and len(video_sd) > 0:
+                media_url = video_sd[0]
+            elif orig_images and len(orig_images) > 0:
+                media_url = orig_images[0]
+            elif video_previews and len(video_previews) > 0:
+                media_url = video_previews[0]
+
+            thumbnail_url = video_previews[0] if (video_previews and len(video_previews) > 0) else (orig_images[0] if (orig_images and len(orig_images) > 0) else None)
 
             creatives.append(
                 RawCreative(
@@ -156,10 +182,12 @@ class MetapiProvider(ScraperProvider):
                     last_seen=end_date,
                     days_active=days_active,
                     variant_count=1,
-                    impressions_est=None,
+                    impressions_est=item.get("page_like_count"),
                     spend_band=None,
                     data_source="ad_library_scrape",
-                    is_estimated=True
+                    is_estimated=True,
+                    media_url=media_url,
+                    thumbnail_url=thumbnail_url
                 )
             )
 

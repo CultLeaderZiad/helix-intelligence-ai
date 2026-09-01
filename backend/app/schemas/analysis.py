@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 class Pattern(BaseModel):
     id: str
@@ -15,6 +15,10 @@ class Insight(BaseModel):
     title: str
     summary: str
     confidence: float
-    evidence_creative_ids: List[str]
+    evidence_creative_ids: List[str] = []
     generated_at: str
     model_version: str
+    emotional_resonance: Optional[str] = None
+    script_teardown: Optional[str] = None
+    fatigue_prediction: Optional[str] = None
+

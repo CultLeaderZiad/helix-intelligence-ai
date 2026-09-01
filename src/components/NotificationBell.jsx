@@ -87,9 +87,12 @@ export function NotificationBell({ className }) {
       </button>
 
       {open && (
-        <div className="absolute right-0 bottom-full mb-2 w-80 rounded-lg border border-border bg-surface-2 p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95">
+        <div className="absolute left-0 bottom-full mb-2 w-80 rounded-xl border border-border bg-surface-2 p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95">
           <div className="flex items-center justify-between border-b border-border pb-2 px-2 pt-1">
-            <span className="text-xs font-semibold text-text">Notifications</span>
+            <span className="text-xs font-semibold text-text flex items-center gap-1.5">
+              <Bell className="h-3.5 w-3.5 text-accent" />
+              Notifications
+            </span>
             {unreadCount > 0 && (
               <button
                 type="button"
@@ -112,34 +115,44 @@ export function NotificationBell({ className }) {
                 <div
                   key={n.id}
                   className={cn(
-                    "flex flex-col gap-1 p-2 transition-colors rounded-sm text-left",
-                    !n.is_read ? "bg-surface-3/50" : "hover:bg-surface-3/30"
+                    "flex flex-col gap-1 p-2.5 transition-colors rounded-lg text-left my-0.5",
+                    !n.is_read ? "bg-surface-3/70 border border-accent/20" : "hover:bg-surface-3/30"
                   )}
                 >
                   <div className="flex items-start justify-between gap-1.5">
                     <div className="flex items-center gap-1.5">
                       {getTypeIcon(n.type)}
-                      <span className="text-xs font-semibold text-text">{n.title}</span>
+                      <span className="text-xs font-bold text-text">{n.title}</span>
                     </div>
                     {!n.is_read && (
                       <button
                         onClick={(e) => handleMarkAsRead(n.id, e)}
-                        className="text-text-faint hover:text-accent p-0.5"
+                        className="text-text-faint hover:text-accent p-0.5 rounded transition"
                         title="Mark as read"
                       >
                         <Check className="h-3 w-3" />
                       </button>
                     )}
                   </div>
-                  <p className="text-[11px] text-text-muted leading-relaxed pl-5">
+                  <p className="text-[11px] text-text-muted leading-relaxed pl-5 whitespace-pre-line font-sans">
                     {n.message}
                   </p>
                   <span className="text-[10px] font-mono text-text-faint pl-5">
-                    {n.created_at ? new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                    {n.created_at ? new Date(n.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ""}
                   </span>
                 </div>
               ))
             )}
+          </div>
+
+          <div className="border-t border-border pt-2 px-2 text-center">
+            <a
+              href="/notifications"
+              onClick={() => setOpen(false)}
+              className="text-[11px] font-mono text-accent hover:underline inline-flex items-center gap-1"
+            >
+              <span>View All Messages & Updates →</span>
+            </a>
           </div>
         </div>
       )}
