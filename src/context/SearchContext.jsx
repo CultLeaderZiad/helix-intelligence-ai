@@ -101,6 +101,15 @@ export function SearchProvider({ children }) {
     }
   }, [])
 
+  const clearActiveCreative = useCallback(() => {
+    setActiveCreative(null)
+    try {
+      localStorage.removeItem(STORAGE_ACTIVE_CREATIVE_KEY)
+    } catch (e) {
+      console.warn("Failed to clear active creative in localStorage", e)
+    }
+  }, [])
+
   const selectSearchSession = useCallback((searchEntry) => {
     if (!searchEntry) return
     setLatestSearch(searchEntry)
