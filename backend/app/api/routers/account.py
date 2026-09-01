@@ -158,7 +158,10 @@ async def get_trial_status(
     is_active = False
     days_remaining = 0
     
-    if current_user.trial_expires_at:
+    if getattr(current_user, "role", "") == "admin":
+        is_active = True
+        days_remaining = 999
+    elif current_user.trial_expires_at:
         if now < current_user.trial_expires_at:
             is_active = True
             delta = current_user.trial_expires_at - now

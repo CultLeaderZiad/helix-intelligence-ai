@@ -90,7 +90,11 @@ class AIRouter:
         if byok_key and byok_provider:
             return BYOKProvider(api_key=byok_key, provider_choice=byok_provider)
             
-        # 2. Check Trial Status
+        # 2. Admins have unlimited access
+        if getattr(user, "role", "") == "admin":
+            return MultiTierAIProvider()
+
+        # 3. Check Trial Status for standard trial users
         if user.trial_expires_at and now > user.trial_expires_at:
             raise HTTPException(
                 status_code=403, 

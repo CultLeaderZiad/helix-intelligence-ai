@@ -5,21 +5,43 @@ import logging
 from typing import List, Optional
 from datetime import datetime, timezone
 from app.services.scraping.base import ScraperProvider, RawCreative
+from app.services.scraping.metapi_provider import MetapiProvider
+from app.services.scraping.adyntel_provider import AdyntelProvider
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# ==============================================================================
+# CANONICAL AD DISCOVERY PROVIDER CHAIN (Single Source of Truth)
+# Order:
+# 1. Metapi (Primary: fast, live Meta Ad Library search)
+# 2. Adyntel (Secondary: company/domain trace fallback)
+# 3. Meta Official Graph API (Tertiary: official ads_archive endpoint with app access token)
+# 4. Apify Facebook Ad Library Actor (Last resort: actor scraper kept for fallback)
+# ==============================================================================
+DISCOVERY_PROVIDER_CHAIN = [
+    "metapi",
+    "adyntel",
+    "meta_official",
+    "apify",
+]
+
+
 class AdLibraryProvider(ScraperProvider):
     """
-    Ad Discovery Provider supporting:
-    - Meta Ad Library Graph API
-    - Apify Facebook Ads Library Actor
+    Unified Ad Discovery Provider and Single Source of Truth for ad search.
+    Orchestrates the fallback chain: Metapi -> Adyntel -> Meta Official API -> Apify.
     """
 
     def __init__(self, db=None, org_id: Optional[str] = None, user_id: Optional[str] = None):
         self.db = db
         self.org_id = org_id
         self.user_id = user_id
+
+        # Sub-providers
+        self.metapi_provider = MetapiProvider(db, str(org_id) if org_id else "", str(user_id) if user_id else "")
+        self.adyntel_provider = AdyntelProvider(db, str(org_id) if org_id else "", str(user_id) if user_id else "")
+
         raw_meta = getattr(settings, "META_ACCESS_TOKEN", None) or os.getenv("META_ACCESS_TOKEN") or ""
         raw_apify = getattr(settings, "APIFY_API_TOKEN", None) or os.getenv("APIFY_API_TOKEN") or os.getenv("APIFY_TOKEN") or ""
         
@@ -27,9 +49,23 @@ class AdLibraryProvider(ScraperProvider):
         self.apify_token = raw_apify.strip().strip('"\'')
         self.meta_graph_version = "v21.0"
 
-    async def search(self, query: str, max_records: int, filters: dict = None, progress_callback=None) -> List[RawCreative]:
+        # Execution tracking
+        self.last_provider_used: str = "none"
+        self.sources_tried: List[str] = []
+
+    async def search(
+        self,
+        query: str,
+        max_records: int = 15,
+        filters: Optional[dict] = None,
+        progress_callback=None
+    ) -> List[RawCreative]:
         """
-        Default combined search chain: Apify -> Meta Graph.
+        Executes the canonical provider chain in order:
+        1. Metapi (Primary)
+        2. Adyntel (Secondary)
+        3. Meta Official Graph API (Tertiary)
+        4. Apify (Last Resort)
         """
         assert max_records and max_records > 0, "Safety Violation: max_records missing or invalid"
         if not query or not query.strip():
@@ -37,21 +73,93 @@ class AdLibraryProvider(ScraperProvider):
 
         cleaned_query = query.strip()
         country = (filters or {}).get("country", "ALL")
+        self.sources_tried = []
+        self.last_provider_used = "none"
 
-        # 1. Apify Facebook Ads Scraper (Primary ad scraper)
-        if self.apify_token:
-            creatives = await self.query_apify(cleaned_query, country, max_records, progress_callback=progress_callback)
-            if creatives:
-                logger.info(f"Retrieved {len(creatives)} creatives from Apify API")
-                return creatives
+        # ----------------------------------------------------------------------
+        # 1. METAPI (Primary: Live Meta Ad Library search)
+        # ----------------------------------------------------------------------
+        if self.metapi_provider.metapi_api_key:
+            self.sources_tried.append("Metapi")
+            logger.info(f"[AdDiscovery] Attempting primary provider: Metapi for query='{cleaned_query}'")
+            try:
+                creatives = await self.metapi_provider.search(
+                    cleaned_query,
+                    max_records=max_records,
+                    filters=filters,
+                    progress_callback=progress_callback
+                )
+                if creatives:
+                    self.last_provider_used = "metapi"
+                    logger.info(f"[AdDiscovery] Metapi succeeded with {len(creatives)} creatives")
+                    return creatives
+                else:
+                    logger.info("[AdDiscovery] Metapi returned 0 creatives, proceeding to next fallback")
+            except Exception as e:
+                logger.warning(f"[AdDiscovery] Metapi search failed: {e}, falling back to Adyntel")
 
-        # 2. Meta Ad Library Graph API (if configured & approved)
+        # ----------------------------------------------------------------------
+        # 2. ADYNTEL (Secondary: Domain/company trace fallback)
+        # ----------------------------------------------------------------------
+        if self.adyntel_provider.adyntel_api_key and self.adyntel_provider.adyntel_email:
+            self.sources_tried.append("Adyntel")
+            logger.info(f"[AdDiscovery] Attempting secondary provider: Adyntel for query='{cleaned_query}'")
+            try:
+                creatives = await self.adyntel_provider.search(
+                    cleaned_query,
+                    max_records=max_records,
+                    filters=filters,
+                    progress_callback=progress_callback
+                )
+                if creatives:
+                    self.last_provider_used = "adyntel"
+                    logger.info(f"[AdDiscovery] Adyntel succeeded with {len(creatives)} creatives")
+                    return creatives
+                else:
+                    logger.info("[AdDiscovery] Adyntel returned 0 creatives, proceeding to next fallback")
+            except Exception as e:
+                logger.warning(f"[AdDiscovery] Adyntel search failed: {e}, falling back to Meta Official API")
+
+        # ----------------------------------------------------------------------
+        # 3. META OFFICIAL GRAPH API (Tertiary: Official ads_archive endpoint)
+        # ----------------------------------------------------------------------
         if self.meta_token:
-            creatives = await self.query_meta_api(cleaned_query, country, max_records)
-            if creatives:
-                logger.info(f"Retrieved {len(creatives)} creatives from Meta Ad Library API")
-                return creatives
+            self.sources_tried.append("Meta Graph API")
+            logger.info(f"[AdDiscovery] Attempting tertiary provider: Meta Graph API for query='{cleaned_query}'")
+            try:
+                if progress_callback:
+                    await progress_callback(0, "Querying Meta Graph API (Official)...")
+                creatives = await self.query_meta_api(cleaned_query, country=country, max_records=max_records)
+                if creatives:
+                    self.last_provider_used = "meta_graph"
+                    logger.info(f"[AdDiscovery] Meta Graph API succeeded with {len(creatives)} creatives")
+                    return creatives
+                else:
+                    logger.info("[AdDiscovery] Meta Graph API returned 0 creatives, proceeding to next fallback")
+            except Exception as e:
+                logger.warning(f"[AdDiscovery] Meta Graph API request failed: {e}, falling back to Apify")
 
+        # ----------------------------------------------------------------------
+        # 4. APIFY FACEBOOK AD LIBRARY ACTOR (Last Resort: actor scraper)
+        # ----------------------------------------------------------------------
+        if self.apify_token and getattr(settings, "APIFY_ENABLED", False):
+            self.sources_tried.append("Apify (Facebook Ad Library)")
+            logger.info(f"[AdDiscovery] Attempting last-resort provider: Apify for query='{cleaned_query}'")
+            try:
+                creatives = await self.query_apify(
+                    cleaned_query,
+                    country=country,
+                    max_records=max_records,
+                    progress_callback=progress_callback
+                )
+                if creatives:
+                    self.last_provider_used = "apify"
+                    logger.info(f"[AdDiscovery] Apify succeeded with {len(creatives)} creatives")
+                    return creatives
+            except Exception as e:
+                logger.warning(f"[AdDiscovery] Apify search failed: {e}")
+
+        logger.info(f"[AdDiscovery] All providers exhausted for query='{cleaned_query}'. Tried: {self.sources_tried}")
         return []
 
     async def query_meta_api(self, query: str, country: str = "ALL", max_records: int = 15) -> List[RawCreative]:

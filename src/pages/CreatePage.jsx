@@ -199,7 +199,7 @@ export function CreatePage() {
 
     submit({
       prompt: brief,
-      provider: "gemini",
+      provider: isTrial ? "gemini" : "higgsfield",
       mode: selectedMode,
       parameters: params
     })

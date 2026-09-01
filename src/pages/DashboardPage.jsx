@@ -1,8 +1,11 @@
-import React, { useEffect, useState } from "react"
-import { Activity, BarChart2, TrendingUp, Users } from "lucide-react"
+import React, { useEffect, useState, useCallback } from "react"
+import { Activity, BarChart2, TrendingUp, Users, RefreshCw, AlertCircle } from "lucide-react"
 import { dashboardService } from "@/services"
 import { Panel } from "@/components/ui/Panel"
 import { Tag } from "@/components/ui/Tag"
+import { Button } from "@/components/ui/Button"
+import { BreadcrumbBar } from "@/app/BreadcrumbBar"
+import { SkeletonRows } from "@/components/ui/States"
 
 export default function DashboardPage() {
   const [data, setData] = useState(null)
@@ -10,29 +13,33 @@ export default function DashboardPage() {
   const [error, setError] = useState(null)
   const [selectedBrands, setSelectedBrands] = useState([])
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const result = await dashboardService.getMetrics()
-        setData(result)
-        if (result.cross_brand && result.cross_brand.length > 0) {
-          // Pre-select up to 3 brands for comparison
-          setSelectedBrands(result.cross_brand.slice(0, 3).map(b => b.brand_id))
-        }
-      } catch (err) {
-        setError(err.message || "Failed to load dashboard data")
-      } finally {
-        setLoading(false)
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const result = await dashboardService.getMetrics()
+      setData(result)
+      if (result?.cross_brand && result.cross_brand.length > 0) {
+        setSelectedBrands(result.cross_brand.slice(0, 3).map(b => b.brand_id))
       }
+    } catch (err) {
+      console.warn("Failed to load dashboard metrics:", err)
+      setError(err.message || "Failed to load dashboard data")
+    } finally {
+      setLoading(false)
     }
-    loadData()
   }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center p-8">
-        <div className="text-center font-mono text-sm text-text-faint">
-          Loading dashboard metrics...
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-background">
+        <BreadcrumbBar trail={["Helix", "Workspace", "Cross-Brand Dashboard"]} />
+        <div className="p-6">
+          <SkeletonRows rows={8} />
         </div>
       </div>
     )
@@ -40,9 +47,20 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center p-8">
-        <div className="text-center font-mono text-sm text-red-400">
-          Error: {error}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-background">
+        <BreadcrumbBar trail={["Helix", "Workspace", "Cross-Brand Dashboard"]} />
+        <div className="flex h-[60vh] flex-col items-center justify-center p-8 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/20 text-red-400 mb-4">
+            <AlertCircle className="h-6 w-6" />
+          </div>
+          <h2 className="text-base font-bold text-text">Unable to Load Dashboard</h2>
+          <p className="mt-1 font-mono text-xs text-text-muted max-w-sm mb-5">
+            {error}
+          </p>
+          <Button size="sm" variant="outline" onClick={loadData} className="flex items-center gap-2">
+            <RefreshCw className="h-3.5 w-3.5" />
+            Retry Connection
+          </Button>
         </div>
       </div>
     )

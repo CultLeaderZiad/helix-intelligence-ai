@@ -238,14 +238,23 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
         lock_row=True
     )
 
-    requested_provider = (request.provider or "gemini").lower()
-    is_trial = (plan.type == "trial") or (org.plan == "trial")
+    requested_provider = (request.provider or "").lower()
+    is_admin = getattr(user, "role", None) == "admin"
+    is_trial = not is_admin and ((plan.type == "trial") or (getattr(org, "plan", "") == "trial") or bool(getattr(org, "plan_id", "").startswith("plan_trial")))
 
-    # For trial users, Gemini is the mandatory image provider (Higgsfield disabled)
-    provider = "gemini" if (is_trial or requested_provider in ("gemini", "default", "higgsfield")) else requested_provider
-
-    if provider == "mock" and not settings.USE_MOCKS:
+    # Tiered Routing:
+    # - Trial Users -> Gemini
+    # - Paid Users / Admins -> Higgsfield (or requested BYOK/custom provider)
+    if is_trial:
         provider = "gemini"
+    elif requested_provider == "gemini":
+        provider = "gemini"
+    elif requested_provider in ("higgsfield", "default", ""):
+        provider = "higgsfield"
+    elif requested_provider == "mock" and not settings.USE_MOCKS:
+        provider = "higgsfield"
+    else:
+        provider = requested_provider or "higgsfield"
 
     # 2. Persist MediaGenerationJob
     job = MediaGenerationJob(
@@ -261,14 +270,11 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
     await db.refresh(job)
 
     # 3. Dispatch Provider Task
-    if provider == "gemini":
-        asyncio.create_task(gemini_generate_media_task(job.id, user.id, org.id))
-    elif provider == "higgsfield" and not is_trial:
+    if provider == "higgsfield":
         asyncio.create_task(higgsfield_generate_media_task(job.id))
     elif provider == "mock":
         asyncio.create_task(mock_generate_media_task(job.id))
     else:
-        # Fallback to Gemini
         asyncio.create_task(gemini_generate_media_task(job.id, user.id, org.id))
 
     return job

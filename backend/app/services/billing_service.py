@@ -504,7 +504,9 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
 
 
 def is_trial_active(user: User) -> bool:
-    """Returns True if the user is within their active 7-day trial window."""
+    """Returns True if the user is within their active 7-day trial window, or is an admin."""
+    if getattr(user, "role", "") == "admin":
+        return True
     if not user.trial_expires_at:
         return True
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -516,6 +518,8 @@ def is_trial_active(user: User) -> bool:
 
 def get_trial_days_remaining(user: User) -> int:
     """Calculates remaining days in trial."""
+    if getattr(user, "role", "") == "admin":
+        return 999
     if not user.trial_expires_at:
         return settings.TRIAL_DAYS
     now = datetime.datetime.now(datetime.timezone.utc)

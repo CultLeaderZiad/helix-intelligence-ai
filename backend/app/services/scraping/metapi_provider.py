@@ -133,9 +133,23 @@ class MetapiProvider(ScraperProvider):
             
             titles = item.get("creative_link_titles") or []
             captions = item.get("captions") or []
-            title = titles[0] if (titles and len(titles) > 0) else (captions[0] if (captions and len(captions) > 0) else "")
             
-            headline = title or (body[:70] if body else f"{brand_name} Ad")
+            # Extract first meaningful line from body copy as prime candidate for headline
+            body_first_line = ""
+            if body:
+                lines = [l.strip() for l in body.splitlines() if l.strip()]
+                if lines:
+                    body_first_line = lines[0][:100]
+
+            # Prioritize: 1) explicit link title, 2) ad copy first line, 3) caption/URL, 4) brand fallback
+            if titles and len(titles) > 0 and titles[0].strip():
+                headline = titles[0].strip()
+            elif body_first_line:
+                headline = body_first_line
+            elif captions and len(captions) > 0 and captions[0].strip():
+                headline = captions[0].strip()
+            else:
+                headline = f"{page_name} Ad"
             
             landing_url = item.get("query_params")
             if not landing_url and captions and len(captions) > 0:

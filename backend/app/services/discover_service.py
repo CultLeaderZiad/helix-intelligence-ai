@@ -17,10 +17,8 @@ from app.models.user import User
 from app.core.config import settings
 from app.db.session import async_session_maker
 
-from app.services.scraping.ad_library_provider import AdLibraryProvider
+from app.services.scraping.ad_library_provider import AdLibraryProvider, DISCOVERY_PROVIDER_CHAIN
 from app.services.scraping.scrapegraph_provider import ScrapeGraphProvider
-from app.services.scraping.adyntel_provider import AdyntelProvider
-from app.services.scraping.metapi_provider import MetapiProvider
 from app.services.scraping.normalizer import normalize_creative
 from app.services.creative_service import generate_patterns_for_recent_creatives
 from app.services.billing_service import (
@@ -307,59 +305,16 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
                     j.elapsed_ms = int((time.time() - start_time) * 1000)
                     await db.commit()
 
+        # Execute Canonical Ad Discovery Chain (Metapi -> Adyntel -> Meta Official -> Apify)
         ad_lib_provider = AdLibraryProvider(db, str(org_id), str(user_id))
-        adyntel_provider = AdyntelProvider(db, str(org_id), str(user_id))
-        metapi_provider = MetapiProvider(db, str(org_id), str(user_id))
-        
-        raw_creatives = []
-        provider_used = "unknown"
-
-        # 1. Metapi (Primary Domain Trace)
-        if metapi_provider.metapi_api_key:
-            sources_tried.append("Metapi")
-            raw_creatives = await metapi_provider.search(
-                query,
-                max_records=15,
-                filters=filters,
-                progress_callback=on_scraping_progress
-            )
-            if raw_creatives:
-                provider_used = "metapi"
-
-        # 2. Adyntel (Fallback Domain Trace)
-        if not raw_creatives and adyntel_provider.adyntel_api_key and adyntel_provider.adyntel_email:
-            sources_tried.append("Adyntel")
-            raw_creatives = await adyntel_provider.search(
-                query,
-                max_records=15,
-                filters=filters,
-                progress_callback=on_scraping_progress
-            )
-            if raw_creatives:
-                provider_used = "adyntel"
-
-        # 2. Apify Facebook Ad Library Actor
-        if not raw_creatives and ad_lib_provider.apify_token:
-            sources_tried.append("Apify (Facebook Ad Library)")
-            raw_creatives = await ad_lib_provider.query_apify(
-                query,
-                country=(filters or {}).get("country", "ALL"),
-                max_records=15,
-                progress_callback=on_scraping_progress
-            )
-            if raw_creatives:
-                provider_used = "apify"
-
-        # 3. Meta Graph API (Optional official boost)
-        if not raw_creatives and ad_lib_provider.meta_token:
-            sources_tried.append("Meta Graph API")
-            raw_creatives = await ad_lib_provider.query_meta_api(
-                query,
-                country=(filters or {}).get("country", "ALL"),
-                max_records=15
-            )
-            if raw_creatives:
-                provider_used = "meta_graph"
+        raw_creatives = await ad_lib_provider.search(
+            query,
+            max_records=15,
+            filters=filters,
+            progress_callback=on_scraping_progress
+        )
+        provider_used = ad_lib_provider.last_provider_used
+        sources_tried = ad_lib_provider.sources_tried
             
         # Zero Results Handling (Honest reporting)
         if not raw_creatives:
@@ -406,12 +361,20 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
                 saved_creatives += 1
             await db.commit()
             
-        # Stage 4: AI Pattern Scoring/Generation
+        # Stage 4: AI Pattern Scoring/Generation (Graceful Degradation)
         async with async_session_maker() as db:
             await update_job_stage(db, job_id, "scoring", "AI Generating Insights", 0.8, 4)
             org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one()
             user = (await db.execute(select(User).where(User.id == org.owner_id))).scalar_one()
-            await generate_patterns_for_recent_creatives(db, user, job_id)
+            try:
+                await generate_patterns_for_recent_creatives(db, user, job_id)
+            except HTTPException as he:
+                # If trial expired or plan restricted, gracefully preserve the scraped creatives
+                detail = he.detail if isinstance(he.detail, dict) else {"message": str(he.detail)}
+                err_code = detail.get("error") or detail.get("code") or "plan_restricted"
+                print(f"[DiscoverPipeline] AI pattern scoring gracefully skipped for job {job_id}: {err_code} - {detail.get('message')}")
+            except Exception as ai_err:
+                print(f"[DiscoverPipeline] AI pattern scoring encountered an issue for job {job_id}: {ai_err}")
             
         # Stage 5: Complete
         async with async_session_maker() as db:

@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     AIHUBMIX_API_KEY: str = os.getenv("AIHUBMIX_API_KEY", "")
     TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
     METAPI_API_KEY: str = os.getenv("METAPI_API_KEY", "")
+    ADYNTEL_API_KEY: str = os.getenv("ADYNTEL_API_KEY", "")
+    ADYNTEL_EMAIL: str = os.getenv("ADYNTEL_EMAIL", "")
     HF_API_KEY_ID: str = os.getenv("HF_API_KEY_ID", "") or os.getenv("HIGGSFIELD_API_KEY_ID", "") or os.getenv("HIGGSFIELD_API_KEY", "")
     HF_API_KEY_SECRET: str = os.getenv("HF_API_KEY_SECRET", "") or os.getenv("HIGGSFIELD_API_KEY_SECRET", "") or os.getenv("HIGGSFIELD_API_SECRET", "") or os.getenv("HIGGSFIELD_SECRET", "")
     HIGGSFIELD_BASE_URL: str = os.getenv("HIGGSFIELD_BASE_URL", "https://platform.higgsfield.ai").rstrip("/")
