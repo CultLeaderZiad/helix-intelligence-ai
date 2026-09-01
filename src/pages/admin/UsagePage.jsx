@@ -102,7 +102,7 @@ export function UsagePage() {
             <DollarSign className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-mono font-bold text-emerald-400 mt-2">
-            ${(summary?.total_cost_usd || 0).toFixed(4)}
+            ${Number(summary?.total_cost_usd || 0).toFixed(4)}
           </div>
           <p className="text-xs text-slate-500 mt-1">Direct third-party API spend</p>
         </div>
@@ -113,7 +113,7 @@ export function UsagePage() {
             <Coins className="w-4 h-4 text-indigo-400" />
           </div>
           <div className="text-2xl font-mono font-bold text-indigo-400 mt-2">
-            {(summary?.total_credits_deducted || 0).toFixed(1)}
+            {Number(summary?.total_credits_deducted || 0).toFixed(1)}
           </div>
           <p className="text-xs text-slate-500 mt-1">Platform user balance billed</p>
         </div>
@@ -211,8 +211,8 @@ export function UsagePage() {
                     </td>
                     <td className="py-3 px-4 text-slate-300">{log.operation}</td>
                     <td className="py-3 px-4 text-right text-slate-400">{log.units}</td>
-                    <td className="py-3 px-4 text-right text-emerald-400 font-semibold">${log.cost_usd.toFixed(4)}</td>
-                    <td className="py-3 px-4 text-right text-indigo-400 font-bold">-{log.credits_deducted.toFixed(1)} cr</td>
+                    <td className="py-3 px-4 text-right text-emerald-400 font-semibold">${Number(log.cost_usd || 0).toFixed(4)}</td>
+                    <td className="py-3 px-4 text-right text-indigo-400 font-bold">-{Number(log.credits_deducted || 0).toFixed(1)} cr</td>
                   </tr>
                 ))
               )}

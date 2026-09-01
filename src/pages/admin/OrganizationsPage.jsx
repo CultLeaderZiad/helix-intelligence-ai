@@ -210,11 +210,11 @@ export function OrganizationsPage() {
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-1.5 text-amber-300 font-bold">
                       <Coins className="w-3.5 h-3.5 text-amber-400" />
-                      {org.credit_balance.toFixed(1)} cr
+                      {Number(org.credit_balance || 0).toFixed(1)} cr
                     </div>
                   </td>
                   <td className="py-3.5 px-4 text-slate-400">
-                    {org.credits_used.toFixed(1)} cr
+                    {Number(org.credits_used || 0).toFixed(1)} cr
                   </td>
                   <td className="py-3.5 px-4">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] ${
@@ -274,7 +274,7 @@ export function OrganizationsPage() {
               Grant Custom Credits
             </h3>
             <p className="text-xs text-slate-400">
-              Grant credits to <strong className="text-slate-200">{grantModalOrg.name}</strong> (Current balance: {grantModalOrg.credit_balance.toFixed(1)} credits).
+              Grant credits to <strong className="text-slate-200">{grantModalOrg.name}</strong> (Current balance: {Number(grantModalOrg.credit_balance || 0).toFixed(1)} credits).
             </p>
             <form onSubmit={handleGrantCredits} className="space-y-3">
               <div>

@@ -69,7 +69,7 @@ export function StatusBar() {
           <span className="flex items-center gap-1.5 border-l border-border pl-4">
             <span className="text-accent">{user.trial_days_remaining}d left</span>
             <span className="text-text-muted">·</span>
-            <span className="text-accent">{user.credit_balance?.toFixed(1)}cr</span>
+            <span className="text-accent">{Number(user.credit_balance || 0).toFixed(1)}cr</span>
             {user.daily_credit_limit != null && (
               <>
                 <span className="text-text-muted">·</span>
@@ -77,12 +77,12 @@ export function StatusBar() {
                   <span className="text-text-muted">today</span>
                   <span
                     className={cn("tnum", {
-                      "text-success": user.daily_credits_remaining > 1,
-                      "text-warning": user.daily_credits_remaining > 0 && user.daily_credits_remaining <= 1,
-                      "text-danger": user.daily_credits_remaining <= 0,
+                      "text-success": Number(user.daily_credits_remaining || 0) > 1,
+                      "text-warning": Number(user.daily_credits_remaining || 0) > 0 && Number(user.daily_credits_remaining || 0) <= 1,
+                      "text-danger": Number(user.daily_credits_remaining || 0) <= 0,
                     })}
                   >
-                    {user.daily_credits_used?.toFixed(1)}/{user.daily_credit_limit?.toFixed(1)}
+                    {Number(user.daily_credits_used || 0).toFixed(1)}/{Number(user.daily_credit_limit || 0).toFixed(1)}
                   </span>
                 </span>
               </>

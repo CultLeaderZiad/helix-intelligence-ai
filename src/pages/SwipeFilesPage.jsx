@@ -441,10 +441,10 @@ export function SwipeFilesPage() {
                   {c.body || "No body text available."}
                 </p>
 
-                {c.scores?.composite && (
+                {c.scores?.composite != null && (
                   <div className="pt-2 border-t border-border flex items-center justify-between text-xs font-mono">
                     <span className="text-text-faint">{t("compositeScore", "Composite Score")}</span>
-                    <span className="text-accent font-bold">{c.scores.composite.toFixed(1)}/100</span>
+                    <span className="text-accent font-bold">{Number(c.scores.composite).toFixed(1)}/100</span>
                   </div>
                 )}
               </div>

@@ -124,10 +124,10 @@ export function BillingPage() {
             <Coins className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl font-mono font-bold text-amber-400">
-            {(billing?.credit_balance || 0).toFixed(1)} <span className="text-xs text-slate-400 font-normal">cr</span>
+            {Number(billing?.credit_balance || 0).toFixed(1)} <span className="text-xs text-slate-400 font-normal">cr</span>
           </div>
           <p className="text-xs text-slate-500">
-            {(billing?.credits_used || 0).toFixed(1)} total credits consumed
+            {Number(billing?.credits_used || 0).toFixed(1)} total credits consumed
           </p>
         </div>
 
@@ -138,11 +138,11 @@ export function BillingPage() {
           </div>
           <div className="text-2xl font-mono font-bold text-slate-200">
             {billing?.daily_credits_remaining !== null && billing?.daily_credits_remaining !== undefined
-              ? `${billing.daily_credits_remaining.toFixed(1)} cr`
+              ? `${Number(billing.daily_credits_remaining || 0).toFixed(1)} cr`
               : "Unlimited"}
           </div>
           <p className="text-xs text-slate-500">
-            {(billing?.daily_credits_used_today || 0).toFixed(1)} credits used today (UTC)
+            {Number(billing?.daily_credits_used_today || 0).toFixed(1)} credits used today (UTC)
           </p>
         </div>
 
@@ -196,7 +196,7 @@ export function BillingPage() {
             <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
               <div className="flex items-center justify-between text-xs text-slate-400">
                 <span className="flex items-center gap-1.5"><Coins className="w-3.5 h-3.5 text-amber-400" /> Credits Deducted</span>
-                <span className="font-mono text-amber-400 font-bold">-{todayUsage.credits_consumed_today.toFixed(1)} cr</span>
+                <span className="font-mono text-amber-400 font-bold">-{Number(todayUsage.credits_consumed_today || 0).toFixed(1)} cr</span>
               </div>
               <p className="text-[11px] text-slate-500">Total metered billing today</p>
             </div>
@@ -210,8 +210,8 @@ export function BillingPage() {
           <Zap className="w-4 h-4 text-amber-400" />
           <span>Execution Rates:</span>
         </div>
-        <div>Discover Search: <strong className="text-slate-200">2.0 credits</strong></div>
-        <div>Creative Analysis: <strong className="text-slate-200">1.0 credit</strong></div>
+        <div>Discover Search: <strong className="text-slate-200">1.0 credit</strong></div>
+        <div>Creative Analysis: <strong className="text-slate-200">0.5 credit</strong></div>
         <div>AI Pattern Synthesis: <strong className="text-slate-200">0.5 credits</strong></div>
         <div>Creative Playbooks: <strong className="text-emerald-400">0.0 credits (Free)</strong></div>
       </div>
@@ -255,7 +255,7 @@ export function BillingPage() {
                     <td className="py-3 px-4 text-slate-300">{log.provider}</td>
                     <td className="py-3 px-4 text-slate-300">{log.operation}</td>
                     <td className="py-3 px-4 text-right text-slate-400">{log.units}</td>
-                    <td className="py-3 px-4 text-right text-indigo-400 font-bold">-{log.credits_deducted.toFixed(1)} cr</td>
+                    <td className="py-3 px-4 text-right text-indigo-400 font-bold">-{Number(log.credits_deducted || 0).toFixed(1)} cr</td>
                   </tr>
                 ))
               )}

@@ -83,7 +83,7 @@ export function OverviewStatStrip({ stats }) {
 
       <Cell label="Est. API Spend (Today)" icon={CircleDollarSign}>
         <span className="tnum font-mono text-2xl leading-none text-text">
-          ${stats.today_api_spend.toFixed(4)}
+          ${Number(stats.today_api_spend || 0).toFixed(4)}
         </span>
       </Cell>
     </div>

@@ -65,7 +65,7 @@ export function OrganizationsTable({ organizations, onRefresh }) {
                   {org.trial_expires_at ? new Date(org.trial_expires_at).toLocaleDateString() : "N/A"}
                 </td>
                 <td className="px-4 py-3 text-right font-mono">
-                  {org.credits_used.toFixed(1)} / {org.credit_balance.toFixed(1)}
+                  {Number(org.credits_used || 0).toFixed(1)} / {Number(org.credit_balance || 0).toFixed(1)}
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Button 

@@ -292,7 +292,7 @@ export function Sidebar({ onOpenCommand, className }) {
               </span>
               {user?.credit_balance !== undefined && (
                 <span className="text-[10px] font-mono text-accent font-bold">
-                  · {user.credit_balance.toFixed(1)}cr
+                  · {Number(user.credit_balance || 0).toFixed(1)}cr
                 </span>
               )}
             </div>

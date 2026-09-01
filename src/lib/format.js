@@ -5,27 +5,35 @@
  */
 
 export function formatCompact(n) {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—"
-  const abs = Math.abs(n)
-  if (abs >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`
-  if (abs >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (abs >= 1_000) return `${(n / 1_000).toFixed(1)}K`
-  return String(n)
+  if (n === null || n === undefined) return "—"
+  const num = Number(n)
+  if (Number.isNaN(num)) return "—"
+  const abs = Math.abs(num)
+  if (abs >= 1_000_000_000) return `${(num / 1_000_000_000).toFixed(1)}B`
+  if (abs >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`
+  if (abs >= 1_000) return `${(num / 1_000).toFixed(1)}K`
+  return String(num)
 }
 
 export function formatInt(n) {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—"
-  return new Intl.NumberFormat("en-US").format(n)
+  if (n === null || n === undefined) return "—"
+  const num = Number(n)
+  if (Number.isNaN(num)) return "—"
+  return new Intl.NumberFormat("en-US").format(num)
 }
 
 export function formatPercent(n, digits = 1) {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—"
-  return `${n.toFixed(digits)}%`
+  if (n === null || n === undefined) return "—"
+  const num = Number(n)
+  if (Number.isNaN(num)) return "—"
+  return `${num.toFixed(digits)}%`
 }
 
 export function formatScore(n) {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—"
-  return n.toFixed(1)
+  if (n === null || n === undefined) return "—"
+  const num = Number(n)
+  if (Number.isNaN(num)) return "—"
+  return num.toFixed(1)
 }
 
 /** ISO date -> "12 Mar 26" */
@@ -65,20 +73,26 @@ export function formatDays(n) {
 
 /** Pattern lift index -> "1.34×" */
 export function formatLift(n) {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—"
-  return `${n.toFixed(2)}×`
+  if (n === null || n === undefined) return "—"
+  const num = Number(n)
+  if (Number.isNaN(num)) return "—"
+  return `${num.toFixed(2)}×`
 }
 
 /** 0..1 share of a corpus -> "28%" */
 export function formatPrevalence(n) {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—"
-  return `${Math.round(n * 100)}%`
+  if (n === null || n === undefined) return "—"
+  const num = Number(n)
+  if (Number.isNaN(num)) return "—"
+  return `${Math.round(num * 100)}%`
 }
 
 /** Integer confidence 0..99 -> "84%" */
 export function formatConfidence(n) {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—"
-  return `${Math.round(n)}%`
+  if (n === null || n === undefined) return "—"
+  const num = Number(n)
+  if (Number.isNaN(num)) return "—"
+  return `${Math.round(num)}%`
 }
 
 /** Zero-padded ordinal for numbered findings -> "01" */
@@ -88,8 +102,10 @@ export function formatOrdinal(i) {
 
 export function formatDuration(ms) {
   if (ms === null || ms === undefined) return "—"
-  if (ms < 1000) return `${Math.round(ms)}ms`
-  return `${(ms / 1000).toFixed(1)}s`
+  const num = Number(ms)
+  if (Number.isNaN(num)) return "—"
+  if (num < 1000) return `${Math.round(num)}ms`
+  return `${(num / 1000).toFixed(1)}s`
 }
 
 export function formatSpendBand(band) {

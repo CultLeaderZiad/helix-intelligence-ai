@@ -108,17 +108,20 @@ function PageLoader() {
   )
 }
 
+import { ErrorBoundary } from "@/components/ErrorBoundary"
+
 export default function App() {
   return (
-    <TelemetryProvider>
-      <LanguageProvider>
-        <AuthProvider>
-          <SearchProvider>
-            <DocumentTitle />
-            <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Public front door */}
-              <Route path="/" element={<LandingPage />} />
+    <ErrorBoundary>
+      <TelemetryProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <SearchProvider>
+              <DocumentTitle />
+              <Suspense fallback={<PageLoader />}>
+              <Routes>
+                {/* Public front door */}
+                <Route path="/" element={<LandingPage />} />
 
               <Route path="/sign-in" element={<SignInPage />} />
               <Route path="/sign-up" element={<SignUpPage />} />
@@ -173,9 +176,10 @@ export default function App() {
               </Route>
             </Routes>
           </Suspense>
-        </SearchProvider>
-      </AuthProvider>
-      </LanguageProvider>
-    </TelemetryProvider>
+          </SearchProvider>
+        </AuthProvider>
+        </LanguageProvider>
+      </TelemetryProvider>
+    </ErrorBoundary>
   )
 }
