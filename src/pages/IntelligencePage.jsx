@@ -30,7 +30,7 @@ import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 
 export function IntelligencePage() {
   const navigate = useNavigate()
-  const { latestSearch, searchHistory, activeCreative, selectActiveCreative } = useSearchContext()
+  const { latestSearch, searchHistory, activeCreative, selectActiveCreative, selectSearchSession } = useSearchContext()
   
   const [creatives, setCreatives] = useState([])
   const [selectedCreativeId, setSelectedCreativeId] = useState(null)
@@ -210,12 +210,29 @@ export function IntelligencePage() {
 
       {/* Active Search / Context Banner */}
       {latestSearch ? (
-        <div className="flex items-center justify-between border-b border-border bg-surface-2 px-4 py-2.5">
-          <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface-2 px-4 py-2.5">
+          <div className="flex items-center gap-3">
             <span className="flex h-2 w-2 rounded-full bg-accent animate-pulse" />
             <span className="text-xs font-mono text-text">
-              CORPUS: <strong className="text-accent font-bold">"{latestSearch.query}"</strong> · {latestSearch.total} records found
+              Active Corpus: <strong className="text-accent font-bold">"{latestSearch.query}"</strong> · {creatives.length} ads indexed
             </span>
+
+            {searchHistory.length > 1 && (
+              <select
+                value={latestSearch.query}
+                onChange={(e) => {
+                  const target = searchHistory.find((s) => s.query === e.target.value)
+                  if (target) selectSearchSession(target)
+                }}
+                className="text-[11px] font-mono bg-surface border border-border rounded px-2 py-1 text-text focus:outline-none focus:border-accent"
+              >
+                {searchHistory.map((s) => (
+                  <option key={s.query} value={s.query}>
+                    Corpus: {s.query} ({s.total || s.items?.length || 0} ads)
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Button size="xs" variant="ghost" onClick={() => navigate("/discover")}>

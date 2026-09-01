@@ -11,12 +11,12 @@ from app.models.usage_log import UsageLog
 from app.core.config import settings
 
 # Centralized Credit Costs
-DISCOVER_SEARCH_CREDIT_COST = 2.0
-DISCOVER_DEEP_SEARCH_CREDIT_COST = 3.0
-CREATE_IMAGE_CREDIT_COST = 3.0
-CREATE_VIDEO_CREDIT_COST = 8.0
-ANALYSIS_PATTERN_CREDIT_COST = 1.0
-AI_CHAT_CREDIT_COST = 0.5
+DISCOVER_SEARCH_CREDIT_COST = 1.0
+DISCOVER_DEEP_SEARCH_CREDIT_COST = 2.0
+CREATE_IMAGE_CREDIT_COST = 2.0
+CREATE_VIDEO_CREDIT_COST = 5.0
+ANALYSIS_PATTERN_CREDIT_COST = 0.5
+AI_CHAT_CREDIT_COST = 0.25
 
 CREDIT_COSTS: Dict[str, float] = {
     "discover_job": DISCOVER_SEARCH_CREDIT_COST,
@@ -174,8 +174,8 @@ async def assert_can_spend(
             id="plan_trial_default",
             name="7-Day Free Trial",
             type="trial",
-            credit_allowance=25,
-            daily_credit_limit=3.5,
+            credit_allowance=50,
+            daily_credit_limit=15.0,
             price_per_credit=0.0,
             feature_flags={
                 "discover": True,

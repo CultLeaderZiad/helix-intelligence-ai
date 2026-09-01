@@ -27,9 +27,34 @@ export function PerformancePage() {
 
   const [creatives, setCreatives] = useState([])
   const [loading, setLoading] = useState(true)
-  const [savedIds, setSavedIds] = useState(new Set())
-  const [filterFormat, setFilterFormat] = useState("ALL")
-  const [minDays, setMinDays] = useState(0)
+  const [quickQuery, setQuickQuery] = useState("")
+  const [strategyNotes, setStrategyNotes] = useState(() => {
+    try {
+      return localStorage.getItem("helix_performance_notes") || ""
+    } catch {
+      return ""
+    }
+  })
+
+  function handleSaveNotes(val) {
+    setStrategyNotes(val)
+    try {
+      localStorage.setItem("helix_performance_notes", val)
+    } catch (e) {
+      console.warn(e)
+    }
+  }
+
+  function handleQuickSearch(e) {
+    e.preventDefault()
+    if (!quickQuery.trim()) return
+    navigate(`/discover?q=${encodeURIComponent(quickQuery.trim())}`)
+  }
+
+  function handleAnalyze(creative) {
+    selectActiveCreative(creative)
+    navigate("/intelligence")
+  }
 
   useEffect(() => {
     let isMounted = true
@@ -154,6 +179,23 @@ export function PerformancePage() {
       ) : (
         <div className="p-6 space-y-6">
           
+          {/* Quick Competitor Research & Scrape Bar */}
+          <form onSubmit={handleQuickSearch} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-surface-2 shadow-sm">
+            <div className="flex items-center gap-2 flex-1 px-3 py-2 bg-surface rounded-lg border border-border">
+              <Sparkles className="w-4 h-4 text-accent" />
+              <input
+                type="text"
+                value={quickQuery}
+                onChange={(e) => setQuickQuery(e.target.value)}
+                placeholder="Search any competitor or brand (e.g. Shopify, Nike, Gymshark, Duolingo)..."
+                className="flex-1 bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none"
+              />
+            </div>
+            <Button size="sm" variant="primary" type="submit" className="font-semibold text-black">
+              Deep Scrape & Analyze
+            </Button>
+          </form>
+
           {/* Top Aggregate KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             <div className="rounded border border-border bg-surface p-4">
@@ -206,6 +248,44 @@ export function PerformancePage() {
               <span className="text-[11px] text-text-muted mt-1 block">
                 {Math.round((metrics.videoCount / creatives.length) * 100)}% video share
               </span>
+            </div>
+          </div>
+
+          {/* AI Strategic Creative Advisor & Creative Notes */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div className="lg:col-span-7 rounded-xl border border-border bg-surface p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="label-mono text-text flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-accent" />
+                  AI Strategic Creative Advisor
+                </span>
+                <span className="text-[10px] font-mono text-accent">Auto-Benchmarked</span>
+              </div>
+              <div className="space-y-2 text-xs text-text-muted leading-relaxed">
+                <p>
+                  • <strong>Fatigue Threshold:</strong> Ads running &gt;{metrics.avgDays} days account for the bulk of competitor scale. Focus on remixing these long-running hooks.
+                </p>
+                <p>
+                  • <strong>Format Strategy:</strong> Video creative share is {Math.round((metrics.videoCount / (creatives.length || 1)) * 100)}%. Video formats show {metrics.survivorRate}% higher survival beyond 14 days.
+                </p>
+                <p>
+                  • <strong>Next Recommended Action:</strong> Extract hook formulas in <em>Intelligence</em> or remix top durable ads directly in <em>Create Studio</em>.
+                </p>
+              </div>
+            </div>
+
+            <div className="lg:col-span-5 rounded-xl border border-border bg-surface p-4 flex flex-col space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="label-mono text-text">Strategy Notes & Scratchpad</span>
+                <span className="text-[10px] font-mono text-text-faint">Auto-saved</span>
+              </div>
+              <textarea
+                value={strategyNotes}
+                onChange={(e) => handleSaveNotes(e.target.value)}
+                placeholder="Type your strategic hypotheses, winner angles, and testing notes here..."
+                rows={4}
+                className="flex-1 w-full bg-surface-2 border border-border rounded-lg p-2.5 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-accent resize-none font-sans"
+              />
             </div>
           </div>
 
@@ -357,6 +437,15 @@ export function PerformancePage() {
                           title={isSaved ? "Saved in Swipe Files" : "Save to Swipe Files"}
                         >
                           <Bookmark className={`h-3.5 w-3.5 ${isSaved ? "fill-accent text-accent" : "text-text-faint"}`} />
+                        </Button>
+
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() => handleAnalyze(c)}
+                          className="flex items-center gap-1 text-[11px]"
+                        >
+                          Analyze
                         </Button>
 
                         <Button

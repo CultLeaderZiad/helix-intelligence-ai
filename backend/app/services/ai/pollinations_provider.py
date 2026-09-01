@@ -60,6 +60,8 @@ class PollinationsProvider:
             width, height = 1280, 720
         elif aspect_ratio == "9:16":
             width, height = 720, 1280
+        elif aspect_ratio == "4:5":
+            width, height = 800, 1000
         elif aspect_ratio == "3:4":
             width, height = 768, 1024
         elif aspect_ratio == "4:3":

@@ -6,33 +6,33 @@ import { useNavigate } from "react-router-dom"
 const INDUSTRY_RECOMMENDATIONS = {
   "ecommerce": {
     label: "E-commerce & DTC",
-    brands: ["Shopify", "Gymshark", "Glossier", "Allbirds", "Ridge Wallet"],
-    keywords: ["dtc subscription", "sustainable apparel", "skincare bundle", "ergonomic accessories"]
+    brands: ["Shopify", "Gymshark", "Glossier", "Allbirds", "Ridge Wallet", "Olaplex"],
+    keywords: ["Nike", "Lululemon", "Warby Parker", "Casper"]
   },
   "saas": {
     label: "SaaS & Digital Apps",
-    brands: ["Duolingo", "Notion", "Canva", "Linear", "Figma"],
-    keywords: ["productivity ai", "design workflow", "language learning", "project management"]
+    brands: ["Duolingo", "Notion", "Canva", "Linear", "Figma", "Grammarly"],
+    keywords: ["Slack", "Airtable", "Monday.com", "Asana"]
   },
   "health": {
     label: "Health & Wellness",
-    brands: ["Athletic Greens", "Hims", "Whoop", "Calm", "Headspace"],
-    keywords: ["morning routine supplement", "telehealth hair loss", "sleep tracker", "mindfulness app"]
+    brands: ["Athletic Greens", "Hims", "Whoop", "Calm", "Headspace", "Oura"],
+    keywords: ["Ritual", "Liquid I.V.", "AG1", "Peloton"]
   },
   "fashion": {
     label: "Fashion & Apparel",
-    brands: ["Nike", "Zara", "Shein", "Lululemon", "Alo Yoga"],
-    keywords: ["activewear drop", "athleisure haul", "seasonal collection", "compression leggings"]
+    brands: ["Nike", "Zara", "Shein", "Lululemon", "Alo Yoga", "Gymshark"],
+    keywords: ["Adidas", "Gymshark", "ASOS", "Uniqlo"]
   },
   "finance": {
     label: "Fintech & Finance",
-    brands: ["Revolut", "Wise", "Robinhood", "Klarna", "Stripe"],
-    keywords: ["zero fee transfer", "high yield savings", "split payment", "stock investing"]
+    brands: ["Revolut", "Wise", "Robinhood", "Klarna", "Stripe", "Coinbase"],
+    keywords: ["Chime", "Monzo", "Square", "PayPal"]
   },
   "education": {
     label: "Education & Coaching",
-    brands: ["MasterClass", "Coursera", "Babbel", "Udemy", "Skillshare"],
-    keywords: ["expert masterclass", "coding bootcamp", "creative workshop", "career accelerator"]
+    brands: ["MasterClass", "Coursera", "Babbel", "Udemy", "Skillshare", "Duolingo"],
+    keywords: ["Brilliant", "Codecademy", "Khan Academy", "edX"]
   }
 }
 

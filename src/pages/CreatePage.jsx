@@ -105,14 +105,62 @@ export function CreatePage() {
     }
   }, [sourceId, activeCreative])
 
-  function applyCreativeToBrief(creative) {
+  const STYLE_PROMPTS = {
+    premium_ad: "Photorealistic high-end commercial ad, crisp studio softbox lighting, razor sharp 8k commercial photography, award-winning composition, clean minimalist presentation.",
+    quick_concept: "Dynamic social media UGC product showcase, vibrant natural daylight, eye-catching viral ad angle, highly engaging and authentic.",
+    cinematic_ad: "Ultra-luxurious cinematic commercial scene, dramatic chiaroscuro lighting, dark textured stone pedestal, subtle golden rim reflections, editorial masterclass grade.",
+    storyboard: "Narrative storytelling advertising keyframe, dynamic 35mm film camera perspective, rich cinematic atmosphere, compelling visual story.",
+    quick_video: "Dynamic motion social video ad, fluid high-impact movement, vibrant social pacing.",
+    premium_video: "High-production commercial video spot, elegant camera glide, crisp studio lighting transitions.",
+    before_after: "High-contrast split comparison transition, product transformation showcase.",
+    controlled_video: "Precision studio 3D rotation showcase, sleek product commercial presentation."
+  }
+
+  const PROMPT_TEMPLATES = [
+    {
+      title: "Hero Product Shot",
+      desc: "Clean studio commercial on matte stone",
+      prompt: "Photorealistic commercial studio ad of a premium modern product standing on a sleek textured stone podium, soft diffused rim lighting, crisp 8k product photography, award-winning visual."
+    },
+    {
+      title: "UGC Social Ad",
+      desc: "First-person hands-on showcase",
+      prompt: "Authentic first-person view holding the product in natural ambient window lighting, clean lifestyle backdrop, subtle depth of field blur, high-converting social media visual."
+    },
+    {
+      title: "Luxury Cinematic",
+      desc: "Moody editorial with gold accents",
+      prompt: "Dramatic dark moody luxury commercial setting with dark marble surfaces, warm golden rim reflections, subtle atmospheric haze, ultra-premium commercial quality."
+    },
+    {
+      title: "Tech / App UI Mockup",
+      desc: "3D floating device with glowing interface",
+      prompt: "Futuristic sleek glass tablet floating in minimalist dark studio showcasing a vibrant glowing software interface, volumetric cyan and indigo lighting, 3D isometric commercial presentation."
+    }
+  ]
+
+  function applyCreativeToBrief(creative, modeId = selectedMode) {
     setSourceCreative(creative)
-    const headline = creative.headline ? `Headline: "${creative.headline}"` : ""
-    const hook = creative.scores?.hook ? `[Hook angle: ${creative.scores.hook}]` : ""
-    const cta = creative.cta ? `Call-to-action: "${creative.cta}"` : ""
+    const brand = creative.brand_name ? `Brand: ${creative.brand_name}` : ""
+    const headline = creative.headline ? `Ad Headline: "${creative.headline}"` : ""
+    const hook = creative.scores?.hook ? `[Hook formula: ${creative.scores.hook}]` : ""
+    const styleDesc = STYLE_PROMPTS[modeId] || STYLE_PROMPTS.premium_ad
     setBrief(
-      `Commercial advertising image remixing competitor campaign.\n${headline} ${hook}\n${cta}\nVisual direction: modern minimalist studio, bold dramatic side lighting, high contrast commercial photography, 8k resolution, photorealistic, clean presentation.`
+      `Commercial advertising creative remixing active campaign.\n${brand} ${headline} ${hook}\nStyle & Visual Direction: ${styleDesc}`
     )
+  }
+
+  const handleModeChange = (modeId) => {
+    setSelectedMode(modeId)
+    const styleDesc = STYLE_PROMPTS[modeId]
+    if (styleDesc && brief) {
+      if (brief.includes("Style & Visual Direction:")) {
+        const parts = brief.split("Style & Visual Direction:")
+        setBrief(`${parts[0].trim()}\nStyle & Visual Direction: ${styleDesc}`)
+      } else {
+        setBrief(`${brief.trim()}\nStyle & Visual Direction: ${styleDesc}`)
+      }
+    }
   }
 
   const handleCategoryChange = (category) => {
@@ -120,9 +168,11 @@ export function CreatePage() {
     if (category === "image") {
       setSelectedMode("premium_ad")
       setAspectRatio("1:1")
+      if (sourceCreative) applyCreativeToBrief(sourceCreative, "premium_ad")
     } else {
       setSelectedMode("quick_video")
       setAspectRatio("9:16")
+      if (sourceCreative) applyCreativeToBrief(sourceCreative, "quick_video")
     }
   }
 
@@ -346,7 +396,7 @@ export function CreatePage() {
                     <button
                       key={mode.id}
                       type="button"
-                      onClick={() => setSelectedMode(mode.id)}
+                      onClick={() => handleModeChange(mode.id)}
                       className={`flex flex-col text-left p-3 rounded-lg border transition-all ${
                         selectedMode === mode.id
                           ? "border-accent bg-accent/5 text-text ring-1 ring-accent"
@@ -415,6 +465,34 @@ export function CreatePage() {
                   </Button>
                 </div>
               )}
+
+              {/* Prompt Assistant & Quick Formula Templates */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="label-mono text-text flex items-center gap-1.5">
+                    <Wand2 className="w-3.5 h-3.5 text-accent" />
+                    Prompt Assistant & 1-Click Formulas
+                  </span>
+                  <span className="text-[10px] font-mono text-text-faint">Click formula to apply</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {PROMPT_TEMPLATES.map((tmpl) => (
+                    <button
+                      key={tmpl.title}
+                      type="button"
+                      onClick={() => setBrief(tmpl.prompt)}
+                      className="p-2.5 rounded-lg border border-border bg-surface hover:border-accent/50 text-left transition group"
+                    >
+                      <div className="text-xs font-semibold text-text group-hover:text-accent transition-colors">
+                        {tmpl.title}
+                      </div>
+                      <div className="text-[10px] text-text-muted mt-0.5 line-clamp-1">
+                        {tmpl.desc}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* Prompt Brief Section */}
               <div className="flex flex-col gap-2">

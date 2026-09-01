@@ -18,7 +18,13 @@ export function SearchProvider({ children }) {
   const [latestSearch, setLatestSearch] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_LATEST_KEY)
-      return raw ? JSON.parse(raw) : null
+      if (!raw) return null
+      const parsed = JSON.parse(raw)
+      if (parsed?.query && /softo?cde/i.test(parsed.query)) {
+        localStorage.removeItem(STORAGE_LATEST_KEY)
+        return null
+      }
+      return parsed
     } catch {
       return null
     }
@@ -27,7 +33,12 @@ export function SearchProvider({ children }) {
   const [searchHistory, setSearchHistory] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_HISTORY_KEY)
-      return raw ? JSON.parse(raw) : []
+      if (!raw) return []
+      const parsed = JSON.parse(raw)
+      const cleaned = (Array.isArray(parsed) ? parsed : []).filter(
+        (item) => item?.query && !/softo?cde/i.test(item.query)
+      )
+      return cleaned
     } catch {
       return []
     }
@@ -36,7 +47,13 @@ export function SearchProvider({ children }) {
   const [activeCreative, setActiveCreative] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_ACTIVE_CREATIVE_KEY)
-      return raw ? JSON.parse(raw) : null
+      if (!raw) return null
+      const parsed = JSON.parse(raw)
+      if (parsed?.headline && /softo?cde/i.test(parsed.headline)) {
+        localStorage.removeItem(STORAGE_ACTIVE_CREATIVE_KEY)
+        return null
+      }
+      return parsed
     } catch {
       return null
     }
@@ -84,9 +101,14 @@ export function SearchProvider({ children }) {
     }
   }, [])
 
-  const clearActiveCreative = useCallback(() => {
-    setActiveCreative(null)
-    localStorage.removeItem(STORAGE_ACTIVE_CREATIVE_KEY)
+  const selectSearchSession = useCallback((searchEntry) => {
+    if (!searchEntry) return
+    setLatestSearch(searchEntry)
+    try {
+      localStorage.setItem(STORAGE_LATEST_KEY, JSON.stringify(searchEntry))
+    } catch (e) {
+      console.warn("Failed to update latest search session", e)
+    }
   }, [])
 
   const clearSearchHistory = useCallback(() => {
@@ -104,6 +126,7 @@ export function SearchProvider({ children }) {
         activeCreative,
         saveCompletedSearch,
         selectActiveCreative,
+        selectSearchSession,
         clearActiveCreative,
         clearSearchHistory,
       }}

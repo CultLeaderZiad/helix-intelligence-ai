@@ -45,10 +45,13 @@ const EMPTY_FILTERS = {
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 
+import { useSearchParams } from "react-router-dom"
+
 export function DiscoverPage() {
+  const [searchParams] = useSearchParams()
   const { latestSearch, saveCompletedSearch, selectActiveCreative } = useSearchContext()
   const { t } = useLanguage()
-  const [query, setQuery] = useState(() => latestSearch?.query || "")
+  const [query, setQuery] = useState(() => searchParams.get("q") || "")
   const [sort, setSort] = useState("composite_desc")
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS)

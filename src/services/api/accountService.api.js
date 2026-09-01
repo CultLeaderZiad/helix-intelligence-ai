@@ -15,10 +15,7 @@ const accountService = {
   uploadAvatar(file) {
     const formData = new FormData()
     formData.append("file", file)
-    return request("/account/avatar", {
-      method: "POST",
-      body: formData,
-    })
+    return uploadFile("/account/avatar", formData)
   },
 
   getTodayUsage() {
