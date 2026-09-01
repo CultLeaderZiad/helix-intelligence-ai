@@ -62,28 +62,12 @@ export function SignUpPage() {
       })
       navigate(APP_HOME, { replace: true })
     } catch (err) {
-      const isColdStart =
-        err?.code === "network_error" ||
-        [502, 503, 504].includes(Number(err?.status))
-
-      if (isColdStart) {
-        setAuthError({
-          status: "waking up",
-          tone: "warning",
-          message: "Starting Helix services… The free-tier backend is spinning up after idle (typically 10–30s). Please retry.",
-          isColdStart: true,
-        })
-      } else {
-        setAuthError({
-          status: "signup failed",
-          tone: "danger",
-          message:
-            err instanceof ServiceError
-              ? err.message
-              : "Sign up failed. Please try again.",
-          isColdStart: false,
-        })
-      }
+      setAuthError({
+        status: "signup failed",
+        tone: "danger",
+        message: err instanceof ServiceError ? err.message : (err?.message || "Sign up failed. Please try again."),
+        isColdStart: false,
+      })
       setSubmitting(false)
     }
   }
@@ -185,7 +169,7 @@ export function SignUpPage() {
           {submitting ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              {isSlow ? "Starting Helix services…" : "Creating account…"}
+              Creating account…
             </>
           ) : (
             <>

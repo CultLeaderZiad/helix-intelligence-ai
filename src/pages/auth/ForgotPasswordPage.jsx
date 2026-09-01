@@ -51,28 +51,12 @@ export function ForgotPasswordPage() {
       await requestPasswordReset({ email: email.trim() })
       setSentTo(email.trim())
     } catch (err) {
-      const isColdStart =
-        err?.code === "network_error" ||
-        [502, 503, 504].includes(Number(err?.status))
-
-      if (isColdStart) {
-        setAuthError({
-          status: "waking up",
-          tone: "warning",
-          message: "Starting Helix services… The free-tier backend is spinning up after idle (typically 10–30s). Please retry.",
-          isColdStart: true,
-        })
-      } else {
-        setAuthError({
-          status: "request failed",
-          tone: "danger",
-          message:
-            err instanceof ServiceError
-              ? err.message
-              : "Could not send the reset link. Please try again.",
-          isColdStart: false,
-        })
-      }
+      setAuthError({
+        status: "request failed",
+        tone: "danger",
+        message: err instanceof ServiceError ? err.message : (err?.message || "Could not send the reset link. Please try again."),
+        isColdStart: false,
+      })
       setSubmitting(false)
     }
   }
@@ -191,7 +175,7 @@ export function ForgotPasswordPage() {
           {submitting ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              {isSlow ? "Starting Helix services…" : "Sending link…"}
+              Sending link…
             </>
           ) : (
             "Send reset link"

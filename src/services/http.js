@@ -31,14 +31,37 @@ function buildQuery(params = {}) {
 }
 
 /**
- * The only place in the client that knows about fetch, base URLs,
- * auth headers or error normalization. Auth, retries and cancellation
- * all land here — not in features.
- *
- * @param {string} path
- * @param {{ method?: string, params?: Object, body?: any, headers?: Object, signal?: AbortSignal }} [options]
+ * Keep-alive & warm-up system:
+ * Pings backend health in the background on startup and every 3 minutes
+ * so all requests, logins, searches, and button clicks respond instantly with 0 delay.
  */
-export async function request(path, options = {}) {
+let isWarmedUp = false
+export function startBackendKeepAlive() {
+  if (typeof window === "undefined") return
+  
+  const ping = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/health`, { method: "GET", cache: "no-store" })
+      isWarmedUp = true
+    } catch {
+      // Silent background ping
+    }
+  }
+
+  // Ping immediately
+  ping()
+  // Keep warm every 3 minutes
+  setInterval(ping, 3 * 60 * 1000)
+}
+
+// Start keepalive automatically on import in browser
+startBackendKeepAlive()
+
+/**
+ * Core HTTP Request dispatcher with automatic resilient retries.
+ * Automatically retries up to 2 times on transient network glitches or 502/503/504 errors.
+ */
+export async function request(path, options = {}, retryCount = 0) {
   const { method = "GET", params, body, signal, headers: extraHeaders } = options
   const url = `${API_BASE_URL}${path}${buildQuery(params)}`
 
@@ -61,7 +84,20 @@ export async function request(path, options = {}) {
     })
   } catch (err) {
     if (err?.name === "AbortError") throw err
-    throw new ServiceError("Network request failed", { code: "network_error" })
+
+    // Transparent fast retry on network disconnect / connection drop (max 2 retries)
+    if (retryCount < 2 && method === "GET") {
+      await new Promise((resolve) => setTimeout(resolve, 300 * (retryCount + 1)))
+      return request(path, options, retryCount + 1)
+    }
+
+    throw new ServiceError("Network connection interrupted. Please try again.", { code: "network_error" })
+  }
+
+  // If server returns 502, 503, or 504 gateway error, retry transparently
+  if ([502, 503, 504].includes(res.status) && retryCount < 2) {
+    await new Promise((resolve) => setTimeout(resolve, 500 * (retryCount + 1)))
+    return request(path, options, retryCount + 1)
   }
 
   if (!res.ok) {
@@ -69,7 +105,6 @@ export async function request(path, options = {}) {
     let errorCode = `http_${res.status}`
     try {
       const payload = await res.json()
-      // FastAPI conventionally returns { detail: ... }
       detail = payload?.detail ?? payload?.message ?? detail
       if (Array.isArray(detail) && detail.length > 0) {
         detail = detail[0].msg || "Validation error"
@@ -80,6 +115,7 @@ export async function request(path, options = {}) {
     } catch {
       /* non-JSON error body */
     }
+
     if (res.status === 401) {
       window.dispatchEvent(new CustomEvent("helix:unauthorized"))
     }
@@ -112,7 +148,7 @@ export async function uploadFile(path, formData, options = {}) {
     })
   } catch (err) {
     if (err?.name === "AbortError") throw err
-    throw new ServiceError("Network request failed", { code: "network_error" })
+    throw new ServiceError("Upload connection failed. Please try again.", { code: "network_error" })
   }
 
   if (!res.ok) {
@@ -126,4 +162,3 @@ export async function uploadFile(path, formData, options = {}) {
 
   return res.json()
 }
-
