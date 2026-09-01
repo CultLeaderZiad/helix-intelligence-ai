@@ -55,6 +55,7 @@ export function DiscoverPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [showOnboardingModal, setShowOnboardingModal] = useState(false)
+  const [tourEnabled, setTourEnabled] = useState(false)
   const [showSupportModal, setShowSupportModal] = useState(false)
 
   const isBelowLg = useIsBelowLg()
@@ -122,16 +123,24 @@ export function DiscoverPage() {
   useEffect(() => {
     if (user && user.has_completed_onboarding === false) {
       setShowOnboardingModal(true)
+      setTourEnabled(false)
     }
   }, [user])
 
-  const handleOnboardingSearch = (searchBrand) => {
-    setQuery(searchBrand)
-    submit({
-      query: searchBrand,
-      filters: appliedFilters,
-      sort,
-    })
+  const handleCloseOnboarding = (searchBrand) => {
+    setShowOnboardingModal(false)
+    if (searchBrand) {
+      setQuery(searchBrand)
+      submit({
+        query: searchBrand,
+        filters: appliedFilters,
+        sort,
+      })
+    }
+    // Start the tour guide right after questionnaire finishes
+    setTimeout(() => {
+      setTourEnabled(true)
+    }, 200)
   }
 
   function runDiscovery() {
@@ -156,7 +165,14 @@ export function DiscoverPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <OnboardingTour user={user} onComplete={() => completeOnboarding()} />
+      <OnboardingTour 
+        user={user} 
+        enabled={tourEnabled} 
+        onComplete={() => {
+          setTourEnabled(false)
+          completeOnboarding()
+        }} 
+      />
       <BreadcrumbBar
         trail={[t("discovery", "Discovery"), t("search", "Live Search"), query ? `"${query}"` : null].filter(Boolean)}
         meta={
@@ -333,8 +349,7 @@ export function DiscoverPage() {
 
       <OnboardingWizardModal
         isOpen={showOnboardingModal}
-        onClose={() => setShowOnboardingModal(false)}
-        onSearchSelect={handleOnboardingSearch}
+        onClose={handleCloseOnboarding}
       />
 
       <SupportFeedbackModal

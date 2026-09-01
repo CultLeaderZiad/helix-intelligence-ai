@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react"
 import { driver } from "driver.js"
 import "driver.js/dist/driver.css"
-export function OnboardingTour({ user, onComplete }) {
+
+export function OnboardingTour({ user, enabled = true, onComplete }) {
   const driverObj = useRef(null)
 
   useEffect(() => {
-    if (!user || user.has_completed_onboarding) return
+    if (!enabled || !user || user.has_completed_onboarding) return
 
     const handleComplete = async () => {
       try {
@@ -20,17 +21,15 @@ export function OnboardingTour({ user, onComplete }) {
       showButtons: ["next", "previous", "close"],
       popoverClass: "helixa-driver-theme",
       onDestroyStarted: () => {
-        if (!driverObj.current.hasNextStep() || confirm("Are you sure you want to skip the tour?")) {
-          driverObj.current.destroy()
-          handleComplete()
-        }
+        driverObj.current.destroy()
+        handleComplete()
       },
       steps: [
         {
           element: '#tour-discover-nav',
           popover: {
             title: 'Welcome to Helix Intelligence',
-            description: "This is where you'll research any competitor's ads.",
+            description: "This is where you'll research any competitor's ads and market campaigns.",
             side: "right",
             align: 'start'
           }
@@ -38,8 +37,8 @@ export function OnboardingTour({ user, onComplete }) {
         {
           element: '#tour-search-input',
           popover: {
-            title: 'Start your search',
-            description: "Type a brand name and hit search — try a well-known brand first.",
+            title: 'Search any competitor or brand',
+            description: "Type a brand name (e.g. Shopify, Duolingo, Nike) to pull live active ads.",
             side: "bottom",
             align: 'start'
           }
@@ -47,8 +46,8 @@ export function OnboardingTour({ user, onComplete }) {
         {
           element: '#tour-job-progress',
           popover: {
-            title: 'Live Tracking',
-            description: "You'll see it search in real time here.",
+            title: 'Real-Time Scrape Progress',
+            description: "Watch live provider progress and instant domain deduction metering.",
             side: "bottom",
             align: 'start'
           }
@@ -56,8 +55,8 @@ export function OnboardingTour({ user, onComplete }) {
         {
           element: '#tour-results-area',
           popover: {
-            title: 'Deep Analysis',
-            description: "Once results load, click Analyze on any ad to see why it works.",
+            title: 'Deep Creative Intelligence',
+            description: "Inspect winning hook formulas, extract patterns, and remix straight into Create Studio.",
             side: "top",
             align: 'start'
           }
@@ -65,17 +64,20 @@ export function OnboardingTour({ user, onComplete }) {
       ]
     })
 
-    // Slight delay to ensure DOM elements are rendered
-    setTimeout(() => {
-      driverObj.current.drive()
-    }, 500)
+    // Slight delay to ensure DOM elements are fully mounted
+    const timer = setTimeout(() => {
+      if (driverObj.current) {
+        driverObj.current.drive()
+      }
+    }, 400)
 
     return () => {
+      clearTimeout(timer)
       if (driverObj.current) {
         driverObj.current.destroy()
       }
     }
-  }, [user, onComplete])
+  }, [user, enabled, onComplete])
 
   return null
 }

@@ -52,22 +52,10 @@ export function OnboardingWizardModal({ isOpen, onClose, onSearchSelect }) {
 
   if (!isOpen) return null
 
-  const handleFinish = async (searchQuery = null) => {
-    setIsSubmitting(true)
-    try {
-      await accountService.completeOnboarding()
-    } catch (e) {
-      console.warn("Could not mark onboarding complete on server:", e)
-    } finally {
-      setIsSubmitting(false)
-      onClose()
-      if (searchQuery) {
-        if (onSearchSelect) {
-          onSearchSelect(searchQuery)
-        } else {
-          navigate(`/discovery?q=${encodeURIComponent(searchQuery)}`)
-        }
-      }
+  const handleFinish = (searchQuery = null) => {
+    onClose(searchQuery)
+    if (searchQuery && onSearchSelect) {
+      onSearchSelect(searchQuery)
     }
   }
 
