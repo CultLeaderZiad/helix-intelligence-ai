@@ -21,8 +21,12 @@ import {
   CheckCircle2,
   AlertTriangle,
   Play,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Share2,
+  BookOpen
 } from "lucide-react"
+import { playbookService } from "@/services"
+import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 
 export function IntelligencePage() {
   const navigate = useNavigate()
@@ -35,6 +39,8 @@ export function IntelligencePage() {
   const [loading, setLoading] = useState(true)
   const [generatingInsight, setGeneratingInsight] = useState(false)
   const [generatingPatterns, setGeneratingPatterns] = useState(false)
+  const [compilingPlaybook, setCompilingPlaybook] = useState(false)
+  const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [error, setError] = useState(null)
 
   // Load creatives from latest search or fallback to recent DB creatives
@@ -131,6 +137,25 @@ export function IntelligencePage() {
     }
   }
 
+  async function handleCompilePlaybook() {
+    setCompilingPlaybook(true)
+    try {
+      const brand = latestSearch?.query || (creatives[0]?.brand_name) || "brand"
+      const res = await playbookService.compilePlaybook({
+        brand_name: brand,
+        query: brand,
+        job_id: latestSearch?.job_id || null
+      })
+      if (res?.public_id) {
+        navigate(`/playbook/${res.public_id}`)
+      }
+    } catch (err) {
+      alert(`Playbook compilation failed: ${err.message || err}`)
+    } finally {
+      setCompilingPlaybook(false)
+    }
+  }
+
   function handleSendToCreate(creative) {
     if (creative) {
       selectActiveCreative(creative)
@@ -150,16 +175,36 @@ export function IntelligencePage() {
             : `${creatives.length} creatives indexed`
         }
         actions={
-          <Button
-            size="xs"
-            variant="outline"
-            onClick={handleGeneratePatterns}
-            disabled={generatingPatterns || creatives.length === 0}
-            className="flex items-center gap-1.5"
-          >
-            <Sparkles className="h-3 w-3 text-accent" />
-            {generatingPatterns ? "Synthesizing Patterns..." : "Synthesize Patterns (1.0 cr)"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => setIsSupportOpen(true)}
+              className="text-xs text-text-muted"
+            >
+              Report Issue
+            </Button>
+            <Button
+              size="xs"
+              variant="secondary"
+              onClick={handleCompilePlaybook}
+              disabled={compilingPlaybook || creatives.length === 0}
+              className="flex items-center gap-1.5"
+            >
+              <BookOpen className="h-3 w-3 text-emerald-400" />
+              {compilingPlaybook ? "Compiling..." : "Compile Playbook (Free)"}
+            </Button>
+            <Button
+              size="xs"
+              variant="primary"
+              onClick={handleGeneratePatterns}
+              disabled={generatingPatterns || creatives.length === 0}
+              className="flex items-center gap-1.5"
+            >
+              <Sparkles className="h-3 w-3" />
+              {generatingPatterns ? "Synthesizing Patterns..." : "Synthesize Patterns (1.0 cr)"}
+            </Button>
+          </div>
         }
       />
 
@@ -357,7 +402,7 @@ export function IntelligencePage() {
                   <div className="rounded border border-border bg-surface p-3 text-center">
                     <span className="label-mono text-text-faint">Hook Score</span>
                     <p className="text-xl font-mono font-bold text-accent mt-1">
-                      {selectedCreative.scores?.hook ?? 88}
+                      {selectedCreative.scores?.hook ? Math.round(selectedCreative.scores.hook) : "—"}
                     </p>
                     <span className="text-[10px] text-text-muted">First 3s retention</span>
                   </div>
@@ -365,7 +410,7 @@ export function IntelligencePage() {
                   <div className="rounded border border-border bg-surface p-3 text-center">
                     <span className="label-mono text-text-faint">Clarity</span>
                     <p className="text-xl font-mono font-bold text-text mt-1">
-                      {selectedCreative.scores?.clarity ?? 92}
+                      {selectedCreative.scores?.clarity ? Math.round(selectedCreative.scores.clarity) : "—"}
                     </p>
                     <span className="text-[10px] text-text-muted">Value prop speed</span>
                   </div>
@@ -381,7 +426,7 @@ export function IntelligencePage() {
                   <div className="rounded border border-border bg-surface p-3 text-center">
                     <span className="label-mono text-text-faint">Composite</span>
                     <p className="text-xl font-mono font-bold text-amber-400 mt-1">
-                      {selectedCreative.scores?.composite ?? 90}
+                      {selectedCreative.scores?.composite ? Math.round(selectedCreative.scores.composite) : "—"}
                     </p>
                     <span className="text-[10px] text-text-muted">Overall potency</span>
                   </div>
@@ -428,7 +473,7 @@ export function IntelligencePage() {
                         className="flex items-center gap-1 font-mono text-[11px]"
                       >
                         <Sparkles className="h-3 w-3" />
-                        {generatingInsight ? "Analyzing (Groq/OpenRouter)..." : "Generate Deep Teardown (1.0 cr)"}
+                        {generatingInsight ? "Analyzing (Pattern Engine)..." : "Generate Deep Teardown (1.0 cr)"}
                       </Button>
                     )}
                   </div>
@@ -493,6 +538,12 @@ export function IntelligencePage() {
 
         </div>
       )}
+
+      <SupportFeedbackModal
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+        initialContext={{ page: "Intelligence & Patterns", tag: "intelligence" }}
+      />
     </div>
   )
 }

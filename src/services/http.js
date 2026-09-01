@@ -94,3 +94,36 @@ export async function request(path, options = {}) {
   return res.json()
 }
 
+export async function uploadFile(path, formData, options = {}) {
+  const url = `${API_BASE_URL}${path}`
+  const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
+  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+
+  let res
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        ...authHeader,
+        ...options.headers,
+      },
+      body: formData,
+    })
+  } catch (err) {
+    if (err?.name === "AbortError") throw err
+    throw new ServiceError("Network request failed", { code: "network_error" })
+  }
+
+  if (!res.ok) {
+    let detail = res.statusText
+    try {
+      const payload = await res.json()
+      detail = payload?.detail ?? payload?.message ?? detail
+    } catch {}
+    throw new ServiceError(typeof detail === "string" ? detail : "Upload failed", { status: res.status })
+  }
+
+  return res.json()
+}
+

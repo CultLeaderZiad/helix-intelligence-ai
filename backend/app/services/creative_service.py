@@ -494,12 +494,13 @@ async def create_custom_swipe_reference(db: AsyncSession, user: "User", data: di
     )
     db.add(creative)
 
-    score = Score(
+    from app.models.creative_score import CreativeScore
+    score = CreativeScore(
         creative_id=new_id,
-        hook=78.0,
-        clarity=82.0,
-        retention=75.0,
-        composite=78.3
+        hook=None,
+        clarity=None,
+        retention=None,
+        composite=None
     )
     db.add(score)
 

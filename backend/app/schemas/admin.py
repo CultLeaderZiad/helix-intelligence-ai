@@ -40,6 +40,10 @@ class PlanSchema(BaseModel):
     name: str
     type: str # 'trial' | 'pay_as_you_go' | 'custom'
     credit_allowance: int
+    daily_credit_limit: Optional[float] = None
+    daily_image_limit: Optional[int] = 5
+    daily_video_limit: Optional[int] = 3
+    price_monthly: Optional[float] = 0.0
     price_per_credit: Optional[float] = None
     feature_flags: Dict[str, bool]
     created_by_admin_id: Optional[str] = None
@@ -49,6 +53,10 @@ class PlanCreate(BaseModel):
     name: str
     type: str = "custom"
     credit_allowance: int = 100
+    daily_credit_limit: Optional[float] = None
+    daily_image_limit: Optional[int] = 5
+    daily_video_limit: Optional[int] = 3
+    price_monthly: Optional[float] = 0.0
     price_per_credit: Optional[float] = 0.01
     feature_flags: Dict[str, bool] = {
         "discover": True,
@@ -59,6 +67,17 @@ class PlanCreate(BaseModel):
         "team_accounts": True,
         "public_api": False
     }
+
+class PlanUpdate(BaseModel):
+    name: Optional[str] = None
+    type: Optional[str] = None
+    credit_allowance: Optional[int] = None
+    daily_credit_limit: Optional[float] = None
+    daily_image_limit: Optional[int] = None
+    daily_video_limit: Optional[int] = None
+    price_monthly: Optional[float] = None
+    price_per_credit: Optional[float] = None
+    feature_flags: Optional[Dict[str, bool]] = None
 
 # --- Organization Schemas ---
 class AdminOrganizationRow(BaseModel):
@@ -117,20 +136,50 @@ class AdminUsageSummary(BaseModel):
     by_provider: List[ProviderUsageBreakdown]
     recent_logs: List[AdminUsageRow]
 
+class AdminUsageLogsFilterResponse(BaseModel):
+    total_count: int
+    page: int
+    page_size: int
+    items: List[AdminUsageRow]
+
 # --- User Management & Impersonation ---
 class AdminUserRow(BaseModel):
     id: str
     email: str
-    role: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    role: str # 'customer' | 'assistant-admin' | 'admin'
+    admin_permissions: Optional[Dict[str, Any]] = None
     organization_id: Optional[str] = None
     organization_name: Optional[str] = None
+    plan_id: Optional[str] = None
+    plan_name: Optional[str] = None
     trial_started_at: Optional[str] = None
     trial_expires_at: Optional[str] = None
     created_at: str
+    is_suspended: bool = False
+    is_banned: bool = False
     status: str = "active"
 
 class UserStatusUpdate(BaseModel):
     status: str # 'active' | 'suspended'
+
+class UserBanRequest(BaseModel):
+    is_banned: bool
+    reason: Optional[str] = "Admin action"
+
+class UserRoleRequest(BaseModel):
+    role: str # 'customer' | 'assistant-admin' | 'admin'
+    admin_permissions: Optional[Dict[str, Any]] = None
+
+class UserPlanSwitchRequest(BaseModel):
+    plan_id: str
+
+class AdminBroadcastRequest(BaseModel):
+    title: str
+    message: str
+    type: str = "system" # 'system' | 'update' | 'announcement'
+    link: Optional[str] = None
 
 class ImpersonateResponse(BaseModel):
     access_token: str

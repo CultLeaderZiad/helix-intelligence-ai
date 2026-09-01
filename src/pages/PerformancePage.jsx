@@ -72,7 +72,7 @@ export function PerformancePage() {
     const survivors = creatives.filter((c) => (c.days_active || 1) >= 14).length
     const videos = creatives.filter((c) => c.format === "video").length
     const scores = creatives.filter((c) => c.scores?.composite).map((c) => c.scores.composite)
-    const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(0) : "86"
+    const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(0) : "—"
 
     return {
       avgDays: Math.round(totalDays / creatives.length),
@@ -342,7 +342,7 @@ export function PerformancePage() {
 
                       <div className="flex flex-col items-center sm:items-end">
                         <span className="font-mono text-sm font-bold text-accent">
-                          {c.scores?.composite ?? 88}
+                          {c.scores?.composite ? Math.round(c.scores.composite) : "—"}
                         </span>
                         <span className="text-[10px] font-mono text-text-faint">
                           Composite score

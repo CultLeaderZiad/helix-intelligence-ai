@@ -25,10 +25,15 @@ async def get_current_user(
     if x_api_key:
         from app.services.api_key_service import authenticate_api_key
         user, org = await authenticate_api_key(db, x_api_key)
+        if getattr(user, "is_banned", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "user_banned", "message": "This account has been banned."}
+            )
         if getattr(user, "is_suspended", False):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account suspended"
+                detail={"code": "user_suspended", "message": "Account suspended"}
             )
         return user
 
@@ -62,10 +67,16 @@ async def get_current_user(
     if user is None:
         raise credentials_exception
 
+    if getattr(user, "is_banned", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "user_banned", "message": "This account has been banned."}
+        )
+
     if getattr(user, "is_suspended", False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Account suspended"
+            detail={"code": "user_suspended", "message": "Account suspended"}
         )
 
     return user
@@ -73,9 +84,21 @@ async def get_current_user(
 async def get_current_admin(
     current_user: User = Depends(get_current_user)
 ) -> User:
-    if current_user.role != "admin":
+    """Allows full 'admin' and 'assistant-admin' for support/view tasks."""
+    if current_user.role not in ["admin", "assistant-admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="The user doesn't have enough privileges"
+        )
+    return current_user
+
+async def get_current_full_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Strictly requires full 'admin' for plan/pricing editing and dangerous actions."""
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Requires full administrator privileges"
         )
     return current_user

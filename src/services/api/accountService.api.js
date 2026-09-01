@@ -1,6 +1,30 @@
-import { request } from "../http"
+import { request, uploadFile } from "../http"
 
 const accountService = {
+  getProfile() {
+    return request("/account/profile")
+  },
+
+  updateProfile(data) {
+    return request("/account/profile", {
+      method: "PATCH",
+      body: data,
+    })
+  },
+
+  uploadAvatar(file) {
+    const formData = new FormData()
+    formData.append("file", file)
+    return request("/account/avatar", {
+      method: "POST",
+      body: formData,
+    })
+  },
+
+  getTodayUsage() {
+    return request("/account/usage/today")
+  },
+
   completeOnboarding() {
     return request("/account/onboarding-complete", {
       method: "POST",

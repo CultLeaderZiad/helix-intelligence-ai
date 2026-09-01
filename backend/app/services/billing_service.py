@@ -35,6 +35,7 @@ ESTIMATED_PROVIDER_COSTS = {
     "scrapegraph_extract": 0.005,   # ~$0.005 per landing page extract
     "apify_ad": 0.00075,            # ~$0.75 per 1,000 ads
     "adyntel_query": 0.002,         # ~$0.002 per ad query
+    "metapi_query": 0.001,          # Metapi free tier (est.)
     "higgsfield_image": 0.02,       # ~$0.02 per image generation
     "higgsfield_video": 0.08,       # ~$0.08 per video generation
 }
@@ -45,6 +46,15 @@ def _utc_midnight(dt: datetime.datetime) -> datetime.datetime:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=datetime.timezone.utc)
     return dt.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _format_iso(dt: Optional[datetime.datetime]) -> Optional[str]:
+    """Return a valid ISO-8601 string without double timezone suffixes."""
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    return dt.isoformat()
 
 
 async def _ensure_daily_reset(db: AsyncSession, org: Organization) -> None:
@@ -195,7 +205,7 @@ async def assert_can_spend(
                 detail={
                     "code": "trial_expired",
                     "message": "Your 7-day free trial has expired. Upgrade your plan to continue using Helix Intelligence.",
-                    "trial_expires_at": user.trial_expires_at.isoformat() + "Z",
+                    "trial_expires_at": _format_iso(user.trial_expires_at),
                     "credit_balance": round(float(org.credit_balance), 2)
                 }
             )
@@ -464,7 +474,7 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
         "credit_balance": round(float(org.credit_balance), 2),
         "credits_used": round(float(org.credits_used), 2),
         "status": org.status,
-        "trial_expires_at": user.trial_expires_at.isoformat() + "Z" if user.trial_expires_at else None,
+        "trial_expires_at": _format_iso(user.trial_expires_at),
         "trial_days_remaining": trial_days_remaining,
         "daily_credit_limit": daily_limit,
         "daily_credits_used": daily_used,
@@ -486,7 +496,7 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
                 "credits_deducted": l.credits_deducted,
                 "cost_usd": l.cost_usd,
                 "tokens_used": getattr(l, "tokens_used", 0),
-                "created_at": l.created_at.isoformat() + "Z" if l.created_at else ""
+                "created_at": _format_iso(l.created_at) or ""
             }
             for l in logs
         ]
@@ -567,7 +577,7 @@ async def get_trial_usage_summary(db: AsyncSession, user: User, org: Optional[Or
         "videos_used_today": videos_used_today,
         "videos_daily_limit": video_daily_limit,
         "videos_remaining_today": videos_remaining_today,
-        "trial_ends_at": user.trial_expires_at.isoformat() + "Z" if user.trial_expires_at else None,
+        "trial_ends_at": _format_iso(user.trial_expires_at),
         "requires_plan": requires_plan
     }
 

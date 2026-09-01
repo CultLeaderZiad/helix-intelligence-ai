@@ -21,18 +21,14 @@ class ScrapeGraphProvider:
         """
         Extracts marketing details from the landing page:
         headline, offer, positioning, cta.
+        Returns empty dict if URL is invalid, API key missing, or extraction fails.
         """
         if not url:
-            return self._mock_extraction() if settings.USE_MOCKS else {}
+            return {}
 
         if not self.api_key:
-            if settings.USE_MOCKS:
-                logger.info("SCRAPEGRAPH_API_KEY not set (USE_MOCKS=True). Returning mocked landing page extraction.")
-                await asyncio.sleep(0.1)
-                return self._mock_extraction()
-            else:
-                logger.info("SCRAPEGRAPH_API_KEY not configured. Skipping landing page extraction.")
-                return {}
+            logger.info("SCRAPEGRAPH_API_KEY not configured. Skipping landing page extraction.")
+            return {}
 
         prompt = (
             "Extract the main marketing headline, the core offer or value proposition, "
@@ -66,12 +62,4 @@ class ScrapeGraphProvider:
                 return {}
         except Exception as e:
             logger.error(f"ScrapeGraphAI extraction failed for {url}: {e}")
-            return self._mock_extraction() if settings.USE_MOCKS else {}
-
-    def _mock_extraction(self) -> Dict[str, Any]:
-        return {
-            "headline": "Unlock Your True Potential Today",
-            "offer": "20% off your first subscription + free shipping",
-            "positioning": "Premium quality ingredients backed by science",
-            "cta": "Claim Your Offer"
-        }
+            return {}

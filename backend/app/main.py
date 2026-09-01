@@ -23,7 +23,9 @@ from app.api.routers import (
     webhooks,
     updates,
     higgsfield,
-    providers
+    providers,
+    support,
+    playbooks
 )
 
 @asynccontextmanager
@@ -31,7 +33,7 @@ async def lifespan(app: FastAPI):
     # Ensure all database tables and missing columns exist on startup
     try:
         async with engine.begin() as conn:
-            # 1. Create all missing tables (e.g. workspace_provider_credentials)
+            # 1. Create all missing tables (e.g. support_tickets, support_ticket_replies, playbooks)
             await conn.run_sync(Base.metadata.create_all)
 
             # 2. Run non-destructive column migrations on existing PostgreSQL tables
@@ -42,15 +44,22 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS images_trial_total FLOAT DEFAULT 0.0;",
                 "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS custom_feature_flags JSON DEFAULT '{}'::json;",
                 "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS status VARCHAR(64) DEFAULT 'active';",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_permissions JSON DEFAULT '{}'::json;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMPTZ;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMPTZ;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS has_completed_onboarding BOOLEAN DEFAULT FALSE;",
+                "ALTER TABLE plans ADD COLUMN IF NOT EXISTS daily_image_limit INTEGER DEFAULT 5;",
+                "ALTER TABLE plans ADD COLUMN IF NOT EXISTS daily_video_limit INTEGER DEFAULT 3;",
+                "ALTER TABLE plans ADD COLUMN IF NOT EXISTS price_monthly FLOAT DEFAULT 0.0;",
             ]
             for query in migrations:
                 try:
                     await conn.execute(text(query))
                 except Exception as col_err:
-                    print(f"Migration note for query: {query}:", col_err)
+                    pass
     except Exception as e:
         print("Database startup sync error:", e)
     yield
@@ -85,6 +94,8 @@ app.include_router(providers.router, prefix=f"{settings.API_V1_STR}", tags=["pro
 app.include_router(webhooks.router, prefix=f"{settings.API_V1_STR}/webhooks", tags=["webhooks"])
 app.include_router(updates.router, prefix=f"{settings.API_V1_STR}/updates", tags=["updates"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
+app.include_router(support.router, prefix=f"{settings.API_V1_STR}/support", tags=["support"])
+app.include_router(playbooks.router, prefix=f"{settings.API_V1_STR}/playbooks", tags=["playbooks"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(higgsfield.router, prefix=f"{settings.API_V1_STR}/higgsfield", tags=["higgsfield"])
 app.include_router(higgsfield.router, prefix="/higgsfield", tags=["higgsfield"])

@@ -22,6 +22,8 @@ import { creativeService } from "@/services"
 import { useMediaGenerate } from "@/hooks/useMediaGenerate"
 import { useSearchContext } from "@/context/SearchContext"
 import { useAuth } from "@/context/AuthContext"
+import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
+import { MessageSquarePlus } from "lucide-react"
 
 const CREATIVE_MODES = {
   image: [
@@ -60,6 +62,7 @@ export function CreatePage() {
   const [brief, setBrief] = useState("")
   const [startImageUrl, setStartImageUrl] = useState("")
   const [showAdPicker, setShowAdPicker] = useState(false)
+  const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [customApiKey, setCustomApiKey] = useState("")
   const [customModel, setCustomModel] = useState("gemini-2.0-flash-lite-preview-02-05")
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -190,11 +193,22 @@ export function CreatePage() {
             : `Trial: ${usedToday}/${dailyLimit} images today · ${daysLeft} days left`
         }
         actions={
-          latestSearch ? (
-            <Button size="xs" variant="ghost" onClick={() => navigate("/discover")}>
-              From Search: "{latestSearch.query}" ({latestSearch.total} ads)
+          <div className="flex items-center gap-2">
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => setIsSupportOpen(true)}
+              className="flex items-center gap-1 text-xs text-text-muted hover:text-text"
+            >
+              <MessageSquarePlus className="w-3.5 h-3.5 text-teal-400" />
+              Report Issue
             </Button>
-          ) : null
+            {latestSearch ? (
+              <Button size="xs" variant="ghost" onClick={() => navigate("/discover")}>
+                From Search: "{latestSearch.query}" ({latestSearch.total} ads)
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
@@ -575,6 +589,12 @@ export function CreatePage() {
           </div>
         </div>
       </div>
+
+      <SupportFeedbackModal
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+        initialContext={{ page: "Create Remix Studio", category: activeCategory, mode: selectedMode, tag: "create" }}
+      />
     </div>
   )
 }

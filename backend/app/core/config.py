@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: str = ""
 
     # MOCKS
-    USE_MOCKS: bool = os.getenv("USE_MOCKS", "True").lower() in ("true", "1")
+    USE_MOCKS: bool = os.getenv("USE_MOCKS", "False").lower() in ("true", "1")
 
     # DATABASE
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
@@ -74,8 +74,10 @@ class Settings(BaseSettings):
     META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
     BRIGHTDATA_API_KEY: str = os.getenv("BRIGHTDATA_API_KEY", "")
     APIFY_API_TOKEN: str = os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")
+    APIFY_ENABLED: bool = os.getenv("APIFY_ENABLED", "False").lower() in ("true", "1")
     AIHUBMIX_API_KEY: str = os.getenv("AIHUBMIX_API_KEY", "")
     TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
+    METAPI_API_KEY: str = os.getenv("METAPI_API_KEY", "")
     HF_API_KEY_ID: str = os.getenv("HF_API_KEY_ID", "") or os.getenv("HIGGSFIELD_API_KEY_ID", "") or os.getenv("HIGGSFIELD_API_KEY", "")
     HF_API_KEY_SECRET: str = os.getenv("HF_API_KEY_SECRET", "") or os.getenv("HIGGSFIELD_API_KEY_SECRET", "") or os.getenv("HIGGSFIELD_API_SECRET", "") or os.getenv("HIGGSFIELD_SECRET", "")
     HIGGSFIELD_BASE_URL: str = os.getenv("HIGGSFIELD_BASE_URL", "https://platform.higgsfield.ai").rstrip("/")

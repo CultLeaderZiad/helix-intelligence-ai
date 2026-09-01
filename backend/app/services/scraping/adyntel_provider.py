@@ -98,14 +98,14 @@ class AdyntelProvider(ScraperProvider):
             if title == "{{product.name}}" and snapshot.get("cards"):
                 title = snapshot["cards"][0].get("title")
             
-            headline = title or (body[:60] + "..." if len(body) > 60 else body) or f"{page_name} Announcement"
+            headline = title or (body[:60] if body else "")
             
             # Check cards for link_url or use snapshot.link_url
             link_url = snapshot.get("link_url")
             if snapshot.get("cards") and snapshot["cards"][0].get("link_url"):
                 link_url = snapshot["cards"][0].get("link_url")
                 
-            landing_url = link_url or f"https://{domain}"
+            landing_url = link_url
             
             # Check cards for cta_text
             cta = snapshot.get("cta_text")
@@ -114,15 +114,15 @@ class AdyntelProvider(ScraperProvider):
             if not cta:
                 cta = snapshot.get("cta_type") or "Learn More"
             
-            start_date = item.get("start_date_string") or now.isoformat() + "Z"
-            end_date = item.get("end_date_string") or now.isoformat() + "Z"
+            start_date = item.get("start_date_string") or now.isoformat()
+            end_date = item.get("end_date_string") or now.isoformat()
             
-            days_active = 5
+            days_active = 1
             try:
                 dt_start = datetime.fromisoformat(start_date.replace("Z", "+00:00").split("+")[0])
-                days_active = max(1, (now - dt_start).days)
-            except:
-                pass
+                days_active = max(1, (now.replace(tzinfo=None) - dt_start).days)
+            except Exception:
+                days_active = 1
 
             creatives.append(
                 RawCreative(
@@ -138,8 +138,10 @@ class AdyntelProvider(ScraperProvider):
                     last_seen=end_date,
                     days_active=days_active,
                     variant_count=1,
-                    impressions_est=35000,
-                    spend_band="mid"
+                    impressions_est=None,
+                    spend_band=None,
+                    data_source="ad_library_scrape",
+                    is_estimated=True
                 )
             )
 

@@ -70,11 +70,10 @@ const GUIDE_STEPS = [
         heading: "Canonical Data Provider Order",
         text: "Discover uses an ordered, cost-aware canonical chain to provide fresh ads without wasteful API usage:",
         bulletPoints: [
-          "1. Adyntel — Fast company/domain lookup for active digital ads.",
-          "2. Apify Facebook Ad Library Actor — Broad ad enumeration and asset extraction.",
+          "1. Domain Trace — Fast company/domain lookup for active digital ads.",
+          "2. Ad Sweep — Broad keyword ad enumeration and asset extraction.",
           "3. Meta Graph API — Official Facebook Ad Library boost (if configured).",
-          "4. Bright Data Deep Fallback — Controlled deep fallback (+3.0 credits surcharge) only if earlier providers return 0 ads and balance permits.",
-          "5. ScrapeGraph Enrichment — Automatically enriches top 2 landing pages for angle analysis."
+          "4. Deep Read — Automatically enriches top 2 landing pages for angle analysis."
         ]
       },
       {

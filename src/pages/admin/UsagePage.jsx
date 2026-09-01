@@ -9,7 +9,10 @@ import {
   Globe, 
   Sparkles, 
   RefreshCw,
-  Search
+  Search,
+  Filter,
+  User,
+  Building
 } from "lucide-react"
 
 export function UsagePage() {
@@ -17,6 +20,7 @@ export function UsagePage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filterProvider, setFilterProvider] = useState("all")
+  const [searchTerm, setSearchTerm] = useState("")
 
   const fetchUsage = async () => {
     setLoading(true)
@@ -36,21 +40,35 @@ export function UsagePage() {
   }, [])
 
   const logs = summary?.recent_logs || []
-  const filteredLogs = filterProvider === "all" 
-    ? logs 
-    : logs.filter((l) => l.provider.toLowerCase() === filterProvider.toLowerCase())
+  const filteredLogs = logs.filter((l) => {
+    const matchesProvider = filterProvider === "all" || l.provider.toLowerCase() === filterProvider.toLowerCase()
+    const matchesSearch = !searchTerm || 
+      (l.user_email && l.user_email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (l.org_name && l.org_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (l.operation && l.operation.toLowerCase().includes(searchTerm.toLowerCase()))
+    return matchesProvider && matchesSearch
+  })
 
   const getProviderIcon = (provider) => {
     switch (provider.toLowerCase()) {
       case "groq":
         return <Cpu className="w-4 h-4 text-emerald-400" />
-      case "brightdata":
-        return <Globe className="w-4 h-4 text-cyan-400" />
+      case "metapi":
+        return <Globe className="w-4 h-4 text-teal-400" />
       case "scrapegraph":
         return <Sparkles className="w-4 h-4 text-amber-400" />
+      case "gemini":
+        return <Sparkles className="w-4 h-4 text-indigo-400" />
       default:
-        return <Activity className="w-4 h-4 text-indigo-400" />
+        return <Activity className="w-4 h-4 text-slate-400" />
     }
+  }
+
+  const formatLogTime = (val) => {
+    if (!val) return "—"
+    const cleaned = typeof val === "string" ? val.replace(/\+00:00Z$/, "Z").replace(/\+00:00$/, "Z") : val
+    const d = new Date(cleaned)
+    return isNaN(d.getTime()) ? "—" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   }
 
   return (
@@ -60,10 +78,10 @@ export function UsagePage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
             <Gauge className="w-7 h-7 text-indigo-400" />
-            Global Usage & Provider Metering
+            Global Usage & Per-User Metering
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Real provider spend tracking and credit deductions across all organizations.
+            Real provider spend tracking and granular deduction audit across all users.
           </p>
         </div>
         <button
@@ -91,125 +109,110 @@ export function UsagePage() {
 
         <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-xl">
           <div className="flex items-center justify-between text-xs font-mono text-slate-400 uppercase tracking-wider">
-            <span>Total Credits Deducted</span>
-            <Coins className="w-4 h-4 text-amber-400" />
+            <span>Credits Deducted</span>
+            <Coins className="w-4 h-4 text-indigo-400" />
           </div>
-          <div className="text-2xl font-mono font-bold text-amber-400 mt-2">
-            {(summary?.total_credits_deducted || 0).toFixed(1)} cr
+          <div className="text-2xl font-mono font-bold text-indigo-400 mt-2">
+            {(summary?.total_credits_deducted || 0).toFixed(1)}
           </div>
-          <p className="text-xs text-slate-500 mt-1">Across all tenant search passes</p>
+          <p className="text-xs text-slate-500 mt-1">Platform user balance billed</p>
         </div>
 
         <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-xl">
           <div className="flex items-center justify-between text-xs font-mono text-slate-400 uppercase tracking-wider">
-            <span>Total Metered Operations</span>
-            <Activity className="w-4 h-4 text-indigo-400" />
+            <span>Total Operations</span>
+            <Activity className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl font-mono font-bold text-slate-200 mt-2">
             {summary?.total_requests || 0}
           </div>
-          <p className="text-xs text-slate-500 mt-1">Logged pipeline & AI executions</p>
+          <p className="text-xs text-slate-500 mt-1">Total metered API events</p>
         </div>
       </div>
 
-      {/* Provider Breakdown Cards */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-mono uppercase tracking-wider text-slate-400">
-          Spend & Quotas by Provider
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {summary?.by_provider?.map((p, idx) => (
-            <div key={idx} className="p-4 bg-slate-950/60 border border-slate-800 rounded-lg space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5 uppercase font-mono">
-                  {getProviderIcon(p.provider)}
-                  {p.provider}
-                </span>
-                <span className="text-[11px] font-mono text-slate-400">{p.operation}</span>
-              </div>
-              <div className="flex items-baseline justify-between pt-1">
-                <span className="text-sm font-mono text-emerald-400 font-semibold">
-                  ${p.total_cost_usd.toFixed(4)}
-                </span>
-                <span className="text-xs font-mono text-amber-300">
-                  {p.total_credits_deducted.toFixed(1)} credits
-                </span>
-              </div>
-              <div className="text-[11px] font-mono text-slate-500">
-                {p.total_requests} requests · {p.total_units} units
-              </div>
-            </div>
-          ))}
+      {/* Search & Provider Filters */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Search by user email, org, or operation..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500"
+          />
         </div>
-      </div>
 
-      {/* Usage Logs Table */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-mono uppercase tracking-wider text-slate-400">
-            Recent Metered Deductions Audit Log
-          </h3>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Filter className="w-4 h-4 text-slate-500" />
           <select
             value={filterProvider}
             onChange={(e) => setFilterProvider(e.target.value)}
-            className="bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300 rounded px-2.5 py-1 focus:outline-none"
+            className="px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-300 text-xs focus:outline-none focus:border-indigo-500"
           >
             <option value="all">All Providers</option>
-            <option value="groq">Groq</option>
-            <option value="brightdata">Bright Data</option>
-            <option value="scrapegraph">ScrapeGraphAI</option>
-            <option value="admin_grant">Admin Grants</option>
+            <option value="metapi">Metapi (Domain Trace)</option>
+            <option value="groq">Groq (Pattern Engine)</option>
+            <option value="scrapegraph">ScrapeGraphAI (Deep Read)</option>
+            <option value="gemini">Gemini / Creative Media</option>
+            <option value="helix_playbook">Helix Playbook</option>
+            <option value="discover_composite">Discover Pipeline</option>
           </select>
         </div>
+      </div>
 
-        <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-950/60 text-slate-400 text-xs font-mono border-b border-slate-800 uppercase tracking-wider">
-              <tr>
-                <th className="py-3 px-4">Timestamp</th>
-                <th className="py-3 px-4">Organization / User</th>
-                <th className="py-3 px-4">Provider</th>
-                <th className="py-3 px-4">Operation</th>
-                <th className="py-3 px-4">Units</th>
-                <th className="py-3 px-4">Cost (USD)</th>
-                <th className="py-3 px-4 text-right">Credits</th>
+      {/* Granular Logs Table */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="p-4 border-b border-slate-800 bg-slate-950/40 flex items-center justify-between">
+          <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
+            Recent Metered Deductions ({filteredLogs.length})
+          </h2>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950/20 text-slate-400 font-mono">
+                <th className="py-3 px-4 font-semibold">Time</th>
+                <th className="py-3 px-4 font-semibold">User / Workspace</th>
+                <th className="py-3 px-4 font-semibold">Provider</th>
+                <th className="py-3 px-4 font-semibold">Operation</th>
+                <th className="py-3 px-4 font-semibold text-right">Units</th>
+                <th className="py-3 px-4 font-semibold text-right">Cost (USD)</th>
+                <th className="py-3 px-4 font-semibold text-right">Credits Deducted</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
+            <tbody className="divide-y divide-slate-800/60">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-slate-500">
-                    Loading usage log...
+                  <td colSpan={7} className="py-12 text-center text-slate-500 font-mono">
+                    Loading usage logs...
                   </td>
                 </tr>
               ) : filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-slate-500">
-                    No usage logs recorded yet.
+                  <td colSpan={7} className="py-12 text-center text-slate-500 font-mono">
+                    No usage logs matching current filters.
                   </td>
                 </tr>
               ) : (
                 filteredLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-800/40 transition">
-                    <td className="py-3 px-4 text-slate-400">
-                      {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  <tr key={log.id} className="hover:bg-slate-800/30 transition font-mono">
+                    <td className="py-3 px-4 text-slate-400">{formatLogTime(log.created_at)}</td>
+                    <td className="py-3 px-4">
+                      <div className="text-slate-200 font-sans font-medium">{log.user_email || "Anonymous"}</div>
+                      <div className="text-[10px] text-slate-500">{log.org_name || log.org_id || "—"}</div>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="font-sans font-medium text-slate-200">{log.org_name || log.org_id}</div>
-                      {log.user_email && <div className="text-slate-500 text-[11px]">{log.user_email}</div>}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-800 text-slate-300 text-[11px]">
+                      <div className="flex items-center gap-1.5 text-slate-300">
                         {getProviderIcon(log.provider)}
-                        {log.provider}
-                      </span>
+                        <span>{log.provider}</span>
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-slate-300">{log.operation}</td>
-                    <td className="py-3 px-4 text-slate-400">{log.units}</td>
-                    <td className="py-3 px-4 text-emerald-400">${log.cost_usd.toFixed(4)}</td>
-                    <td className="py-3 px-4 text-right font-bold text-amber-300">
-                      {log.credits_deducted > 0 ? `-${log.credits_deducted.toFixed(1)}` : `+${Math.abs(log.credits_deducted).toFixed(1)}`} cr
-                    </td>
+                    <td className="py-3 px-4 text-right text-slate-400">{log.units}</td>
+                    <td className="py-3 px-4 text-right text-emerald-400 font-semibold">${log.cost_usd.toFixed(4)}</td>
+                    <td className="py-3 px-4 text-right text-indigo-400 font-bold">-{log.credits_deducted.toFixed(1)} cr</td>
                   </tr>
                 ))
               )}

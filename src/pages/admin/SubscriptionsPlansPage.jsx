@@ -8,7 +8,8 @@ import {
   Sparkles, 
   RefreshCw, 
   CheckCircle2, 
-  ShieldCheck 
+  ShieldCheck,
+  Edit2
 } from "lucide-react"
 
 export function SubscriptionsPlansPage() {
@@ -32,6 +33,16 @@ export function SubscriptionsPlansPage() {
     public_api: false,
   })
   const [submitting, setSubmitting] = useState(false)
+
+  // Edit plan modal
+  const [editingPlan, setEditingPlan] = useState(null)
+  const [editName, setEditName] = useState("")
+  const [editAllowance, setEditAllowance] = useState(100)
+  const [editPriceMonthly, setEditPriceMonthly] = useState(0.0)
+  const [editDailyImages, setEditDailyImages] = useState(5)
+  const [editDailyVideos, setEditDailyVideos] = useState(3)
+  const [editFlags, setEditFlags] = useState({})
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const fetchPlans = async () => {
     setLoading(true)
@@ -78,6 +89,40 @@ export function SubscriptionsPlansPage() {
     }
   }
 
+  const handleOpenEdit = (plan) => {
+    setEditingPlan(plan)
+    setEditName(plan.name)
+    setEditAllowance(plan.credit_allowance)
+    setEditPriceMonthly(plan.price_monthly || 0.0)
+    setEditDailyImages(plan.daily_image_limit || 5)
+    setEditDailyVideos(plan.daily_video_limit || 3)
+    setEditFlags({ ...(plan.feature_flags || {}) })
+  }
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault()
+    if (!editingPlan) return
+
+    setIsUpdating(true)
+    try {
+      await adminService.updatePlan(editingPlan.id, {
+        name: editName,
+        credit_allowance: parseInt(editAllowance, 10),
+        price_monthly: parseFloat(editPriceMonthly),
+        daily_image_limit: parseInt(editDailyImages, 10),
+        daily_video_limit: parseInt(editDailyVideos, 10),
+        feature_flags: editFlags
+      })
+      showToast(`Plan "${editName}" updated successfully! Changes take effect immediately.`)
+      setEditingPlan(null)
+      fetchPlans()
+    } catch (err) {
+      alert(err.message || "Failed to update plan")
+    } finally {
+      setIsUpdating(false)
+    }
+  }
+
   const ALL_FEATURES = [
     { key: "discover", label: "Discover Search" },
     { key: "intelligence", label: "Brand Intelligence" },
@@ -98,7 +143,7 @@ export function SubscriptionsPlansPage() {
             Plans & Subscriptions Management
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Configure system plans, trial allowances, and custom feature tiers.
+            Configure system plans, trial allowances, daily image/video limits, and toggle feature flags.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -137,7 +182,7 @@ export function SubscriptionsPlansPage() {
           plans.map((p) => (
             <div
               key={p.id}
-              className={`p-6 rounded-xl border flex flex-col justify-between transition ${
+              className={`p-6 rounded-2xl border flex flex-col justify-between transition ${
                 p.type === "trial"
                   ? "bg-slate-900/60 border-slate-800"
                   : p.type === "pay_as_you_go"
@@ -156,24 +201,29 @@ export function SubscriptionsPlansPage() {
                   }`}>
                     {p.type}
                   </span>
-                  {p.price_per_credit ? (
-                    <span className="font-mono text-xs text-slate-400">
-                      ${p.price_per_credit.toFixed(3)} / credit
-                    </span>
-                  ) : (
-                    <span className="font-mono text-xs text-emerald-400">Free Tier</span>
-                  )}
+                  <button
+                    onClick={() => handleOpenEdit(p)}
+                    className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition"
+                  >
+                    <Edit2 className="w-3 h-3 text-indigo-400" /> Edit
+                  </button>
                 </div>
 
                 <div>
                   <h3 className="text-lg font-bold text-slate-100">{p.name}</h3>
-                  <div className="text-2xl font-mono font-bold text-slate-200 mt-2">
-                    {p.credit_allowance} <span className="text-xs text-slate-400 font-normal">Credits allowance</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-2xl font-mono font-bold text-slate-200">
+                      ${p.price_monthly || 0}
+                    </span>
+                    <span className="text-xs text-slate-400">/ month</span>
+                  </div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    <span className="font-semibold text-teal-400">{p.credit_allowance}</span> credits • Daily: {p.daily_image_limit || 5} img / {p.daily_video_limit || 3} vid
                   </div>
                 </div>
 
-                <div className="pt-2 border-t border-slate-800 space-y-2">
-                  <div className="text-xs font-mono text-slate-400 uppercase tracking-wider">
+                <div className="pt-3 border-t border-slate-800 space-y-2">
+                  <div className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">
                     Feature Access
                   </div>
                   {ALL_FEATURES.map((feat) => {
@@ -202,81 +252,193 @@ export function SubscriptionsPlansPage() {
         )}
       </div>
 
-      {/* Create Custom Plan Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4">
-            <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-indigo-400" />
-              Create Custom Organization Plan
-            </h3>
-            <form onSubmit={handleCreatePlan} className="space-y-4">
+      {/* Edit Plan Modal */}
+      {editingPlan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-slate-800">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-indigo-400" /> Edit Plan: {editingPlan.name}
+              </h2>
+              <button
+                onClick={() => setEditingPlan(null)}
+                className="p-1 rounded text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
               <div>
-                <label className="text-xs font-mono text-slate-400">Plan Name</label>
+                <label className="block text-xs font-medium text-slate-300 mb-1">Plan Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. VIP Brand Agency Tier"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-indigo-400"
                   required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-mono text-slate-400">Credit Allowance</label>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Monthly Price ($)</label>
                   <input
                     type="number"
-                    value={creditAllowance}
-                    onChange={(e) => setCreditAllowance(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-indigo-400"
-                    required
+                    step="0.01"
+                    value={editPriceMonthly}
+                    onChange={(e) => setEditPriceMonthly(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-mono text-slate-400">Price Per Credit ($)</label>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Credit Allowance</label>
                   <input
                     type="number"
-                    step="0.001"
-                    value={pricePerCredit}
-                    onChange={(e) => setPricePerCredit(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-indigo-400"
+                    value={editAllowance}
+                    onChange={(e) => setEditAllowance(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Daily Images Limit</label>
+                  <input
+                    type="number"
+                    value={editDailyImages}
+                    onChange={(e) => setEditDailyImages(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Daily Videos Limit</label>
+                  <input
+                    type="number"
+                    value={editDailyVideos}
+                    onChange={(e) => setEditDailyVideos(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-mono text-slate-400 block mb-1.5">
-                  Unlocked Feature Flags
-                </label>
-                <div className="space-y-1.5 max-h-44 overflow-y-auto">
+                <label className="block text-xs font-medium text-slate-300 mb-2">Feature Flags</label>
+                <div className="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  {ALL_FEATURES.map((feat) => {
+                    const isChecked = editFlags[feat.key] !== false
+                    return (
+                      <label key={feat.key} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => setEditFlags({ ...editFlags, [feat.key]: e.target.checked })}
+                          className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-0"
+                        />
+                        {feat.label}
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingPlan(null)}
+                  className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUpdating}
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition"
+                >
+                  {isUpdating ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Create Plan Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between p-6 border-b border-slate-800">
+              <h2 className="text-lg font-bold text-white">Create Custom Plan</h2>
+              <button onClick={() => setShowCreateModal(false)} className="p-1 rounded text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePlan} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">Plan Name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Enterprise Tier"
+                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Credit Allowance</label>
+                  <input
+                    type="number"
+                    value={creditAllowance}
+                    onChange={(e) => setCreditAllowance(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Price Per Credit ($)</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={pricePerCredit}
+                    onChange={(e) => setPricePerCredit(e.target.value)}
+                    className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-2">Feature Flags</label>
+                <div className="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
                   {ALL_FEATURES.map((feat) => (
-                    <label key={feat.key} className="flex items-center justify-between p-2 rounded bg-slate-950/60 border border-slate-800 hover:border-slate-700 cursor-pointer">
-                      <span className="text-xs text-slate-300 font-sans">{feat.label}</span>
+                    <label key={feat.key} className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={flags[feat.key]}
                         onChange={(e) => setFlags({ ...flags, [feat.key]: e.target.checked })}
-                        className="rounded bg-slate-900 border-slate-700 text-indigo-500 w-4 h-4"
+                        className="rounded border-slate-700 bg-slate-800 text-indigo-500 focus:ring-0"
                       />
+                      {feat.label}
                     </label>
                   ))}
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded"
+                  className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded transition"
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition"
                 >
                   {submitting ? "Creating..." : "Create Plan"}
                 </button>

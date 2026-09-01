@@ -25,8 +25,13 @@ async def store_media_bytes(job_id: str, data: bytes, mime_type: str = "image/pn
     with open(file_path, "wb") as f:
         f.write(data)
 
-    app_url = os.environ.get("VITE_API_BASE_URL", "http://localhost:8000/api")
-    app_url = app_url.replace("/api", "")
+    from app.core.config import settings
+    app_url = (
+        os.environ.get("PUBLIC_API_BASE_URL")
+        or getattr(settings, "PUBLIC_API_BASE_URL", "")
+        or os.environ.get("VITE_API_BASE_URL", "http://localhost:8000/api")
+    )
+    app_url = app_url.rstrip("/").replace("/api", "")
     final_url = f"{app_url}/uploads/{filename}"
     return final_url
 

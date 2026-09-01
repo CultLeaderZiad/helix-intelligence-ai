@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { LogOut, Bookmark, CreditCard, Users, Key, Shield, HelpCircle } from "lucide-react"
+import { LogOut, Bookmark, CreditCard, Users, Key, Shield, HelpCircle, UserCheck, MessageSquare, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
@@ -160,6 +160,54 @@ export function Sidebar({ onOpenCommand, className }) {
                 )}
               />
               <span className="flex-1 truncate">{t("billing", "Billing & Meter")}</span>
+            </>
+          )}
+        </NavLink>
+
+        <NavLink
+          to="/support"
+          className={({ isActive }) =>
+            cn(
+              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
+              isActive
+                ? "bg-surface-3 text-text font-semibold shadow-xs"
+                : "text-text-muted hover:bg-surface-2 hover:text-text",
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <MessageSquare
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  isActive ? "text-accent" : "text-text-faint",
+                )}
+              />
+              <span className="flex-1 truncate">{t("support", "Support & Feedback")}</span>
+            </>
+          )}
+        </NavLink>
+
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            cn(
+              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
+              isActive
+                ? "bg-surface-3 text-text font-semibold shadow-xs"
+                : "text-text-muted hover:bg-surface-2 hover:text-text",
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              <Settings
+                className={cn(
+                  "h-4 w-4 shrink-0",
+                  isActive ? "text-accent" : "text-text-faint",
+                )}
+              />
+              <span className="flex-1 truncate">{t("settings", "Profile & Settings")}</span>
             </>
           )}
         </NavLink>

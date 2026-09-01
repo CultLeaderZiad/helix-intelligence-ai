@@ -3,7 +3,7 @@ import { request } from "../http"
 /**
  * Real FastAPI-backed admin service for full platform control,
  * plans management, organization billing, credit grants, usage breakdown,
- * feature flags, and user impersonation.
+ * feature flags, user management, announcements, and support tickets.
  */
 const adminService = {
   getOverviewStats() {
@@ -25,7 +25,7 @@ const adminService = {
     return request("/admin/system/health")
   },
 
-  // Plans Management
+  // --- Plans Management ---
   listPlans() {
     return request("/admin/plans")
   },
@@ -37,7 +37,14 @@ const adminService = {
     })
   },
 
-  // Organizations & Credits
+  updatePlan(planId, planData) {
+    return request(`/admin/plans/${planId}`, {
+      method: "PUT",
+      body: planData,
+    })
+  },
+
+  // --- Organizations & Credits ---
   listOrganizations() {
     return request("/admin/organizations")
   },
@@ -63,12 +70,16 @@ const adminService = {
     })
   },
 
-  // Usage & Provider Breakdown
+  // --- Usage & Provider Breakdown ---
   getUsageSummary() {
     return request("/admin/usage")
   },
 
-  // Users & Impersonation
+  getUsageLogsFiltered(params = {}) {
+    return request("/admin/usage/logs", { params })
+  },
+
+  // --- Users & Impersonation & Roles ---
   listUsers() {
     return request("/admin/users")
   },
@@ -80,9 +91,60 @@ const adminService = {
     })
   },
 
+  banUser(userId, isBanned) {
+    return request(`/admin/users/${userId}/ban`, {
+      method: "POST",
+      body: { is_banned: isBanned },
+    })
+  },
+
+  updateUserRole(userId, role, adminPermissions = {}) {
+    return request(`/admin/users/${userId}/role`, {
+      method: "POST",
+      body: { role, admin_permissions: adminPermissions },
+    })
+  },
+
+  switchUserPlan(userId, planId) {
+    return request(`/admin/users/${userId}/plan`, {
+      method: "POST",
+      body: { plan_id: planId },
+    })
+  },
+
   impersonateUser(userId) {
     return request(`/admin/users/${userId}/impersonate`, {
       method: "POST",
+    })
+  },
+
+  // --- Admin Broadcast Announcements ---
+  broadcastAnnouncement(title, message, type = "system", link = null) {
+    return request("/admin/broadcast", {
+      method: "POST",
+      body: { title, message, type, link },
+    })
+  },
+
+  // --- Admin Support & Feedback Hub ---
+  listSupportTickets(status = null, type = null) {
+    const params = {}
+    if (status && status !== "all") params.status = status
+    if (type && type !== "all") params.type = type
+    return request("/admin/support/tickets", { params })
+  },
+
+  replySupportTicket(ticketId, message) {
+    return request(`/admin/support/tickets/${ticketId}/reply`, {
+      method: "POST",
+      body: { message },
+    })
+  },
+
+  updateSupportTicketStatus(ticketId, status) {
+    return request(`/admin/support/tickets/${ticketId}/status`, {
+      method: "PATCH",
+      body: { status },
     })
   },
 }

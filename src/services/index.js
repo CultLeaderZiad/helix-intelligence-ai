@@ -17,20 +17,8 @@ import adminApi from "./api/adminService.api"
 import accountApi from "./api/accountService.api"
 import notificationApi from "./api/notificationService.api"
 import mediaApi from "./api/mediaService.api"
-
-/**
- * ============================================================
- * THE DATA BOUNDARY
- * ============================================================
- * This file is the ONLY module in the application that knows
- * whether data is mocked or real. Components never import from
- * ./mock or ./api, and never import from src/data.
- *
- * Selection is per-domain on purpose: the backend can ship
- * discovery before analysis, and this file can point one at
- * FastAPI while the other stays mocked.
- * ============================================================
- */
+import supportApi from "./api/supportService.api"
+import playbookApi from "./api/playbookService.api"
 import { updatesApi } from "./api/updatesService.api"
 
 const useApi = DATA_SOURCE === "api"
@@ -43,6 +31,8 @@ export const adminService = useApi ? adminApi : adminMock
 export const accountService = useApi ? accountApi : accountMock
 export const notificationService = useApi ? notificationApi : notificationMock
 export const mediaService = useApi ? mediaApi : mediaMock
+export const supportService = supportApi
+export const playbookService = playbookApi
 export const updatesService = updatesApi
 
 export { DATA_SOURCE }

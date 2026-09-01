@@ -13,6 +13,9 @@ class Plan(Base):
     type = Column(String, nullable=False, default="trial") # 'trial' | 'pay_as_you_go' | 'custom'
     credit_allowance = Column(Integer, default=25)
     daily_credit_limit = Column(Float, nullable=True) # max credits usable per UTC day; None = unlimited
+    daily_image_limit = Column(Integer, default=5) # max images generated per day
+    daily_video_limit = Column(Integer, default=3) # max videos generated per day
+    price_monthly = Column(Float, default=0.0) # Monthly subscription cost in USD
     price_per_credit = Column(Float, nullable=True) # in USD, e.g. 0.01
     feature_flags = Column(JSON, default=dict) # {"discover": true, "intelligence": true, "create": true, "performance": true, "swipe_files": true, "team_accounts": false, "public_api": false}
     created_by_admin_id = Column(String, nullable=True)

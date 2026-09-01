@@ -17,3 +17,5 @@ from .media_job import MediaGenerationJob
 from .webhook_event import WebhookEvent
 from .app_update import AppUpdate
 from .workspace_credential import WorkspaceProviderCredential
+from .support_ticket import SupportTicket, SupportTicketReply
+from .playbook import Playbook

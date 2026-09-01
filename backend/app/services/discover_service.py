@@ -20,6 +20,7 @@ from app.db.session import async_session_maker
 from app.services.scraping.ad_library_provider import AdLibraryProvider
 from app.services.scraping.scrapegraph_provider import ScrapeGraphProvider
 from app.services.scraping.adyntel_provider import AdyntelProvider
+from app.services.scraping.metapi_provider import MetapiProvider
 from app.services.scraping.normalizer import normalize_creative
 from app.services.creative_service import generate_patterns_for_recent_creatives
 from app.services.billing_service import (
@@ -138,6 +139,8 @@ async def trigger_search(
 
     if background_tasks:
         background_tasks.add_task(run_discovery_pipeline, new_job.id, clean_query, search_params.filters)
+    else:
+        asyncio.create_task(run_discovery_pipeline(new_job.id, clean_query, search_params.filters))
 
     return Job(
         job_id=new_job.id,
@@ -306,12 +309,25 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
 
         ad_lib_provider = AdLibraryProvider(db, str(org_id), str(user_id))
         adyntel_provider = AdyntelProvider(db, str(org_id), str(user_id))
+        metapi_provider = MetapiProvider(db, str(org_id), str(user_id))
         
         raw_creatives = []
         provider_used = "unknown"
 
-        # 1. Adyntel (Fast company/domain lookup)
-        if adyntel_provider.adyntel_api_key and adyntel_provider.adyntel_email:
+        # 1. Metapi (Primary Domain Trace)
+        if metapi_provider.metapi_api_key:
+            sources_tried.append("Metapi")
+            raw_creatives = await metapi_provider.search(
+                query,
+                max_records=15,
+                filters=filters,
+                progress_callback=on_scraping_progress
+            )
+            if raw_creatives:
+                provider_used = "metapi"
+
+        # 2. Adyntel (Fallback Domain Trace)
+        if not raw_creatives and adyntel_provider.adyntel_api_key and adyntel_provider.adyntel_email:
             sources_tried.append("Adyntel")
             raw_creatives = await adyntel_provider.search(
                 query,
@@ -344,40 +360,6 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
             )
             if raw_creatives:
                 provider_used = "meta_graph"
-
-        # 4. Bright Data Deep Fallback (Controlled, paid deep search)
-        if not raw_creatives and ad_lib_provider.brightdata_key:
-            can_deep_search = False
-            async with async_session_maker() as db:
-                org_res = await db.execute(
-                    select(Organization).where(Organization.id == org_id).with_for_update()
-                )
-                org = org_res.scalar_one_or_none()
-                if org and org.credit_balance >= DISCOVER_DEEP_SEARCH_CREDIT_COST:
-                    can_deep_search = True
-                    await charge(
-                        db=db,
-                        org=org,
-                        user_id=user_id,
-                        amount=DISCOVER_DEEP_SEARCH_CREDIT_COST,
-                        provider="brightdata",
-                        operation="discover_deep_fallback",
-                        units=1.0,
-                        cost_usd=ESTIMATED_PROVIDER_COSTS.get("brightdata_scrape", 0.003),
-                        job_id=job_id,
-                        metadata={"query": query}
-                    )
-
-            if can_deep_search:
-                sources_tried.append("Bright Data (Deep Fallback)")
-                raw_creatives = await ad_lib_provider.query_brightdata(
-                    query,
-                    country=(filters or {}).get("country", "ALL"),
-                    max_records=15,
-                    progress_callback=on_scraping_progress
-                )
-                if raw_creatives:
-                    provider_used = "brightdata"
             
         # Zero Results Handling (Honest reporting)
         if not raw_creatives:

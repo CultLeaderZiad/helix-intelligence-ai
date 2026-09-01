@@ -46,6 +46,10 @@ const UsagePage = lazy(() => import("@/pages/admin/UsagePage").then(m => ({ defa
 const FeatureFlagsPage = lazy(() => import("@/pages/admin/FeatureFlagsPage").then(m => ({ default: m.FeatureFlagsPage })))
 const UsersPage = lazy(() => import("@/pages/admin/UsersPage").then(m => ({ default: m.UsersPage })))
 const UpdatesPage = lazy(() => import("@/pages/admin/UpdatesPage").then(m => ({ default: m.UpdatesPage })))
+const SupportAdminPage = lazy(() => import("@/pages/admin/SupportAdminPage").then(m => ({ default: m.SupportAdminPage })))
+const PublicPlaybookPage = lazy(() => import("@/pages/PublicPlaybookPage").then(m => ({ default: m.PublicPlaybookPage })))
+const ProfileSettingsPage = lazy(() => import("@/pages/ProfileSettingsPage").then(m => ({ default: m.ProfileSettingsPage })))
+const SupportPage = lazy(() => import("@/pages/SupportPage").then(m => ({ default: m.SupportPage })))
 
 const PUBLIC_TITLES = {
   "/sign-in": "Sign in",
@@ -58,6 +62,8 @@ const PUBLIC_TITLES = {
   "/billing": "Billing & Usage",
   "/api-keys": "API Keys",
   "/team": "Team Members",
+  "/settings": "Profile & Settings",
+  "/support": "Support & Feedback",
 }
 
 function DocumentTitle() {
@@ -117,6 +123,7 @@ export default function App() {
               <Route path="/sign-in" element={<SignInPage />} />
               <Route path="/sign-up" element={<SignUpPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/playbook/:publicId" element={<PublicPlaybookPage />} />
 
               {/* Admin console — admin role only */}
               <Route element={<ProtectedRoute requireRole="admin" />}>
@@ -129,6 +136,7 @@ export default function App() {
                   <Route path="/admin/feature-flags" element={<FeatureFlagsPage />} />
                   <Route path="/admin/users" element={<UsersPage />} />
                   <Route path="/admin/updates" element={<UpdatesPage />} />
+                  <Route path="/admin/support" element={<SupportAdminPage />} />
                   {ADMIN_NAV_ITEMS.filter((i) => !i.built).map((item) => (
                     <Route
                       key={item.key}
@@ -151,6 +159,8 @@ export default function App() {
                   <Route path="/billing" element={<BillingPage />} />
                   <Route path="/api-keys" element={<ApiKeysPage />} />
                   <Route path="/team" element={<TeamPage />} />
+                  <Route path="/settings" element={<ProfileSettingsPage />} />
+                  <Route path="/support" element={<SupportPage />} />
                   {NAV_SECTIONS.filter((s) => s.status === "pending").map((section) => (
                     <Route
                       key={section.key}

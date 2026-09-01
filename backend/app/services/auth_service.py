@@ -18,6 +18,17 @@ async def authenticate_user(db: AsyncSession, user_in: UserLogin) -> str:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
     if not await verify_password(user_in.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+
+    if getattr(user, "is_banned", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "user_banned", "message": "This account has been banned."}
+        )
+    if getattr(user, "is_suspended", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "user_suspended", "message": "This account has been suspended."}
+        )
     
     return create_access_token(subject=user.id, role=user.role)
 

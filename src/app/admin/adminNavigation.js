@@ -11,6 +11,7 @@ import {
   ScrollText,
   Bell,
   BookOpen,
+  MessageSquareCheck,
 } from "lucide-react"
 
 /**
@@ -55,6 +56,13 @@ export const ADMIN_NAV_GROUPS = [
         path: "/admin/users",
         label: "Users",
         icon: Users,
+        built: true,
+      },
+      {
+        key: "support",
+        path: "/admin/support",
+        label: "Support Tickets",
+        icon: MessageSquareCheck,
         built: true,
       },
     ],

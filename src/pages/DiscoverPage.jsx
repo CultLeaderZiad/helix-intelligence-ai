@@ -15,6 +15,9 @@ import { useIsBelowLg } from "@/hooks/useMediaQuery"
 import { useAuth } from "@/context/AuthContext"
 import { formatDuration, formatInt } from "@/lib/format"
 import { OnboardingTour } from "@/app/OnboardingTour"
+import { OnboardingWizardModal } from "@/components/OnboardingWizardModal"
+import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
+import { MessageSquarePlus } from "lucide-react"
 
 const EMPTY_FILTERS = {
   country: "ALL",
@@ -51,6 +54,8 @@ export function DiscoverPage() {
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false)
+  const [showSupportModal, setShowSupportModal] = useState(false)
 
   const isBelowLg = useIsBelowLg()
   const { report } = useTelemetry()
@@ -114,6 +119,21 @@ export function DiscoverPage() {
     }
   }, [phase, job?.job_id, job?.records_found, results, report])
 
+  useEffect(() => {
+    if (user && user.has_completed_onboarding === false) {
+      setShowOnboardingModal(true)
+    }
+  }, [user])
+
+  const handleOnboardingSearch = (searchBrand) => {
+    setQuery(searchBrand)
+    submit({
+      query: searchBrand,
+      filters: appliedFilters,
+      sort,
+    })
+  }
+
   function runDiscovery() {
     if (!query.trim()) return
     setSelectedId(null)
@@ -138,18 +158,24 @@ export function DiscoverPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <OnboardingTour user={user} onComplete={() => completeOnboarding()} />
       <BreadcrumbBar
-        trail={["Helix", "Discover"]}
+        trail={[t("discovery", "Discovery"), t("search", "Live Search"), query ? `"${query}"` : null].filter(Boolean)}
         meta={
-          phase === PHASE.READY && results
-            ? `${formatInt(results.total)} ${results.total === 1 ? t("record", "record") : t("records", "records")} · ${formatDuration(results.took_ms)}`
-            : t("noResultSet", "no result set")
+          phase === PHASE.READY
+            ? `${formatInt(results?.total ?? 0)} records · ${formatDuration(
+                results?.took_ms ?? 0,
+              )}`
+            : null
         }
         actions={
-          phase === PHASE.READY ? (
-            <Button size="xs" variant="ghost" onClick={cancel}>
-              {t("clearSet", "Clear set")}
-            </Button>
-          ) : null
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() => setShowSupportModal(true)}
+            className="flex items-center gap-1 text-xs text-text-muted hover:text-text"
+          >
+            <MessageSquarePlus className="w-3.5 h-3.5 text-teal-400" />
+            Report Issue
+          </Button>
         }
       />
 
@@ -304,6 +330,18 @@ export function DiscoverPage() {
           />
         ) : null}
       </div>
+
+      <OnboardingWizardModal
+        isOpen={showOnboardingModal}
+        onClose={() => setShowOnboardingModal(false)}
+        onSearchSelect={handleOnboardingSearch}
+      />
+
+      <SupportFeedbackModal
+        isOpen={showSupportModal}
+        onClose={() => setShowSupportModal(false)}
+        initialContext={{ page: "Discover", query, tag: "discover" }}
+      />
     </div>
   )
 }
