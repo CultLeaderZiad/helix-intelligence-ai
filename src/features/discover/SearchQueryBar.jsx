@@ -78,9 +78,9 @@ export function SearchQueryBar({
         />
       </div>
 
-      <Button variant="primary" size="md" onClick={onSubmit} disabled={isBusy} className="font-bold">
+      <Button variant="primary" size="md" onClick={onSubmit} disabled={isBusy || !query.trim()} className="font-bold">
         {isBusy ? t("running", "Running...") : t("runDiscovery", "Run discovery")}
-        {!isBusy ? <KeyHint tone="on-accent">↵</KeyHint> : null}
+        {!isBusy && query.trim() ? <KeyHint tone="on-accent">↵</KeyHint> : null}
       </Button>
     </div>
   )

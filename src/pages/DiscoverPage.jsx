@@ -45,9 +45,10 @@ const EMPTY_FILTERS = {
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 
-import { useSearchParams } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 
 export function DiscoverPage() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { latestSearch, saveCompletedSearch, selectActiveCreative } = useSearchContext()
   const { t } = useLanguage()
@@ -144,6 +145,19 @@ export function DiscoverPage() {
     setTimeout(() => {
       setTourEnabled(true)
     }, 200)
+  }
+
+  /* Declining the questionnaire persists completion so the wizard does
+     not nag on every visit — and deliberately never starts the tour. */
+  function handleDismissOnboarding() {
+    setShowOnboardingModal(false)
+    completeOnboarding()
+  }
+
+  function handleGoToDashboard() {
+    setShowOnboardingModal(false)
+    completeOnboarding()
+    navigate("/dashboard")
   }
 
   function runDiscovery() {
@@ -272,7 +286,12 @@ export function DiscoverPage() {
                 title="No discovery run yet"
                 description="Query a competitor ad library to enqueue a scrape. Results are ranked by composite score once the job completes."
                 action={
-                  <Button size="sm" variant="primary" onClick={runDiscovery}>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={runDiscovery}
+                    disabled={!query.trim()}
+                  >
                     Run discovery
                   </Button>
                 }
@@ -353,6 +372,8 @@ export function DiscoverPage() {
       <OnboardingWizardModal
         isOpen={showOnboardingModal}
         onClose={handleCloseOnboarding}
+        onDismiss={handleDismissOnboarding}
+        onDashboard={handleGoToDashboard}
       />
 
       <SupportFeedbackModal
