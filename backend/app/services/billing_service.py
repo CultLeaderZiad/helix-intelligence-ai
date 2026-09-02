@@ -599,7 +599,7 @@ async def assert_can_generate_image(
     - 7-day trial expiry -> 402 HTTP (code: trial_expired)
     - 5 images/day limit -> 402 HTTP (code: daily_limit)
     - 25 total images cap -> 402 HTTP (code: trial_total_limit)
-    - Video on trial -> 402 HTTP (code: video_not_allowed)
+    - 3 videos/day on trial -> 402 HTTP (code: video_limit_reached)
     - Paid plans / Admin -> Bypass trial limitations
     """
     if not org:

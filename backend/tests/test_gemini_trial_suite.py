@@ -54,7 +54,7 @@ def test_gemini_provider_structure():
     assert provider.image_model == settings.GEMINI_IMAGE_MODEL
     print("[PASS] Test C: GeminiProvider has generate_image and configured model")
 
-def test_trial_gatekeeper_video_blocked():
+def test_trial_video_gatekeeper_caps_at_three_per_day():
     now = datetime.datetime.now(datetime.timezone.utc)
     user = User(
         id="u1",
@@ -63,17 +63,8 @@ def test_trial_gatekeeper_video_blocked():
         trial_expires_at=now + datetime.timedelta(days=7),
         role="customer"
     )
-    org = Organization(
-        id="org1",
-        name="Org 1",
-        owner_id=user.id,
-        plan="trial",
-        plan_id="plan_trial_default",
-        images_generated_today=0.0,
-        images_trial_total=0.0
-    )
 
-    # J. Video on trial must be rejected with 402 video_not_allowed
+    # J. Trial videos are limited to 3/day: 3rd is allowed, 4th rejected with 402 video_limit_reached
     class MockDB:
         async def execute(self, q):
             class Res:
@@ -85,13 +76,37 @@ def test_trial_gatekeeper_video_blocked():
 
     db = MockDB()
 
+    org_2 = Organization(
+        id="org1",
+        name="Org 1",
+        owner_id=user.id,
+        plan="trial",
+        plan_id="plan_trial_default",
+        images_generated_today=0.0,
+        images_today_date=now.strftime("%Y-%m-%d"),
+        images_trial_total=0.0,
+        videos_generated_today=2.0
+    )
+    asyncio.run(assert_can_generate_image(db, user, org_2, media_type="video"))
+
+    org_3 = Organization(
+        id="org1b",
+        name="Org 1b",
+        owner_id=user.id,
+        plan="trial",
+        plan_id="plan_trial_default",
+        images_generated_today=0.0,
+        images_today_date=now.strftime("%Y-%m-%d"),
+        images_trial_total=0.0,
+        videos_generated_today=3.0
+    )
     try:
-        asyncio.run(assert_can_generate_image(db, user, org, media_type="video"))
+        asyncio.run(assert_can_generate_image(db, user, org_3, media_type="video"))
         assert False, "Should have raised HTTPException"
     except HTTPException as e:
         assert e.status_code == 402
-        assert e.detail["code"] == "video_not_allowed"
-        print("[PASS] Test J: Video request rejected with HTTP 402 (video_not_allowed)")
+        assert e.detail["code"] == "video_limit_reached"
+        print("[PASS] Test J: 4th trial video rejected with HTTP 402 (video_limit_reached)")
 
 def test_trial_daily_limit_and_total_cap():
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -204,7 +219,7 @@ if __name__ == "__main__":
     print("Running HELIX Gemini Trial Image Suite Tests...")
     test_trial_lifecycle()
     test_gemini_provider_structure()
-    test_trial_gatekeeper_video_blocked()
+    test_trial_video_gatekeeper_caps_at_three_per_day()
     test_trial_daily_limit_and_total_cap()
     test_admin_and_paid_bypass()
     print("\n=================================================================")

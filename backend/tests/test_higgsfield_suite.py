@@ -82,9 +82,11 @@ async def test_health_check_structure():
     assert "configured" in health
     assert "authenticated" in health
     assert "base_url" in health
-    # Verify no credentials leaked
-    assert "HF_API_KEY_SECRET" not in str(health)
+    # Verify no credentials leaked (env-var names in the unconfigured error are
+    # operator hints; the actual key material / auth header must never appear).
     assert "Authorization" not in str(health)
+    assert "hf-secret" not in str(health)
+    assert "Key " not in str(health)
     print("[PASS] test_health_check_structure passed")
 
 if __name__ == "__main__":
