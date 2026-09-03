@@ -163,6 +163,18 @@ export function DiscoverPage() {
   }
 
   const items = results?.items ?? []
+  /* Zero-result honesty: the results endpoint never applies the filter
+     rail, so an empty set almost always means the scrape itself found
+     nothing — the backend's zero_results stage_label says exactly why. */
+  const scrapedNothing =
+    phase === PHASE.READY && items.length === 0 && (job?.records_found ?? 0) === 0
+  const filtersWereApplied =
+    appliedFilters.country !== "ALL" ||
+    (appliedFilters.platforms?.length ?? 0) > 0 ||
+    (appliedFilters.formats?.length ?? 0) > 0 ||
+    (appliedFilters.spend_bands?.length ?? 0) > 0 ||
+    (appliedFilters.min_score ?? 0) > 0 ||
+    (appliedFilters.min_days_active ?? 0) > 0
   const showProgress = Boolean(job) && phase !== PHASE.READY && phase !== PHASE.IDLE
   const inspectorOpen = Boolean(selectedId)
 
@@ -296,12 +308,26 @@ export function DiscoverPage() {
             {phase === PHASE.READY && items.length === 0 ? (
               <EmptyState
                 icon={SearchX}
-                title="Job completed with no matches"
-                description="The scrape ran successfully but nothing in the corpus satisfied the query and filters. Widen the filters and re-run."
+                size="lg"
+                status={scrapedNothing ? "zero results" : "no matches"}
+                title={
+                  scrapedNothing
+                    ? "No ads found for this search"
+                    : "No creatives match the current filters"
+                }
+                description={
+                  scrapedNothing
+                    ? job?.stage_label && job?.stage !== "complete"
+                      ? job.stage_label
+                      : 'The ad libraries had no active ads for this query. Try a company domain (e.g. "nike.com") or a broader industry keyword, then re-run.'
+                    : "The scrape found creatives, but none fit the filters applied to this search. Clear or widen the filters and re-run."
+                }
                 action={
-                  <Button size="sm" variant="outline" onClick={clearFilters}>
-                    Clear filters
-                  </Button>
+                  filtersWereApplied ? (
+                    <Button size="sm" variant="outline" onClick={clearFilters}>
+                      Clear filters
+                    </Button>
+                  ) : null
                 }
               />
             ) : null}
