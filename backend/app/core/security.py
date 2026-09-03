@@ -36,7 +36,7 @@ async def verify_neon_token(token: str) -> dict:
     try:
         secret = getattr(settings, "SECRET_KEY", "helix-intelligence-secret-key-change-in-production")
         payload = jwt.decode(token, secret, algorithms=[HS256_ALGORITHM], options={"verify_aud": False})
-        if payload and payload.get("sub"):
+        if payload and payload.get("sub") and payload.get("purpose") != "password_reset":
             return payload
     except Exception:
         pass
@@ -67,6 +67,35 @@ def create_access_token(subject: Union[str, Any], role: str = "customer", expire
     secret = getattr(settings, "SECRET_KEY", "helix-intelligence-secret-key-change-in-production")
     encoded_jwt = jwt.encode(to_encode, secret, algorithm=HS256_ALGORITHM)
     return encoded_jwt
+
+def create_password_reset_token(user_id: str) -> str:
+    """Single-purpose, short-lived JWT for the password reset flow.
+
+    Has a distinct `purpose` claim so it can never be accepted as a session
+    token, and a short lifetime so a leaked reset link is quickly unusable.
+    """
+    expire_minutes = int(getattr(settings, "PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", 30))
+    expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
+    to_encode = {
+        "exp": expire,
+        "sub": str(user_id),
+        "purpose": "password_reset",
+    }
+    secret = getattr(settings, "SECRET_KEY", "helix-intelligence-secret-key-change-in-production")
+    return jwt.encode(to_encode, secret, algorithm=HS256_ALGORITHM)
+
+def decode_password_reset_token(token: str) -> Union[dict, None]:
+    """Return the payload only for a valid, unexpired password_reset token."""
+    if not token:
+        return None
+    secret = getattr(settings, "SECRET_KEY", "helix-intelligence-secret-key-change-in-production")
+    try:
+        payload = jwt.decode(token, secret, algorithms=[HS256_ALGORITHM], options={"verify_aud": False})
+    except JWTError:
+        return None
+    if payload.get("purpose") != "password_reset" or not payload.get("sub"):
+        return None
+    return payload
 
 def get_password_hash(password: str) -> str:
     """Secure password hashing using PBKDF2-HMAC-SHA256 (Python 3.12-3.14 native)."""

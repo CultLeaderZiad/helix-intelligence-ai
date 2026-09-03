@@ -32,3 +32,15 @@ services:
     # GROQ_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY,
     # SCRAPEGRAPH_API_KEY, META_ACCESS_TOKEN, BRIGHTDATA_API_KEY,
     # APIFY_API_TOKEN
+    #
+    # ────────────────────────────────────────────────────────
+    # Password reset (no mail provider is configured yet)
+    # ────────────────────────────────────────────────────────
+    # PUBLIC_APP_BASE_URL               – Frontend origin used to build reset
+    #                                     links. Defaults to the Vercel app.
+    # PASSWORD_RESET_TOKEN_EXPIRE_MINUTES – Lifetime of a reset link (default 30).
+    # AUTH_DEV_RESET_RETURN             – "true" returns the reset link in the
+    #                                     API response because there is no SMTP
+    #                                     yet. See the reset link in Render
+    #                                     logs regardless. Set "false" once
+    #                                     email delivery exists.

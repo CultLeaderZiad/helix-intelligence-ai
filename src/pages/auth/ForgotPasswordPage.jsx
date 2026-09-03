@@ -25,6 +25,7 @@ export function ForgotPasswordPage() {
   const [authError, setAuthError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [sentTo, setSentTo] = useState(null)
+  const [resetUrl, setResetUrl] = useState(null)
   const [isSlow, setIsSlow] = useState(false)
 
   useEffect(() => {
@@ -48,8 +49,9 @@ export function ForgotPasswordPage() {
 
     setSubmitting(true)
     try {
-      await requestPasswordReset({ email: email.trim() })
+      const result = await requestPasswordReset({ email: email.trim() })
       setSentTo(email.trim())
+      setResetUrl(result?.reset_url ?? null)
     } catch (err) {
       setAuthError({
         status: "request failed",
@@ -61,7 +63,9 @@ export function ForgotPasswordPage() {
     }
   }
 
-  /* Confirmation state — deliberately generic, see note above. */
+  /* Confirmation state — deliberately generic, see note above. Sole
+     exception: when the backend returns a dev-mode reset link (no mail
+     provider configured), we surface it directly. */
   if (sentTo) {
     return (
       <AuthLayout
@@ -82,6 +86,23 @@ export function ForgotPasswordPage() {
             <span className="font-mono text-text">{sentTo}</span>, a password
             reset link is on its way.
           </FormBanner>
+          {resetUrl ? (
+            <div className="flex flex-col gap-2 rounded-sm border border-accent/30 bg-surface p-4">
+              <p className="label-mono text-[10px] uppercase tracking-[0.08em] text-accent-dim">
+                dev-mode delivery — no mail provider configured
+              </p>
+              <p className="text-xs leading-relaxed text-text-muted">
+                Your backend is not sending email yet, so here is the link it
+                generated:
+              </p>
+              <Link
+                to={resetUrl.replace(/^https?:\/\/[^/]+/, "")}
+                className="break-all font-mono text-xs leading-relaxed text-accent underline-offset-2 transition-colors hover:text-accent-dim hover:underline"
+              >
+                {resetUrl}
+              </Link>
+            </div>
+          ) : null}
           <div className="flex items-start gap-2.5 text-xs leading-relaxed text-text-muted">
             <MailCheck
               className="mt-0.5 h-4 w-4 shrink-0 text-text-faint"

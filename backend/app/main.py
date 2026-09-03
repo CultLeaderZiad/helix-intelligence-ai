@@ -52,6 +52,8 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMPTZ;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMPTZ;",
                 "ALTER TABLE users ADD COLUMN IF NOT EXISTS has_completed_onboarding BOOLEAN DEFAULT FALSE;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token_hash VARCHAR;",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMPTZ;",
                 "ALTER TABLE plans ADD COLUMN IF NOT EXISTS daily_image_limit INTEGER DEFAULT 5;",
                 "ALTER TABLE plans ADD COLUMN IF NOT EXISTS daily_video_limit INTEGER DEFAULT 3;",
                 "ALTER TABLE plans ADD COLUMN IF NOT EXISTS price_monthly FLOAT DEFAULT 0.0;",

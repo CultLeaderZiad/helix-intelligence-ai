@@ -101,6 +101,13 @@ export function AuthProvider({ children }) {
     [],
   )
 
+  const resetPassword = useCallback(async (params) => {
+    const { user: nextUser } = await authService.resetPassword(params)
+    setUser(nextUser)
+    setStatus(AUTH_STATUS.AUTHENTICATED)
+    return nextUser
+  }, [])
+
     const updateUser = useCallback((updater) => {
       setUser((prev) => (typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }))
     }, [])
@@ -125,10 +132,11 @@ export function AuthProvider({ children }) {
         signUp,
         signOut,
         requestPasswordReset,
+        resetPassword,
         updateUser,
         completeOnboarding,
       }),
-      [user, status, signIn, signUp, signOut, requestPasswordReset, updateUser, completeOnboarding],
+      [user, status, signIn, signUp, signOut, requestPasswordReset, resetPassword, updateUser, completeOnboarding],
     )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

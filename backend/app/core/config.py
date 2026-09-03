@@ -11,6 +11,20 @@ class Settings(BaseSettings):
     # SECURITY — must be set via env var; no hardcoded fallback
     SECRET_KEY: str = os.getenv("SECRET_KEY", "")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "30"))
+
+    # Password reset delivery. The app has no mail provider bundled, so the
+    # reset link is logged server-side on every request. Set to true to also
+    # return it in the API response (dev/staging convenience only — anyone
+    # who can call the endpoint could reset any account). Disable as soon as
+    # real email delivery is wired up.
+    AUTH_DEV_RESET_RETURN: bool = os.getenv("AUTH_DEV_RESET_RETURN", "True").lower() in ("true", "1", "yes")
+
+    # Public app origin used to build password-reset links
+    PUBLIC_APP_BASE_URL: str = os.getenv(
+        "PUBLIC_APP_BASE_URL",
+        "https://helix-intelligence-ai-six.vercel.app",
+    ).rstrip("/")
 
     # CORS — see _parse_cors_origins() below.  Declared as str so
     # pydantic-settings won't try JSON-decoding a comma-separated

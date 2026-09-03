@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 import datetime
 
 from app.db.session import async_session_maker
-from app.schemas.auth import UserCreate, UserLogin, SessionResponse
+from app.schemas.auth import UserCreate, UserLogin, SessionResponse, PasswordResetRequest, PasswordResetConfirm
 from app.services import auth_service, billing_service
 from app.core.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.plan import Plan
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -115,7 +116,7 @@ async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
     try:
         token = await auth_service.authenticate_user(db, user_in)
         from app.models.user import User as UserModel
-        result = await db.execute(select(UserModel).where(UserModel.email == user_in.email))
+        result = await db.execute(select(UserModel).where(func.lower(UserModel.email) == user_in.email.lower().strip()))
         user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="User found during auth but not on second query")
@@ -130,6 +131,52 @@ async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
 async def signout():
     return {"message": "Successfully signed out"}
 
+@router.post("/forgot-password")
+async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(get_db)):
+    """Start a password reset. The public response is identical whether or
+    not the account exists (no account enumeration). The reset link is still
+    logged server-side; when AUTH_DEV_RESET_RETURN is enabled it is also
+    returned in the response because no mail provider is bundled."""
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        user_and_token = await auth_service.request_password_reset(db, req.email)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Password reset request failed for {req.email}: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Password reset request failed")
+
+    if user_and_token:
+        user, raw_token = user_and_token
+        reset_url = f"{settings.PUBLIC_APP_BASE_URL}/reset-password?token={raw_token}"
+        logger.warning(
+            "PASSWORD RESET link issued for %s: %s (dev delivery — no mail provider configured)",
+            user.email, reset_url,
+        )
+        if getattr(settings, "AUTH_DEV_RESET_RETURN", False):
+            return {"ok": True, "reset_url": reset_url, "expires_in_minutes": settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES}
+        return {"ok": True}
+    return {"ok": True}
+
+@router.post("/reset-password")
+async def reset_password(req: PasswordResetConfirm, db: AsyncSession = Depends(get_db)):
+    """Redeem a reset token and set a new password. Returns a fresh session
+    so the frontend can move straight into the app."""
+    import logging
+    logger = logging.getLogger(__name__)
+    try:
+        user = await auth_service.reset_password(db, req.token, req.new_password)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Password reset failed: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Password reset failed")
+
+    from app.core.security import create_access_token
+    token = create_access_token(subject=user.id, role=user.role)
+    return await build_session_response(db, user, access_token=token)
+
 @router.get("/session", response_model=SessionResponse)
 async def get_session(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     return await build_session_response(db, current_user)
@@ -143,7 +190,6 @@ async def complete_onboarding(current_user: User = Depends(get_current_user), db
 from fastapi import Request
 import hmac
 import hashlib
-from app.core.config import settings
 
 @router.post("/webhook")
 async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)):
