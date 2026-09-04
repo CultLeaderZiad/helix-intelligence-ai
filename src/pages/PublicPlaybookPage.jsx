@@ -129,9 +129,11 @@ export function PublicPlaybookPage() {
                   <span className="px-2.5 py-0.5 rounded text-[11px] font-semibold uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 print:border-slate-400 print:text-indigo-700">
                     {pat.category || "Hook Pattern"}
                   </span>
-                  <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 print:text-emerald-700">
-                    <ArrowUpRight className="w-3.5 h-3.5" /> +{pat.estimated_lift_percent}% Est. Lift
-                  </div>
+                  {pat.estimated_lift_percent != null && (
+                    <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 print:text-emerald-700">
+                      <ArrowUpRight className="w-3.5 h-3.5" /> +{pat.estimated_lift_percent}% Est. Lift
+                    </div>
+                  )}
                 </div>
 
                 <h3 className="font-bold text-base text-white print:text-slate-900">{pat.name}</h3>

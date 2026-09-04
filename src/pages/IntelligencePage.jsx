@@ -42,6 +42,7 @@ export function IntelligencePage() {
   const [compilingPlaybook, setCompilingPlaybook] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
   const [error, setError] = useState(null)
+  const [analysisError, setAnalysisError] = useState(null)
 
   // Load creatives from latest search or fallback to recent DB creatives
   useEffect(() => {
@@ -110,11 +111,13 @@ export function IntelligencePage() {
   async function handleGenerateInsight() {
     if (!selectedCreativeId) return
     setGeneratingInsight(true)
+    setAnalysisError(null)
     try {
       const result = await analysisService.generateInsight(selectedCreativeId)
       setInsights((prev) => ({ ...prev, [selectedCreativeId]: result }))
     } catch (err) {
-      alert(`AI Insight generation failed: ${err.message || err}`)
+      // Honest failure: show the real reason, never a fabricated insight.
+      setAnalysisError(err?.message || "Analysis is temporarily unavailable. Please try again.")
     } finally {
       setGeneratingInsight(false)
     }
@@ -122,6 +125,7 @@ export function IntelligencePage() {
 
   async function handleGeneratePatterns() {
     setGeneratingPatterns(true)
+    setAnalysisError(null)
     try {
       const res = await analysisService.generatePatterns()
       if (Array.isArray(res) && res.length > 0) {
@@ -131,7 +135,7 @@ export function IntelligencePage() {
         if (patRes?.items) setPatterns(patRes.items)
       }
     } catch (err) {
-      alert(`Pattern extraction failed: ${err.message || err}`)
+      setAnalysisError(err?.message || "Pattern extraction is temporarily unavailable. Please try again.")
     } finally {
       setGeneratingPatterns(false)
     }
@@ -534,6 +538,25 @@ export function IntelligencePage() {
                           </p>
                         </div>
                       )}
+                    </div>
+                  ) : analysisError ? (
+                    <div className="rounded border border-warning/40 bg-warning/5 p-4 text-left space-y-2">
+                      <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase text-warning">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Analysis Temporarily Unavailable
+                      </p>
+                      <p className="text-xs leading-relaxed text-text-muted">{analysisError}</p>
+                      <div>
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={handleGenerateInsight}
+                          disabled={generatingInsight}
+                          className="font-mono text-[11px]"
+                        >
+                          Try Again
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="rounded border border-dashed border-border p-6 text-center text-xs text-text-muted space-y-2">

@@ -134,3 +134,27 @@ class AIRouter:
         )
         db.add(log)
         await db.commit()
+
+    @staticmethod
+    async def log_failure(
+        db: AsyncSession,
+        user_id: str,
+        provider_name: str,
+        operation: str,
+        org_id: str = None,
+        error: str = "",
+    ):
+        """Records a provider failure so it is visible in the admin
+        system-health view. Failure rows never carry credits."""
+        log = UsageLog(
+            user_id=user_id,
+            org_id=org_id,
+            provider=provider_name or "unknown",
+            operation=operation,
+            units=0.0,
+            credits_deducted=0.0,
+            requests_used=0,
+            metadata_json={"status": "failed", "error": (error or "")[:300]},
+        )
+        db.add(log)
+        await db.commit()

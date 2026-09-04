@@ -59,38 +59,22 @@ async def compile_playbook(
 
     formatted_patterns = []
     for p in patterns_res:
+        prevalence = float(getattr(p, "prevalence", 0.0) or 0.0)
+        lift_index = float(getattr(p, "lift_index", 1.0) or 1.0)
         formatted_patterns.append({
             "id": p.id,
-            "name": getattr(p, "label", "Visual Framework"),
-            "category": getattr(p, "family", "Hook"),
-            "description": f"Dominant creative pattern with {getattr(p, 'prevalence', 0.0)*100:.0f}% category prevalence.",
-            "confidence_score": 0.88,
-            "estimated_lift_percent": int((getattr(p, "lift_index", 1.25) - 1.0) * 100) if getattr(p, "lift_index", 1.0) > 1.0 else 24,
-            "visual_structure": "High contrast direct response visual framework"
+            "name": getattr(p, "label", None) or "Unnamed pattern",
+            "category": getattr(p, "family", None) or "unclassified",
+            "description": f"Detected in {prevalence * 100:.0f}% of the analyzed creatives.",
+            # Real signal only: prevalence is measured, lift comes from the
+            # model's lift_index. No invented confidence or lift values.
+            "confidence_score": round(prevalence, 2),
+            "estimated_lift_percent": int((lift_index - 1.0) * 100) if lift_index > 1.0 else None,
+            "visual_structure": None,
         })
 
-    # Fallback if no patterns in job, provide core analytical pattern summary
-    if not formatted_patterns:
-        formatted_patterns = [
-            {
-                "id": "pat_scaling_direct",
-                "name": "Direct Benefit Acceleration",
-                "category": "hook",
-                "description": f"Focuses on immediate outcome clarity for {brand_name.capitalize()}.",
-                "confidence_score": 0.91,
-                "estimated_lift_percent": 32,
-                "visual_structure": "First 3s bold text overlay with localized offer"
-            },
-            {
-                "id": "pat_social_proof",
-                "name": "Social Proof & Localization",
-                "category": "trust",
-                "description": "Geographic targeting with regional validation proof points.",
-                "confidence_score": 0.88,
-                "estimated_lift_percent": 27,
-                "visual_structure": "Native user interface styling with authority badges"
-            }
-        ]
+    # No invented fallback: a job without extracted patterns exports
+    # without patterns — the playbook never fabricates analysis.
 
     # 4. Collect Insights
     insights_stmt = select(AIInsight).limit(5)

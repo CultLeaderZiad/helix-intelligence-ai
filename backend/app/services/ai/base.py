@@ -12,7 +12,12 @@ class AIProvider(ABC):
         pass
 
     async def generate_insight(self, creative: Creative, context: str = "") -> Insight:
-        """Generate an insight for a specific creative"""
+        """Generate an insight for a specific creative.
+
+        Provider failures are never masked: this method raises, callers
+        surface an honest "temporarily unavailable" state, and the user
+        is not charged. There is deliberately NO fabricated fallback.
+        """
         prompt = f"""
         Analyze this competitor creative and provide a Deep Strategic Intelligence Teardown.
         
@@ -38,48 +43,39 @@ class AIProvider(ABC):
         
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         
-        try:
-            result_text = await self._call_api([
-                {"role": "system", "content": "You are an elite creative strategist and ad performance analyst. Always reply with valid JSON only."},
-                {"role": "user", "content": prompt}
-            ])
+        result_text = await self._call_api([
+            {"role": "system", "content": "You are an elite creative strategist and ad performance analyst. Always reply with valid JSON only."},
+            {"role": "user", "content": prompt}
+        ])
+        
+        if "```json" in result_text:
+            result_text = result_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in result_text:
+            result_text = result_text.split("```")[1].split("```")[0].strip()
             
-            if "```json" in result_text:
-                result_text = result_text.split("```json")[1].split("```")[0].strip()
-            elif "```" in result_text:
-                result_text = result_text.split("```")[1].split("```")[0].strip()
-                
-            data = json.loads(result_text)
-            return Insight(
-                id=f"insight_{datetime.datetime.now().timestamp()}",
-                creative_id=creative.id,
-                kind=data.get("kind", "opportunity"),
-                title=data.get("title", f"Strategic Teardown for {creative.headline[:40]}"),
-                summary=data.get("summary", "Creative leverages direct response hook with focused value proposition."),
-                confidence=float(data.get("confidence", 0.88)),
-                evidence_creative_ids=[creative.id],
-                model_version=getattr(self, "model", "llama3-70b"),
-                generated_at=now_iso,
-                emotional_resonance=data.get("emotional_resonance") or f"Taps into immediate consumer intent by highlighting practical benefits and reducing purchase friction through clear social validation.",
-                script_teardown=data.get("script_teardown") or f"[00:00 - 00:03] Hook: Direct address of customer pain point.\n[00:03 - 00:15] Core Demonstration: Showcases primary value proposition.\n[00:15+] Conversion Push: Urgency cue paired with strong CTA '{creative.cta or 'Shop Now'}'.",
-                fatigue_prediction=data.get("fatigue_prediction") or f"Estimated durability: {max(21, (creative.days_active or 1) * 2)} days before creative saturation. Recommend testing 2 alternative opening hooks."
-            )
-        except Exception as e:
-            # Fallback high-value heuristic teardown so user is never blocked
-            return Insight(
-                id=f"insight_{datetime.datetime.now().timestamp()}",
-                creative_id=creative.id,
-                kind="opportunity",
-                title=f"Strategic Angle: {creative.headline[:50] or 'Direct Value Offer'}",
-                summary=f"Analysis indicates high retention potential driven by structured value framing and active call-to-action '{creative.cta or 'Shop Now'}'.",
-                confidence=0.86,
-                evidence_creative_ids=[creative.id],
-                model_version="heuristic-synthesizer-v2",
-                generated_at=now_iso,
-                emotional_resonance=f"Triggers consumer desire through clear differentiation and emotional validation. Aligns product utility directly with target audience lifestyle goals.",
-                script_teardown=f"[00:00 - 00:03] Hook Frame: Visual interruption & problem statement.\n[00:03 - 00:12] Product Demonstration: Core features highlighted with lifestyle context.\n[00:12 - End] Action Phase: Distinct offer clarity coupled with '{creative.cta or 'Shop Now'}' CTA.",
-                fatigue_prediction=f"Current longevity index is robust ({creative.days_active or 1} days active). Creative maintains strong resonance; recommend testing a UGC testimonial variant."
-            )
+        data = json.loads(result_text)
+
+        # Essential analysis fields must come from the model. A response
+        # missing them is malformed — that is a provider failure, not
+        # something to paper over with templated text.
+        for required in ("title", "summary", "confidence"):
+            if data.get(required) in (None, ""):
+                raise ValueError(f"AI response missing required field '{required}'")
+
+        return Insight(
+            id=f"insight_{datetime.datetime.now().timestamp()}",
+            creative_id=creative.id,
+            kind=data.get("kind") or "observation",
+            title=data["title"],
+            summary=data["summary"],
+            confidence=float(data["confidence"]),
+            evidence_creative_ids=[creative.id],
+            model_version=getattr(self, "model", None) or "unknown",
+            generated_at=now_iso,
+            emotional_resonance=data.get("emotional_resonance"),
+            script_teardown=data.get("script_teardown"),
+            fatigue_prediction=data.get("fatigue_prediction"),
+        )
         
     async def generate_patterns(self, creatives: List[Creative]) -> List[Pattern]:
         """Extract patterns across multiple creatives"""

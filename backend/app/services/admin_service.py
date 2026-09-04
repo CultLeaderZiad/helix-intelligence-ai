@@ -78,55 +78,126 @@ async def list_jobs(db: AsyncSession) -> list[AdminJobRow]:
     return jobs
 
 async def get_health(db: AsyncSession) -> AdminSystemHealth:
-    db_status = "error"
-    detail = "Disconnected"
-    latency = 0
+    """Real system health, derived from actual request outcomes in the
+    last 24h. Nothing here is hardcoded: each provider row reports the
+    successes/failures recorded in the database, and providers with no
+    recorded traffic report "unknown" rather than "success"."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    window = now - datetime.timedelta(hours=24)
+    checked_at = now.isoformat() + "Z"
+    services: List[AdminServiceHealth] = []
+
+    def _row_status(success: int, failed: int) -> str:
+        if failed and not success:
+            return "danger"
+        if failed and success:
+            return "warning"
+        if success:
+            return "success"
+        return "unknown"
+
+    # --- Neon Postgres: live probe ---
+    db_status, db_detail, db_latency = "danger", "Disconnected", None
     try:
         start = datetime.datetime.now()
         await db.execute(text("SELECT 1"))
-        latency = int((datetime.datetime.now() - start).total_seconds() * 1000)
+        db_latency = int((datetime.datetime.now() - start).total_seconds() * 1000)
         db_status = "success"
-        detail = "Connected to Neon Postgres"
+        db_detail = "Connected — live probe"
     except Exception as e:
-        detail = str(e)
+        db_detail = f"Probe failed: {str(e)[:120]}"
+    services.append(AdminServiceHealth(
+        id="db-neon", name="Neon Serverless Postgres",
+        status=db_status, detail=db_detail,
+        latency_ms=db_latency, last_checked=checked_at,
+    ))
 
-    return AdminSystemHealth(
-        state="operational" if db_status == "success" else "degraded",
-        services=[
-            AdminServiceHealth(
-                id="db-neon",
-                name="Neon Serverless Postgres",
-                status=db_status,
-                detail=detail,
-                latency_ms=latency,
-                last_checked=datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z"
-            ),
-            AdminServiceHealth(
-                id="groq-ai",
-                name="Groq LLM Engine (Llama 3.3 70B)",
-                status="success",
-                detail="Operational / Pattern Engine (~600 tokens/s)",
-                latency_ms=120,
-                last_checked=datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z"
-            ),
-            AdminServiceHealth(
-                id="metapi",
-                name="Metapi Scraper API (Domain Trace)",
-                status="success",
-                detail="Operational / High-Yield Live Search",
-                latency_ms=350,
-                last_checked=datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z"
-            ),
-            AdminServiceHealth(
-                id="scrapegraph",
-                name="ScrapeGraphAI Pipeline (Deep Read)",
-                status="success",
-                detail="Operational / Managed Smart Scraper",
-                latency_ms=800,
-                last_checked=datetime.datetime.now(datetime.timezone.utc).isoformat() + "Z"
+    # --- AI text providers (insights / pattern synthesis): UsageLog outcomes ---
+    ai_rows = (await db.execute(
+        select(UsageLog.provider, UsageLog.metadata_json, UsageLog.id)
+        .where(UsageLog.created_at >= window)
+        .where(UsageLog.operation.in_(("ai_insight", "pattern_synthesis")))
+    )).all()
+    ai_stats: Dict[str, Dict[str, int]] = {}
+    for provider, metadata, _id in ai_rows:
+        stats = ai_stats.setdefault(provider or "unknown", {"success": 0, "failed": 0})
+        if isinstance(metadata, dict) and metadata.get("status") == "failed":
+            stats["failed"] += 1
+        else:
+            stats["success"] += 1
+    if ai_stats:
+        for provider, stats in sorted(ai_stats.items()):
+            services.append(AdminServiceHealth(
+                id=f"ai-{provider}",
+                name=f"AI Analysis — {provider}",
+                status=_row_status(stats["success"], stats["failed"]),
+                detail=f"{stats['success']} succeeded, {stats['failed']} failed in last 24h",
+                latency_ms=None, last_checked=checked_at,
+            ))
+    else:
+        services.append(AdminServiceHealth(
+            id="ai-analysis", name="AI Analysis Providers",
+            status="unknown", detail="No AI analysis requests in the last 24h",
+            latency_ms=None, last_checked=checked_at,
+        ))
+
+    # --- Scraping providers: ExternalApiUsage outcomes ---
+    scrape_rows = (await db.execute(
+        select(ExternalApiUsage.provider, ExternalApiUsage.status)
+        .where(ExternalApiUsage.created_at >= window)
+    )).all()
+    scrape_stats: Dict[str, Dict[str, int]] = {}
+    for provider, status in scrape_rows:
+        stats = scrape_stats.setdefault(provider or "unknown", {"success": 0, "failed": 0, "attempted": 0})
+        if status in ("success", "failed", "attempted"):
+            stats[status] += 1
+    if scrape_stats:
+        for provider, stats in sorted(scrape_stats.items()):
+            detail = (
+                f"{stats['success']} succeeded, {stats['failed']} failed"
+                + (f", {stats['attempted']} pending" if stats["attempted"] else "")
+                + " in last 24h"
             )
-        ]
-    )
+            services.append(AdminServiceHealth(
+                id=f"scraper-{provider}",
+                name=f"Scraper — {provider}",
+                status=_row_status(stats["success"], stats["failed"]),
+                detail=detail,
+                latency_ms=None, last_checked=checked_at,
+            ))
+    else:
+        services.append(AdminServiceHealth(
+            id="scrapers", name="Ad-Library Scrapers",
+            status="unknown", detail="No scrape requests in the last 24h",
+            latency_ms=None, last_checked=checked_at,
+        ))
+
+    # --- Media generation providers: MediaGenerationJob outcomes ---
+    from app.models.media_job import MediaGenerationJob
+    media_rows = (await db.execute(
+        select(MediaGenerationJob.provider, MediaGenerationJob.status)
+        .where(MediaGenerationJob.created_at >= window)
+    )).all()
+    media_stats: Dict[str, Dict[str, int]] = {}
+    for provider, status in media_rows:
+        stats = media_stats.setdefault(provider or "unknown", {"success": 0, "failed": 0})
+        if status == "completed":
+            stats["success"] += 1
+        elif status == "failed":
+            stats["failed"] += 1
+    if media_stats:
+        for provider, stats in sorted(media_stats.items()):
+            services.append(AdminServiceHealth(
+                id=f"media-{provider}",
+                name=f"Media Generation — {provider}",
+                status=_row_status(stats["success"], stats["failed"]),
+                detail=f"{stats['success']} completed, {stats['failed']} failed in last 24h",
+                latency_ms=None, last_checked=checked_at,
+            ))
+
+    has_danger = any(s.status == "danger" for s in services)
+    state = "degraded" if has_danger else "operational"
+    return AdminSystemHealth(state=state, services=services)
 
 # --- Plans Management ---
 async def list_plans(db: AsyncSession) -> List[PlanSchema]:
