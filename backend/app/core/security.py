@@ -34,8 +34,7 @@ async def verify_neon_token(token: str) -> dict:
     """Validate a token against local HS256 secret or Neon Auth JWKS and return the decoded payload."""
     # 1. First try local HS256 secret (for local tokens / seed sessions)
     try:
-        secret = getattr(settings, "SECRET_KEY", "helix-intelligence-secret-key-change-in-production")
-        payload = jwt.decode(token, secret, algorithms=[HS256_ALGORITHM], options={"verify_aud": False})
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[HS256_ALGORITHM], options={"verify_aud": False})
         if payload and payload.get("sub") and payload.get("purpose") != "password_reset":
             return payload
     except Exception:
@@ -64,8 +63,7 @@ def create_access_token(subject: Union[str, Any], role: str = "customer", expire
         expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
     
     to_encode = {"exp": expire, "sub": str(subject), "role": role}
-    secret = getattr(settings, "SECRET_KEY", "helix-intelligence-secret-key-change-in-production")
-    encoded_jwt = jwt.encode(to_encode, secret, algorithm=HS256_ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=HS256_ALGORITHM)
     return encoded_jwt
 
 def create_password_reset_token(user_id: str) -> str:
@@ -81,16 +79,14 @@ def create_password_reset_token(user_id: str) -> str:
         "sub": str(user_id),
         "purpose": "password_reset",
     }
-    secret = getattr(settings, "SECRET_KEY", "helix-intelligence-secret-key-change-in-production")
-    return jwt.encode(to_encode, secret, algorithm=HS256_ALGORITHM)
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=HS256_ALGORITHM)
 
 def decode_password_reset_token(token: str) -> Union[dict, None]:
     """Return the payload only for a valid, unexpired password_reset token."""
     if not token:
         return None
-    secret = getattr(settings, "SECRET_KEY", "helix-intelligence-secret-key-change-in-production")
     try:
-        payload = jwt.decode(token, secret, algorithms=[HS256_ALGORITHM], options={"verify_aud": False})
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[HS256_ALGORITHM], options={"verify_aud": False})
     except JWTError:
         return None
     if payload.get("purpose") != "password_reset" or not payload.get("sub"):
