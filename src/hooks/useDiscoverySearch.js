@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { discoverService } from "@/services"
-import { JOB_POLL_INTERVAL_MS } from "@/services/config"
+import { JOB_POLL_INTERVAL_MS, JOB_POLL_TIMEOUT_MS } from "@/services/config"
 
 /**
  * ============================================================
@@ -26,6 +26,7 @@ const PHASE = {
   FETCHING_RESULTS: "fetching_results",
   READY: "ready",
   ERROR: "error",
+  TIMED_OUT: "timed_out",
 }
 
 export { PHASE }
@@ -42,6 +43,7 @@ export function useDiscoverySearch() {
   const pollRef = useRef(null)
   const mounted = useRef(true)
   const activeJobId = useRef(null)
+  const pollDeadlineRef = useRef(0)
 
   useEffect(() => {
     mounted.current = true
@@ -103,11 +105,20 @@ export function useDiscoverySearch() {
       activeJobId.current = created.job_id
       setJob(created)
       setPhase(PHASE.RUNNING)
+      pollDeadlineRef.current = Date.now() + JOB_POLL_TIMEOUT_MS
 
       // Poll. Every value the progress UI shows originates here.
       pollRef.current = setInterval(async () => {
         const jobId = activeJobId.current
         if (!jobId) return
+        // Polling ceiling: a job that has not finished within the timeout is
+        // treated as stalled. Stop hammering the API and surface an honest
+        // "taking longer than expected" state with retry — never poll forever.
+        if (Date.now() > pollDeadlineRef.current) {
+          stopPolling()
+          setPhase(PHASE.TIMED_OUT)
+          return
+        }
         try {
           const next = await discoverService.getJobStatus(jobId)
           if (!mounted.current || activeJobId.current !== jobId) return
@@ -170,5 +181,6 @@ export function useDiscoverySearch() {
       phase === PHASE.SUBMITTING ||
       phase === PHASE.RUNNING ||
       phase === PHASE.FETCHING_RESULTS,
+    timedOut: phase === PHASE.TIMED_OUT,
   }
 }

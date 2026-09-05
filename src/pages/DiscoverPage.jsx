@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Radar, SearchX } from "lucide-react"
+import { Radar, SearchX, Clock } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useTelemetry } from "@/app/TelemetryContext"
 import { SearchQueryBar } from "@/features/discover/SearchQueryBar"
@@ -298,10 +298,30 @@ export function DiscoverPage() {
             ) : null}
 
             {phase === PHASE.ERROR ? (
-              <ErrorState 
-                error={error} 
+              <ErrorState
+                error={error}
                 onRetry={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
                 description={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? "Upgrade your account or add credits to continue using Discover." : undefined}
+              />
+            ) : null}
+
+            {phase === PHASE.TIMED_OUT ? (
+              <EmptyState
+                icon={Clock}
+                size="lg"
+                status="stalled"
+                title="This is taking longer than expected"
+                description="The search job has not reported progress for several minutes and may have stalled. No new results will appear on their own. Retry the search, or cancel to stop watching this job."
+                action={
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="primary" onClick={retry}>
+                      Retry search
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={cancel}>
+                      Cancel
+                    </Button>
+                  </div>
+                }
               />
             ) : null}
 

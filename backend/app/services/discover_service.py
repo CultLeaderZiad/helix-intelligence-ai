@@ -20,16 +20,18 @@ from app.db.session import async_session_maker
 
 
 def _job_response(job: ScrapeJob) -> Job:
+    # Job rows are nullable at the model level; the response schema is not.
+    # Coalesce so a legacy/partial row serializes instead of 500ing.
     return Job(
         job_id=job.id,
-        status=job.status,
-        progress=job.progress,
-        stage=job.stage,
-        stage_label=job.stage_label,
-        stage_index=job.stage_index,
-        stages_total=job.stages_total,
-        records_found=job.record_count,
-        elapsed_ms=job.elapsed_ms,
+        status=job.status or "running",
+        progress=float(job.progress or 0.0),
+        stage=job.stage or "",
+        stage_label=job.stage_label or "",
+        stage_index=int(job.stage_index or 0),
+        stages_total=int(job.stages_total or 0),
+        records_found=int(job.record_count or 0),
+        elapsed_ms=int(job.elapsed_ms or 0),
         created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
     )
 

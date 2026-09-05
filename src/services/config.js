@@ -21,3 +21,7 @@ export const MOCK_FAILURE_RATE = Number(env.VITE_MOCK_FAILURE_RATE ?? 0)
 
 /** How often the client polls a running job. */
 export const JOB_POLL_INTERVAL_MS = 400
+
+/** Ceiling on how long the client polls one job before treating it as
+ *  stalled (server jobs normally finish in seconds; minutes means dead). */
+export const JOB_POLL_TIMEOUT_MS = 240000
