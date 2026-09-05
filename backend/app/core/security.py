@@ -1,8 +1,9 @@
-import os
 import hashlib
+import hmac
+import os
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any, Union
+from typing import Any, Optional, Union
 import httpx
 from jose import jwt, JWTError
 from app.core.config import settings
@@ -54,6 +55,61 @@ async def verify_neon_token(token: str) -> dict:
         logger.warning(f"JWT Validation failed: {e}")
         return None
 
+
+# ---------------------------------------------------------------------------
+# Webhook authentication
+#
+# Two independent mechanisms, both constant-time:
+#
+# 1. ``verify_inbound_webhook_signature`` — inbound shared-secret HMAC (used by
+#    /auth/webhook, the Neon/better-auth user-sync route).
+# 2. ``sign_job_webhook_token`` / ``verify_job_webhook_token`` — a capability
+#    token we mint per media job and put in the callback URL we hand to the
+#    generation provider, so a callback can only ever touch the job it was
+#    created for. A provider that simply POSTs our URL cannot forge or replay
+#    against someone else's job.
+#
+# Neither helper may ever log the secret, the expected digest, or a valid
+# token: a signature in a log line is a bearer credential that survives the
+# request.
+# ---------------------------------------------------------------------------
+
+_WEBHOOK_TOKEN_SCOPE = "media-job-webhook"
+
+
+def compute_webhook_signature(secret: str, raw_body: bytes) -> str:
+    return hmac.new(secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+
+
+def verify_inbound_webhook_signature(secret: str, raw_body: bytes, provided: Optional[str]) -> bool:
+    """Constant-time compare of the caller's signature against the HMAC.
+
+    Accepts a bare hex digest or the ``t=..,v1=<hex>`` / ``v1=<hex>`` prefixes
+    some senders use. Returns False for anything missing or malformed; never
+    raises and never echoes either side.
+    """
+    if not secret or not provided:
+        return False
+    candidate = provided.strip()
+    if "=" in candidate:
+        # Take the last comma-separated segment's value (Stripe-style lists).
+        parts = [p.strip() for p in candidate.split(",") if p.strip()]
+        candidate = parts[-1].split("=", 1)[1] if parts and "=" in parts[-1] else candidate
+    expected = compute_webhook_signature(secret, raw_body)
+    return hmac.compare_digest(candidate.lower(), expected.lower())
+
+
+def sign_job_webhook_token(job_id: str) -> str:
+    payload = f"{_WEBHOOK_TOKEN_SCOPE}:{job_id}".encode("utf-8")
+    return hmac.new(settings.SECRET_KEY.encode("utf-8"), payload, hashlib.sha256).hexdigest()[:32]
+
+
+def verify_job_webhook_token(job_id: str, token: Optional[str]) -> bool:
+    if not token:
+        return False
+    return hmac.compare_digest(sign_job_webhook_token(job_id), token.strip())
+
+
 def create_access_token(subject: Union[str, Any], role: str = "customer", expires_delta: timedelta = None) -> str:
     """Create local HS256 JWT token."""
     expire_minutes = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 60 * 24 * 7)
@@ -93,6 +149,24 @@ def decode_password_reset_token(token: str) -> Union[dict, None]:
         return None
     return payload
 
+# ---------------------------------------------------------------------------
+# Password hashing
+#
+# P2 follow-up, deliberately NOT fixed in this change set (noted here so it is
+# not re-discovered by an audit): the hash itself is fine — PBKDF2-HMAC-SHA256,
+# 100k iterations, random per-user salt, constant-time compare. The problem is
+# *where* it runs. `verify_password` is declared async but calls the blocking
+# hashlib work inline, so a login costs ~33 ms on this sandbox CPU (expect
+# 60-100 ms on Render's 0.5 vCPU) taken straight off the one event-loop thread
+# that also serves every other in-flight request. A credential-stuffing burst
+# therefore stalls the whole worker, including the long-poll endpoints.
+#
+# The fix, when it gets its own change: `await anyio.to_thread.run_sync(...)`
+# around the hash/verify calls (bcrypt is already a dependency, and the stored
+# format carries its own algorithm prefix, so old rows can be upgraded lazily
+# on next successful sign-in). It needs a real before/after latency check under
+# concurrency, which is why it does not belong in a security-correctness PR.
+# ---------------------------------------------------------------------------
 def get_password_hash(password: str) -> str:
     """Secure password hashing using PBKDF2-HMAC-SHA256 (Python 3.12-3.14 native)."""
     salt = secrets.token_hex(16)

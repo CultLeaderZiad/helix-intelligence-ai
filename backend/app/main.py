@@ -1,4 +1,5 @@
 import datetime
+import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -11,6 +12,8 @@ from app.db.session import engine, async_session_maker
 from app.db.base import Base
 from app.services.billing_service import refund, DISCOVER_SEARCH_CREDIT_COST
 import app.models
+
+logger = logging.getLogger(__name__)
 
 from app.api.routers import (
     auth,
@@ -33,6 +36,16 @@ from app.api.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Loud, not silent: returning reset links from the API is a dev-only
+    # convenience and the Blueprint pins it off, so anyone seeing this line in
+    # production logs is looking at a deliberate override that should not exist.
+    if settings.allow_reset_link_in_response:
+        logger.warning(
+            "AUTH_DEV_RESET_RETURN is ON (ENV=%s): password-reset links are being returned "
+            "in API responses. Development only — turn it off before this reaches users.",
+            settings.ENV,
+        )
+
     # Ensure all database tables and missing columns exist on startup
     stuck_discover_jobs = []  # populated by the reconciliation sweep below
     try:

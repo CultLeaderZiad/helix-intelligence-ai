@@ -50,8 +50,63 @@ services:
     # PUBLIC_APP_BASE_URL               – Frontend origin used to build reset
     #                                     links. Defaults to the Vercel app.
     # PASSWORD_RESET_TOKEN_EXPIRE_MINUTES – Lifetime of a reset link (default 30).
-    # AUTH_DEV_RESET_RETURN             – "true" returns the reset link in the
-    #                                     API response because there is no SMTP
-    #                                     yet. See the reset link in Render
-    #                                     logs regardless. Set "false" once
-    #                                     email delivery exists.
+    # AUTH_DEV_RESET_RETURN             – dev-only convenience that ALSO returns
+    #                                     the reset link in the API response. It
+    #                                     is forced to "false" below and cannot
+    #                                     be re-enabled by a dashboard edit that
+    #                                     survives a redeploy, because the
+    #                                     response is readable by anyone who can
+    #                                     POST an email address. The link stays
+    #                                     available in the Render logs.
+    #
+    # ────────────────────────────────────────────────────────
+    # Environment variables managed by this Blueprint
+    # ────────────────────────────────────────────────────────
+    # Keys with `value:` are overwritten from this file on every deploy — that
+    # is what makes the security switches below safe to rely on. Keys marked
+    # `sync: false` are declared for documentation only: their values live in
+    # the dashboard and a redeploy will not blank them.
+    envVars:
+      # --- Hard security posture (synced every deploy; do not move to the dashboard) ---
+      # Anything other than local/dev/test is treated as production by the app,
+      # and production refuses to return reset links even if the flag is flipped.
+      - key: ENV
+        value: production
+      - key: AUTH_DEV_RESET_RETURN
+        value: "false"
+
+      # --- Required, valued in the Render dashboard ---
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: BACKEND_CORS_ORIGINS
+        sync: false
+      # /auth/webhook refuses all traffic while this is unset (it used to accept
+      # everything, because the signature was logged and never compared).
+      - key: NEON_WEBHOOK_SECRET
+        sync: false
+
+      # --- Provider keys ---
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: HF_API_KEY_ID
+        sync: false
+      - key: HF_API_KEY_SECRET
+        sync: false
+      - key: APIFY_API_TOKEN
+        sync: false
+      - key: APIFY_ENABLED
+        sync: false
+      - key: META_ACCESS_TOKEN
+        sync: false
+      - key: METAPI_API_KEY
+        sync: false
+      - key: ADYNTEL_API_KEY
+        sync: false
+      - key: ADYNTEL_EMAIL
+        sync: false
