@@ -63,6 +63,33 @@ async def lifespan(app: FastAPI):
                     await conn.execute(text(query))
                 except Exception as col_err:
                     pass
+
+            # Structural duplicate-search guard. The service-level check
+            # above is advisory; this makes a second active job for the same
+            # (org, normalized query) impossible at the database level.
+            # Failures here are reported, not swallowed — a silently missing
+            # unique index would resurrect the double-charge race.
+            try:
+                await conn.execute(text("""
+                    UPDATE scrape_jobs AS newer
+                    SET status = 'failed',
+                        error_msg = 'Duplicate of a concurrent search for the same query (collapsed by dedup guard migration)'
+                    WHERE newer.status IN ('queued', 'running')
+                      AND EXISTS (
+                        SELECT 1 FROM scrape_jobs AS older
+                        WHERE older.status IN ('queued', 'running')
+                          AND older.org_id = newer.org_id
+                          AND lower(older.query) = lower(newer.query)
+                          AND (older.created_at, older.id) < (newer.created_at, newer.id)
+                      )
+                """))
+                await conn.execute(text("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS uq_scrape_jobs_active_query
+                    ON scrape_jobs (org_id, lower(query))
+                    WHERE status IN ('queued', 'running')
+                """))
+            except Exception as dup_guard_err:
+                print("Duplicate-search guard migration error:", dup_guard_err)
     except Exception as e:
         print("Database startup sync error:", e)
     yield
