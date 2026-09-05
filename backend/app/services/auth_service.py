@@ -14,6 +14,7 @@ from app.core.config import settings
 import uuid
 import datetime
 import hashlib
+import hmac
 import logging
 
 logger = logging.getLogger(__name__)
@@ -92,15 +93,25 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     await db.refresh(user)   # reload all columns — caller must not access expired attrs in async context
     return user
 
-async def request_password_reset(db: AsyncSession, email: str) -> User:
+async def request_password_reset(db: AsyncSession, email: str, *, reissue_cooldown_seconds: int = 0):
     """Mint a single-use reset token for the user. Callers must only call
     this for users that exist; the router handles the non-enumeration
-    boundary and always returns the same public response either way."""
+    boundary and always returns the same public response either way.
+
+    ``reissue_cooldown_seconds`` > 0 leaves an already-issued, still-valid link
+    alone instead of minting a replacement on every click: repeated requests
+    from a bot (or an impatient user) cannot churn the token store, and the
+    first link keeps working. Returns ``(user, raw_token)``, where ``raw_token``
+    is None when the cooldown suppressed the re-issue.
+    """
     email = _normalize_email(email)
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     user = result.scalar_one_or_none()
     if not user:
         return None
+
+    if reissue_cooldown_seconds > 0 and _reset_issued_within(user, reissue_cooldown_seconds):
+        return user, None
 
     raw_token = create_password_reset_token(user.id)
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -111,6 +122,25 @@ async def request_password_reset(db: AsyncSession, email: str) -> User:
     user.password_reset_expires_at = expires
     await db.commit()
     return user, raw_token
+
+
+def _reset_issued_within(user: User, seconds: int) -> bool:
+    """True when a live reset link was minted less than ``seconds`` ago.
+
+    Derived from the expiry column (issued_at = expires_at - TTL) so no extra
+    state or migration is needed; an expired link is deliberately *not*
+    throttled, otherwise one ignored email would lock the address out of ever
+    requesting another.
+    """
+    if not user.password_reset_expires_at or not user.password_reset_token_hash:
+        return False
+    ttl_seconds = int(settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES) * 60
+    expires_at = user.password_reset_expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=datetime.timezone.utc)
+    issued_at = expires_at - datetime.timedelta(seconds=ttl_seconds)
+    return issued_at > datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds=seconds)
+
 
 async def reset_password(db: AsyncSession, token: str, new_password: str) -> User:
     """Validate a reset token and set a new password. Returns the user, or
@@ -130,7 +160,9 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Use
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "invalid_reset_token", "message": "This reset link is invalid or has expired. Please request a new one."})
 
-    hash_ok = _hash_reset_token(token) == user.password_reset_token_hash
+    # Constant-time: this compares a secret digest against a caller-supplied
+    # value, which is exactly the shape that must not short-circuit.
+    hash_ok = hmac.compare_digest(_hash_reset_token(token), user.password_reset_token_hash or "")
     if user.password_reset_expires_at is not None:
         exp = user.password_reset_expires_at
         if exp.tzinfo is None:

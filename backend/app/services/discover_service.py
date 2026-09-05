@@ -306,6 +306,15 @@ async def update_job_stage(db: AsyncSession, job_id: str, stage: str, label: str
 
 async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
     start_time = time.time()
+    # Stage 3 labels creatives with a brand derived from the query. It used to
+    # reference `clean_query`, a name that only exists inside trigger_search —
+    # so the very first search that returned real ads died with
+    # `NameError: name 'clean_query' is not defined` inside this try block,
+    # the job was marked failed, and the credit was never refunded.
+    clean_query = (query or "").strip()
+    # Bound before the first session: every failure path below needs it to
+    # refund, including a failure inside this very lookup.
+    org_id = None
     async with async_session_maker() as db:
         result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
         job = result.scalar_one_or_none()
@@ -315,6 +324,11 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
         
     usage_log_id = None
     sources_tried: List[str] = []
+    # Billing honesty: the upfront charge is refundable until a provider has
+    # actually answered with data. `persisted_creatives` flips once Stage 3 has
+    # committed rows for this job; `refunded` stops a double refund.
+    persisted_creatives = 0
+    refunded = False
     
     try:
         # Pre-flight Check & Global Cap
@@ -347,7 +361,10 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
                     await db.commit()
 
         # Execute Canonical Ad Discovery Chain (Metapi -> Adyntel -> Meta Official -> Apify)
-        ad_lib_provider = AdLibraryProvider(db, str(org_id), str(user_id))
+        # NB: `db` is deliberately None. The sub-providers do not query the DB,
+        # and the only session in scope here was already closed by its
+        # `async with`, so passing it would hand a dead session downstream.
+        ad_lib_provider = AdLibraryProvider(None, str(org_id), str(user_id))
         raw_creatives = await ad_lib_provider.search(
             query,
             max_records=15,
@@ -356,9 +373,64 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
         )
         provider_used = ad_lib_provider.last_provider_used
         sources_tried = ad_lib_provider.sources_tried
+        outcomes = dict(ad_lib_provider.source_outcomes)
             
-        # Zero Results Handling (Honest reporting)
+        # ---------------------------------------------------------------------
+        # Zero Results Handling (three honest outcomes, one of them billable)
+        # ---------------------------------------------------------------------
         if not raw_creatives:
+            billable = ad_lib_provider.any_source_answered
+            reasons = ad_lib_provider.failure_reasons
+
+            if not billable:
+                # Nothing answered us. "0 creatives" is a statement about our
+                # credentials, not about the brand's ad activity — so report it
+                # as a failure, never as an empty search, and give the credit
+                # back (same rule as the restart sweep in main.py: never bill
+                # for a result the user did not receive).
+                if not sources_tried:
+                    label = (
+                        "No ad source is configured on this deployment "
+                        "(Metapi, Adyntel, Meta Graph and Apify were all skipped). "
+                        "The search was not billed."
+                    )
+                else:
+                    detail = "; ".join(reasons) if reasons else "no provider returned a response"
+                    label = (
+                        f"Ad sources unavailable for '{clean_query}' — no search was completed, "
+                        f"so your credit was refunded. Detail: {detail}"
+                    )
+                async with async_session_maker() as db:
+                    result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
+                    job = result.scalar_one_or_none()
+                    if job:
+                        job.status = "failed"
+                        job.stage = "providers_unavailable"
+                        job.stage_label = label
+                        job.error_msg = label
+                        job.progress = 1.0
+                        job.stage_index = 5
+                        job.record_count = 0
+                        job.elapsed_ms = int((time.time() - start_time) * 1000)
+                        job.completed_at = datetime.datetime.utcnow()
+                        await db.commit()
+                    if usage_log_id:
+                        await mark_api_usage_status(db, usage_log_id, "failed")
+                    if not refunded and org_id:
+                        await refund(
+                            db=db,
+                            org_id=org_id,
+                            amount=DISCOVER_SEARCH_CREDIT_COST,
+                            reason="discover_provider_unavailable",
+                            job_id=job_id,
+                        )
+                        refunded = True
+                print(
+                    f"[DiscoverPipeline] job {job_id}: no ad source answered, "
+                    f"search not billed. outcomes={outcomes}"
+                )
+                return
+
             async with async_session_maker() as db:
                 result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
                 job = result.scalar_one_or_none()
@@ -372,9 +444,13 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
                     job.record_count = 0
                     job.elapsed_ms = int((time.time() - start_time) * 1000)
                     job.completed_at = datetime.datetime.utcnow()
+                    if usage_log_id:
+                        await mark_api_usage_status(db, usage_log_id, "success")
                     await db.commit()
+            # Terminal state: the search ran and found nothing. Falling through
+            # would overwrite `zero_results` with Stage 5's "complete".
             return
-            
+
         # Stage 2: Enriching with ScrapeGraph (Capped at top 2 landing pages)
         async with async_session_maker() as db:
             await update_job_stage(db, job_id, "enriching", "Enriching via Landing Pages", 0.4, 2)
@@ -428,6 +504,9 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
                     f"skipped {duplicates_skipped} duplicate(s)"
                 )
             await db.commit()
+            # Rows are on disk from here on: the search delivered, so a later
+            # stage blowing up must not refund it.
+            persisted_creatives = saved_creatives
             
         # Stage 4: AI Pattern Scoring/Generation (Graceful Degradation)
         async with async_session_maker() as db:
@@ -477,6 +556,7 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
                 await mark_api_usage_status(db, usage_log_id, "failed")
             # Refund initial credits on pre-flight block
             await refund(db, org_id, DISCOVER_SEARCH_CREDIT_COST, "api_limit_preflight", job_id)
+            refunded = True
     except Exception as e:
         error_msg = f"Pipeline failed: {str(e)}\n{traceback.format_exc()}"
         print(error_msg)
@@ -486,7 +566,27 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
             if job:
                 job.status = "failed"
                 job.error_msg = str(e)
+                job.stage = "failed"
+                job.stage_label = (
+                    "The search failed before any creatives were stored, so the "
+                    "credit for it has been refunded. Please run it again."
+                    if not persisted_creatives else
+                    "The search failed after storing partial results; the credit was kept."
+                )
+                job.completed_at = datetime.datetime.utcnow()
                 job.elapsed_ms = int((time.time() - start_time) * 1000)
                 await db.commit()
             if usage_log_id:
                 await mark_api_usage_status(db, usage_log_id, "failed")
+            # A crashed job must not be a paid job. Refund only while nothing
+            # was persisted for it — provider quota that was actually consumed
+            # and delivered stays billed.
+            if not refunded and not persisted_creatives and org_id:
+                await refund(
+                    db=db,
+                    org_id=org_id,
+                    amount=DISCOVER_SEARCH_CREDIT_COST,
+                    reason="discover_pipeline_failed",
+                    job_id=job_id,
+                )
+                refunded = True

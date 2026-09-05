@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from fastapi import HTTPException
 
 from app.models.media_job import MediaGenerationJob
@@ -21,8 +21,23 @@ from app.services.storage_service import store_media_bytes
 from app.services.media.higgsfield_provider import HiggsfieldProvider
 from app.services.media.higgsfield_registry import resolve_mode_spec
 from app.core.config import settings
+from app.core.security import sign_job_webhook_token
 
 logger = logging.getLogger(__name__)
+
+async def _reread_status(db: AsyncSession, job: MediaGenerationJob) -> str:
+    """Current persisted status, or the in-memory one if the DB is unreachable.
+
+    Used on the failure paths, where the session may be the thing that just
+    broke: a cancellation must never turn into a second, louder exception that
+    hides the original error.
+    """
+    try:
+        await db.refresh(job)
+    except Exception:  # pragma: no cover - defensive
+        return str(job.status or "")
+    return str(job.status or "")
+
 
 async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
     """
@@ -66,6 +81,11 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
             
         if custom_model:
             provider_instance.image_model = custom_model
+
+        if job.status in TERMINAL_STATUSES:
+            # Canceled (or settled) between dispatch of this task and now.
+            logger.info("Gemini job %s is already %s; skipping generation", job_id, job.status)
+            return
 
         job.status = "running"
         params["credential_mode"] = credential_mode
@@ -111,6 +131,13 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
             mime_type = gen_result.get("mime_type", "video/mp4" if media_category == "video" else "image/png")
             final_url = await store_media_bytes(job.id, media_bytes, mime_type)
 
+            # The user may have cancelled while the provider was working. A
+            # cancelled job stays cancelled and is never charged.
+            await db.refresh(job)
+            if job.status == "canceled":
+                logger.info("Gemini job %s finished after cancellation; result discarded, no usage recorded", job_id)
+                return
+
             job.status = "completed"
             job.result_url = final_url
             await db.commit()
@@ -130,6 +157,8 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
 
         except Exception as e:
             logger.error("Gemini image generation failed for job %s: %s", job_id, str(e))
+            if await _reread_status(db, job) == "canceled":
+                return
             job.status = "failed"
             err_msg = str(e)
             
@@ -158,7 +187,14 @@ async def higgsfield_generate_media_task(job_id: str):
 
         try:
             logger.info("Starting Higgsfield generation for job %s", job_id)
-            webhook_url = f"{settings.PUBLIC_API_BASE_URL}/webhooks/higgsfield"
+            # The callback URL carries a token derived from this job's id and
+            # SECRET_KEY, so a delivery can only ever update the job it belongs
+            # to (see webhooks router). Without it the endpoint had to trust any
+            # anonymous POST that knew a provider_job_id.
+            webhook_url = (
+                f"{settings.PUBLIC_API_BASE_URL}/webhooks/higgsfield"
+                f"?token={sign_job_webhook_token(job.id)}"
+            )
             params = job.parameters or {}
 
             request_id = await provider.generate_media(
@@ -175,13 +211,17 @@ async def higgsfield_generate_media_task(job_id: str):
             for _ in range(60):
                 await asyncio.sleep(2.0)
                 await db.refresh(job)
-                if job.status in ["completed", "failed", "nsfw"]:
+                if job.status in ["completed", "failed", "nsfw", "canceled"]:
                     return
 
                 status_info = await provider.check_status(request_id)
                 status = status_info.get("status")
 
                 if status == "completed":
+                    await db.refresh(job)
+                    if job.status == "canceled":
+                        logger.info("Higgsfield job %s completed after cancellation; result discarded", job_id)
+                        return
                     job.status = "completed"
                     result_url = status_info.get("url")
                     if result_url:
@@ -189,17 +229,23 @@ async def higgsfield_generate_media_task(job_id: str):
                     await db.commit()
                     return
                 elif status in ["failed", "nsfw"]:
+                    await db.refresh(job)
+                    if job.status == "canceled":
+                        return
                     job.status = "failed"
                     job.error_message = f"Higgsfield status: {status}"
                     await db.commit()
                     return
 
-            job.status = "failed"
-            job.error_message = "Polling timed out"
-            await db.commit()
+            if await _reread_status(db, job) != "canceled":
+                job.status = "failed"
+                job.error_message = "Polling timed out"
+                await db.commit()
 
         except Exception as e:
             logger.error("Error in Higgsfield generation task: %s", e)
+            if await _reread_status(db, job) == "canceled":
+                return
             job.status = "failed"
             err_text = str(e)
             if "401" in err_text or "Unauthorized" in err_text:
@@ -292,9 +338,75 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
     return job
 
 
+# Statuses a user may still cancel. Anything past these is already settled and
+# cancelling would be a lie.
+CANCELLABLE_STATUSES = {"pending", "queued", "running", "in_progress", "processing"}
+TERMINAL_STATUSES = {"completed", "failed", "nsfw", "canceled"}
+
+
 async def get_media_job(db: AsyncSession, user: User, job_id: str) -> Optional[MediaGenerationJob]:
+    """Owner-scoped job read.
+
+    A job id is not a capability: every other read in the app is scoped to the
+    caller's account or workspace, and this one used to filter on `id` alone,
+    which let any signed-in user pull another user's prompt, result URL and
+    error text by iterating ids. Same-owner OR same-workspace is the rule; the
+    org comes from the same helper the write path uses so team members keep
+    seeing their shared jobs.
+    """
+    org = await get_or_create_default_org(db, user, lock_row=False)
+    conditions = [MediaGenerationJob.user_id == user.id]
+    if org is not None:
+        conditions.append(MediaGenerationJob.org_id == org.id)
     result = await db.execute(
-        select(MediaGenerationJob).where(MediaGenerationJob.id == job_id)
+        select(MediaGenerationJob).where(
+            MediaGenerationJob.id == job_id,
+            or_(*conditions),
+        )
     )
-    job = result.scalar_one_or_none()
-    return job
+    return result.scalar_one_or_none()
+
+
+async def cancel_media_job(db: AsyncSession, user: User, job_id: str) -> dict:
+    """Cancel a generation that has not produced a result yet.
+
+    Returns an explicit outcome instead of a blanket success:
+
+    * ``canceled``            — status flipped; the queued provider task
+      checks for this before it spends a generation and before it records
+      usage, so the attempt is never billed.
+    * ``already_terminal``    — nothing to cancel; the caller gets the real
+      status rather than a fake "we cancelled it".
+    * ``not_found``           — wrong id or not yours (the router renders both
+      as 404 so this endpoint cannot be used to probe other accounts).
+
+    A provider that is already mid-request cannot be recalled over our
+    transport, so the message says "canceled locally, an in-flight provider
+    call may still finish and its result will be discarded" rather than
+    promising an abort we do not have.
+    """
+    job = await get_media_job(db, user, job_id)
+    if not job:
+        return {"outcome": "not_found", "job_id": job_id}
+
+    if job.status not in CANCELLABLE_STATUSES:
+        return {
+            "outcome": "already_terminal",
+            "job_id": job_id,
+            "status": job.status,
+            "message": f"This job is already {job.status}, so there is nothing to cancel.",
+        }
+
+    provider = job.provider
+    job.status = "canceled"
+    job.error_message = "Canceled by user."
+    await db.commit()
+    logger.info("Media job %s canceled by user %s (provider=%s)", job_id, user.id, provider)
+
+    detail = "Job canceled. Credits for this attempt were not charged."
+    if provider == "higgsfield":
+        detail = (
+            "Job canceled. The provider may still finish the request on its side; "
+            "its result will be discarded and nothing is charged."
+        )
+    return {"outcome": "canceled", "job_id": job_id, "status": "canceled", "message": detail}

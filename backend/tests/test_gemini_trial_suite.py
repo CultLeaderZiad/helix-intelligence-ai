@@ -73,7 +73,11 @@ def test_trial_gatekeeper_video_blocked():
         images_trial_total=0.0
     )
 
-    # J. Video on trial must be rejected with 402 video_not_allowed
+    # J. Video on trial is capped at 3 per day (the product sells the trial as
+    #    "Video motion trial active (3/day)"), and the 4th one must be refused.
+    #    The old assertion here demanded a hard block on the FIRST video with
+    #    code video_not_allowed — a contract the service stopped enforcing, so
+    #    this suite was red on a clean checkout.
     class MockDB:
         async def execute(self, q):
             class Res:
@@ -85,13 +89,18 @@ def test_trial_gatekeeper_video_blocked():
 
     db = MockDB()
 
+    org.videos_generated_today = 0.0
+    asyncio.run(assert_can_generate_image(db, user, org, media_type="video"))
+    print("[PASS] Test J1: first trial video of the day is allowed")
+
+    org.videos_generated_today = 3.0
     try:
         asyncio.run(assert_can_generate_image(db, user, org, media_type="video"))
-        assert False, "Should have raised HTTPException"
+        assert False, "The 4th video on a trial day must be rejected"
     except HTTPException as e:
         assert e.status_code == 402
-        assert e.detail["code"] == "video_not_allowed"
-        print("[PASS] Test J: Video request rejected with HTTP 402 (video_not_allowed)")
+        assert e.detail["code"] == "video_limit_reached"
+        print("[PASS] Test J2: 4th trial video rejected with HTTP 402 (video_limit_reached)")
 
 def test_trial_daily_limit_and_total_cap():
     now = datetime.datetime.now(datetime.timezone.utc)
