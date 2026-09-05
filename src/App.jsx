@@ -78,7 +78,11 @@ function DocumentTitle() {
 function AuthenticatedShell() {
   return (
     <AppShell>
-      <Outlet />
+      {/* Region boundary: a page-level crash shows a contained error while
+          the shell (sidebar, nav, status bar) stays alive. */}
+      <ErrorBoundary variant="region" label="This page">
+        <Outlet />
+      </ErrorBoundary>
     </AppShell>
   )
 }
@@ -86,7 +90,9 @@ function AuthenticatedShell() {
 function AdminShellLayout() {
   return (
     <AdminShell>
-      <Outlet />
+      <ErrorBoundary variant="region" label="This admin page">
+        <Outlet />
+      </ErrorBoundary>
     </AdminShell>
   )
 }

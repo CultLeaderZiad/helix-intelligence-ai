@@ -9,6 +9,7 @@ import { ResultSummary } from "@/features/discover/ResultSummary"
 import { ResultsTable } from "@/features/discover/ResultsTable"
 import { CreativeDetailPanel } from "@/features/discover/CreativeDetailPanel"
 import { Button } from "@/components/ui/Button"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States"
 import { PHASE, useDiscoverySearch } from "@/hooks/useDiscoverySearch"
 import { useIsBelowLg } from "@/hooks/useMediaQuery"
@@ -354,11 +355,13 @@ export function DiscoverPage() {
 
             {phase === PHASE.READY && items.length > 0 ? (
               <>
-                <ResultsTable
-                  items={items}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                />
+                <ErrorBoundary variant="compact" label="The results table">
+                  <ResultsTable
+                    items={items}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                  />
+                </ErrorBoundary>
                 <div className="flex h-8 shrink-0 items-center gap-3 border-t border-border bg-surface px-3">
                   <span className="label-mono">
                     page {results.page} · {formatInt(items.length)} of{" "}
@@ -389,10 +392,12 @@ export function DiscoverPage() {
         ) : null}
 
         {inspectorOpen ? (
-          <CreativeDetailPanel
-            creativeId={selectedId}
-            onClose={() => setSelectedId(null)}
-          />
+          <ErrorBoundary variant="compact" label="The creative detail panel">
+            <CreativeDetailPanel
+              creativeId={selectedId}
+              onClose={() => setSelectedId(null)}
+            />
+          </ErrorBoundary>
         ) : null}
       </div>
 

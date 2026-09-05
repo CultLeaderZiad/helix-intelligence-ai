@@ -117,7 +117,7 @@ async def lifespan(app: FastAPI):
                     print(f"Startup reconciliation: {len(stuck_discover_jobs)} stuck discover job(s) marked failed and refunded.")
                 stuck_media_jobs = (await conn.execute(text("""
                     SELECT id FROM media_jobs
-                    WHERE status IN ('pending', 'running', 'processing')
+                    WHERE status IN ('pending', 'running', 'in_progress', 'processing')
                       AND created_at < :cutoff
                 """), {"cutoff": reconcile_cutoff})).all()
                 if stuck_media_jobs:
@@ -125,7 +125,7 @@ async def lifespan(app: FastAPI):
                         UPDATE media_jobs
                         SET status = 'failed',
                             error_message = 'Interrupted by a service restart. Please try generating again.'
-                        WHERE status IN ('pending', 'running', 'processing')
+                        WHERE status IN ('pending', 'running', 'in_progress', 'processing')
                           AND created_at < :cutoff
                     """), {"cutoff": reconcile_cutoff})
                     print(f"Startup reconciliation: {len(stuck_media_jobs)} stuck media job(s) marked failed.")

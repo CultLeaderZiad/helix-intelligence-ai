@@ -1,4 +1,5 @@
 import os
+import re
 import asyncio
 import httpx
 import logging
@@ -25,6 +26,24 @@ DISCOVERY_PROVIDER_CHAIN = [
     "meta_official",
     "apify",
 ]
+
+# A plausible domain: dot-separated labels ending in an alpha TLD. This is
+# the ONLY query shape Adyntel's company_domain endpoint can answer —
+# anything else used to be blindly turned into "{query}.com" and was
+# guaranteed to fail (while still spending a paid API call).
+_DOMAIN_RE = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$", re.IGNORECASE)
+
+
+def is_domain_shaped(query: str) -> bool:
+    """True when the query is (or starts with) an actual domain —
+    e.g. 'nike.com', 'https://nike.com/shoes', 'www.nike.co.uk'."""
+    candidate = (query or "").strip().lower()
+    if "://" in candidate:
+        candidate = candidate.split("://", 1)[1]
+    candidate = candidate.split("/", 1)[0].split(":", 1)[0].strip()
+    if candidate.startswith("www."):
+        candidate = candidate[4:]
+    return " " not in candidate and bool(_DOMAIN_RE.match(candidate))
 
 
 class AdLibraryProvider(ScraperProvider):
@@ -99,26 +118,34 @@ class AdLibraryProvider(ScraperProvider):
                 logger.warning(f"[AdDiscovery] Metapi search failed: {e}, falling back to Adyntel")
 
         # ----------------------------------------------------------------------
-        # 2. ADYNTEL (Secondary: Domain/company trace fallback)
+        # 2. ADYNTEL (Secondary: Domain/company trace fallback — domains only)
         # ----------------------------------------------------------------------
         if self.adyntel_provider.adyntel_api_key and self.adyntel_provider.adyntel_email:
-            self.sources_tried.append("Adyntel")
-            logger.info(f"[AdDiscovery] Attempting secondary provider: Adyntel for query='{cleaned_query}'")
-            try:
-                creatives = await self.adyntel_provider.search(
+            if not is_domain_shaped(cleaned_query):
+                # Keyword queries are not domains: appending ".com" here
+                # produced garbage like "mosalah.com" and a wasted paid call.
+                logger.info(
+                    "[AdDiscovery] Skipping Adyntel for keyword query='%s' (domain-shaped queries only)",
                     cleaned_query,
-                    max_records=max_records,
-                    filters=filters,
-                    progress_callback=progress_callback
                 )
-                if creatives:
-                    self.last_provider_used = "adyntel"
-                    logger.info(f"[AdDiscovery] Adyntel succeeded with {len(creatives)} creatives")
-                    return creatives
-                else:
-                    logger.info("[AdDiscovery] Adyntel returned 0 creatives, proceeding to next fallback")
-            except Exception as e:
-                logger.warning(f"[AdDiscovery] Adyntel search failed: {e}, falling back to Meta Official API")
+            else:
+                self.sources_tried.append("Adyntel")
+                logger.info(f"[AdDiscovery] Attempting secondary provider: Adyntel for query='{cleaned_query}'")
+                try:
+                    creatives = await self.adyntel_provider.search(
+                        cleaned_query,
+                        max_records=max_records,
+                        filters=filters,
+                        progress_callback=progress_callback
+                    )
+                    if creatives:
+                        self.last_provider_used = "adyntel"
+                        logger.info(f"[AdDiscovery] Adyntel succeeded with {len(creatives)} creatives")
+                        return creatives
+                    else:
+                        logger.info("[AdDiscovery] Adyntel returned 0 creatives, proceeding to next fallback")
+                except Exception as e:
+                    logger.warning(f"[AdDiscovery] Adyntel search failed: {e}, falling back to Meta Official API")
 
         # ----------------------------------------------------------------------
         # 3. META OFFICIAL GRAPH API (Tertiary: Official ads_archive endpoint)

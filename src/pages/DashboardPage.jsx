@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react"
 import { Activity, BarChart2, TrendingUp, Users, RefreshCw, AlertCircle } from "lucide-react"
 import { dashboardService } from "@/services"
 import { Panel } from "@/components/ui/Panel"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { Tag } from "@/components/ui/Tag"
 import { Button } from "@/components/ui/Button"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
@@ -96,6 +97,7 @@ export default function DashboardPage() {
       <div className="grid gap-6 md:grid-cols-2">
         
         {/* TOP PERFORMERS */}
+        <ErrorBoundary variant="compact" label="The top performers panel">
         <Panel className="flex flex-col">
           <div className="border-b border-border p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-text">
@@ -129,8 +131,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </Panel>
+        </ErrorBoundary>
 
         {/* REACH/ACTIVITY LEADERBOARD */}
+        <ErrorBoundary variant="compact" label="The leaderboard panel">
         <Panel className="flex flex-col">
           <div className="border-b border-border p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-text">
@@ -170,8 +174,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </Panel>
+        </ErrorBoundary>
 
         {/* TIMELINE VIEW */}
+        <ErrorBoundary variant="compact" label="The timeline panel">
         <Panel className="col-span-1 md:col-span-2">
           <div className="border-b border-border p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-text">
@@ -208,8 +214,10 @@ export default function DashboardPage() {
             )}
           </div>
         </Panel>
+        </ErrorBoundary>
 
         {/* CROSS-BRAND COMPARISON */}
+        <ErrorBoundary variant="compact" label="The cross-brand panel">
         <Panel className="col-span-1 md:col-span-2 flex flex-col">
           <div className="border-b border-border p-4 flex justify-between items-center">
             <div>
@@ -271,6 +279,7 @@ export default function DashboardPage() {
             )}
           </div>
         </Panel>
+        </ErrorBoundary>
 
       </div>
     </div>
