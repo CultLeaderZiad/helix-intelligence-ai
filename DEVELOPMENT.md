@@ -107,7 +107,36 @@ There is **no** Neon Auth / Better Auth dependency on the login path.
 
 Do **not** set `VITE_NEON_AUTH_URL` — it is no longer used and was the cause of the "Invalid origin" error in production.
 
-## Credit & Billing Architecture
+Auth is always backed by the FastAPI service — the frontend never signs in
+against the mock (`authService` is the API client in every data-source mode,
+so a real account always works).
+
+### Password reset ("auth failed" recovery)
+
+Accounts created before the FastAPI cutover (or via the Neon webhook) carry a
+password hash the app cannot verify, so sign-in returns the generic
+`Invalid email or password`. Recovery is:
+
+1. `POST /api/auth/forgot-password` — always returns the same generic success
+   (no account enumeration). For an existing account it mints a single-use,
+   30-minute JWT with `purpose: password_reset` (stored only as SHA-256).
+2. The link is logged server-side on every request. Because no mail provider
+   is configured yet, `AUTH_DEV_RESET_RETURN=true` additionally returns it in
+   the API response (`{"ok": true, "reset_url": "…"}`), which the
+   forgot-password page renders. Set it to `false` as soon as real email
+   delivery is wired up.
+3. `POST /api/auth/reset-password` redeems the token (single-use — a reused or
+   expired token is rejected) and returns a fresh session, signing the user in.
+
+Locked out as the owner? Run the recovery tool against the same database the
+API uses (no deploy needed):
+
+```bash
+cd backend
+python scripts/reset_admin_password.py --email you@gmail.com --password 'NewPassword2026!'
+```
+
+### Credit & Billing Architecture
 
 Helix enforces strict server-side credit caps with database row-level locking (`with_for_update()`) on organizations to prevent race conditions and protect external provider quotas.
 

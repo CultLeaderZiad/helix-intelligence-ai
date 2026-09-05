@@ -1,3 +1,4 @@
+import { useRef } from "react"
 import { Search, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Select } from "@/components/ui/Field"
@@ -18,12 +19,25 @@ export function SearchQueryBar({
   canSort,
 }) {
   const { t, isRtl } = useLanguage()
+  // Synchronous double-submit guard: bridges the gap between the click and
+  // the isBusy re-render, so two rapid clicks cannot both dispatch. The
+  // timeout releases it if the submit never engages the busy state.
+  const submitLockRef = useRef(false)
+
+  function handleSubmit() {
+    if (submitLockRef.current || isBusy) return
+    submitLockRef.current = true
+    window.setTimeout(() => {
+      submitLockRef.current = false
+    }, 400)
+    onSubmit()
+  }
 
   function handleKeyDown(event) {
     if (event.nativeEvent.isComposing || event.keyCode === 229) return
     if (event.key === "Enter") {
       event.preventDefault()
-      onSubmit()
+      handleSubmit()
     }
   }
 
@@ -78,7 +92,7 @@ export function SearchQueryBar({
         />
       </div>
 
-      <Button variant="primary" size="md" onClick={onSubmit} disabled={isBusy} className="font-bold">
+      <Button variant="primary" size="md" onClick={handleSubmit} disabled={isBusy} className="font-bold">
         {isBusy ? t("running", "Running...") : t("runDiscovery", "Run discovery")}
         {!isBusy ? <KeyHint tone="on-accent">↵</KeyHint> : null}
       </Button>

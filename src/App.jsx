@@ -16,6 +16,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 const SignInPage = lazy(() => import("@/pages/auth/SignInPage").then(m => ({ default: m.SignInPage })))
 const SignUpPage = lazy(() => import("@/pages/auth/SignUpPage").then(m => ({ default: m.SignUpPage })))
 const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage").then(m => ({ default: m.ResetPasswordPage })))
 const DiscoverPage = lazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
 const IntelligencePage = lazy(() => import("@/pages/IntelligencePage").then(m => ({ default: m.IntelligencePage })))
 const PerformancePage = lazy(() => import("./pages/PerformancePage").then(m => ({ default: m.default || m.PerformancePage })))
@@ -46,6 +47,7 @@ const PUBLIC_TITLES = {
   "/sign-in": "Sign in",
   "/sign-up": "Create account",
   "/forgot-password": "Reset password",
+  "/reset-password": "Set a new password",
   "/swipe-files": "Swipe Files",
   "/guide": "Playbook & Guide",
   "/intelligence": "Intelligence & Patterns",
@@ -76,7 +78,11 @@ function DocumentTitle() {
 function AuthenticatedShell() {
   return (
     <AppShell>
-      <Outlet />
+      {/* Region boundary: a page-level crash shows a contained error while
+          the shell (sidebar, nav, status bar) stays alive. */}
+      <ErrorBoundary variant="region" label="This page">
+        <Outlet />
+      </ErrorBoundary>
     </AppShell>
   )
 }
@@ -84,7 +90,9 @@ function AuthenticatedShell() {
 function AdminShellLayout() {
   return (
     <AdminShell>
-      <Outlet />
+      <ErrorBoundary variant="region" label="This admin page">
+        <Outlet />
+      </ErrorBoundary>
     </AdminShell>
   )
 }
@@ -116,6 +124,7 @@ export default function App() {
                   <Route path="/sign-in" element={<SignInPage />} />
                   <Route path="/sign-up" element={<SignUpPage />} />
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/playbook/:publicId" element={<PublicPlaybookPage />} />
 
                   {/* Admin console — admin role only */}

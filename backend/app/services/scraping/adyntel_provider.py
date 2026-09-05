@@ -28,8 +28,15 @@ class AdyntelProvider(ScraperProvider):
         if not self.adyntel_api_key or not self.adyntel_email:
             logger.warning("Adyntel credentials missing. Skipping Adyntel fallback.")
             return []
-            
+
         if not query or not query.strip():
+            return []
+
+        # Adyntel answers company_domain lookups only. Keyword queries used
+        # to be mangled into "{query}.com" here — refuse them outright.
+        from app.services.scraping.ad_library_provider import is_domain_shaped
+        if not is_domain_shaped(query):
+            logger.info("Adyntel skipped: query='%s' is not domain-shaped", query.strip())
             return []
 
         clean_brand = query.strip().lower()

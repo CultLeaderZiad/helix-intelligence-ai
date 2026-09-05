@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { Button } from "@/components/ui/Button"
 import { EmptyState, SkeletonRows } from "@/components/ui/States"
+import { InfoTip } from "@/components/ui/InfoTip"
+import { useLanguage } from "@/context/LanguageContext"
 import { useSearchContext } from "@/context/SearchContext"
 import { creativeService } from "@/services"
 import {
@@ -23,6 +25,7 @@ import {
 
 export function PerformancePage() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const { latestSearch, selectActiveCreative } = useSearchContext()
 
   const [creatives, setCreatives] = useState([])
@@ -170,11 +173,11 @@ export function PerformancePage() {
         <div className="p-8">
           <EmptyState
             icon={Activity}
-            title="No Performance Data Available"
-            description="Run a search in the Discover tab to gather competitor ad run-times and performance signals."
+            title={t("noPerformanceTitle")}
+            description={t("noPerformanceDesc")}
             action={
               <Button size="sm" variant="primary" onClick={() => navigate("/discover")}>
-                Start in Discover
+                {t("openDiscover")}
               </Button>
             }
           />
@@ -203,20 +206,23 @@ export function PerformancePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             <div className="rounded border border-border bg-surface p-4">
               <div className="flex items-center justify-between">
-                <span className="label-mono text-text-faint">Average Active Duration</span>
+                <span className="label-mono text-text-faint">{t("kpiAvgDuration")}</span>
                 <Clock className="h-4 w-4 text-accent" />
               </div>
               <p className="text-2xl font-mono font-bold text-text mt-2">
                 {metrics.avgDays} <span className="text-sm font-normal text-text-muted">days</span>
               </p>
-              <span className="text-[11px] text-text-muted mt-1 block">
-                Average competitor test cycle
+              <span className="text-[11px] text-text-muted mt-1 block flex items-center">
+                <span className="label-mono flex items-center">
+                  what this means
+                  <InfoTip text="How long the typical competitor ad keeps running before being swapped — longer usually means it was working." label="What does active duration mean?" />
+                </span>
               </span>
             </div>
 
             <div className="rounded border border-border bg-surface p-4">
               <div className="flex items-center justify-between">
-                <span className="label-mono text-text-faint">Evergreen Survivor Rate</span>
+                <span className="label-mono text-text-faint">{t("kpiEvergreen")}</span>
                 <Award className="h-4 w-4 text-success" />
               </div>
               <p className="text-2xl font-mono font-bold text-success mt-2">
@@ -224,32 +230,35 @@ export function PerformancePage() {
               </p>
               <span className="text-[11px] text-text-muted mt-1 block">
                 {metrics.survivorCount} of {creatives.length} ads active &ge;14 days
+                <InfoTip text="Ads still running after 14+ days — an ad only survives that long if it keeps earning its place." label="What does evergreen survivor mean?" />
               </span>
             </div>
 
             <div className="rounded border border-border bg-surface p-4">
               <div className="flex items-center justify-between">
-                <span className="label-mono text-text-faint">Average Composite Score</span>
+                <span className="label-mono text-text-faint">{t("kpiComposite")}</span>
                 <TrendingUp className="h-4 w-4 text-amber-400" />
               </div>
               <p className="text-2xl font-mono font-bold text-amber-400 mt-2">
                 {metrics.avgScore} <span className="text-sm font-normal text-text-muted">/ 100</span>
               </p>
               <span className="text-[11px] text-text-muted mt-1 block">
-                Hook & clarity benchmark
+                {t("helixSignalNote")}
+                <InfoTip text="One combined 0–100 score Helix computes from the ad's hook, clarity and retention — the ad platform itself does not report this." label="What does composite score mean?" />
               </span>
             </div>
 
             <div className="rounded border border-border bg-surface p-4">
               <div className="flex items-center justify-between">
-                <span className="label-mono text-text-faint">Format Distribution</span>
+                <span className="label-mono text-text-faint">{t("kpiFormat")}</span>
                 <Layers className="h-4 w-4 text-info" />
               </div>
               <p className="text-2xl font-mono font-bold text-info mt-2">
                 {metrics.videoCount} <span className="text-sm font-normal text-text-muted">videos / {creatives.length - metrics.videoCount} stills</span>
               </p>
               <span className="text-[11px] text-text-muted mt-1 block">
-                {Math.round((metrics.videoCount / creatives.length) * 100)}% video share
+                Video share of the corpus
+                <InfoTip text="How many of the found ads are videos versus static images." label="What does format distribution mean?" />
               </span>
             </div>
           </div>
@@ -341,7 +350,8 @@ export function PerformancePage() {
             <div className="border-b border-border bg-surface-2 px-4 py-2.5 flex items-center justify-between">
               <span className="label-mono text-text flex items-center gap-1.5">
                 <BarChart3 className="h-3.5 w-3.5 text-accent" />
-                Durability & Fatigue Leaderboard
+                {t("durabilityHeader")}
+                <InfoTip text="Ads ranked by how many days they have stayed active — still running usually means still profitable." label="What does the durability leaderboard mean?" />
               </span>
               <span className="text-[10px] font-mono text-text-faint">
                 Long-running ads indicate winning ROAS & high budget scaling
@@ -419,7 +429,8 @@ export function PerformancePage() {
                           {days} days active
                         </span>
                         <span className="text-[10px] font-mono text-text-faint">
-                          Durability index
+                          {t("durabilityIndex")}
+                          <InfoTip text="How many days this ad has been running — surviving past 14 days suggests it keeps working." label="What does durability index mean?" />
                         </span>
                       </div>
 
@@ -427,8 +438,9 @@ export function PerformancePage() {
                         <span className="font-mono text-sm font-bold text-accent">
                           {c.scores?.composite ? Math.round(c.scores.composite) : "—"}
                         </span>
-                        <span className="text-[10px] font-mono text-text-faint">
-                          Composite score
+                        <span className="text-[10px] font-mono text-text-faint flex items-center">
+                          {t("compositeScoreLabel")}
+                          <InfoTip text="One combined 0–100 score Helix computes from the ad's hook, clarity and retention — the ad platform itself does not report this." label="What does composite score mean?" />
                         </span>
                       </div>
 

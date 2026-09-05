@@ -201,7 +201,19 @@ async def higgsfield_generate_media_task(job_id: str):
         except Exception as e:
             logger.error("Error in Higgsfield generation task: %s", e)
             job.status = "failed"
-            job.error_message = str(e)[:200]
+            err_text = str(e)
+            if "401" in err_text or "Unauthorized" in err_text:
+                job.error_message = (
+                    "Higgsfield rejected the API credentials (401). "
+                    "This has been logged for the team — please retry later."
+                )
+            elif "403" in err_text or "Forbidden" in err_text:
+                job.error_message = (
+                    "Higgsfield denied this request (403). "
+                    "This has been logged for the team — please retry later."
+                )
+            else:
+                job.error_message = err_text[:200]
             await db.commit()
 
 

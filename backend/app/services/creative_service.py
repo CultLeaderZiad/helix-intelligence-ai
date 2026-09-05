@@ -12,6 +12,9 @@ from app.schemas.creative import Brand as BrandSchema
 from app.schemas.analysis import Pattern as PatternSchema
 from app.models.pattern import Pattern
 from fastapi import HTTPException
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def list_creatives(
     db: AsyncSession, 
@@ -321,8 +324,31 @@ async def generate_patterns_for_recent_creatives(db: AsyncSession, user: User, j
         
         await db.commit()
         return patterns
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "AI pattern extraction failed (job=%s user=%s): %s",
+            job_id, user.id, e,
+        )
+        try:
+            await AIRouter.log_failure(
+                db,
+                user_id=user.id,
+                provider_name=getattr(provider, "model", "unknown"),
+                operation="pattern_synthesis",
+                org_id=None,
+                error=str(e),
+            )
+        except Exception:
+            logger.exception("Failed to record pattern failure log")
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "analysis_unavailable",
+                "message": "Pattern extraction is temporarily unavailable — the AI provider could not be reached. No credits were charged. Please try again shortly.",
+            },
+        )
 
 # --- Swipe Files / Saved Creatives (Gated by 'swipe_files', 0 credit cost) ---
 async def save_creative(

@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from fastapi import HTTPException
 import datetime
+import logging
 
 from app.schemas.analysis import Insight
 from app.models.ai_insight import AIInsight
@@ -13,9 +14,12 @@ from app.models.user import User
 from app.services.billing_service import (
     assert_can_spend,
     charge,
+    refund,
     ANALYSIS_PATTERN_CREDIT_COST,
     ESTIMATED_PROVIDER_COSTS
 )
+
+logger = logging.getLogger(__name__)
 
 async def generate_insight_for_creative(
     db: AsyncSession,
@@ -64,7 +68,7 @@ async def generate_insight_for_creative(
         insight_schema = await provider.generate_insight(creative_schema)
         provider_name = getattr(provider, "model", "unknown")
         
-        # 3. Deduct credit and log usage
+        # 3. Deduct credit and log usage (only after a real insight exists)
         if cost > 0:
             await charge(
                 db=db,
@@ -81,24 +85,51 @@ async def generate_insight_for_creative(
         else:
             await AIRouter.log_usage(db, user.id, provider_name, org_id=org.id, tokens=0)
         
-        # 4. Save to DB
-        new_insight = AIInsight(
-            id=insight_schema.id,
-            creative_id=creative_id,
-            kind=insight_schema.kind,
-            title=insight_schema.title,
-            summary=insight_schema.summary,
-            confidence=insight_schema.confidence,
-            model_version=insight_schema.model_version
-        )
-        db.add(new_insight)
-        await db.commit()
+        # 4. Save to DB. If persistence fails after a charge, refund —
+        # the user must never pay for an insight they did not receive.
+        try:
+            new_insight = AIInsight(
+                id=insight_schema.id,
+                creative_id=creative_id,
+                kind=insight_schema.kind,
+                title=insight_schema.title,
+                summary=insight_schema.summary,
+                confidence=insight_schema.confidence,
+                model_version=insight_schema.model_version
+            )
+            db.add(new_insight)
+            await db.commit()
+        except Exception:
+            if cost > 0:
+                await refund(db, org.id, cost, "analysis_persist_failed", None)
+            raise
         
         return insight_schema
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(
+            "AI insight generation failed (creative=%s user=%s): %s",
+            creative_id, user.id, e,
+        )
+        try:
+            await AIRouter.log_failure(
+                db,
+                user_id=user.id,
+                provider_name=getattr(provider, "model", "unknown"),
+                operation="ai_insight",
+                org_id=org.id,
+                error=str(e),
+            )
+        except Exception:
+            logger.exception("Failed to record AI insight failure log")
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "analysis_unavailable",
+                "message": "Analysis is temporarily unavailable — the AI provider could not be reached. No credits were charged. Please try again shortly.",
+            },
+        )
         
 async def get_creative_insight(db: AsyncSession, creative_id: str) -> Paginated[Insight]:
     if settings.USE_MOCKS:

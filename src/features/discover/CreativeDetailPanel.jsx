@@ -6,6 +6,8 @@ import { useAsync } from "@/hooks/useAsync"
 import { Button } from "@/components/ui/Button"
 import { Tag } from "@/components/ui/Tag"
 import { ScoreBar, StatBlock, MetricValue } from "@/components/ui/Metric"
+import { InfoTip } from "@/components/ui/InfoTip"
+import { useLanguage } from "@/context/LanguageContext"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { deriveInsight } from "@/lib/insight"
 import {
@@ -144,6 +146,7 @@ function PatternFindings({ patterns }) {
  */
 export function CreativeDetailPanel({ creativeId, onClose }) {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -287,23 +290,29 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
             {/* Performance scores */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="label-mono">Performance scores</span>
+                <span className="label-mono">{t("performanceScores")}</span>
                 {data.scores?.composite !== null && data.scores?.composite !== undefined ? (
                   <span className="label-mono text-accent">
                     tier {data.scores.composite >= 80 ? "A" : data.scores.composite >= 60 ? "B" : "C"}
                   </span>
                 ) : null}
               </div>
+              <p className="text-[10px] leading-snug text-text-faint">
+                {t("helixSignalNote")}
+              </p>
               {[
-                ["Hook", data.scores?.hook],
-                ["Clarity", data.scores?.clarity],
-                ["Retention", data.scores?.retention],
-                ["Composite", data.scores?.composite],
-              ].map(([label, value]) => (
+                ["Hook", data.scores?.hook, "How strongly the opening grabs attention in the first seconds."],
+                ["Clarity", data.scores?.clarity, "How obvious the offer and message are at a glance."],
+                ["Retention", data.scores?.retention, "How likely people are to keep watching instead of scrolling away."],
+                ["Composite", data.scores?.composite, "One combined 0–100 signal from the three scores above."],
+              ].map(([label, value, tip]) => (
                 <div key={label} className="flex items-center justify-between gap-2">
-                  <span className="text-xs text-text-muted">{label}</span>
+                  <span className="flex items-center text-xs text-text-muted">
+                    {label}
+                    <InfoTip text={tip} label={`What does ${label} mean?`} />
+                  </span>
                   {value === null || value === undefined ? (
-                    <span className="label-mono">not scored</span>
+                    <span className="label-mono">{t("notScored")}</span>
                   ) : (
                     <ScoreBar value={value} width="w-20" />
                   )}

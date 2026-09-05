@@ -134,11 +134,35 @@ const authService = {
   },
 
   /**
-   * Password reset stub — no Neon Auth dependency.
-   * Backend endpoint not yet implemented; returns ok immediately.
+   * Start a password reset. Always resolves with the same generic shape
+   * whether or not the account exists (no account enumeration). Returns
+   * `reset_url` when the backend runs in dev-delivery mode (no mail
+   * provider configured) so the UI can surface it.
    */
   async requestPasswordReset({ email } = {}) {
-    return { ok: true, email: String(email ?? "").trim().toLowerCase() }
+    const payload = await request("/auth/forgot-password", {
+      method: "POST",
+      body: { email: String(email ?? "").trim().toLowerCase() },
+    })
+    return { ok: true, reset_url: payload?.reset_url ?? null }
+  },
+
+  /**
+   * Redeem a reset token with a new password. The backend returns a fresh
+   * session, so a successful reset signs the user straight in.
+   */
+  async resetPassword({ token, newPassword } = {}) {
+    const session = await request("/auth/reset-password", {
+      method: "POST",
+      body: { token: String(token ?? ""), new_password: newPassword },
+    })
+    if (!session?.access_token) {
+      throw new ServiceError("Password reset succeeded but no session was returned", {
+        code: "no_token",
+      })
+    }
+    storeToken(session.access_token)
+    return { user: sessionToUser(session) }
   },
 
   /**

@@ -3,7 +3,6 @@ import { DATA_SOURCE } from "./config"
 import discoverMock from "./mock/discoverService.mock"
 import creativeMock from "./mock/creativeService.mock"
 import analysisMock from "./mock/analysisService.mock"
-import authMock from "./mock/authService.mock"
 import adminMock from "./mock/adminService.mock"
 import accountMock from "./mock/accountService.mock"
 import notificationMock from "./mock/notificationService.mock"
@@ -28,7 +27,10 @@ const useApi = DATA_SOURCE === "api"
 export const discoverService = useApi ? discoverApi : discoverMock
 export const creativeService = useApi ? creativeApi : creativeMock
 export const analysisService = useApi ? analysisApi : analysisMock
-export const authService = useApi ? authApi : authMock
+/* Accounts always live in the FastAPI backend. Mock-mode sign-in with a
+   real email only ever produced "auth failed" — the in-memory mock does
+   not persist users — so auth is deliberately NOT gated by DATA_SOURCE. */
+export const authService = authApi
 export const adminService = useApi ? adminApi : adminMock
 export const accountService = useApi ? accountApi : accountMock
 export const notificationService = useApi ? notificationApi : notificationMock

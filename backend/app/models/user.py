@@ -20,4 +20,6 @@ class User(Base):
     is_suspended = Column(Boolean, default=False)
     is_banned = Column(Boolean, default=False)
     has_completed_onboarding = Column(Boolean, default=False)
+    password_reset_token_hash = Column(String, nullable=True)
+    password_reset_expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -64,8 +64,10 @@ function StateFrame({
   action,
   meta,
   icon: Icon,
+  size = "default",
   className,
 }) {
+  const large = size === "lg"
   return (
     <div
       className={cn(
@@ -73,21 +75,38 @@ function StateFrame({
         className,
       )}
     >
-      <div className="flex w-full max-w-sm flex-col gap-3 border border-border bg-surface p-4">
+      <div
+        className={cn(
+          "flex w-full flex-col gap-3 border border-border bg-surface",
+          large ? "max-w-md p-6" : "max-w-sm p-4",
+        )}
+      >
         <div className="flex items-baseline justify-between gap-3">
           <span className={cn("label-mono flex items-center gap-1.5", statusTone)}>
-            {Icon ? <Icon className="h-3 w-3" aria-hidden="true" /> : null}
+            {Icon ? (
+              <Icon className={large ? "h-3.5 w-3.5" : "h-3 w-3"} aria-hidden="true" />
+            ) : null}
             {status}
           </span>
           {meta ? <span className="label-mono tnum truncate">{meta}</span> : null}
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <p className="text-pretty text-[13px] font-medium leading-snug text-text">
+        <div className={cn("flex flex-col", large ? "gap-2" : "gap-1.5")}>
+          <p
+            className={cn(
+              "text-pretty font-medium leading-snug text-text",
+              large ? "text-base font-semibold" : "text-[13px]",
+            )}
+          >
             {title}
           </p>
           {description ? (
-            <p className="text-pretty text-xs leading-relaxed text-text-muted">
+            <p
+              className={cn(
+                "text-pretty leading-relaxed text-text-muted",
+                large ? "text-sm" : "text-xs",
+              )}
+            >
               {description}
             </p>
           ) : null}
@@ -105,6 +124,7 @@ export function EmptyState({
   description,
   action,
   icon,
+  size = "default",
   className,
 }) {
   return (
@@ -115,6 +135,7 @@ export function EmptyState({
       description={description}
       action={action}
       icon={icon}
+      size={size}
       className={className}
     />
   )

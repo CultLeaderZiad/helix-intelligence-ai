@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Radar, SearchX } from "lucide-react"
+import { Radar, SearchX, Clock } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useTelemetry } from "@/app/TelemetryContext"
 import { SearchQueryBar } from "@/features/discover/SearchQueryBar"
@@ -9,6 +9,7 @@ import { ResultSummary } from "@/features/discover/ResultSummary"
 import { ResultsTable } from "@/features/discover/ResultsTable"
 import { CreativeDetailPanel } from "@/features/discover/CreativeDetailPanel"
 import { Button } from "@/components/ui/Button"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States"
 import { PHASE, useDiscoverySearch } from "@/hooks/useDiscoverySearch"
 import { useIsBelowLg } from "@/hooks/useMediaQuery"
@@ -163,6 +164,18 @@ export function DiscoverPage() {
   }
 
   const items = results?.items ?? []
+  /* Zero-result honesty: the results endpoint never applies the filter
+     rail, so an empty set almost always means the scrape itself found
+     nothing — the backend's zero_results stage_label says exactly why. */
+  const scrapedNothing =
+    phase === PHASE.READY && items.length === 0 && (job?.records_found ?? 0) === 0
+  const filtersWereApplied =
+    appliedFilters.country !== "ALL" ||
+    (appliedFilters.platforms?.length ?? 0) > 0 ||
+    (appliedFilters.formats?.length ?? 0) > 0 ||
+    (appliedFilters.spend_bands?.length ?? 0) > 0 ||
+    (appliedFilters.min_score ?? 0) > 0 ||
+    (appliedFilters.min_days_active ?? 0) > 0
   const showProgress = Boolean(job) && phase !== PHASE.READY && phase !== PHASE.IDLE
   const inspectorOpen = Boolean(selectedId)
 
@@ -264,13 +277,13 @@ export function DiscoverPage() {
           <section
             id="tour-results-area"
             className="flex min-w-0 flex-1 flex-col overflow-hidden"
-            aria-label="Discovery results"
+            aria-label={t("discoveryResults")}
           >
             {phase === PHASE.IDLE ? (
               <EmptyState
                 icon={Radar}
-                title="No discovery run yet"
-                description="Query a competitor ad library to enqueue a scrape. Results are ranked by composite score once the job completes."
+                title={t("noRunYet")}
+                description={t("noRunYetDesc")}
                 action={
                   <Button size="sm" variant="primary" onClick={runDiscovery}>
                     Run discovery
@@ -286,33 +299,69 @@ export function DiscoverPage() {
             ) : null}
 
             {phase === PHASE.ERROR ? (
-              <ErrorState 
-                error={error} 
+              <ErrorState
+                error={error}
                 onRetry={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
                 description={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? "Upgrade your account or add credits to continue using Discover." : undefined}
+              />
+            ) : null}
+
+            {phase === PHASE.TIMED_OUT ? (
+              <EmptyState
+                icon={Clock}
+                size="lg"
+                status={t("stalled")}
+                title={t("takingLonger")}
+                description={t("takingLongerDesc")}
+                action={
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="primary" onClick={retry}>
+                      {t("retrySearch")}
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={cancel}>
+                      {t("cancel")}
+                    </Button>
+                  </div>
+                }
               />
             ) : null}
 
             {phase === PHASE.READY && items.length === 0 ? (
               <EmptyState
                 icon={SearchX}
-                title="Job completed with no matches"
-                description="The scrape ran successfully but nothing in the corpus satisfied the query and filters. Widen the filters and re-run."
+                size="lg"
+                status={scrapedNothing ? "zero results" : "no matches"}
+                title={
+                  scrapedNothing
+                    ? t("zeroResultsTitle")
+                    : t("noMatchesTitle")
+                }
+                description={
+                  scrapedNothing
+                    ? job?.stage_label && job?.stage !== "complete"
+                      ? job.stage_label
+                      : 'The ad libraries had no active ads for this query. Try a company domain (e.g. "nike.com") or a broader industry keyword, then re-run.'
+                    : t("noMatchesDesc")
+                }
                 action={
-                  <Button size="sm" variant="outline" onClick={clearFilters}>
-                    Clear filters
-                  </Button>
+                  filtersWereApplied ? (
+                    <Button size="sm" variant="outline" onClick={clearFilters}>
+                      {t("clearFilters")}
+                    </Button>
+                  ) : null
                 }
               />
             ) : null}
 
             {phase === PHASE.READY && items.length > 0 ? (
               <>
-                <ResultsTable
-                  items={items}
-                  selectedId={selectedId}
-                  onSelect={setSelectedId}
-                />
+                <ErrorBoundary variant="compact" label="The results table">
+                  <ResultsTable
+                    items={items}
+                    selectedId={selectedId}
+                    onSelect={setSelectedId}
+                  />
+                </ErrorBoundary>
                 <div className="flex h-8 shrink-0 items-center gap-3 border-t border-border bg-surface px-3">
                   <span className="label-mono">
                     page {results.page} · {formatInt(items.length)} of{" "}
@@ -343,10 +392,12 @@ export function DiscoverPage() {
         ) : null}
 
         {inspectorOpen ? (
-          <CreativeDetailPanel
-            creativeId={selectedId}
-            onClose={() => setSelectedId(null)}
-          />
+          <ErrorBoundary variant="compact" label="The creative detail panel">
+            <CreativeDetailPanel
+              creativeId={selectedId}
+              onClose={() => setSelectedId(null)}
+            />
+          </ErrorBoundary>
         ) : null}
       </div>
 

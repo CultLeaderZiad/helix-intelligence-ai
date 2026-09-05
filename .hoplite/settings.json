@@ -1,0 +1,27 @@
+{
+	"version": 1,
+	"ports": {
+		"preview": 3000,
+		"additional": {
+			"backend": {
+				"port": 8000,
+				"label": "FastAPI backend"
+			}
+		}
+	},
+	"scripts": {
+		"setup": {
+			"enabled": true,
+			"command": "pnpm install && (cd backend && python3 -m venv venv && ./venv/bin/pip install -q -r requirements.txt)"
+		},
+		"run": {
+			"enabled": true,
+			"command": "pnpm dev"
+		},
+		"archive": {
+			"enabled": true,
+			"command": null
+		}
+	},
+	"mcpServers": []
+}

@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, BackgroundTasks
 import datetime
 import asyncio
@@ -16,6 +17,24 @@ from app.models.organization import Organization
 from app.models.user import User
 from app.core.config import settings
 from app.db.session import async_session_maker
+
+
+def _job_response(job: ScrapeJob) -> Job:
+    # Job rows are nullable at the model level; the response schema is not.
+    # Coalesce so a legacy/partial row serializes instead of 500ing.
+    return Job(
+        job_id=job.id,
+        status=job.status or "running",
+        progress=float(job.progress or 0.0),
+        stage=job.stage or "",
+        stage_label=job.stage_label or "",
+        stage_index=int(job.stage_index or 0),
+        stages_total=int(job.stages_total or 0),
+        records_found=int(job.record_count or 0),
+        elapsed_ms=int(job.elapsed_ms or 0),
+        created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
+    )
+
 
 from app.services.scraping.ad_library_provider import AdLibraryProvider, DISCOVERY_PROVIDER_CHAIN
 from app.services.scraping.scrapegraph_provider import ScrapeGraphProvider
@@ -66,33 +85,27 @@ async def trigger_search(
     org_id = org.id
     clean_query = search_params.query.strip()
 
-    # 2. 12-Hour Query Deduplication Cache Check
-    # If identical query was already scraped successfully in this org in the last 12h,
-    # return the cached result immediately (0 credits required, 0 credits charged).
+    # 2. Duplicate-search guards.
+    # 2a. Active guard: an identical query is already queued/running in this
+    #     org -> return that job, so the second request polls the first
+    #     search's result instead of creating (and charging) a duplicate.
+    # 2b. 12-hour cache: an identical query already succeeded in this org in
+    #     the last 12h -> return the cached result (0 credits charged).
+    # Matching is case-insensitive ("Nike" == "nike"): it is the same scrape.
     twelve_hours_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
+    normalized_query = clean_query.lower()
     duplicate_job_result = await db.execute(
         select(ScrapeJob)
         .where(ScrapeJob.org_id == org_id)
-        .where(ScrapeJob.query == clean_query)
-        .where(ScrapeJob.status == "succeeded")
+        .where(func.lower(ScrapeJob.query) == normalized_query)
+        .where(ScrapeJob.status.in_(("queued", "running", "succeeded")))
         .where(ScrapeJob.created_at >= twelve_hours_ago)
         .order_by(ScrapeJob.created_at.desc())
         .limit(1)
     )
     duplicate_job = duplicate_job_result.scalar_one_or_none()
     if duplicate_job:
-        return Job(
-            job_id=duplicate_job.id,
-            status=duplicate_job.status,
-            progress=duplicate_job.progress,
-            stage=duplicate_job.stage,
-            stage_label=duplicate_job.stage_label,
-            stage_index=duplicate_job.stage_index,
-            stages_total=duplicate_job.stages_total,
-            records_found=duplicate_job.record_count,
-            elapsed_ms=duplicate_job.elapsed_ms,
-            created_at=duplicate_job.created_at.isoformat() + "Z" if duplicate_job.created_at else ""
-        )
+        return _job_response(duplicate_job)
 
     # 3. Server-side Quota & Feature Gatekeeper (with row-level locking)
     org, plan = await assert_can_spend(
@@ -103,7 +116,11 @@ async def trigger_search(
         lock_row=True
     )
 
-    # 4. Create new ScrapeJob
+    # 4. Create new ScrapeJob. A partial unique index on
+    # (org_id, lower(query)) WHERE status IN ('queued','running') makes a
+    # duplicate active job structurally impossible: if a concurrent identical
+    # request won the insert race, we roll back and return its job — before
+    # any credits are charged.
     new_job = ScrapeJob(
         org_id=org_id,
         query=clean_query,
@@ -118,7 +135,31 @@ async def trigger_search(
         record_count=0
     )
     db.add(new_job)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        winner_result = await db.execute(
+            select(ScrapeJob)
+            .where(ScrapeJob.org_id == org_id)
+            .where(func.lower(ScrapeJob.query) == normalized_query)
+            .where(ScrapeJob.status.in_(("queued", "running", "succeeded")))
+            .order_by(ScrapeJob.created_at.desc())
+            .limit(1)
+        )
+        winner = winner_result.scalar_one_or_none()
+        winner_created = winner.created_at if winner else None
+        if winner_created and winner_created.tzinfo is not None:
+            winner_created = winner_created.replace(tzinfo=None)
+        if winner_created and winner_created >= twelve_hours_ago:
+            return _job_response(winner)
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "duplicate_search",
+                "message": "A search for this query is already in progress or was just completed. Please retry in a moment.",
+            },
+        )
     await db.refresh(new_job)
 
     # 5. Upfront Base Charge (2.0 Credits)
@@ -353,12 +394,39 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
         async with async_session_maker() as db:
             await update_job_stage(db, job_id, "normalizing", "Normalizing & Saving", 0.6, 3)
             brand_id = str(uuid.uuid4())
+            brand_label = " ".join(w.capitalize() for w in clean_query.split())
             saved_creatives = 0
+            rejected_templates = 0
+            duplicates_skipped = 0
+            seen_content_keys = set()
             for rc, extra in enriched_creatives:
-                db_creative, db_score = normalize_creative(rc, job_id, brand_id, extra)
+                normalized = normalize_creative(rc, job_id, brand_id, extra, brand_label=brand_label)
+                if normalized is None:
+                    # Pure template macros — not a real creative.
+                    rejected_templates += 1
+                    continue
+                db_creative, db_score = normalized
+                # Providers (especially Adyntel) can return the same snapshot
+                # many times; identical (format, headline, body) within one
+                # job is one creative, not ten.
+                content_key = (
+                    db_creative.format,
+                    (db_creative.headline or "").lower().strip(),
+                    (db_creative.body or "").lower().strip()[:200],
+                )
+                if content_key in seen_content_keys:
+                    duplicates_skipped += 1
+                    continue
+                seen_content_keys.add(content_key)
                 db.add(db_creative)
                 db.add(db_score)
                 saved_creatives += 1
+            if rejected_templates or duplicates_skipped:
+                print(
+                    f"[DiscoverPipeline] job {job_id}: saved {saved_creatives}, "
+                    f"rejected {rejected_templates} template-only record(s), "
+                    f"skipped {duplicates_skipped} duplicate(s)"
+                )
             await db.commit()
             
         # Stage 4: AI Pattern Scoring/Generation (Graceful Degradation)
