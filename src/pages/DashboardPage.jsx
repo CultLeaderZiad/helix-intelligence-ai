@@ -3,12 +3,15 @@ import { Activity, BarChart2, TrendingUp, Users, RefreshCw, AlertCircle } from "
 import { dashboardService } from "@/services"
 import { Panel } from "@/components/ui/Panel"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { InfoTip } from "@/components/ui/InfoTip"
+import { useLanguage } from "@/context/LanguageContext"
 import { Tag } from "@/components/ui/Tag"
 import { Button } from "@/components/ui/Button"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { SkeletonRows } from "@/components/ui/States"
 
 export default function DashboardPage() {
+  const { t } = useLanguage()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -102,10 +105,11 @@ export default function DashboardPage() {
           <div className="border-b border-border p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-text">
               <TrendingUp className="h-4 w-4 text-accent" />
-              Top Performers
+              {t("topPerformers")}
             </h2>
-            <p className="font-mono text-[10px] uppercase text-text-faint">
-              Ranked by composite score
+            <p className="font-mono text-[10px] uppercase text-text-faint flex items-center">
+              {t("rankedByComposite")}
+              <InfoTip text="One combined 0–100 score Helix computes from each ad's hook, clarity and retention — not a metric Meta or the ad platform reports." label="What does composite score mean?" />
             </p>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
@@ -139,7 +143,7 @@ export default function DashboardPage() {
           <div className="border-b border-border p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-text">
               <Users className="h-4 w-4 text-accent" />
-              Reach & Activity
+              {t("leaderboardPanel")}
             </h2>
             <p className="font-mono text-[10px] uppercase text-text-faint">
               Ranked by estimated impressions or days active
@@ -182,7 +186,7 @@ export default function DashboardPage() {
           <div className="border-b border-border p-4">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-text">
               <Activity className="h-4 w-4 text-accent" />
-              Discovery Activity Over Time
+              {t("timelinePanel")}
             </h2>
             <p className="font-mono text-[10px] uppercase text-text-faint">
               Creatives found per day
@@ -223,7 +227,7 @@ export default function DashboardPage() {
             <div>
               <h2 className="flex items-center gap-2 text-sm font-semibold text-text">
                 <BarChart2 className="h-4 w-4 text-accent" />
-                Cross-Brand Comparison
+                {t("crossBrandPanel")}
               </h2>
               <p className="font-mono text-[10px] uppercase text-text-faint">
                 Select 2-3 brands to compare
@@ -256,17 +260,23 @@ export default function DashboardPage() {
                     <h3 className="mb-4 text-lg font-bold text-text truncate">{brand.name}</h3>
                     
                     <div className="space-y-4">
-                      <div>
-                        <p className="font-mono text-[10px] text-text-faint uppercase">Avg Composite Score</p>
-                        <p className="font-mono text-2xl font-bold text-accent">
-                          {brand.avg_score != null ? brand.avg_score.toFixed(1) : "—"}
-                        </p>
-                      </div>
-                      
-                      <div>
-                        <p className="font-mono text-[10px] text-text-faint uppercase">Active Ads</p>
-                        <p className="text-base font-medium text-text">{brand.active_ads}</p>
-                      </div>
+              <div>
+                <p className="font-mono text-[10px] text-text-faint uppercase flex items-center">
+                  {t("avgComposite")}
+                  <InfoTip text="One combined 0–100 score Helix computes from each ad's hook, clarity and retention — not a metric Meta or the ad platform reports." label="What does avg composite score mean?" />
+                </p>
+                <p className="font-mono text-2xl font-bold text-accent">
+                  {brand.avg_score != null ? brand.avg_score.toFixed(1) : "—"}
+                </p>
+              </div>
+              
+              <div>
+                <p className="font-mono text-[10px] text-text-faint uppercase flex items-center">
+                  {t("activeAds")}
+                  <InfoTip text="How many ads from this brand were found in your latest searches." label="What does active ads mean?" />
+                </p>
+                <p className="text-base font-medium text-text">{brand.active_ads}</p>
+              </div>
                       
                       <div>
                         <p className="font-mono text-[10px] text-text-faint uppercase">Dominant Format</p>

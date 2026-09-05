@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { Button } from "@/components/ui/Button"
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States"
+import { InfoTip } from "@/components/ui/InfoTip"
+import { useLanguage } from "@/context/LanguageContext"
 import { useSearchContext } from "@/context/SearchContext"
 import { creativeService, analysisService } from "@/services"
 import {
@@ -31,6 +33,7 @@ import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 export function IntelligencePage() {
   const navigate = useNavigate()
   const { latestSearch, searchHistory, activeCreative, selectActiveCreative, selectSearchSession } = useSearchContext()
+  const { t } = useLanguage()
   
   const [creatives, setCreatives] = useState([])
   const [selectedCreativeId, setSelectedCreativeId] = useState(null)
@@ -206,7 +209,7 @@ export function IntelligencePage() {
               className="flex items-center gap-1.5"
             >
               <Sparkles className="h-3 w-3" />
-              {generatingPatterns ? "Synthesizing Patterns..." : "Synthesize Patterns (1.0 cr)"}
+              {generatingPatterns ? t("synthesizing") : `${t("synthesizePatterns")} (1.0 cr)`}
             </Button>
           </div>
         }
@@ -240,10 +243,10 @@ export function IntelligencePage() {
           </div>
           <div className="flex items-center gap-2">
             <Button size="xs" variant="ghost" onClick={() => navigate("/discover")}>
-              Run New Search
+              {t("runNewSearch")}
             </Button>
             <Button size="xs" variant="outline" onClick={() => navigate("/create")}>
-              Go to Create Studio →
+              {t("goToCreate")}
             </Button>
           </div>
         </div>
@@ -251,7 +254,7 @@ export function IntelligencePage() {
         <div className="flex items-center justify-between border-b border-border bg-surface px-4 py-2 text-xs text-text-muted">
           <span>Tip: Run a search in <strong>Discover</strong> to extract competitive patterns from fresh ad library data.</span>
           <Button size="xs" variant="primary" onClick={() => navigate("/discover")}>
-            Open Discover
+            {t("openDiscover")}
           </Button>
         </div>
       )}
@@ -264,8 +267,8 @@ export function IntelligencePage() {
         <div className="p-8">
           <EmptyState
             icon={Network}
-            title="No Creative Corpus Available"
-            description="Run a discovery query in the Discover tab to populate the corpus with competitor ads, or generate a sample analysis."
+            title={t("noCorpusTitle")}
+            description={t("noCorpusDesc")}
             action={
               <Button size="sm" variant="primary" onClick={() => navigate("/discover")}>
                 Go to Discover
@@ -304,15 +307,23 @@ export function IntelligencePage() {
                           <span className="truncate">{p.label}</span>
                         </div>
                         <span className="text-[10px] font-mono text-text-muted capitalize">
-                          Family: {p.family || "Hook Formula"}
+                          {t("family")}: {p.family || "Hook Formula"}
                         </span>
                       </div>
                       <div className="flex flex-col items-end shrink-0 font-mono text-[10px]">
-                        <span className="text-accent font-bold">
+                        <span className="flex items-center text-accent font-bold">
                           +{typeof p.lift_index === "number" ? p.lift_index.toFixed(1) : "2.4"}x Lift
+                          <InfoTip
+                            text="How much more often this pattern appears in strong-performing ads compared to average ones."
+                            label="What does Lift mean?"
+                          />
                         </span>
-                        <span className="text-text-faint">
+                        <span className="flex items-center text-text-faint">
                           {p.prevalence ? `${(p.prevalence * 100).toFixed(0)}% prev` : "High"}
+                          <InfoTip
+                            text="The share of ads in this search that use this pattern."
+                            label="What does prevalence mean?"
+                          />
                         </span>
                       </div>
                     </div>
@@ -320,7 +331,7 @@ export function IntelligencePage() {
                 </div>
               ) : (
                 <div className="rounded border border-dashed border-border p-3 text-center text-xs text-text-muted">
-                  Click "Synthesize Patterns" to mine recurring hook formulas across this corpus.
+                  {t("noPatternsYetDesc")}
                 </div>
               )}
             </div>
@@ -494,7 +505,7 @@ export function IntelligencePage() {
                         className="flex items-center gap-1 font-mono text-[11px]"
                       >
                         <Sparkles className="h-3 w-3" />
-                        {generatingInsight ? "Analyzing (Pattern Engine)..." : "Generate Deep Teardown (1.0 cr)"}
+                        {generatingInsight ? t("analyzingTeardown") : t("generateTeardown")}
                       </Button>
                     )}
                   </div>
@@ -543,7 +554,7 @@ export function IntelligencePage() {
                     <div className="rounded border border-warning/40 bg-warning/5 p-4 text-left space-y-2">
                       <p className="flex items-center gap-1.5 font-mono text-[11px] font-bold uppercase text-warning">
                         <AlertTriangle className="h-3.5 w-3.5" />
-                        Analysis Temporarily Unavailable
+                        {t("analysisUnavailable")}
                       </p>
                       <p className="text-xs leading-relaxed text-text-muted">{analysisError}</p>
                       <div>
@@ -554,15 +565,15 @@ export function IntelligencePage() {
                           disabled={generatingInsight}
                           className="font-mono text-[11px]"
                         >
-                          Try Again
+                          {t("tryAgain")}
                         </Button>
                       </div>
                     </div>
                   ) : (
                     <div className="rounded border border-dashed border-border p-6 text-center text-xs text-text-muted space-y-2">
-                      <p>No LLM strategic teardown generated for this creative yet.</p>
+                      <p>{t("noTeardownYet")}</p>
                       <p className="text-[11px] text-text-faint">
-                        Click "Generate Deep Teardown" to run full script analysis, emotional trigger mapping, and audience fatigue prediction.
+                        {t("noTeardownYetDesc")}
                       </p>
                     </div>
                   )}

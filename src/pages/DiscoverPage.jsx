@@ -277,13 +277,13 @@ export function DiscoverPage() {
           <section
             id="tour-results-area"
             className="flex min-w-0 flex-1 flex-col overflow-hidden"
-            aria-label="Discovery results"
+            aria-label={t("discoveryResults")}
           >
             {phase === PHASE.IDLE ? (
               <EmptyState
                 icon={Radar}
-                title="No discovery run yet"
-                description="Query a competitor ad library to enqueue a scrape. Results are ranked by composite score once the job completes."
+                title={t("noRunYet")}
+                description={t("noRunYetDesc")}
                 action={
                   <Button size="sm" variant="primary" onClick={runDiscovery}>
                     Run discovery
@@ -310,16 +310,16 @@ export function DiscoverPage() {
               <EmptyState
                 icon={Clock}
                 size="lg"
-                status="stalled"
-                title="This is taking longer than expected"
-                description="The search job has not reported progress for several minutes and may have stalled. No new results will appear on their own. Retry the search, or cancel to stop watching this job."
+                status={t("stalled")}
+                title={t("takingLonger")}
+                description={t("takingLongerDesc")}
                 action={
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="primary" onClick={retry}>
-                      Retry search
+                      {t("retrySearch")}
                     </Button>
                     <Button size="sm" variant="outline" onClick={cancel}>
-                      Cancel
+                      {t("cancel")}
                     </Button>
                   </div>
                 }
@@ -333,20 +333,20 @@ export function DiscoverPage() {
                 status={scrapedNothing ? "zero results" : "no matches"}
                 title={
                   scrapedNothing
-                    ? "No ads found for this search"
-                    : "No creatives match the current filters"
+                    ? t("zeroResultsTitle")
+                    : t("noMatchesTitle")
                 }
                 description={
                   scrapedNothing
                     ? job?.stage_label && job?.stage !== "complete"
                       ? job.stage_label
                       : 'The ad libraries had no active ads for this query. Try a company domain (e.g. "nike.com") or a broader industry keyword, then re-run.'
-                    : "The scrape found creatives, but none fit the filters applied to this search. Clear or widen the filters and re-run."
+                    : t("noMatchesDesc")
                 }
                 action={
                   filtersWereApplied ? (
                     <Button size="sm" variant="outline" onClick={clearFilters}>
-                      Clear filters
+                      {t("clearFilters")}
                     </Button>
                   ) : null
                 }

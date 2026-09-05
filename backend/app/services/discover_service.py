@@ -394,12 +394,39 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
         async with async_session_maker() as db:
             await update_job_stage(db, job_id, "normalizing", "Normalizing & Saving", 0.6, 3)
             brand_id = str(uuid.uuid4())
+            brand_label = " ".join(w.capitalize() for w in clean_query.split())
             saved_creatives = 0
+            rejected_templates = 0
+            duplicates_skipped = 0
+            seen_content_keys = set()
             for rc, extra in enriched_creatives:
-                db_creative, db_score = normalize_creative(rc, job_id, brand_id, extra)
+                normalized = normalize_creative(rc, job_id, brand_id, extra, brand_label=brand_label)
+                if normalized is None:
+                    # Pure template macros — not a real creative.
+                    rejected_templates += 1
+                    continue
+                db_creative, db_score = normalized
+                # Providers (especially Adyntel) can return the same snapshot
+                # many times; identical (format, headline, body) within one
+                # job is one creative, not ten.
+                content_key = (
+                    db_creative.format,
+                    (db_creative.headline or "").lower().strip(),
+                    (db_creative.body or "").lower().strip()[:200],
+                )
+                if content_key in seen_content_keys:
+                    duplicates_skipped += 1
+                    continue
+                seen_content_keys.add(content_key)
                 db.add(db_creative)
                 db.add(db_score)
                 saved_creatives += 1
+            if rejected_templates or duplicates_skipped:
+                print(
+                    f"[DiscoverPipeline] job {job_id}: saved {saved_creatives}, "
+                    f"rejected {rejected_templates} template-only record(s), "
+                    f"skipped {duplicates_skipped} duplicate(s)"
+                )
             await db.commit()
             
         # Stage 4: AI Pattern Scoring/Generation (Graceful Degradation)
