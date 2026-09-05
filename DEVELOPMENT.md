@@ -239,7 +239,7 @@ HELIX provides a 7-day free trial with daily image creation powered by the exist
 - **Trial Duration**: 7 days from signup (`trial_started_at` to `trial_expires_at`).
 - **Trial Daily Quota**: 5 image generations per UTC day (resets at 00:00 UTC).
 - **Trial Total Cap**: 25 total image generations across the entire trial.
-- **Video Generation**: Disabled during trial; available exclusively on paid plans.
+- **Video Generation**: Up to 3 per UTC day on the trial (the 4th is refused with `402 video_limit_reached`); 50/day on paid plans, unlimited for admins. *(Docs and `test_gemini_trial_suite` once claimed video was trial-disabled; the service and the Create UI both allow 3/day, and the suite now asserts that.)*
 - **Paid Plans**: 50+ images per day.
 - **Admin Users**: Unlimited bypass across all features.
 
@@ -258,13 +258,28 @@ ENABLE_GEMINI_LIVE_TEST=true python backend/scripts/test_gemini_image_live.py
 ```
 
 ### Running the Test Suites:
-```bash
-# Run Gemini Trial & Entitlement suite
-python backend/tests/test_gemini_trial_suite.py
+Every suite under `backend/tests/` runs offline against in-memory SQLite
+(`aiosqlite`) — no Postgres, no network, no provider credentials. They do read
+`app.core.config`, which fails fast if required env vars are missing, so give
+it the two it insists on (the `DATABASE_URL` value only has to parse; SQLite is
+substituted by the suites themselves):
 
-# Run Higgsfield Diagnostic suite
-python backend/tests/test_higgsfield_suite.py
+```bash
+export SECRET_KEY=*** DATABASE_URL=postgresql+asyncpg://u:p@127.0.0.1:5/db
+
+python backend/tests/test_gemini_trial_suite.py        # trial quotas, video cap, admin bypass
+python backend/tests/test_higgsfield_suite.py         # media capability catalogue + health payload
+python backend/tests/test_byok_suite.py               # BYOK encryption, masking, routing rules
+python backend/tests/test_auth_reset_suite.py         # password reset + case-insensitive email
+python backend/tests/test_discovery_chain_suite.py    # Discover billing truth (see below)
 ```
+
+`test_discovery_chain_suite.py` pins the three outcomes a Discover search can
+end in, because they must not be conflated and only one of them is billable:
+a source answered with rows (billed), a source answered with nothing
+(billed, `stage=zero_results`), and no source could be reached at all
+(`stage=providers_unavailable`, refunded — a missing APIFY/Meta/Apify
+credential is not evidence that a brand does not advertise).
 
 
 

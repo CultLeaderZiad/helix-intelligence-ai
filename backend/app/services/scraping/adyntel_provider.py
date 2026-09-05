@@ -2,7 +2,7 @@ import os
 import asyncio
 import httpx
 import logging
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from app.services.scraping.base import ScraperProvider, RawCreative
 from app.core.config import settings
@@ -21,6 +21,9 @@ class AdyntelProvider(ScraperProvider):
         self.user_id = user_id
         self.adyntel_api_key = getattr(settings, "ADYNTEL_API_KEY", None) or os.getenv("ADYNTEL_API_KEY")
         self.adyntel_email = getattr(settings, "ADYNTEL_EMAIL", None) or os.getenv("ADYNTEL_EMAIL")
+        # See MetapiProvider.last_error: distinguishes an outage from a real
+        # "no ads for this domain" answer.
+        self.last_error: Optional[str] = None
 
     async def search(self, query: str, max_records: int, filters: dict = None, progress_callback=None) -> List[RawCreative]:
         assert max_records and max_records > 0, "Safety Violation: max_records missing or invalid"
@@ -31,6 +34,8 @@ class AdyntelProvider(ScraperProvider):
 
         if not query or not query.strip():
             return []
+
+        self.last_error = None
 
         # Adyntel answers company_domain lookups only. Keyword queries used
         # to be mangled into "{query}.com" here — refuse them outright.
@@ -78,9 +83,14 @@ class AdyntelProvider(ScraperProvider):
                     return self._parse_adyntel_ads(results, domain)
                 else:
                     logger.warning(f"Adyntel API returned status {resp.status_code}: {resp.text[:250]}")
+                    detail = f"HTTP {resp.status_code}: {resp.text[:120]}"
+                    if resp.status_code in (401, 402, 403) or "credit" in resp.text.lower():
+                        detail += " (Adyntel account not funded / key rejected)"
+                    self.last_error = detail
                     return []
         except Exception as e:
             logger.error(f"Adyntel API request failed: {e}")
+            self.last_error = f"request failed: {e}"
             return []
 
     def _parse_adyntel_ads(self, items: List[dict], domain: str) -> List[RawCreative]:

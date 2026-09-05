@@ -30,8 +30,19 @@ services:
     # Optional API keys
     # ────────────────────────────────────────────────────────
     # GROQ_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY,
-    # SCRAPEGRAPH_API_KEY, META_ACCESS_TOKEN, BRIGHTDATA_API_KEY,
-    # APIFY_API_TOKEN
+    # SCRAPEGRAPH_API_KEY, BRIGHTDATA_API_KEY,
+    #
+    # Discover ad-search chain (first source that answers wins):
+    #   METAPI_API_KEY      – primary live Ad Library search
+    #   ADYNTEL_API_KEY + ADYNTEL_EMAIL – domain-shaped queries only
+    #   META_ACCESS_TOKEN   – official ads_archive; REQUIRES the app to hold
+    #                         ads_archive authorization, else every query
+    #                         returns HTTP 400 subcode 2332002
+    #   APIFY_API_TOKEN     – last-resort paid actor
+    #   APIFY_ENABLED       – "true" to actually call Apify (default false:
+    #                         token present but source skipped)
+    # With none of these usable, searches are marked failed and refunded
+    # rather than billed as empty results.
     #
     # ────────────────────────────────────────────────────────
     # Password reset (no mail provider is configured yet)

@@ -2,7 +2,7 @@ import os
 import asyncio
 import httpx
 import logging
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from app.services.scraping.base import ScraperProvider, RawCreative
 from app.core.config import settings
@@ -20,6 +20,9 @@ class MetapiProvider(ScraperProvider):
         self.org_id = org_id
         self.user_id = user_id
         self.metapi_api_key = getattr(settings, "METAPI_API_KEY", None) or os.getenv("METAPI_API_KEY")
+        # Set when the upstream call itself failed, so the caller can tell a
+        # provider outage apart from a search that legitimately matched nothing.
+        self.last_error: Optional[str] = None
 
     async def search(self, query: str, max_records: int, filters: dict = None, progress_callback=None) -> List[RawCreative]:
         assert max_records and max_records > 0, "Safety Violation: max_records missing or invalid"
@@ -30,6 +33,8 @@ class MetapiProvider(ScraperProvider):
             
         if not query or not query.strip():
             return []
+
+        self.last_error = None
 
         clean_brand = query.strip().lower()
         if clean_brand == "*":
@@ -64,16 +69,19 @@ class MetapiProvider(ScraperProvider):
                 task_resp = await client.post("https://api.metapi.io/v1/tasks", json=payload, headers=headers)
                 if task_resp.status_code != 202 and task_resp.status_code != 200:
                     logger.warning(f"Metapi task creation failed: {task_resp.status_code} {task_resp.text[:250]}")
+                    self.last_error = f"task creation HTTP {task_resp.status_code}: {task_resp.text[:120]}"
                     return []
                 
                 task_data = task_resp.json()
                 task_id = task_data.get("task_id")
                 if not task_id:
                     logger.warning(f"Metapi did not return a task_id: {task_data}")
+                    self.last_error = "Metapi accepted the task but returned no task_id"
                     return []
 
                 # 2. Poll Task Status
                 max_attempts = 25
+                task_succeeded = False
                 for attempt in range(max_attempts):
                     await asyncio.sleep(1.5)
                     if progress_callback:
@@ -84,11 +92,21 @@ class MetapiProvider(ScraperProvider):
                         status_data = status_resp.json()
                         status = status_data.get("status")
                         if status == "succeeded":
+                            task_succeeded = True
                             break
                         elif status in ("failed", "error"):
                             logger.error(f"Metapi task failed: {status_data}")
+                            self.last_error = f"Metapi task reported status '{status}'"
                             return []
                     
+                if not task_succeeded:
+                    self.last_error = (
+                        f"Metapi task {task_id} did not finish within "
+                        f"{max_attempts} polls (~{int(max_attempts * 1.5)}s)"
+                    )
+                    logger.warning(f"{self.last_error}; skipping result fetch")
+                    return []
+
                 # 3. Get Results
                 results_resp = await client.get(f"https://api.metapi.io/v1/tasks/{task_id}/results", headers=headers)
                 if results_resp.status_code == 200:
@@ -106,10 +124,12 @@ class MetapiProvider(ScraperProvider):
                     return self._parse_metapi_ads(results, domain)
                 else:
                     logger.warning(f"Metapi results API returned status {results_resp.status_code}: {results_resp.text[:250]}")
+                    self.last_error = f"result fetch HTTP {results_resp.status_code}"
                     return []
-                    
+
         except Exception as e:
             logger.error(f"Metapi API request failed: {e}")
+            self.last_error = f"request failed: {e}"
             return []
 
     def _parse_metapi_ads(self, items: List[dict], domain: str) -> List[RawCreative]:

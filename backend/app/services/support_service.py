@@ -1,7 +1,7 @@
 import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, update
+from sqlalchemy import select, desc, func, update
 from fastapi import HTTPException, status
 
 from app.models.support_ticket import SupportTicket, SupportTicketReply
@@ -66,10 +66,13 @@ async def list_user_tickets(db: AsyncSession, user_id: str) -> List[Dict[str, An
     
     out = []
     for t in tickets:
+        # `func` was never imported here, and the `hasattr(func, "count")`
+        # guard evaluated the same missing name — so GET /api/support/tickets
+        # raised NameError (500) for every user who had ever filed a ticket.
         replies_count = await db.scalar(
             select(func.count(SupportTicketReply.id)).where(SupportTicketReply.ticket_id == t.id)
-        ) if hasattr(func, "count") else 0
-        
+        ) or 0
+
         out.append({
             "id": t.id,
             "type": t.type,
@@ -78,6 +81,7 @@ async def list_user_tickets(db: AsyncSession, user_id: str) -> List[Dict[str, An
             "status": t.status,
             "tag": t.tag,
             "context_data": t.context_data or {},
+            "replies_count": int(replies_count),
             "created_at": t.created_at.isoformat() if t.created_at else "",
             "updated_at": t.updated_at.isoformat() if t.updated_at else ""
         })
