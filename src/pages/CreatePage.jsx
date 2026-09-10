@@ -24,6 +24,7 @@ import { useSearchContext } from "@/context/SearchContext"
 import { useAuth } from "@/context/AuthContext"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 import { MessageSquarePlus } from "lucide-react"
+import { AudienceSimulationPanel } from "@/features/create/AudienceSimulationPanel"
 
 const CREATIVE_MODES = {
   image: [
@@ -465,6 +466,9 @@ export function CreatePage() {
                   </Button>
                 </div>
               )}
+
+              {/* Synthetic Audience Rehearsal */}
+              {sourceCreative && <AudienceSimulationPanel creativeId={sourceCreative.id} />}
 
               {/* Prompt Assistant & Quick Formula Templates */}
               <div className="flex flex-col gap-2">

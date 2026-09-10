@@ -8,6 +8,7 @@ import accountMock from "./mock/accountService.mock"
 import notificationMock from "./mock/notificationService.mock"
 import mediaMock from "./mock/mediaService.mock"
 import dashboardMock from "./mock/dashboardService.mock"
+import simulationMock from "./mock/simulationService.mock"
 
 import discoverApi from "./api/discoverService.api"
 import creativeApi from "./api/creativeService.api"
@@ -18,6 +19,7 @@ import accountApi from "./api/accountService.api"
 import notificationApi from "./api/notificationService.api"
 import mediaApi from "./api/mediaService.api"
 import dashboardApi from "./api/dashboardService.api"
+import simulationApi from "./api/simulationService.api"
 import supportApi from "./api/supportService.api"
 import playbookApi from "./api/playbookService.api"
 import { updatesApi } from "./api/updatesService.api"
@@ -36,6 +38,7 @@ export const accountService = useApi ? accountApi : accountMock
 export const notificationService = useApi ? notificationApi : notificationMock
 export const mediaService = useApi ? mediaApi : mediaMock
 export const dashboardService = useApi ? dashboardApi : dashboardMock
+export const simulationService = useApi ? simulationApi : simulationMock
 export const supportService = supportApi
 export const playbookService = playbookApi
 export const updatesService = updatesApi
