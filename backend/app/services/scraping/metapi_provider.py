@@ -24,6 +24,9 @@ class MetapiProvider(ScraperProvider):
             "METAPI_API_KEY",
             "METAPI_KEY",
             "METAPI_TOKEN",
+            "Meta_Api",
+            "META_API",
+            "meta_api",
             fallback=getattr(settings, "METAPI_API_KEY", None),
         )
 

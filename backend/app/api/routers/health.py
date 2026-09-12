@@ -35,7 +35,7 @@ async def health_check():
         "OPENROUTER_API_KEY": bool(env_secret("OPENROUTER_API_KEY", fallback=settings.OPENROUTER_API_KEY)),
         "GEMINI_API_KEY": bool(env_secret("GEMINI_API_KEY", fallback=settings.GEMINI_API_KEY)),
         "SCRAPEGRAPH_API_KEY": bool(env_secret("SCRAPEGRAPH_API_KEY", fallback=settings.SCRAPEGRAPH_API_KEY)),
-        "METAPI_API_KEY": bool(env_secret("METAPI_API_KEY", "METAPI_KEY", "METAPI_TOKEN", fallback=settings.METAPI_API_KEY)),
+        "METAPI_API_KEY": bool(env_secret("METAPI_API_KEY", "METAPI_KEY", "METAPI_TOKEN", "Meta_Api", "META_API", "meta_api", fallback=settings.METAPI_API_KEY)),
         "ADYNTEL_API_KEY": bool(env_secret("ADYNTEL_API_KEY", fallback=settings.ADYNTEL_API_KEY)),
         "META_ACCESS_TOKEN": bool(env_secret("META_ACCESS_TOKEN", fallback=settings.META_ACCESS_TOKEN)),
         "BRIGHTDATA_API_KEY": bool(env_secret("BRIGHTDATA_API_KEY", fallback=settings.BRIGHTDATA_API_KEY)),

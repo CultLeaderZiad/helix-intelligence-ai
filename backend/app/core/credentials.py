@@ -17,13 +17,36 @@ from typing import Optional
 
 
 def env_secret(*names: str, fallback: Optional[str] = None) -> str:
+    # 1. Exact match pass
     for name in names:
         raw = os.environ.get(name)
-        if raw is None:
-            continue
-        value = raw.strip().strip('"').strip("'")
-        if value:
-            return value
+        if raw is not None:
+            value = raw.strip().strip('"\'').strip()
+            if value:
+                return value
+
+    # 2. Case-insensitive & normalized alias scan
+    targets = set()
+    for n in names:
+        clean_n = n.lower().replace("_", "").replace("-", "")
+        targets.add(clean_n)
+        for suffix in ("apikey", "key", "token", "secret", "api"):
+            if clean_n.endswith(suffix):
+                base = clean_n[:-len(suffix)]
+                if base:
+                    targets.add(base)
+        if "metapi" in clean_n:
+            targets.add(clean_n.replace("metapi", "metaapi"))
+            targets.add("metaapi")
+
+    for k, v in os.environ.items():
+        clean_k = k.lower().replace("_", "").replace("-", "")
+        if clean_k in targets:
+            value = str(v).strip().strip('"\'').strip()
+            if value:
+                return value
+
+
     if fallback is None:
         return ""
-    return str(fallback).strip().strip('"').strip("'")
+    return str(fallback).strip().strip('"\'').strip()
