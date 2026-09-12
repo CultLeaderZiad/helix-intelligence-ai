@@ -23,6 +23,7 @@ import simulationApi from "./api/simulationService.api"
 import supportApi from "./api/supportService.api"
 import playbookApi from "./api/playbookService.api"
 import { updatesApi } from "./api/updatesService.api"
+import monitorApi from "./api/monitorService.api"
 
 const useApi = DATA_SOURCE === "api"
 
@@ -42,6 +43,9 @@ export const simulationService = useApi ? simulationApi : simulationMock
 export const supportService = supportApi
 export const playbookService = playbookApi
 export const updatesService = updatesApi
+// Monitors are inherently server-side state (a scheduler runs them), so there
+// is no mock counterpart to switch between.
+export const monitorService = monitorApi
 
 export { DATA_SOURCE }
 export { ServiceError } from "./http"

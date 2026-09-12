@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import { Bell, Check, CheckCheck, Info, AlertTriangle, Sparkles, Megaphone, Trash2, RefreshCw } from "lucide-react"
 import { notificationService } from "@/services"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
@@ -6,6 +7,7 @@ import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
 
 export function NotificationsPage() {
+  const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterType, setFilterType] = useState("all")
@@ -48,7 +50,7 @@ export function NotificationsPage() {
 
   const filtered = notifications.filter((n) => {
     if (filterType === "unread") return !n.is_read
-    if (filterType === "alert") return n.type === "alert" || n.type === "quota"
+    if (filterType === "alert") return n.type === "alert" || n.type === "quota" || n.type === "warning"
     if (filterType === "announcement") return n.type === "broadcast" || n.type === "announcement"
     return true
   })
@@ -59,6 +61,7 @@ export function NotificationsPage() {
     switch (type) {
       case "alert":
       case "quota":
+      case "warning":
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/10 text-amber-300 border border-amber-500/20">
             <AlertTriangle className="h-3 w-3" /> Alert
@@ -181,6 +184,18 @@ export function NotificationsPage() {
                   <div className="text-[11px] font-mono text-slate-500">
                     {n.created_at ? new Date(n.created_at).toLocaleString() : "Just now"}
                   </div>
+                  {n.link ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!n.is_read) handleMarkAsRead(n.id)
+                        navigate(n.link)
+                      }}
+                      className="text-[11px] font-mono text-teal-300 hover:underline text-left"
+                    >
+                      Open →
+                    </button>
+                  ) : null}
                 </div>
 
                 {!n.is_read && (

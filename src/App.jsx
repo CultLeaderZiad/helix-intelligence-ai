@@ -22,6 +22,7 @@ const IntelligencePage = lazy(() => import("@/pages/IntelligencePage").then(m =>
 const PerformancePage = lazy(() => import("./pages/PerformancePage").then(m => ({ default: m.default || m.PerformancePage })))
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then(m => ({ default: m.default || m.DashboardPage })))
 const CreatePage = lazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
+const MonitorsPage = lazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
 const GuidePage = lazy(() => import("@/pages/GuidePage").then(m => ({ default: m.GuidePage })))
 const SwipeFilesPage = lazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
 const BillingPage = lazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
@@ -155,6 +156,7 @@ export default function App() {
                       <Route path="/discover" element={<DiscoverPage />} />
                       <Route path="/intelligence" element={<IntelligencePage />} />
                       <Route path="/create" element={<CreatePage />} />
+                      <Route path="/monitors" element={<MonitorsPage />} />
                       <Route path="performance" element={<PerformancePage />} />
                       <Route path="dashboard" element={<DashboardPage />} />
                       <Route path="/swipe-files" element={<SwipeFilesPage />} />

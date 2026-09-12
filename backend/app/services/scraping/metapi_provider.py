@@ -6,6 +6,7 @@ from typing import List
 from datetime import datetime
 from app.services.scraping.base import ScraperProvider, RawCreative
 from app.core.config import settings
+from app.core.credentials import env_secret
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,10 @@ class MetapiProvider(ScraperProvider):
         self.db = db
         self.org_id = org_id
         self.user_id = user_id
-        self.metapi_api_key = getattr(settings, "METAPI_API_KEY", None) or os.getenv("METAPI_API_KEY")
+        self.metapi_api_key = env_secret(
+            "METAPI_API_KEY",
+            fallback=getattr(settings, "METAPI_API_KEY", None),
+        )
 
     async def search(self, query: str, max_records: int, filters: dict = None, progress_callback=None) -> List[RawCreative]:
         assert max_records and max_records > 0, "Safety Violation: max_records missing or invalid"

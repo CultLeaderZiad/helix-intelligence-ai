@@ -9,8 +9,16 @@ from app.services.scraping.base import ScraperProvider, RawCreative
 from app.services.scraping.metapi_provider import MetapiProvider
 from app.services.scraping.adyntel_provider import AdyntelProvider
 from app.core.config import settings
+from app.core.credentials import env_secret
 
 logger = logging.getLogger(__name__)
+
+
+def _apify_allowed() -> bool:
+    raw = os.getenv("APIFY_ENABLED", "").strip().lower()
+    if raw in ("false", "0", "no"):
+        return False
+    return True
 
 # ==============================================================================
 # CANONICAL AD DISCOVERY PROVIDER CHAIN (Single Source of Truth)
@@ -61,11 +69,15 @@ class AdLibraryProvider(ScraperProvider):
         self.metapi_provider = MetapiProvider(db, str(org_id) if org_id else "", str(user_id) if user_id else "")
         self.adyntel_provider = AdyntelProvider(db, str(org_id) if org_id else "", str(user_id) if user_id else "")
 
-        raw_meta = getattr(settings, "META_ACCESS_TOKEN", None) or os.getenv("META_ACCESS_TOKEN") or ""
-        raw_apify = getattr(settings, "APIFY_API_TOKEN", None) or os.getenv("APIFY_API_TOKEN") or os.getenv("APIFY_TOKEN") or ""
-        
-        self.meta_token = raw_meta.strip().strip('"\'')
-        self.apify_token = raw_apify.strip().strip('"\'')
+        raw_meta = env_secret("META_ACCESS_TOKEN", fallback=getattr(settings, "META_ACCESS_TOKEN", None))
+        raw_apify = env_secret(
+            "APIFY_API_TOKEN",
+            "APIFY_TOKEN",
+            fallback=getattr(settings, "APIFY_API_TOKEN", None),
+        )
+
+        self.meta_token = raw_meta
+        self.apify_token = raw_apify
         self.meta_graph_version = "v21.0"
 
         # Execution tracking
@@ -116,6 +128,8 @@ class AdLibraryProvider(ScraperProvider):
                     logger.info("[AdDiscovery] Metapi returned 0 creatives, proceeding to next fallback")
             except Exception as e:
                 logger.warning(f"[AdDiscovery] Metapi search failed: {e}, falling back to Adyntel")
+        else:
+            self.sources_tried.append("Metapi (not configured)")
 
         # ----------------------------------------------------------------------
         # 2. ADYNTEL (Secondary: Domain/company trace fallback — domains only)
@@ -146,6 +160,8 @@ class AdLibraryProvider(ScraperProvider):
                         logger.info("[AdDiscovery] Adyntel returned 0 creatives, proceeding to next fallback")
                 except Exception as e:
                     logger.warning(f"[AdDiscovery] Adyntel search failed: {e}, falling back to Meta Official API")
+        else:
+            self.sources_tried.append("Adyntel (not configured)")
 
         # ----------------------------------------------------------------------
         # 3. META OFFICIAL GRAPH API (Tertiary: Official ads_archive endpoint)
@@ -169,7 +185,7 @@ class AdLibraryProvider(ScraperProvider):
         # ----------------------------------------------------------------------
         # 4. APIFY FACEBOOK AD LIBRARY ACTOR (Last Resort: actor scraper)
         # ----------------------------------------------------------------------
-        if self.apify_token and getattr(settings, "APIFY_ENABLED", False):
+        if self.apify_token and _apify_allowed():
             self.sources_tried.append("Apify (Facebook Ad Library)")
             logger.info(f"[AdDiscovery] Attempting last-resort provider: Apify for query='{cleaned_query}'")
             try:
@@ -185,6 +201,8 @@ class AdLibraryProvider(ScraperProvider):
                     return creatives
             except Exception as e:
                 logger.warning(f"[AdDiscovery] Apify search failed: {e}")
+        elif not self.apify_token:
+            self.sources_tried.append("Apify (not configured)")
 
         logger.info(f"[AdDiscovery] All providers exhausted for query='{cleaned_query}'. Tried: {self.sources_tried}")
         return []
@@ -230,7 +248,7 @@ class AdLibraryProvider(ScraperProvider):
             return []
 
     async def query_apify(self, query: str, country: str = "ALL", max_records: int = 15, progress_callback=None) -> List[RawCreative]:
-        if not getattr(settings, "APIFY_ENABLED", False) or not self.apify_token:
+        if not self.apify_token:
             return []
 
         if progress_callback:

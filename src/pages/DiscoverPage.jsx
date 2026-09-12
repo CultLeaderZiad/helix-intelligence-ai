@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Radar, SearchX, Clock } from "lucide-react"
+import { Radar, SearchX, Clock, RotateCcw } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useTelemetry } from "@/app/TelemetryContext"
 import { SearchQueryBar } from "@/features/discover/SearchQueryBar"
@@ -11,7 +11,7 @@ import { CreativeDetailPanel } from "@/features/discover/CreativeDetailPanel"
 import { Button } from "@/components/ui/Button"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States"
-import { PHASE, useDiscoverySearch } from "@/hooks/useDiscoverySearch"
+import { PHASE, isServiceRestart, useDiscoverySearch } from "@/hooks/useDiscoverySearch"
 import { useIsBelowLg } from "@/hooks/useMediaQuery"
 import { useAuth } from "@/context/AuthContext"
 import { formatDuration, formatInt } from "@/lib/format"
@@ -46,13 +46,21 @@ const EMPTY_FILTERS = {
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 
-import { useSearchParams } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 
 export function DiscoverPage() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { latestSearch, saveCompletedSearch, selectActiveCreative } = useSearchContext()
   const { t } = useLanguage()
   const [query, setQuery] = useState(() => searchParams.get("q") || "")
+  const [queryLanguage, setQueryLanguage] = useState(() => {
+    try {
+      return localStorage.getItem("helix_search_lang") === "ar" ? "ar" : "en"
+    } catch {
+      return "en"
+    }
+  })
   const [sort, setSort] = useState("composite_desc")
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS)
@@ -67,6 +75,14 @@ export function DiscoverPage() {
   const { user, completeOnboarding } = useAuth()
   const { phase, job, results, error, submit, refine, cancel, retry, isBusy } =
     useDiscoverySearch()
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("helix_search_lang", queryLanguage)
+    } catch {
+      /* ignore */
+    }
+  }, [queryLanguage])
 
   const dirty = useMemo(
     () => JSON.stringify(draftFilters) !== JSON.stringify(appliedFilters),
@@ -139,6 +155,7 @@ export function DiscoverPage() {
         query: searchBrand,
         filters: appliedFilters,
         sort,
+        query_language: queryLanguage,
       })
     }
     // Start the tour guide right after questionnaire finishes
@@ -147,11 +164,22 @@ export function DiscoverPage() {
     }, 200)
   }
 
+  function handleDismissOnboarding() {
+    setShowOnboardingModal(false)
+    completeOnboarding()
+  }
+
+  function handleGoToDashboard() {
+    setShowOnboardingModal(false)
+    completeOnboarding()
+    navigate("/dashboard")
+  }
+
   function runDiscovery() {
     if (!query.trim()) return
     setSelectedId(null)
     setAppliedFilters(draftFilters)
-    submit({ query: query.trim(), filters: draftFilters, sort })
+    submit({ query: query.trim(), filters: draftFilters, sort, query_language: queryLanguage })
   }
 
   function handleSortChange(next) {
@@ -222,6 +250,8 @@ export function DiscoverPage() {
         activeFilterCount={activeFilterCount}
         isBusy={isBusy}
         canSort={phase === PHASE.READY || phase === PHASE.IDLE}
+        queryLanguage={queryLanguage}
+        onQueryLanguageChange={setQueryLanguage}
       />
 
       {showProgress ? (
@@ -285,7 +315,12 @@ export function DiscoverPage() {
                 title={t("noRunYet")}
                 description={t("noRunYetDesc")}
                 action={
-                  <Button size="sm" variant="primary" onClick={runDiscovery}>
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={runDiscovery}
+                    disabled={!query.trim()}
+                  >
                     Run discovery
                   </Button>
                 }
@@ -298,7 +333,21 @@ export function DiscoverPage() {
               <SkeletonRows rows={10} />
             ) : null}
 
-            {phase === PHASE.ERROR ? (
+            {phase === PHASE.ERROR && isServiceRestart(error) ? (
+              <EmptyState
+                icon={RotateCcw}
+                status="interrupted"
+                title="The service restarted while this search was running"
+                description="Nothing was wrong with your query. The backend restarted mid-run, so the job could not finish, and the credits for it have already been refunded to your balance. Running it again will start a fresh search."
+                action={
+                  <Button size="sm" variant="primary" onClick={retry}>
+                    Run the search again
+                  </Button>
+                }
+              />
+            ) : null}
+
+            {phase === PHASE.ERROR && !isServiceRestart(error) ? (
               <ErrorState
                 error={error}
                 onRetry={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
@@ -404,6 +453,8 @@ export function DiscoverPage() {
       <OnboardingWizardModal
         isOpen={showOnboardingModal}
         onClose={handleCloseOnboarding}
+        onDismiss={handleDismissOnboarding}
+        onDashboard={handleGoToDashboard}
       />
 
       <SupportFeedbackModal

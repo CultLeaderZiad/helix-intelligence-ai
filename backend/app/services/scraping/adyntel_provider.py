@@ -6,6 +6,7 @@ from typing import List
 from datetime import datetime
 from app.services.scraping.base import ScraperProvider, RawCreative
 from app.core.config import settings
+from app.core.credentials import env_secret
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +20,14 @@ class AdyntelProvider(ScraperProvider):
         self.db = db
         self.org_id = org_id
         self.user_id = user_id
-        self.adyntel_api_key = getattr(settings, "ADYNTEL_API_KEY", None) or os.getenv("ADYNTEL_API_KEY")
-        self.adyntel_email = getattr(settings, "ADYNTEL_EMAIL", None) or os.getenv("ADYNTEL_EMAIL")
+        self.adyntel_api_key = env_secret(
+            "ADYNTEL_API_KEY",
+            fallback=getattr(settings, "ADYNTEL_API_KEY", None),
+        )
+        self.adyntel_email = env_secret(
+            "ADYNTEL_EMAIL",
+            fallback=getattr(settings, "ADYNTEL_EMAIL", None),
+        )
 
     async def search(self, query: str, max_records: int, filters: dict = None, progress_callback=None) -> List[RawCreative]:
         assert max_records and max_records > 0, "Safety Violation: max_records missing or invalid"

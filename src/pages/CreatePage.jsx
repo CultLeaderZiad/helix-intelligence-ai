@@ -68,7 +68,7 @@ export function CreatePage() {
   const [customModel, setCustomModel] = useState("gemini-2.0-flash-lite-preview-02-05")
   const [showAdvanced, setShowAdvanced] = useState(false)
   
-  const { phase, job, result, error, submit, cancel, isBusy } = useMediaGenerate()
+  const { phase, job, result, error, isServiceRestart, submit, cancel, isBusy } = useMediaGenerate()
 
   const isTrial = user?.plan_id?.startsWith("plan_trial") || user?.plan === "trial" || user?.role !== "admin"
   const isAdmin = user?.role === "admin"
@@ -631,11 +631,20 @@ export function CreatePage() {
                   </div>
                 ) : displayErrorMessage ? (
                   <div className="flex flex-col items-center gap-3 text-center p-4">
-                    <AlertCircle className="h-8 w-8 text-destructive" />
-                    <span className="text-xs font-bold text-destructive">Generation Issue</span>
-                    <p className="text-[11px] text-text-muted max-w-xs">{displayErrorMessage}</p>
+                    {/* An interrupted generation is not a rejected prompt.
+                        Showing the same red "Generation Issue" for both makes
+                        users rewrite a prompt that was never the problem. */}
+                    <AlertCircle className={`h-8 w-8 ${isServiceRestart ? "text-text-muted" : "text-destructive"}`} />
+                    <span className={`text-xs font-bold ${isServiceRestart ? "text-text" : "text-destructive"}`}>
+                      {isServiceRestart ? "Interrupted by a service restart" : "Generation Issue"}
+                    </span>
+                    <p className="text-[11px] text-text-muted max-w-xs">
+                      {isServiceRestart
+                        ? "The backend restarted while this image was generating, so the job could not finish. Your prompt was fine and you were not charged for it."
+                        : displayErrorMessage}
+                    </p>
                     <Button size="xs" variant="outline" onClick={handleGenerate} className="gap-1 text-xs mt-2">
-                      <RefreshCw className="w-3 h-3" /> Retry Generation
+                      <RefreshCw className="w-3 h-3" /> {isServiceRestart ? "Generate again" : "Retry Generation"}
                     </Button>
                   </div>
                 ) : displayUrl ? (

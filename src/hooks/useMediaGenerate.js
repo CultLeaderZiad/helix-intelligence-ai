@@ -15,6 +15,7 @@ export function useMediaGenerate() {
   const [job, setJob] = useState(null)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+  const [failureKind, setFailureKind] = useState(null)
 
   const activeJobIdRef = useRef(null)
   const pollTimerRef = useRef(null)
@@ -61,6 +62,8 @@ export function useMediaGenerate() {
         } else if (currentJob.status === "failed") {
           const errStr = currentJob.error_message || "Generation failed"
           setError(errStr)
+          // A restart is not a bad prompt; CreatePage words it differently.
+          setFailureKind(currentJob.failure_kind || "error")
           setPhase(PHASE.ERROR)
           stopPolling()
         } else if (currentJob.status === "canceled") {
@@ -91,6 +94,7 @@ export function useMediaGenerate() {
       stopPolling()
       setPhase(PHASE.SUBMITTING)
       setError(null)
+      setFailureKind(null)
       setResult(null)
 
       try {
@@ -127,6 +131,7 @@ export function useMediaGenerate() {
     setJob(null)
     setResult(null)
     setError(null)
+    setFailureKind(null)
   }, [stopPolling])
 
   return {
@@ -134,6 +139,8 @@ export function useMediaGenerate() {
     job,
     result,
     error,
+    failureKind,
+    isServiceRestart: failureKind === "service_restart",
     submit,
     cancel,
     isBusy: phase === PHASE.SUBMITTING || phase === PHASE.RUNNING || phase === PHASE.FETCHING_RESULTS,

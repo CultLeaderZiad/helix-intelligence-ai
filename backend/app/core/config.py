@@ -88,7 +88,12 @@ class Settings(BaseSettings):
     META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
     BRIGHTDATA_API_KEY: str = os.getenv("BRIGHTDATA_API_KEY", "")
     APIFY_API_TOKEN: str = os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")
-    APIFY_ENABLED: bool = os.getenv("APIFY_ENABLED", "False").lower() in ("true", "1")
+    # Empty APIFY_ENABLED means "on if a token is present". Set false/0 to force off.
+    APIFY_ENABLED: bool = (
+        os.getenv("APIFY_ENABLED", "").lower() in ("true", "1", "yes")
+        if os.getenv("APIFY_ENABLED", "").strip()
+        else bool((os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")).strip())
+    )
     AIHUBMIX_API_KEY: str = os.getenv("AIHUBMIX_API_KEY", "")
     TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
     METAPI_API_KEY: str = os.getenv("METAPI_API_KEY", "")
@@ -103,6 +108,55 @@ class Settings(BaseSettings):
         "https://helix-intelligence-ai.onrender.com/api",
     ).rstrip("/")
 
+    # OBJECT STORAGE (Cloudflare R2, S3-compatible)
+    # Render's disk is ephemeral: anything written locally is destroyed on the
+    # next restart or deploy. When these are set, generated media is written to
+    # R2 instead and survives. When they are not set, storage falls back to the
+    # local disk so local development keeps working.
+    R2_ACCOUNT_ID: str = os.getenv("R2_ACCOUNT_ID", "")
+    R2_ACCESS_KEY_ID: str = os.getenv("R2_ACCESS_KEY_ID", "")
+    R2_SECRET_ACCESS_KEY: str = os.getenv("R2_SECRET_ACCESS_KEY", "")
+    R2_BUCKET: str = os.getenv("R2_BUCKET", "")
+    # Public read origin for the bucket (r2.dev subdomain or a custom domain).
+    # Required: without it we would have to hand out presigned URLs, which
+    # expire (7 days max) and would silently rot in the database.
+    R2_PUBLIC_BASE_URL: str = os.getenv("R2_PUBLIC_BASE_URL", "").rstrip("/")
+    # Optional override; normally derived from the account id.
+    R2_ENDPOINT_URL: str = os.getenv("R2_ENDPOINT_URL", "").rstrip("/")
+
+    # JOB RESILIENCE
+    # A live job writes a heartbeat every JOB_HEARTBEAT_INTERVAL_S seconds.
+    # On boot, an active job owned by a previous process that has been silent
+    # for longer than JOB_STALE_AFTER_S is treated as dead. This is silence,
+    # not total runtime, so a legitimately slow search is never swept.
+    JOB_HEARTBEAT_INTERVAL_S: int = int(os.getenv("JOB_HEARTBEAT_INTERVAL_S", "15"))
+    JOB_STALE_AFTER_S: int = int(os.getenv("JOB_STALE_AFTER_S", "120"))
+
+    # MONITORS (scheduled competitor watches)
+    # The scheduler is whatever calls POST /api/monitors/tick with this secret
+    # in the X-Cron-Secret header: a Render Cron Job, or any external cron.
+    # When unset the tick endpoint refuses every request, so an unconfigured
+    # deployment is closed rather than open.
+    CRON_SECRET: str = os.getenv("CRON_SECRET", "")
+    # A tick dispatches at most this many monitors, so a backlog cannot bury
+    # the single web instance under concurrent scrapes.
+    MONITOR_MAX_PER_TICK: int = int(os.getenv("MONITOR_MAX_PER_TICK", "3"))
+    # Consecutive absences before an ad is reported killed. See
+    # creative_fingerprint: one absence is usually a flaky scrape.
+    MONITOR_MISS_THRESHOLD: int = int(os.getenv("MONITOR_MISS_THRESHOLD", "2"))
+    # Consecutive failed runs before a monitor pauses itself, so a permanently
+    # broken query stops burning credits.
+    MONITOR_MAX_FAILURES: int = int(os.getenv("MONITOR_MAX_FAILURES", "5"))
+    # How long a monitor run may take before the reconciler treats it as dead.
+    MONITOR_RUN_TIMEOUT_S: int = int(os.getenv("MONITOR_RUN_TIMEOUT_S", "900"))
+
+    # EMAIL (Resend). Unset means email fan-out is skipped and only in-app
+    # notifications are delivered; it is never a hard failure.
+    RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
+    RESEND_FROM: str = os.getenv("RESEND_FROM", "")
+    # Origin used to build links in emails and notifications.
+    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:5173").rstrip("/")
+
     # 7-DAY TRIAL & MEDIA GENERATION LIMITS
     TRIAL_DAYS: int = int(os.getenv("TRIAL_DAYS", "7"))
     TRIAL_IMAGES_PER_DAY: int = int(os.getenv("TRIAL_IMAGES_PER_DAY", "5"))
@@ -113,6 +167,7 @@ class Settings(BaseSettings):
         case_sensitive=True,
         env_file=("../.env", "../.env.local", ".env", ".env.local"),
         extra="ignore",
+        env_ignore_empty=True,
     )
 
 

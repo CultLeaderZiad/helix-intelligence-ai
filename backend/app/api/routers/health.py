@@ -4,6 +4,7 @@ import asyncio
 import os
 from app.db.session import async_session_maker
 from app.core.config import settings
+from app.core.credentials import env_secret
 
 router = APIRouter()
 
@@ -30,12 +31,16 @@ async def health_check():
     # Safe presence indicators (boolean True/False)
     env_diagnostics = {
         "DATABASE_URL": bool(settings.DATABASE_URL or os.getenv("DATABASE_URL")),
-        "GROQ_API_KEY": bool(settings.GROQ_API_KEY or os.getenv("GROQ_API_KEY")),
-        "OPENROUTER_API_KEY": bool(settings.OPENROUTER_API_KEY or os.getenv("OPENROUTER_API_KEY")),
-        "GEMINI_API_KEY": bool(settings.GEMINI_API_KEY or os.getenv("GEMINI_API_KEY")),
-        "SCRAPEGRAPH_API_KEY": bool(settings.SCRAPEGRAPH_API_KEY or os.getenv("SCRAPEGRAPH_API_KEY")),
-        "META_ACCESS_TOKEN": bool(settings.META_ACCESS_TOKEN or os.getenv("META_ACCESS_TOKEN")),
-        "BRIGHTDATA_API_KEY": bool(settings.BRIGHTDATA_API_KEY or os.getenv("BRIGHTDATA_API_KEY")),
+        "GROQ_API_KEY": bool(env_secret("GROQ_API_KEY", fallback=settings.GROQ_API_KEY)),
+        "OPENROUTER_API_KEY": bool(env_secret("OPENROUTER_API_KEY", fallback=settings.OPENROUTER_API_KEY)),
+        "GEMINI_API_KEY": bool(env_secret("GEMINI_API_KEY", fallback=settings.GEMINI_API_KEY)),
+        "SCRAPEGRAPH_API_KEY": bool(env_secret("SCRAPEGRAPH_API_KEY", fallback=settings.SCRAPEGRAPH_API_KEY)),
+        "METAPI_API_KEY": bool(env_secret("METAPI_API_KEY", fallback=settings.METAPI_API_KEY)),
+        "ADYNTEL_API_KEY": bool(env_secret("ADYNTEL_API_KEY", fallback=settings.ADYNTEL_API_KEY)),
+        "META_ACCESS_TOKEN": bool(env_secret("META_ACCESS_TOKEN", fallback=settings.META_ACCESS_TOKEN)),
+        "BRIGHTDATA_API_KEY": bool(env_secret("BRIGHTDATA_API_KEY", fallback=settings.BRIGHTDATA_API_KEY)),
+        "APIFY_API_TOKEN": bool(env_secret("APIFY_API_TOKEN", "APIFY_TOKEN", fallback=settings.APIFY_API_TOKEN)),
+        "APIFY_ENABLED": bool(settings.APIFY_ENABLED),
         "JWT_SECRET": bool(settings.SECRET_KEY or os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET")),
         "USE_MOCKS": settings.USE_MOCKS,
     }

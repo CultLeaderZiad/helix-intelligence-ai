@@ -29,6 +29,9 @@ const translations = {
     
     // Discover
     searchPlaceholder: "Search competitor brand (e.g. nike.com) or product niche...",
+    langEnglish: "English",
+    langArabic: "Arabic",
+    searchLanguage: "Search language",
     filters: "Filters",
     compositeScore: "Composite Score",
     daysActive: "Days Active",
@@ -163,6 +166,9 @@ const translations = {
     
     // Discover
     searchPlaceholder: "ابحث عن نطاق المنافس (مثل nike.com) أو مجال المنتج...",
+    langEnglish: "English",
+    langArabic: "العربية",
+    searchLanguage: "لغة البحث",
     filters: "تصفية النتائج",
     compositeScore: "التقييم الشامل",
     daysActive: "أيام النشاط",

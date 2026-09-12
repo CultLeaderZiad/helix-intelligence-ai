@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
 import { Bell, Check, ExternalLink, Info, AlertTriangle, Sparkles, CheckCheck } from "lucide-react"
 import { notificationService } from "@/services"
 import { cn } from "@/lib/utils"
 
 export function NotificationBell({ className }) {
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -59,10 +61,24 @@ export function NotificationBell({ className }) {
     }
   }
 
+  const openNotification = (n) => {
+    if (!n.link) return
+    setOpen(false)
+    if (!n.is_read) {
+      notificationService.markAsRead(n.id).catch(() => {})
+      setNotifications((prev) =>
+        prev.map((item) => (item.id === n.id ? { ...item, is_read: true } : item))
+      )
+      setUnreadCount((c) => Math.max(0, c - 1))
+    }
+    navigate(n.link)
+  }
+
   const getTypeIcon = (type) => {
     switch (type) {
       case "alert":
       case "quota":
+      case "warning":
         return <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
       case "creative_found":
         return <Sparkles className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
@@ -114,8 +130,18 @@ export function NotificationBell({ className }) {
               notifications.map((n) => (
                 <div
                   key={n.id}
+                  role={n.link ? "button" : undefined}
+                  tabIndex={n.link ? 0 : undefined}
+                  onClick={() => openNotification(n)}
+                  onKeyDown={(e) => {
+                    if (n.link && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault()
+                      openNotification(n)
+                    }
+                  }}
                   className={cn(
                     "flex flex-col gap-1 p-2.5 transition-colors rounded-lg text-left my-0.5",
+                    n.link ? "cursor-pointer" : "",
                     !n.is_read ? "bg-surface-3/70 border border-accent/20" : "hover:bg-surface-3/30"
                   )}
                 >
@@ -123,6 +149,7 @@ export function NotificationBell({ className }) {
                     <div className="flex items-center gap-1.5">
                       {getTypeIcon(n.type)}
                       <span className="text-xs font-bold text-text">{n.title}</span>
+                      {n.link ? <ExternalLink className="h-3 w-3 text-text-faint shrink-0" /> : null}
                     </div>
                     {!n.is_read && (
                       <button

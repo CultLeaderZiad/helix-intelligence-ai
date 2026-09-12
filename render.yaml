@@ -27,6 +27,38 @@ services:
     #       absolute VITE_API_BASE_URL and VITE_DATA_SOURCE=api.
     #
     # ────────────────────────────────────────────────────────
+    # Media storage (REQUIRED for generated media to survive)
+    # ────────────────────────────────────────────────────────
+    # R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
+    # R2_BUCKET, R2_PUBLIC_BASE_URL
+    #
+    #   This instance's disk is ephemeral. Without these five set
+    #   together, generated images and videos are written locally and
+    #   destroyed on the next restart or deploy, while the database
+    #   keeps pointing at a URL that then 404s.
+    #   See "Media storage" in DEVELOPMENT.md.
+    #
+    # ────────────────────────────────────────────────────────
+    # Monitors (REQUIRED for scheduled watches to run at all)
+    # ────────────────────────────────────────────────────────
+    # CRON_SECRET  – shared secret the scheduler sends as X-Cron-Secret when
+    #                calling POST /api/monitors/tick. Unset means the endpoint
+    #                rejects everything and no monitor ever runs.
+    # APP_BASE_URL – frontend origin, used for links in alerts.
+    #
+    #   Render Cron Jobs are a paid service type ($1/month minimum), so the
+    #   tick is a plain authenticated HTTP endpoint rather than a Render-only
+    #   feature. Any scheduler works, including the free one already used to
+    #   keep this instance warm. Suggested schedule: every 15 minutes.
+    #
+    #   As a Render Cron Job:
+    #     curl -fsS -X POST -H "X-Cron-Secret: $CRON_SECRET" \
+    #       https://helix-intelligence-ai.onrender.com/api/monitors/tick
+    #
+    # Optional: RESEND_API_KEY + RESEND_FROM enable email alerts. Without
+    # them monitors still run and notify in-app.
+    #
+    # ────────────────────────────────────────────────────────
     # Optional API keys
     # ────────────────────────────────────────────────────────
     # GROQ_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY,

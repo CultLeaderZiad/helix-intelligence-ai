@@ -104,6 +104,8 @@
  * @property {string} created_at
  * @property {string|null} completed_at
  * @property {string|null} error
+ * @property {'service_restart'|'error'|null} [failure_kind]  why it failed,
+ *   so the UI can separate "the backend restarted" from "your search broke"
  */
 
 /**
@@ -150,6 +152,7 @@
  * @property {string|null} stage_label
  * @property {number|null} elapsed_ms
  * @property {string|null} error
+ * @property {'service_restart'|'error'|null} [failure_kind]  see Job
  * @property {string} created_at        // ISO-8601
  * @property {string|null} completed_at
  * @property {MediaResult|null} result

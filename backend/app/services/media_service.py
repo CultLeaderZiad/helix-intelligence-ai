@@ -20,9 +20,23 @@ from app.services.ai.gemini_provider import GeminiProvider
 from app.services.storage_service import store_media_bytes
 from app.services.media.higgsfield_provider import HiggsfieldProvider
 from app.services.media.higgsfield_registry import resolve_mode_spec
+from app.services.job_heartbeat import heartbeat
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _with_heartbeat(coro_factory, job_id: str):
+    """Run a media task while holding a heartbeat on its row.
+
+    Without this a generation interrupted by a restart stays 'pending' or
+    'in_progress' forever and the Create page spins indefinitely.
+    """
+    async def runner():
+        async with heartbeat("media_jobs", job_id):
+            await coro_factory()
+
+    return runner()
 
 async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
     """
@@ -47,6 +61,7 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
 
         if not user or not org:
             job.status = "failed"
+            job.failure_kind = "error"
             job.error_message = "User or organization not found"
             await db.commit()
             return
@@ -131,6 +146,7 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
         except Exception as e:
             logger.error("Gemini image generation failed for job %s: %s", job_id, str(e))
             job.status = "failed"
+            job.failure_kind = "error"
             err_msg = str(e)
             
             if credential_mode == "byok":
@@ -190,17 +206,20 @@ async def higgsfield_generate_media_task(job_id: str):
                     return
                 elif status in ["failed", "nsfw"]:
                     job.status = "failed"
+                    job.failure_kind = "error"
                     job.error_message = f"Higgsfield status: {status}"
                     await db.commit()
                     return
 
             job.status = "failed"
+            job.failure_kind = "error"
             job.error_message = "Polling timed out"
             await db.commit()
 
         except Exception as e:
             logger.error("Error in Higgsfield generation task: %s", e)
             job.status = "failed"
+            job.failure_kind = "error"
             err_text = str(e)
             if "401" in err_text or "Unauthorized" in err_text:
                 job.error_message = (
@@ -283,11 +302,13 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
 
     # 3. Dispatch Provider Task
     if provider == "higgsfield":
-        asyncio.create_task(higgsfield_generate_media_task(job.id))
+        asyncio.create_task(_with_heartbeat(lambda: higgsfield_generate_media_task(job.id), job.id))
     elif provider == "mock":
-        asyncio.create_task(mock_generate_media_task(job.id))
+        asyncio.create_task(_with_heartbeat(lambda: mock_generate_media_task(job.id), job.id))
     else:
-        asyncio.create_task(gemini_generate_media_task(job.id, user.id, org.id))
+        asyncio.create_task(
+            _with_heartbeat(lambda: gemini_generate_media_task(job.id, user.id, org.id), job.id)
+        )
 
     return job
 

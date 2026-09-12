@@ -54,6 +54,19 @@ from app.services.api_usage_service import (
     mark_api_usage_status,
     APILimitExceeded
 )
+from app.services.job_heartbeat import heartbeat
+from app.services.query_translator import translate_search_query
+
+
+def _utcnow() -> datetime.datetime:
+    """Timezone-aware UTC.
+
+    These values land in ``timestamptz`` columns. Writing a naive
+    ``utcnow()`` left rows whose ``completed_at`` was three hours before their
+    ``created_at``, which also breaks any "how long has this been silent"
+    comparison the reconciliation sweep needs to make.
+    """
+    return datetime.datetime.now(datetime.timezone.utc)
 
 async def trigger_search(
     db: AsyncSession,
@@ -83,22 +96,36 @@ async def trigger_search(
 
     org = await get_or_create_default_org(db, user)
     org_id = org.id
-    clean_query = search_params.query.strip()
+    clean_query = (search_params.query or "").strip()
+    scrape_query = await translate_search_query(clean_query, search_params.query_language or "en")
 
     # 2. Duplicate-search guards.
     # 2a. Active guard: an identical query is already queued/running in this
     #     org -> return that job, so the second request polls the first
     #     search's result instead of creating (and charging) a duplicate.
-    # 2b. 12-hour cache: an identical query already succeeded in this org in
-    #     the last 12h -> return the cached result (0 credits charged).
-    # Matching is case-insensitive ("Nike" == "nike"): it is the same scrape.
-    twelve_hours_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
-    normalized_query = clean_query.lower()
+    # 2b. 12-hour cache: only reuse a job that actually stored ads. A succeeded
+    #     zero-result (Meta Graph with no commercial coverage) must not block
+    #     Metapi/Adyntel after keys are added.
+    twelve_hours_ago = _utcnow() - datetime.timedelta(hours=12)
+    normalized_query = scrape_query.lower()
+    active_job_result = await db.execute(
+        select(ScrapeJob)
+        .where(ScrapeJob.org_id == org_id)
+        .where(func.lower(ScrapeJob.query) == normalized_query)
+        .where(ScrapeJob.status.in_(("queued", "running")))
+        .order_by(ScrapeJob.created_at.desc())
+        .limit(1)
+    )
+    active_job = active_job_result.scalar_one_or_none()
+    if active_job:
+        return _job_response(active_job)
+
     duplicate_job_result = await db.execute(
         select(ScrapeJob)
         .where(ScrapeJob.org_id == org_id)
         .where(func.lower(ScrapeJob.query) == normalized_query)
-        .where(ScrapeJob.status.in_(("queued", "running", "succeeded")))
+        .where(ScrapeJob.status == "succeeded")
+        .where(ScrapeJob.record_count > 0)
         .where(ScrapeJob.created_at >= twelve_hours_ago)
         .order_by(ScrapeJob.created_at.desc())
         .limit(1)
@@ -123,9 +150,9 @@ async def trigger_search(
     # any credits are charged.
     new_job = ScrapeJob(
         org_id=org_id,
-        query=clean_query,
+        query=scrape_query,
         status="running",
-        created_at=datetime.datetime.utcnow(),
+        created_at=_utcnow(),
         progress=0.1,
         stage="init",
         stage_label="Initializing Search",
@@ -149,8 +176,8 @@ async def trigger_search(
         )
         winner = winner_result.scalar_one_or_none()
         winner_created = winner.created_at if winner else None
-        if winner_created and winner_created.tzinfo is not None:
-            winner_created = winner_created.replace(tzinfo=None)
+        if winner_created is not None and winner_created.tzinfo is None:
+            winner_created = winner_created.replace(tzinfo=datetime.timezone.utc)
         if winner_created and winner_created >= twelve_hours_ago:
             return _job_response(winner)
         raise HTTPException(
@@ -173,13 +200,13 @@ async def trigger_search(
         units=1.0,
         cost_usd=ESTIMATED_PROVIDER_COSTS.get("apify_ad", 0.00075) * 15,
         job_id=new_job.id,
-        metadata={"query": clean_query}
+        metadata={"query": scrape_query, "original_query": clean_query}
     )
 
     if background_tasks:
-        background_tasks.add_task(run_discovery_pipeline, new_job.id, clean_query, search_params.filters)
+        background_tasks.add_task(run_discovery_pipeline, new_job.id, scrape_query, search_params.filters)
     else:
-        asyncio.create_task(run_discovery_pipeline(new_job.id, clean_query, search_params.filters))
+        asyncio.create_task(run_discovery_pipeline(new_job.id, scrape_query, search_params.filters))
 
     return Job(
         job_id=new_job.id,
@@ -227,7 +254,8 @@ async def get_job_status(db: AsyncSession, job_id: str) -> Job:
         elapsed_ms=job.elapsed_ms or 0,
         created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
         completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
-        error=job.error_msg
+        error=job.error_msg,
+        failure_kind=job.failure_kind,
     )
 
 async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_size: int = 8) -> Paginated[Job]:
@@ -281,7 +309,8 @@ async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_s
             elapsed_ms=job.elapsed_ms or 0,
             created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
             completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
-            error=job.error_msg
+            error=job.error_msg,
+            failure_kind=job.failure_kind,
         )
         for job in jobs
     ]
@@ -305,6 +334,18 @@ async def update_job_stage(db: AsyncSession, job_id: str, stage: str, label: str
         await db.commit()
 
 async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
+    """Claim the job for this process, then run it.
+
+    The heartbeat is what lets a restart distinguish this job from an
+    abandoned one; see job_reconciliation.
+    """
+    async with heartbeat("scrape_jobs", job_id):
+        await _run_discovery_pipeline(job_id, query, filters)
+
+
+async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
+    query = (query or "").strip()
+    clean_query = query  # production copies historically referenced this name
     start_time = time.time()
     async with async_session_maker() as db:
         result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
@@ -371,7 +412,7 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
                     job.stage_index = 5
                     job.record_count = 0
                     job.elapsed_ms = int((time.time() - start_time) * 1000)
-                    job.completed_at = datetime.datetime.utcnow()
+                    job.completed_at = _utcnow()
                     await db.commit()
             return
             
@@ -456,7 +497,7 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
                 job.stage_index = 5
                 job.record_count = saved_creatives
                 job.elapsed_ms = int((time.time() - start_time) * 1000)
-                job.completed_at = datetime.datetime.utcnow()
+                job.completed_at = _utcnow()
                 await db.commit()
             
             if usage_log_id:
@@ -470,6 +511,7 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
             job = result.scalar_one_or_none()
             if job:
                 job.status = "failed"
+                job.failure_kind = "error"
                 job.error_msg = error_msg
                 job.elapsed_ms = int((time.time() - start_time) * 1000)
                 await db.commit()
@@ -485,6 +527,7 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
             job = result.scalar_one_or_none()
             if job:
                 job.status = "failed"
+                job.failure_kind = "error"
                 job.error_msg = str(e)
                 job.elapsed_ms = int((time.time() - start_time) * 1000)
                 await db.commit()

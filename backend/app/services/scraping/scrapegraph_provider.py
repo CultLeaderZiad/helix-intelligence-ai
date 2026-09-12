@@ -4,6 +4,7 @@ import httpx
 import logging
 from typing import Dict, Any
 from app.core.config import settings
+from app.core.credentials import env_secret
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +14,8 @@ class ScrapeGraphProvider:
     using ScrapeGraphAI's v2 Extract API.
     """
     def __init__(self):
-        raw_key = getattr(settings, "SCRAPEGRAPH_API_KEY", None) or os.getenv("SCRAPEGRAPH_API_KEY") or ""
-        self.api_key = raw_key.strip().strip('"\'')
+        raw_key = env_secret("SCRAPEGRAPH_API_KEY", fallback=getattr(settings, "SCRAPEGRAPH_API_KEY", None))
+        self.api_key = raw_key
         self.endpoint = "https://v2-api.scrapegraphai.com/api/extract"
 
     async def extract_landing_page(self, url: str) -> Dict[str, Any]:

@@ -22,6 +22,12 @@ export const MOCK_FAILURE_RATE = Number(env.VITE_MOCK_FAILURE_RATE ?? 0)
 /** How often the client polls a running job. */
 export const JOB_POLL_INTERVAL_MS = 400
 
-/** Ceiling on how long the client polls one job before treating it as
- *  stalled (server jobs normally finish in seconds; minutes means dead). */
+/**
+ * Ceiling on how long the client polls one job before treating it as stalled.
+ *
+ * The server marks a job interrupted by a restart as failed within roughly two
+ * minutes, so this is only a backstop for a job that is stuck in some way the
+ * server has not noticed. It must stay comfortably above that window or the
+ * client would give up before the real reason arrives.
+ */
 export const JOB_POLL_TIMEOUT_MS = 240000

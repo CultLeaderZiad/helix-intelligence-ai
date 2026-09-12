@@ -31,6 +31,15 @@ const PHASE = {
 
 export { PHASE }
 
+/**
+ * A job the backend killed because its process restarted is not the same event
+ * as a search that genuinely failed, and the user should not be told to fix
+ * their query when there was nothing wrong with it.
+ */
+export function isServiceRestart(error) {
+  return error?.kind === "service_restart"
+}
+
 const PAGE_SIZE = 20
 
 export function useDiscoverySearch() {
@@ -129,7 +138,9 @@ export function useDiscoverySearch() {
             fetchResults(jobId, { page: 1, sort: params.sort })
           } else if (next.status === "failed") {
             stopPolling()
-            setError(new Error(next.error ?? "Discovery job failed"))
+            const failure = new Error(next.error ?? "Discovery job failed")
+            failure.kind = next.failure_kind ?? "error"
+            setError(failure)
             setPhase(PHASE.ERROR)
           }
         } catch (err) {

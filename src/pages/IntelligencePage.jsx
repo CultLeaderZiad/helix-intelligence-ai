@@ -54,12 +54,13 @@ export function IntelligencePage() {
       setLoading(true)
       setError(null)
       try {
-        if (latestSearch?.items && latestSearch.items.length > 0) {
-          setCreatives(latestSearch.items)
-          const firstId = activeCreative?.id || latestSearch.items[0]?.id
-          setSelectedCreativeId(firstId)
+        if (latestSearch?.query) {
+          // A completed search owns this tab. Zero hits must stay empty —
+          // do not relabel leftover ads from another job as this query.
+          const items = latestSearch.items || []
+          setCreatives(items)
+          setSelectedCreativeId(items[0]?.id || activeCreative?.id || null)
         } else {
-          // Fetch from backend API
           const res = await creativeService.getCreatives({ page: 1, page_size: 20 })
           if (isMounted) {
             const items = res?.items || []

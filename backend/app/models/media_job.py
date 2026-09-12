@@ -28,3 +28,9 @@ class MediaGenerationJob(Base):
     # Results
     result_url = Column(String, nullable=True)
     error_message = Column(String, nullable=True)
+
+    # See ScrapeJob for the semantics of these three; they are the same
+    # mechanism applied to media generation.
+    failure_kind = Column(String, nullable=True)
+    owner_boot_id = Column(String, nullable=True)
+    heartbeat_at = Column(DateTime(timezone=True), nullable=True)

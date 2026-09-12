@@ -1,7 +1,7 @@
-import { Radar, Network, PenLine, Activity, BookOpen } from "lucide-react"
+import { Radar, Network, PenLine, Activity, BookOpen, Eye } from "lucide-react"
 
 /**
- * The four loops of the product. Single source of truth for the sidebar,
+ * The loops of the product. Single source of truth for the sidebar,
  * the command bar, and the document title — so a route can never appear
  * in one navigation surface and be missing from another.
  */
@@ -36,6 +36,14 @@ export const NAV_SECTIONS = [
     label: "Performance",
     icon: Activity,
     description: "Feed live outcomes back into the scoring model.",
+    status: "live",
+  },
+  {
+    key: "monitors",
+    path: "/monitors",
+    label: "Monitors",
+    icon: Eye,
+    description: "Re-run a search on a schedule and report what changed.",
     status: "live",
   },
 ]

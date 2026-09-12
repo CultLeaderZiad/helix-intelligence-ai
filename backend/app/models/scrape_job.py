@@ -25,3 +25,14 @@ class ScrapeJob(Base):
     stages_total = Column(Integer, default=1)
     elapsed_ms = Column(Integer, default=0)
     error_msg = Column(String, nullable=True)
+
+    # Why the job failed, as a machine-readable value the UI can branch on:
+    # 'service_restart' (the process died, nothing was wrong with the search)
+    # or 'error' (the pipeline itself failed).
+    failure_kind = Column(String, nullable=True)
+
+    # Which process lifetime owns this job, and when that process last proved
+    # it was still working on it. Together these let a restart identify dead
+    # jobs by silence rather than by total age. See job_reconciliation.py.
+    owner_boot_id = Column(String, nullable=True)
+    heartbeat_at = Column(DateTime(timezone=True), nullable=True)

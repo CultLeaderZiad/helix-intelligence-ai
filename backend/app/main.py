@@ -1,9 +1,9 @@
+import asyncio
 import datetime
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.core.config import settings, cors_origins
@@ -29,7 +29,9 @@ from app.api.routers import (
     support,
     playbooks,
     dashboard,
-    simulation
+    simulation,
+    uploads,
+    monitors,
 )
 
 @asynccontextmanager
@@ -61,6 +63,14 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE plans ADD COLUMN IF NOT EXISTS daily_image_limit INTEGER DEFAULT 5;",
                 "ALTER TABLE plans ADD COLUMN IF NOT EXISTS daily_video_limit INTEGER DEFAULT 3;",
                 "ALTER TABLE plans ADD COLUMN IF NOT EXISTS price_monthly FLOAT DEFAULT 0.0;",
+                # Job ownership + liveness, used by job_reconciliation to tell a
+                # dead job apart from a slow one.
+                "ALTER TABLE scrape_jobs ADD COLUMN IF NOT EXISTS failure_kind VARCHAR;",
+                "ALTER TABLE scrape_jobs ADD COLUMN IF NOT EXISTS owner_boot_id VARCHAR;",
+                "ALTER TABLE scrape_jobs ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMPTZ;",
+                "ALTER TABLE media_jobs ADD COLUMN IF NOT EXISTS failure_kind VARCHAR;",
+                "ALTER TABLE media_jobs ADD COLUMN IF NOT EXISTS owner_boot_id VARCHAR;",
+                "ALTER TABLE media_jobs ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMPTZ;",
             ]
             for query in migrations:
                 try:
@@ -150,7 +160,20 @@ async def lifespan(app: FastAPI):
         except Exception as refund_err:
             print(f"Startup reconciliation refund failed for job {row['id']}:", refund_err)
 
+    # Heartbeat-aware sweep for jobs the age-only SQL pass above cannot see
+    # yet (a restart that returns before the cutoff).
+    reconciler = None
+    try:
+        from app.services.job_reconciliation import reconciliation_loop
+
+        reconciler = asyncio.create_task(reconciliation_loop())
+    except Exception as e:
+        print("Job reconciliation startup error:", e)
+
     yield
+
+    if reconciler:
+        reconciler.cancel()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -187,13 +210,15 @@ app.include_router(playbooks.router, prefix=f"{settings.API_V1_STR}/playbooks", 
 app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["dashboard"])
 app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation", tags=["simulation"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
+app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", tags=["monitors"])
 app.include_router(higgsfield.router, prefix=f"{settings.API_V1_STR}/higgsfield", tags=["higgsfield"])
 app.include_router(higgsfield.router, prefix="/higgsfield", tags=["higgsfield"])
 
-# Mount uploads directory for serving static files
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+# Locally stored media. This is served by a router rather than a StaticFiles
+# mount so that access is checked: the old mount handed any file to anyone who
+# could guess its name. Only reachable when R2 is unconfigured; see
+# storage_service.
+app.include_router(uploads.router, prefix="/uploads", tags=["uploads"])
 
 @app.get("/")
 @app.get("/health")

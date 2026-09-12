@@ -20,8 +20,110 @@ import {
   CheckCircle,
   BarChart3,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Eye
 } from "lucide-react"
+import { Tag } from "@/components/ui/Tag"
+import { useMonitors } from "@/hooks/useMonitors"
+
+/**
+ * Replaces the browser-only strategy scratchpad that used to sit here. Notes in
+ * localStorage were invisible to the rest of the product, lost on a cache
+ * clear, and never shared with a teammate. Watching the corpus you are already
+ * looking at is the thing that surface was standing in for.
+ */
+function WatchThisQueryPanel({ query }) {
+  const navigate = useNavigate()
+  const { monitors, createMonitor } = useMonitors()
+  const [busy, setBusy] = useState(false)
+  const [failure, setFailure] = useState(null)
+
+  const existing = query
+    ? monitors.find((m) => m.query.toLowerCase() === query.toLowerCase())
+    : null
+
+  async function handleWatch() {
+    if (!query) return
+    setBusy(true)
+    setFailure(null)
+    const ok = await createMonitor({
+      query,
+      name: query,
+      cadence: "daily",
+      notify_in_app: true,
+    })
+    setBusy(false)
+    if (ok) navigate("/monitors")
+    else setFailure("This query could not be put under watch.")
+  }
+
+  const run = existing?.last_run
+  const changes = run ? run.new_count + run.changed_count + run.killed_count : 0
+
+  return (
+    <div className="lg:col-span-5 rounded-xl border border-border bg-surface p-4 flex flex-col space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="label-mono text-text">Watch This Corpus</span>
+        <span className="text-[10px] font-mono text-text-faint">
+          {existing ? "Monitored" : "Not monitored"}
+        </span>
+      </div>
+
+      {!query ? (
+        <p className="text-xs text-text-muted leading-relaxed">
+          Run a search first. Once there is a corpus on screen you can put it under a recurring
+          watch and be told when the competitor ships, edits, or kills an ad.
+        </p>
+      ) : existing ? (
+        <div className="flex flex-1 flex-col gap-2">
+          <p className="text-xs text-text-muted leading-relaxed">
+            Re-running <strong className="text-text">"{query}"</strong> {existing.cadence.replace("_", " ")} and
+            reporting every difference.
+          </p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {run?.is_baseline ? (
+              <Tag>Baseline recorded</Tag>
+            ) : changes > 0 ? (
+              <>
+                {run.new_count > 0 ? <Tag tone="success">{run.new_count} new</Tag> : null}
+                {run.changed_count > 0 ? <Tag tone="warning">{run.changed_count} changed</Tag> : null}
+                {run.killed_count > 0 ? <Tag tone="danger">{run.killed_count} stopped</Tag> : null}
+              </>
+            ) : (
+              <Tag>No changes yet</Tag>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-auto self-start"
+            onClick={() => navigate("/monitors")}
+          >
+            Open Monitors
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-1 flex-col gap-2">
+          <p className="text-xs text-text-muted leading-relaxed">
+            Put <strong className="text-text">"{query}"</strong> under a daily watch. The first run
+            records a baseline; after that you only hear about what actually changed.
+          </p>
+          {failure ? <p className="text-xs text-danger">{failure}</p> : null}
+          <Button
+            size="sm"
+            variant="primary"
+            className="mt-auto self-start"
+            disabled={busy}
+            onClick={handleWatch}
+          >
+            <Eye className="w-3.5 h-3.5" />
+            {busy ? "Setting up…" : "Watch this query"}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function PerformancePage() {
   const navigate = useNavigate()
@@ -34,22 +136,6 @@ export function PerformancePage() {
   const [filterFormat, setFilterFormat] = useState("ALL")
   const [minDays, setMinDays] = useState(0)
   const [quickQuery, setQuickQuery] = useState("")
-  const [strategyNotes, setStrategyNotes] = useState(() => {
-    try {
-      return localStorage.getItem("helix_performance_notes") || ""
-    } catch {
-      return ""
-    }
-  })
-
-  function handleSaveNotes(val) {
-    setStrategyNotes(val)
-    try {
-      localStorage.setItem("helix_performance_notes", val)
-    } catch (e) {
-      console.warn(e)
-    }
-  }
 
   function handleQuickSearch(e) {
     e.preventDefault()
@@ -67,8 +153,8 @@ export function PerformancePage() {
     async function loadCreatives() {
       setLoading(true)
       try {
-        if (latestSearch?.items && latestSearch.items.length > 0) {
-          setCreatives(latestSearch.items)
+        if (latestSearch?.query) {
+          setCreatives(latestSearch.items || [])
         } else {
           const res = await creativeService.getCreatives({ page: 1, page_size: 50 })
           if (isMounted && res?.items) {
@@ -286,19 +372,7 @@ export function PerformancePage() {
               </div>
             </div>
 
-            <div className="lg:col-span-5 rounded-xl border border-border bg-surface p-4 flex flex-col space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="label-mono text-text">Strategy Notes & Scratchpad</span>
-                <span className="text-[10px] font-mono text-text-faint">Auto-saved</span>
-              </div>
-              <textarea
-                value={strategyNotes}
-                onChange={(e) => handleSaveNotes(e.target.value)}
-                placeholder="Type your strategic hypotheses, winner angles, and testing notes here..."
-                rows={4}
-                className="flex-1 w-full bg-surface-2 border border-border rounded-lg p-2.5 text-xs text-text placeholder:text-text-muted focus:outline-none focus:border-accent resize-none font-sans"
-              />
-            </div>
+            <WatchThisQueryPanel query={latestSearch?.query} />
           </div>
 
           {/* Filters Bar */}

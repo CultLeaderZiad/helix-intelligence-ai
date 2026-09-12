@@ -20,6 +20,8 @@ class MediaGenerationJobResponse(BaseModel):
     parameters: Optional[Dict[str, Any]] = None
     result_url: Optional[str] = None
     error_message: Optional[str] = None
+    # See Job.failure_kind in schemas/discover.py.
+    failure_kind: Optional[str] = None
 
     class Config:
         from_attributes = True

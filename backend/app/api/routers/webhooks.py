@@ -22,6 +22,35 @@ def _extract_result_url(payload: dict) -> str | None:
         return video.get("url")
     return None
 
+async def _mirror_to_storage(job_id: str, source_url: str) -> None:
+    """Re-host provider media on our own storage and point the job at it.
+
+    Higgsfield's URLs are temporary, so keeping only their link means the
+    asset disappears later. The previous version scheduled the download but
+    discarded its result, leaving the job pointing at the provider forever;
+    this writes the stored URL back.
+    """
+    from app.db.session import async_session_maker
+    from app.services.storage_service import store_media_from_url
+
+    try:
+        stored_url = await store_media_from_url(job_id, source_url)
+        if not stored_url or stored_url == source_url:
+            return
+        async with async_session_maker() as db:
+            job = (
+                await db.execute(
+                    select(MediaGenerationJob).where(MediaGenerationJob.id == job_id)
+                )
+            ).scalar_one_or_none()
+            if job:
+                job.result_url = stored_url
+                await db.commit()
+                logger.info("Mirrored media for job %s to %s", job_id, stored_url)
+    except Exception as e:
+        logger.warning("Media mirror failed for job %s: %s", job_id, e)
+
+
 @router.post("/higgsfield")
 async def higgsfield_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     try:
@@ -74,19 +103,22 @@ async def higgsfield_webhook(request: Request, db: AsyncSession = Depends(get_db
         result_url = _extract_result_url(payload)
         if result_url:
             job.status = "completed"
-            job.result_url = result_url  # persist CDN URL (survives Render disk wipe)
-            # Optional mirror (best-effort; do not block webhook)
+            # Provider URL first so the job is never left without a reference;
+            # the mirror below replaces it with our own copy once stored.
+            job.result_url = result_url
             try:
-                from app.services.storage_service import store_media_from_url
                 import asyncio
-                asyncio.create_task(store_media_from_url(job.id, result_url))
+
+                asyncio.create_task(_mirror_to_storage(job.id, result_url))
             except Exception as e:
-                logger.warning("Optional store_media failed: %s", e)
+                logger.warning("Could not schedule media mirror: %s", e)
         else:
             job.status = "failed"
+            job.failure_kind = "error"
             job.error_message = "completed webhook missing media URL"
     elif job_status in ("failed", "nsfw", "canceled"):
         job.status = "failed" if job_status != "nsfw" else "nsfw"
+        job.failure_kind = "error"
         err = payload.get("error")
         job.error_message = (
             err if isinstance(err, str) else f"Higgsfield status: {job_status}"

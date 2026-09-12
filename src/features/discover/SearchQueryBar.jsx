@@ -17,6 +17,8 @@ export function SearchQueryBar({
   activeFilterCount,
   isBusy,
   canSort,
+  queryLanguage = "en",
+  onQueryLanguageChange,
 }) {
   const { t, isRtl } = useLanguage()
   // Synchronous double-submit guard: bridges the gap between the click and
@@ -37,7 +39,7 @@ export function SearchQueryBar({
     if (event.nativeEvent.isComposing || event.keyCode === 229) return
     if (event.key === "Enter") {
       event.preventDefault()
-      handleSubmit()
+      if (query.trim()) handleSubmit()
     }
   }
 
@@ -92,9 +94,30 @@ export function SearchQueryBar({
         />
       </div>
 
-      <Button variant="primary" size="md" onClick={handleSubmit} disabled={isBusy} className="font-bold">
+      <div className="flex h-8 items-center rounded-sm border border-border bg-surface-2 p-0.5" role="group" aria-label={t("searchLanguage", "Search language")}>
+        <button
+          type="button"
+          onClick={() => onQueryLanguageChange?.("en")}
+          className={`h-7 rounded-sm px-2 text-[11px] font-mono ${
+            queryLanguage === "en" ? "bg-accent text-bg" : "text-text-muted hover:text-text"
+          }`}
+        >
+          {t("langEnglish", "English")}
+        </button>
+        <button
+          type="button"
+          onClick={() => onQueryLanguageChange?.("ar")}
+          className={`h-7 rounded-sm px-2 text-[11px] font-mono ${
+            queryLanguage === "ar" ? "bg-accent text-bg" : "text-text-muted hover:text-text"
+          }`}
+        >
+          {t("langArabic", "Arabic")}
+        </button>
+      </div>
+
+      <Button variant="primary" size="md" onClick={handleSubmit} disabled={isBusy || !query.trim()} className="font-bold">
         {isBusy ? t("running", "Running...") : t("runDiscovery", "Run discovery")}
-        {!isBusy ? <KeyHint tone="on-accent">↵</KeyHint> : null}
+        {!isBusy && query.trim() ? <KeyHint tone="on-accent">↵</KeyHint> : null}
       </Button>
     </div>
   )
