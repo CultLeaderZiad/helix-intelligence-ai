@@ -314,8 +314,15 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
 
 
 async def get_media_job(db: AsyncSession, user: User, job_id: str) -> Optional[MediaGenerationJob]:
-    result = await db.execute(
-        select(MediaGenerationJob).where(MediaGenerationJob.id == job_id)
-    )
+    from app.services.billing_service import get_or_create_default_org
+    is_admin = getattr(user, "role", "") == "admin"
+    org = await get_or_create_default_org(db, user)
+
+    stmt = select(MediaGenerationJob).where(MediaGenerationJob.id == job_id)
+    if not is_admin:
+        stmt = stmt.where(
+            (MediaGenerationJob.user_id == user.id) | (MediaGenerationJob.org_id == org.id)
+        )
+    result = await db.execute(stmt)
     job = result.scalar_one_or_none()
     return job

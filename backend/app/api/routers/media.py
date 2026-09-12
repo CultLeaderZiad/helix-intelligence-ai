@@ -52,7 +52,14 @@ async def cancel_media_job(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    return {"success": True, "message": "Job cancellation requested", "job_id": job_id}
+    job = await media_service.get_media_job(db, current_user, job_id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    if job.status in ("completed", "failed", "canceled"):
+        return {"success": False, "message": f"Job already {job.status}", "status": job.status, "job_id": job_id}
+    job.status = "canceled"
+    await db.commit()
+    return {"success": True, "message": "Job canceled", "job_id": job_id, "status": "canceled"}
 
 
 @router.post("/upload")

@@ -125,7 +125,10 @@ async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
         raise
     except Exception as e:
         logger.exception(f"Sign-in failed for {user_in.email}: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error during sign-in: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Sign-in could not be completed. Try again.",
+        )
 
 @router.post("/sign-out")
 async def signout():
