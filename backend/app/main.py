@@ -24,7 +24,6 @@ from app.api.routers import (
     media,
     webhooks,
     updates,
-    higgsfield,
     providers,
     support,
     playbooks,
@@ -187,8 +186,6 @@ app.include_router(playbooks.router, prefix=f"{settings.API_V1_STR}/playbooks", 
 app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["dashboard"])
 app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation", tags=["simulation"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
-app.include_router(higgsfield.router, prefix=f"{settings.API_V1_STR}/higgsfield", tags=["higgsfield"])
-app.include_router(higgsfield.router, prefix="/higgsfield", tags=["higgsfield"])
 
 # Mount uploads directory for serving static files
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "uploads")

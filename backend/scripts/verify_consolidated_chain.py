@@ -28,9 +28,6 @@ async def main():
     async with async_session_maker() as db:
         ad_lib = AdLibraryProvider(db, "test_org", "test_user")
         print(f"Metapi Key Configured: {bool(ad_lib.metapi_provider.metapi_api_key)}")
-        print(f"Adyntel Key Configured: {bool(ad_lib.adyntel_provider.adyntel_api_key)}")
-        print(f"Meta Token Configured: {bool(ad_lib.meta_token)}")
-        print(f"Apify Token Configured: {bool(ad_lib.apify_token)}")
 
         print("\n" + "=" * 70)
         print("TEST 2: DIRECT AD_LIBRARY_PROVIDER SEARCH EXECUTION")

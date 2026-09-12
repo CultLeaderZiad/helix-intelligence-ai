@@ -79,8 +79,7 @@ async def run_full_audit():
     # 1.1 Provider chain inspection
     async with async_session_maker() as db:
         ad_lib = AdLibraryProvider(db, "test_org", "test_user")
-        print(f"Meta Token Configured: {bool(ad_lib.meta_token)} (Length: {len(ad_lib.meta_token)})")
-        print(f"Apify Token Configured: {bool(ad_lib.apify_token)} (Length: {len(ad_lib.apify_token)})")
+        print(f"Metapi Key Configured: {bool(ad_lib.metapi_provider.metapi_api_key)}")
 
         # 1.2 Run 3 real searches
         queries = ["shopify", "ziad_obscure_brand_xyz", "asdkfjhsakjdfh92384"]
@@ -95,14 +94,6 @@ async def run_full_audit():
                     print(f"First item data_source: '{res[0].data_source}'")
             except Exception as e:
                 print(f"Search exception: {type(e).__name__} - {e}")
-
-        # 1.3 Test Apify directly to capture exact error
-        print("\n--- Direct Apify Run ---")
-        try:
-            apify_res = await ad_lib.query_apify("shopify", "US", 5)
-            print("Apify Result Count:", len(apify_res))
-        except Exception as e:
-            print("Apify Exception:", type(e).__name__, e)
 
     print("\n" + "="*70)
     print("SECTION 2: AUTH & SESSION AUDIT (LIVE RENDER BACKEND)")

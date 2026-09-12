@@ -161,14 +161,14 @@
  * @property {'image'|'video'} type
  * @property {Array<{url: string, content_type?: string, width?: number, height?: number}>} [images]
  * @property {{url: string, content_type?: string}} [video]
- * @property {string} [provider]        // 'aihubmix' | 'pollinations' | 'higgsfield'
+ * @property {string} [provider]        // 'gemini' | 'pollinations'
  * @property {string} [model]
  */
 
 /**
  * @typedef {Object} MediaGenerateParams
  * @property {string} prompt
- * @property {string} [model]           // e.g. 'gpt-image-2-free' | 'higgsfield-ai/soul/v2/standard'
+ * @property {string} [model]           // e.g. 'gemini-3.1-flash-image' | 'wan-fast'
  * @property {'auto'|'image'|'video'} [kind]
  * @property {Object} [options]         // size, quality, aspect_ratio, duration, etc.
  * @property {string} [webhook_base]    // internal only; backend builds full URL

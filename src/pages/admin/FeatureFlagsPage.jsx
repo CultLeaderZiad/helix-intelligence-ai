@@ -12,7 +12,7 @@ export function FeatureFlagsPage() {
     { 
       key: "discover", 
       label: "Discover Search & Scraper Network", 
-      description: "Allows running searches across Meta Ad Library, Bright Data, and Apify scraper backends." 
+      description: "Allows running searches against the Metapi Meta Ad Library scraper." 
     },
     { 
       key: "intelligence", 

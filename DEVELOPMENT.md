@@ -62,20 +62,16 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `DATABASE_URL` | ✅ | Neon Postgres connection string (with asyncpg driver) |
 | `BACKEND_CORS_ORIGINS` | ✅ | Comma-separated origins, **must include the Vercel URL exactly** (scheme + host, no trailing slash): `https://helix-intelligence-ai-six.vercel.app,http://localhost:5173,http://localhost:3000` |
 | `USE_MOCKS` | ✅ | **Must be `false` in production.** When `true`, sign-in always returns a fake admin token regardless of credentials. |
-| `PUBLIC_API_BASE_URL` | ✅ (prod) | Public API base for webhooks, e.g. `https://helix-intelligence-ai.onrender.com/api` |
-| `HF_API_KEY_ID` | ✅ (for Create) | Higgsfield API Key ID |
-| `HF_API_KEY_SECRET` | ✅ (for Create) | Higgsfield API Key Secret |
-| `META_ACCESS_TOKEN` | Optional | Meta Marketing / Ad Library API access |
-| `APIFY_API_TOKEN` | Optional | Apify Actor scraper API token |
-| `BRIGHTDATA_API_KEY` | Optional | Bright Data scraping proxy API key |
-| `ADYNTEL_API_KEY` | Optional | Adyntel ad intelligence API key |
-| `ADYNTEL_EMAIL` | Optional | Adyntel account email |
+| `PUBLIC_API_BASE_URL` | ✅ (prod) | Public API base, e.g. `https://helix-intelligence-ai.onrender.com/api` |
+| `METAPI_API_KEY` | For Discover | Metapi live Meta Ad Library search — the only ad-search provider |
+| `META_ACCESS_TOKEN` | Optional | Meta official Graph API `ads_archive` token. Coverage is limited to political/social-issue ads worldwide or any ad delivered to EU/UK — it does not answer generic commercial keyword searches. |
+| `BRIGHTDATA_API_KEY` | Optional | Bright Data scraping proxy API key (no scraper currently implemented against it) |
 | `SCRAPEGRAPH_API_KEY` | Optional | ScrapeGraph AI landing page enrichment |
 | `GROQ_API_KEY` | Optional | Groq primary LLM inference (Llama 3.3 70B) |
 | `OPENROUTER_API_KEY` | Optional | OpenRouter secondary LLM inference |
 | `AIHUBMIX_API_KEY` | Optional | AIHubMix tertiary LLM inference |
 | `TOKENHARBOR_API_KEY` | Optional | Token Harbor quaternary LLM inference |
-| `GEMINI_API_KEY` | Optional | Google Gemini final LLM inference fallback |
+| `GEMINI_API_KEY` | Optional | Google Gemini final LLM inference fallback; also powers Create image generation |
 
 ### Frontend (Vercel)
 
@@ -143,10 +139,9 @@ Helix enforces strict server-side credit caps with database row-level locking (`
 ### Credit Cost Table
 | Action | Credits | Description |
 |---|---|---|
-| `discover_job` | 2.0 | Base ad library search & creative scraping |
-| `discover_deep_fallback` | +3.0 | Bright Data deep search surcharge (only if prior sources return 0) |
-| `create_image` | 3.0 | Higgsfield or AI image generation |
-| `create_video` | 8.0 | Higgsfield video/motion generation |
+| `discover_job` | 2.0 | Base ad library search & creative scraping (Metapi) |
+| `create_image` | 3.0 | Gemini image generation |
+| `create_video` | 8.0 | Pollinations video/motion generation |
 | `ai_insight` | 1.0 | Single creative deep LLM insight |
 | `pattern_pack` | 1.0 | Pattern synthesis across scraped ads |
 | `ai_chat` | 0.5 | Interactive creative AI chat query |
@@ -190,46 +185,29 @@ Helix enforces strict server-side credit caps with database row-level locking (`
 
 ## Competitor Ad Library Provider Chain
 
-Discover uses an ordered, cost-aware canonical chain to avoid unnecessary API costs:
+Discover searches exclusively via Metapi, the only configured ad-search provider:
 
 ```text
-1. Adyntel (fast company/domain ad search if ADYNTEL configured)
-2. Apify (Facebook Ad Library actor if APIFY configured)
-3. Meta Graph API (optional official boost if META_ACCESS_TOKEN configured)
-4. Bright Data (Controlled deep fallback ONLY IF:
-   - prior providers returned 0 usable creatives, AND
-   - plan allows deep_search, AND
-   - organization has >= 3.0 credits for deep surcharge)
-5. ScrapeGraph Enrichment (capped at top 2 landing pages)
+1. Metapi (live Meta Ad Library search via METAPI_API_KEY)
 ```
+
+Adyntel, Apify, and the official Meta Graph API were removed from the chain:
+Adyntel/Apify added no coverage beyond Metapi, and the free Meta Graph
+`ads_archive` endpoint only archives political/social-issue ads worldwide or
+ads delivered to EU/UK audiences — it cannot answer a generic commercial
+keyword search, so it never usefully fired as a fallback.
 
 - **Query Caching**: Succeeded queries are cached for **12 hours** per organization. Duplicate searches within 12 hours return cached jobs instantly with 0 credits deducted.
-- **Honest Zero-Results**: Never fakes mock creatives in production (`USE_MOCKS=false`). Returns clear report of all attempted sources.
+- **Honest Zero-Results**: Never fakes mock creatives in production (`USE_MOCKS=false`). Returns a clear zero-results report when Metapi is unconfigured or finds nothing.
 
 ---
 
-## Higgsfield Create Integration
+## Create Media Generation
 
-### Official Authentication Format
-Higgsfield requires API Key credentials formatted with `Key` (never `Bearer`):
+All Create requests route through Google Gemini (images) or Pollinations
+(video). Higgsfield has been removed as a provider.
 
-- **Header**: `Authorization: Key {HF_API_KEY_ID}:{HF_API_KEY_SECRET}`
-- **Base URL**: `https://api.higgsfield.ai`
-- **Default Image Endpoint**: `https://api.higgsfield.ai/higgsfield-ai/soul/v2/standard`
-- **Webhook Param**: `?hf_webhook={URL_ENCODED_PUBLIC_API_URL}/webhooks/higgsfield`
 
-### Operator Proof Curl
-```bash
-export HF_API_KEY_ID="your_key_id"
-export HF_API_KEY_SECRET="your_key_secret"
-curl -s -w "\nHTTP %{http_code}\n" -X POST \
-  "https://api.higgsfield.ai/higgsfield-ai/soul/v2/standard" \
-  -H "Authorization: Key ${HF_API_KEY_ID}:${HF_API_KEY_SECRET}" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"A quiet alpine lake at sunrise, editorial photography"}'
-```
-
----
 
 ## 7-Day Trial & Gemini Image Generation
 
@@ -261,9 +239,6 @@ ENABLE_GEMINI_LIVE_TEST=true python backend/scripts/test_gemini_image_live.py
 ```bash
 # Run Gemini Trial & Entitlement suite
 python backend/tests/test_gemini_trial_suite.py
-
-# Run Higgsfield Diagnostic suite
-python backend/tests/test_higgsfield_suite.py
 ```
 
 

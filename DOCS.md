@@ -65,26 +65,24 @@ daily_credit_limit FLOAT  -- NULL = unlimited (paid plans)
 
 ### Scraping Providers (Ad Intelligence)
 
-The system uses a **chain-of-responsibility pattern** with automatic fallback:
+Discover uses a single ad-search provider — no fallback chain:
 
 ```
-Priority 1: Meta Ad Library API (Official)
-  ↓ if rate-limited or unavailable
-Priority 2: Bright Data (Web Scraping)
-  ↓ if blocked or timeout
-Priority 3: Apify (Backup Scraping)
-  ↓ if all fail
-Priority 4: ScrapeGraph AI (Smart Extraction)
+Metapi (live Meta Ad Library search)
 ```
+
+Adyntel, Apify, and the official Meta Graph API were removed: Adyntel/Apify
+added no coverage Metapi doesn't already provide, and the free Meta Graph
+`ads_archive` endpoint only archives political/social-issue ads worldwide or
+ads delivered to EU/UK audiences — it cannot answer a generic commercial
+keyword search.
 
 #### Provider Details
 
 | Provider | Type | Use Case | Est. Cost |
 |----------|------|----------|-----------|
-| Meta Official | API | Direct ad library access | Free (rate-limited) |
-| Bright Data | Proxy | Residential IP scraping | ~$0.003/request |
-| Apify | Cloud Actor | Structured extraction | ~$0.75/1k ads |
-| ScrapeGraph | AI | Landing page parsing | ~$0.005/page |
+| Metapi | API | Live Meta Ad Library search | ~$0.001/query (est.) |
+| ScrapeGraph | AI | Landing page parsing (enrichment, not search) | ~$0.005/page |
 
 #### RawCreative Schema (Standardized Output)
 
@@ -268,9 +266,9 @@ See `.env.example` for required configuration:
 |----------|----------|-------------|
 | `SECRET_KEY` | ✅ | JWT signing key |
 | `DATABASE_URL` | ✅ | Neon Postgres connection |
-| `META_ACCESS_TOKEN` | For live data | Meta Graph API token |
-| `BRIGHTDATA_API_KEY` | For scraping | Bright Data proxy |
-| `APIFY_API_TOKEN` | For scraping | Apify cloud actors |
+| `METAPI_API_KEY` | For Discover | Metapi live Meta Ad Library search |
+| `META_ACCESS_TOKEN` | Optional | Meta official Graph API token (limited coverage; see Provider Chain) |
+| `BRIGHTDATA_API_KEY` | Optional | Bright Data proxy (no scraper currently implemented against it) |
 | `GROQ_API_KEY` | For AI | Groq inference |
 | `OPENROUTER_API_KEY` | For AI | OpenRouter fallback |
 

@@ -35,11 +35,7 @@ ESTIMATED_PROVIDER_COSTS = {
     "groq_tokens": 0.0000006,       # ~$0.0006 per 1k tokens (Llama 3.3 70B)
     "brightdata_scrape": 0.003,     # ~$0.003 per page scrape request
     "scrapegraph_extract": 0.005,   # ~$0.005 per landing page extract
-    "apify_ad": 0.00075,            # ~$0.75 per 1,000 ads
-    "adyntel_query": 0.002,         # ~$0.002 per ad query
     "metapi_query": 0.001,          # Metapi free tier (est.)
-    "higgsfield_image": 0.02,       # ~$0.02 per image generation
-    "higgsfield_video": 0.08,       # ~$0.08 per video generation
 }
 
 
