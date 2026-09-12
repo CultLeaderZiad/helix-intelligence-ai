@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 from abc import ABC, abstractmethod
 from app.schemas.analysis import Insight, Pattern
 from app.schemas.creative import Creative
+from app.schemas.simulation import PersonaSegment, SegmentReaction
 
 class AIProvider(ABC):
     @abstractmethod
@@ -131,3 +132,92 @@ class AIProvider(ABC):
             return patterns
         except Exception as e:
             raise Exception(f"Failed to parse AI response: {e}\nResponse: {result_text}")
+
+    async def simulate_audience_reactions(
+        self, creative: Creative, segments: List[PersonaSegment]
+    ) -> Dict[str, Any]:
+        """Role-play a creative in front of synthetic audience personas.
+
+        This is a creative-rehearsal aid, not a performance predictor: it
+        surfaces objections, confusing claims, and compliance risks a human
+        reviewer might catch late. Provider failures raise (no fabricated
+        fallback), matching generate_insight's honesty contract.
+        """
+        segment_block = "\n".join(
+            f"- id=\"{s.id}\" label=\"{s.label}\": {s.description}" for s in segments
+        )
+        prompt = f"""
+        You are role-playing as several distinct synthetic audience personas reacting
+        to a competitor-inspired ad creative BEFORE it is ever run. This is a rehearsal
+        to catch objections, confusion, and risk — not a prediction of real performance.
+
+        Creative Details:
+        - Headline: {creative.headline}
+        - Body Text: {creative.body}
+        - Format: {creative.format}
+        - Platform: {creative.platform}
+        - CTA: {creative.cta}
+
+        Personas to role-play, one reaction each:
+        {segment_block}
+
+        Return a JSON object: {{"segment_reactions": [...], "recommended_angles": [...]}}
+        Each entry in "segment_reactions" must have:
+        - "segment_id": must exactly match one of the persona ids above
+        - "appeal_score": float 0.0-1.0, how compelling this persona would find the ad
+        - "objections": array of short strings, concrete pushback this persona would have
+        - "confusing_claims": array of short strings quoting or paraphrasing anything unclear
+        - "credibility_assessment": 1-2 sentences on whether this persona would trust the claims
+        - "compliance_risks": array of short strings for anything that could trigger ad-platform
+          rejection or regulatory scrutiny (empty array if none)
+        "recommended_angles" is a top-level array of 2-4 short strings suggesting alternative
+        angles or edits that would address the objections raised above.
+        """
+
+        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+        result_text = await self._call_api([
+            {
+                "role": "system",
+                "content": "You are simulating diverse skeptical consumers reviewing an ad. Always reply with valid JSON only.",
+            },
+            {"role": "user", "content": prompt},
+        ])
+
+        if "```json" in result_text:
+            result_text = result_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in result_text:
+            result_text = result_text.split("```")[1].split("```")[0].strip()
+
+        data = json.loads(result_text)
+        raw_reactions = data.get("segment_reactions")
+        if not raw_reactions:
+            raise ValueError("AI response missing required field 'segment_reactions'")
+
+        segments_by_id = {s.id: s for s in segments}
+        reactions: List[SegmentReaction] = []
+        for item in raw_reactions:
+            seg_id = item.get("segment_id")
+            segment = segments_by_id.get(seg_id)
+            if not segment:
+                continue
+            if item.get("appeal_score") is None or item.get("credibility_assessment") in (None, ""):
+                raise ValueError(f"AI response missing required fields for segment '{seg_id}'")
+            reactions.append(SegmentReaction(
+                segment_id=segment.id,
+                segment_label=segment.label,
+                appeal_score=float(item["appeal_score"]),
+                objections=list(item.get("objections") or []),
+                confusing_claims=list(item.get("confusing_claims") or []),
+                credibility_assessment=item["credibility_assessment"],
+                compliance_risks=list(item.get("compliance_risks") or []),
+            ))
+
+        if not reactions:
+            raise ValueError("AI response did not include a reaction for any requested segment")
+
+        return {
+            "segment_reactions": reactions,
+            "recommended_angles": list(data.get("recommended_angles") or []),
+            "generated_at": now_iso,
+        }

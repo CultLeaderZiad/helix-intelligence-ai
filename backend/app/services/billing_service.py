@@ -17,6 +17,7 @@ CREATE_IMAGE_CREDIT_COST = 2.0
 CREATE_VIDEO_CREDIT_COST = 5.0
 ANALYSIS_PATTERN_CREDIT_COST = 0.5
 AI_CHAT_CREDIT_COST = 0.25
+SIMULATION_CREDIT_COST = 1.0
 
 CREDIT_COSTS: Dict[str, float] = {
     "discover_job": DISCOVER_SEARCH_CREDIT_COST,
@@ -26,6 +27,7 @@ CREDIT_COSTS: Dict[str, float] = {
     "ai_insight": ANALYSIS_PATTERN_CREDIT_COST,
     "pattern_pack": ANALYSIS_PATTERN_CREDIT_COST,
     "ai_chat": AI_CHAT_CREDIT_COST,
+    "audience_simulation": SIMULATION_CREDIT_COST,
 }
 
 # Real cost mapping per provider unit in USD
