@@ -22,6 +22,8 @@ class MetapiProvider(ScraperProvider):
         self.user_id = user_id
         self.metapi_api_key = env_secret(
             "METAPI_API_KEY",
+            "METAPI_KEY",
+            "METAPI_TOKEN",
             fallback=getattr(settings, "METAPI_API_KEY", None),
         )
 
