@@ -377,6 +377,18 @@ class AdLibraryProvider(ScraperProvider):
 
             format_type = "video" if ("video" in str(item.get("media_type", "")).lower() or item.get("video_url")) else "image"
             
+            landing_domain = None
+            if landing_url:
+                try:
+                    from urllib.parse import urlparse
+                    netloc = urlparse(landing_url).netloc
+                    if netloc:
+                        landing_domain = netloc.lower().replace("www.", "")
+                except Exception:
+                    pass
+            if not landing_domain and domain and "." in domain and " " not in domain:
+                landing_domain = domain.lower().replace("www.", "")
+
             creatives.append(
                 RawCreative(
                     platform="meta",
@@ -385,7 +397,7 @@ class AdLibraryProvider(ScraperProvider):
                     headline=title or (body[:60] if body else ""),
                     body=body,
                     cta=item.get("cta_text") or item.get("cta") or "Learn More",
-                    landing_domain=domain,
+                    landing_domain=landing_domain,
                     landing_url=landing_url,
                     first_seen=item.get("start_date") or now.isoformat(),
                     last_seen=item.get("end_date") or now.isoformat(),

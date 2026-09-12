@@ -138,6 +138,18 @@ class AdyntelProvider(ScraperProvider):
             except Exception:
                 days_active = 1
 
+            landing_domain = None
+            if landing_url:
+                try:
+                    from urllib.parse import urlparse
+                    netloc = urlparse(landing_url).netloc
+                    if netloc:
+                        landing_domain = netloc.lower().replace("www.", "")
+                except Exception:
+                    pass
+            if not landing_domain and domain and "." in domain and " " not in domain:
+                landing_domain = domain.lower().replace("www.", "")
+
             creatives.append(
                 RawCreative(
                     platform="meta",
@@ -146,7 +158,7 @@ class AdyntelProvider(ScraperProvider):
                     headline=headline,
                     body=body,
                     cta=cta,
-                    landing_domain=domain,
+                    landing_domain=landing_domain,
                     landing_url=landing_url,
                     first_seen=start_date,
                     last_seen=end_date,

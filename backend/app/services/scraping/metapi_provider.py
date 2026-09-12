@@ -191,6 +191,18 @@ class MetapiProvider(ScraperProvider):
 
             thumbnail_url = video_previews[0] if (video_previews and len(video_previews) > 0) else (orig_images[0] if (orig_images and len(orig_images) > 0) else None)
 
+            landing_domain = None
+            if landing_url:
+                try:
+                    from urllib.parse import urlparse
+                    netloc = urlparse(landing_url).netloc
+                    if netloc:
+                        landing_domain = netloc.lower().replace("www.", "")
+                except Exception:
+                    pass
+            if not landing_domain and domain and "." in domain and " " not in domain:
+                landing_domain = domain.lower().replace("www.", "")
+
             creatives.append(
                 RawCreative(
                     platform="meta",
@@ -199,7 +211,7 @@ class MetapiProvider(ScraperProvider):
                     headline=headline,
                     body=body,
                     cta=cta,
-                    landing_domain=domain,
+                    landing_domain=landing_domain,
                     landing_url=landing_url,
                     first_seen=start_date,
                     last_seen=end_date,

@@ -36,3 +36,6 @@ class ScrapeJob(Base):
     # jobs by silence rather than by total age. See job_reconciliation.py.
     owner_boot_id = Column(String, nullable=True)
     heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Strategic Entity Intelligence & PR Dossier
+    entity_profile = Column(JSON, nullable=True)

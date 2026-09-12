@@ -74,6 +74,7 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE creatives ADD COLUMN IF NOT EXISTS brand_name VARCHAR;",
                 "ALTER TABLE creatives ADD COLUMN IF NOT EXISTS media_url VARCHAR;",
                 "ALTER TABLE creatives ADD COLUMN IF NOT EXISTS thumbnail_url VARCHAR;",
+                "ALTER TABLE scrape_jobs ADD COLUMN IF NOT EXISTS entity_profile JSONB;",
             ]
             for query in migrations:
                 try:

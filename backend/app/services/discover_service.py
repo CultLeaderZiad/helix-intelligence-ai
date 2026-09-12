@@ -14,39 +14,67 @@ import re
 from app.schemas.discover import SearchParams, Job
 
 
-def _is_creative_relevant(creative, query: str) -> bool:
+def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] = None) -> bool:
     clean_q = (query or "").lower().strip()
     if not clean_q or len(clean_q) < 3:
         return True
 
+    # 1. Domain-based matching if query is a domain
     if "." in clean_q and " " not in clean_q:
         q_dom = clean_q.split("://")[-1].split("/")[0].replace("www.", "")
         c_dom = (getattr(creative, "landing_domain", "") or "").lower()
         if q_dom in c_dom or c_dom in q_dom:
             return True
 
+    headline = (getattr(creative, "headline", "") or "").lower()
+    body = (getattr(creative, "body", "") or "").lower()
+    brand_name = (getattr(creative, "brand_name", "") or "").lower()
+    landing_domain = (getattr(creative, "landing_domain", "") or "").lower()
+    cta = (getattr(creative, "cta", "") or "").lower()
+
+    text_corpus = f"{headline} {body} {brand_name} {landing_domain} {cta}"
+
+    # 2. Entity Disambiguation (e.g. Content Creator / Streamer vs. Shoe Stores)
+    is_creator = False
+    if entity_profile and entity_profile.get("entity_type") == "creator_streamer":
+        is_creator = True
+    elif clean_q in ("sneako", "andrew tate", "adin ross", "kai cenat"):
+        is_creator = True
+
+    if is_creator:
+        # Footwear & shoe store false-positive markers
+        footwear_markers = [
+            "shoes", "shoe", "sneakers", "sneaker", "kicks", "nike tn", "triple black",
+            "sizes available", "parañaque", "pre-order", "fresh drop", "same day delivery",
+            "slip-on", "heels", "sandals", "footwear"
+        ]
+        has_footwear = any(m in text_corpus for m in footwear_markers)
+        # Check if creator is genuinely the advertiser or subject
+        has_exact_creator_in_brand = bool(re.search(rf"\b{re.escape(clean_q)}\b", brand_name))
+        # If it's a shoe shop and doesn't clearly have the creator as the brand itself, reject
+        if has_footwear and not has_exact_creator_in_brand:
+            return False
+
     tokens = [t for t in re.findall(r"\w+", clean_q) if len(t) > 2]
     if not tokens:
         return True
 
-    text_corpus = " ".join([
-        getattr(creative, "headline", "") or "",
-        getattr(creative, "body", "") or "",
-        getattr(creative, "brand_name", "") or "",
-        getattr(creative, "landing_domain", "") or "",
-        getattr(creative, "cta", "") or ""
-    ]).lower()
+    # Exact full query match with word boundary
+    if re.search(rf"\b{re.escape(clean_q)}\b", text_corpus):
+        return True
 
     if len(tokens) >= 2:
-        if clean_q in text_corpus:
-            return True
+        # Require all tokens or last token (surname/distinctive) on word boundaries
         last_token = tokens[-1]
-        if last_token in text_corpus:
+        if re.search(rf"\b{re.escape(last_token)}\b", text_corpus):
             return True
-        matched = sum(1 for t in tokens if t in text_corpus)
+        matched = sum(1 for t in tokens if re.search(rf"\b{re.escape(t)}\b", text_corpus))
         return matched == len(tokens)
 
-    return tokens[0] in text_corpus
+    # Single token match: MUST be an exact word-boundary match (not substring!)
+    return bool(re.search(rf"\b{re.escape(tokens[0])}\b", text_corpus))
+
+
 from app.schemas.common import Paginated
 from app.models.scrape_job import ScrapeJob
 from app.models.organization import Organization
@@ -69,6 +97,10 @@ def _job_response(job: ScrapeJob) -> Job:
         records_found=int(job.record_count or 0),
         elapsed_ms=int(job.elapsed_ms or 0),
         created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
+        completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
+        error=job.error_msg,
+        failure_kind=job.failure_kind,
+        entity_profile=getattr(job, "entity_profile", None),
     )
 
 
@@ -92,6 +124,7 @@ from app.services.api_usage_service import (
 )
 from app.services.job_heartbeat import heartbeat
 from app.services.query_translator import translate_search_query
+from app.services.entity_intelligence import analyze_entity_intent
 
 
 def _utcnow() -> datetime.datetime:
@@ -278,21 +311,7 @@ async def get_job_status(db: AsyncSession, job_id: str) -> Job:
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    return Job(
-        job_id=job.id,
-        status=job.status,
-        progress=job.progress or 0.0,
-        stage=job.stage or "complete",
-        stage_label=job.stage_label or "Complete",
-        stage_index=job.stage_index or 0,
-        stages_total=job.stages_total or 1,
-        records_found=job.record_count or 0,
-        elapsed_ms=job.elapsed_ms or 0,
-        created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
-        completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
-        error=job.error_msg,
-        failure_kind=job.failure_kind,
-    )
+    return _job_response(job)
 
 async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_size: int = 8) -> Paginated[Job]:
     if settings.USE_MOCKS:
@@ -332,24 +351,7 @@ async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_s
     result = await db.execute(query)
     jobs = result.scalars().all()
 
-    items = [
-        Job(
-            job_id=job.id,
-            status=job.status,
-            progress=job.progress,
-            stage=job.stage or "",
-            stage_label=job.stage_label or "",
-            stage_index=job.stage_index or 0,
-            stages_total=job.stages_total or 1,
-            records_found=job.record_count or 0,
-            elapsed_ms=job.elapsed_ms or 0,
-            created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
-            completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
-            error=job.error_msg,
-            failure_kind=job.failure_kind,
-        )
-        for job in jobs
-    ]
+    items = [_job_response(job) for job in jobs]
 
     return Paginated(
         items=items,
@@ -410,6 +412,9 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
             )
             usage_log_id = usage_log.id
 
+        # Analyze entity intent & PR/marketing footprint early
+        entity_profile = await analyze_entity_intent(query)
+
         # Stage 1: Canonical Ad Library Scraper Chain
         async with async_session_maker() as db:
             await update_job_stage(db, job_id, "scraping", "Scraping Platforms", 0.2, 1)
@@ -434,7 +439,7 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
         provider_used = ad_lib_provider.last_provider_used
         sources_tried = ad_lib_provider.sources_tried
             
-        # Zero Results Handling (Honest reporting)
+        # Zero Results Handling (Honest reporting with Entity Intelligence)
         if not raw_creatives:
             async with async_session_maker() as db:
                 result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
@@ -443,7 +448,14 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
                     sources_str = ", ".join(sources_tried) if sources_tried else "available sources"
                     job.status = "succeeded"
                     job.stage = "zero_results"
-                    job.stage_label = f"No active ads found across [{sources_str}] for '{query}'. Try a company domain (e.g. 'nike.com') or general industry keyword."
+                    job.entity_profile = entity_profile
+                    if entity_profile.get("entity_type") == "creator_streamer":
+                        job.stage_label = (
+                            f"'{query}' is recognized as a {entity_profile.get('category_label', 'Content Creator')}. "
+                            f"Content creators grow via livestreams, clipping, and sponsors rather than direct Meta feed ads. See Entity Dossier."
+                        )
+                    else:
+                        job.stage_label = f"No active ads found across [{sources_str}] for '{query}'. Try a company domain (e.g. 'nike.com') or general industry keyword."
                     job.progress = 1.0
                     job.stage_index = 5
                     job.record_count = 0
@@ -488,13 +500,13 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
                 db_creative, db_score = normalized
                 normalized_records.append((db_creative, db_score))
 
-            # Apply semantic relevance filtering to drop random false positives (e.g. car ads, jazz clubs)
+            # Apply semantic relevance filtering to drop false-positive noise (e.g. shoe stores for Sneako)
             relevant_records = [
-                (c, s) for c, s in normalized_records if _is_creative_relevant(c, query)
+                (c, s) for c, s in normalized_records if _is_creative_relevant(c, query, entity_profile)
             ]
             rejected_irrelevant = len(normalized_records) - len(relevant_records)
-            # Use relevant records, or fallback to normalized if all were pruned to avoid empty state
-            final_records = relevant_records if relevant_records else normalized_records
+            # Strictly save genuine relevant records — never force noise back into the user view
+            final_records = relevant_records
 
             for db_creative, db_score in final_records:
                 # Providers (especially Adyntel) can return the same snapshot
@@ -544,7 +556,19 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
             if job:
                 job.status = "succeeded"
                 job.stage = "complete"
-                job.stage_label = "Complete"
+                job.entity_profile = entity_profile
+                if saved_creatives == 0:
+                    if entity_profile.get("entity_type") == "creator_streamer":
+                        disambig = entity_profile.get("disambiguation", {})
+                        confused = disambig.get("confused_with", "shoe stores")
+                        job.stage_label = (
+                            f"'{query}' is recognized as a {entity_profile.get('category_label', 'Content Creator')}. "
+                            f"Pruned {rejected_irrelevant} off-topic phonetic {confused} matches. See Entity Dossier."
+                        )
+                    else:
+                        job.stage_label = f"Pruned {rejected_irrelevant} off-topic records for '{query}'. No direct ads verified."
+                else:
+                    job.stage_label = "Complete"
                 job.progress = 1.0
                 job.stage_index = 5
                 job.record_count = saved_creatives

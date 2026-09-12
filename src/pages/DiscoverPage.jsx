@@ -19,6 +19,7 @@ import { OnboardingTour } from "@/app/OnboardingTour"
 import { OnboardingWizardModal } from "@/components/OnboardingWizardModal"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 import { MessageSquarePlus } from "lucide-react"
+import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
 
 const EMPTY_FILTERS = {
   country: "ALL",
@@ -376,34 +377,53 @@ export function DiscoverPage() {
             ) : null}
 
             {phase === PHASE.READY && items.length === 0 ? (
-              <EmptyState
-                icon={SearchX}
-                size="lg"
-                status={scrapedNothing ? "zero results" : "no matches"}
-                title={
-                  scrapedNothing
-                    ? t("zeroResultsTitle")
-                    : t("noMatchesTitle")
-                }
-                description={
-                  scrapedNothing
-                    ? job?.stage_label && job?.stage !== "complete"
-                      ? job.stage_label
-                      : 'The ad libraries had no active ads for this query. Try a company domain (e.g. "nike.com") or a broader industry keyword, then re-run.'
-                    : t("noMatchesDesc")
-                }
-                action={
-                  filtersWereApplied ? (
-                    <Button size="sm" variant="outline" onClick={clearFilters}>
-                      {t("clearFilters")}
-                    </Button>
-                  ) : null
-                }
-              />
+              job?.entity_profile ? (
+                <div className="flex flex-1 flex-col overflow-y-auto">
+                  <EntityDossierCard profile={job.entity_profile} query={query} isZeroResults={true} />
+                  <div className="flex flex-col items-center justify-center p-8 text-center">
+                    <p className="max-w-md text-xs leading-relaxed text-text-muted">
+                      {job?.stage_label || "No direct self-serve Meta ad campaigns found. Explore their organic viral clipping, streaming reach, and monetization playbook in the dossier above."}
+                    </p>
+                    {filtersWereApplied ? (
+                      <Button size="sm" variant="outline" onClick={clearFilters} className="mt-3">
+                        {t("clearFilters")}
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={SearchX}
+                  size="lg"
+                  status={scrapedNothing ? "zero results" : "no matches"}
+                  title={
+                    scrapedNothing
+                      ? t("zeroResultsTitle")
+                      : t("noMatchesTitle")
+                  }
+                  description={
+                    scrapedNothing
+                      ? job?.stage_label && job?.stage !== "complete"
+                        ? job.stage_label
+                        : 'The ad libraries had no active ads for this query. Try a company domain (e.g. "nike.com") or a broader industry keyword, then re-run.'
+                      : t("noMatchesDesc")
+                  }
+                  action={
+                    filtersWereApplied ? (
+                      <Button size="sm" variant="outline" onClick={clearFilters}>
+                        {t("clearFilters")}
+                      </Button>
+                    ) : null
+                  }
+                />
+              )
             ) : null}
 
             {phase === PHASE.READY && items.length > 0 ? (
               <>
+                {job?.entity_profile ? (
+                  <EntityDossierCard profile={job.entity_profile} query={query} isZeroResults={false} />
+                ) : null}
                 <ErrorBoundary variant="compact" label="The results table">
                   <ResultsTable
                     items={items}

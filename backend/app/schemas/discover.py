@@ -35,3 +35,4 @@ class Job(BaseModel):
     # pipeline itself failed. Lets the UI say which happened instead of
     # blaming the user's search.
     failure_kind: Optional[str] = None
+    entity_profile: Optional[Dict[str, Any]] = None
