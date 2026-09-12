@@ -12,37 +12,56 @@ import { LanguageProvider } from "@/context/LanguageContext"
 import { LandingPage } from "@/pages/LandingPage"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 
+// Safe lazy-loading with automatic auto-reload on stale deployment chunks
+function safeLazy(importFn) {
+  return lazy(async () => {
+    try {
+      return await importFn()
+    } catch (err) {
+      console.warn("Stale chunk detected. Refreshing application...", err)
+      const lastReload = Number(sessionStorage.getItem("chunk_reload_lock") || 0)
+      const now = Date.now()
+      if (now - lastReload > 8000) {
+        sessionStorage.setItem("chunk_reload_lock", String(now))
+        window.location.reload()
+        return new Promise(() => {})
+      }
+      throw err
+    }
+  })
+}
+
 // Lazy loaded pages with robust named export mapping
-const SignInPage = lazy(() => import("@/pages/auth/SignInPage").then(m => ({ default: m.SignInPage })))
-const SignUpPage = lazy(() => import("@/pages/auth/SignUpPage").then(m => ({ default: m.SignUpPage })))
-const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })))
-const ResetPasswordPage = lazy(() => import("@/pages/auth/ResetPasswordPage").then(m => ({ default: m.ResetPasswordPage })))
-const DiscoverPage = lazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
-const IntelligencePage = lazy(() => import("@/pages/IntelligencePage").then(m => ({ default: m.IntelligencePage })))
-const PerformancePage = lazy(() => import("./pages/PerformancePage").then(m => ({ default: m.default || m.PerformancePage })))
-const DashboardPage = lazy(() => import("./pages/DashboardPage").then(m => ({ default: m.default || m.DashboardPage })))
-const CreatePage = lazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
-const MonitorsPage = lazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
-const GuidePage = lazy(() => import("@/pages/GuidePage").then(m => ({ default: m.GuidePage })))
-const SwipeFilesPage = lazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
-const BillingPage = lazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
-const ApiKeysPage = lazy(() => import("@/pages/ApiKeysPage").then(m => ({ default: m.ApiKeysPage })))
-const TeamPage = lazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamPage })))
-const PendingLoopPage = lazy(() => import("@/pages/PendingLoopPage").then(m => ({ default: m.PendingLoopPage })))
-const NotFoundPage = lazy(() => import("@/pages/NotFoundPage").then(m => ({ default: m.NotFoundPage })))
-const OverviewPage = lazy(() => import("@/pages/admin/OverviewPage").then(m => ({ default: m.OverviewPage })))
-const AdminPendingPage = lazy(() => import("@/pages/admin/AdminPendingPage").then(m => ({ default: m.AdminPendingPage })))
-const OrganizationsPage = lazy(() => import("@/pages/admin/OrganizationsPage").then(m => ({ default: m.OrganizationsPage })))
-const SubscriptionsPlansPage = lazy(() => import("@/pages/admin/SubscriptionsPlansPage").then(m => ({ default: m.SubscriptionsPlansPage })))
-const UsagePage = lazy(() => import("@/pages/admin/UsagePage").then(m => ({ default: m.UsagePage })))
-const FeatureFlagsPage = lazy(() => import("@/pages/admin/FeatureFlagsPage").then(m => ({ default: m.FeatureFlagsPage })))
-const UsersPage = lazy(() => import("@/pages/admin/UsersPage").then(m => ({ default: m.UsersPage })))
-const UpdatesPage = lazy(() => import("@/pages/admin/UpdatesPage").then(m => ({ default: m.UpdatesPage })))
-const SupportAdminPage = lazy(() => import("@/pages/admin/SupportAdminPage").then(m => ({ default: m.SupportAdminPage })))
-const PublicPlaybookPage = lazy(() => import("@/pages/PublicPlaybookPage").then(m => ({ default: m.PublicPlaybookPage })))
-const ProfileSettingsPage = lazy(() => import("@/pages/ProfileSettingsPage").then(m => ({ default: m.ProfileSettingsPage })))
-const SupportPage = lazy(() => import("@/pages/SupportPage").then(m => ({ default: m.SupportPage })))
-const NotificationsPage = lazy(() => import("@/pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })))
+const SignInPage = safeLazy(() => import("@/pages/auth/SignInPage").then(m => ({ default: m.SignInPage })))
+const SignUpPage = safeLazy(() => import("@/pages/auth/SignUpPage").then(m => ({ default: m.SignUpPage })))
+const ForgotPasswordPage = safeLazy(() => import("@/pages/auth/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = safeLazy(() => import("@/pages/auth/ResetPasswordPage").then(m => ({ default: m.ResetPasswordPage })))
+const DiscoverPage = safeLazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
+const IntelligencePage = safeLazy(() => import("@/pages/IntelligencePage").then(m => ({ default: m.IntelligencePage })))
+const PerformancePage = safeLazy(() => import("./pages/PerformancePage").then(m => ({ default: m.default || m.PerformancePage })))
+const DashboardPage = safeLazy(() => import("./pages/DashboardPage").then(m => ({ default: m.default || m.DashboardPage })))
+const CreatePage = safeLazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
+const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
+const GuidePage = safeLazy(() => import("@/pages/GuidePage").then(m => ({ default: m.GuidePage })))
+const SwipeFilesPage = safeLazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
+const BillingPage = safeLazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
+const ApiKeysPage = safeLazy(() => import("@/pages/ApiKeysPage").then(m => ({ default: m.ApiKeysPage })))
+const TeamPage = safeLazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamPage })))
+const PendingLoopPage = safeLazy(() => import("@/pages/PendingLoopPage").then(m => ({ default: m.PendingLoopPage })))
+const NotFoundPage = safeLazy(() => import("@/pages/NotFoundPage").then(m => ({ default: m.NotFoundPage })))
+const OverviewPage = safeLazy(() => import("@/pages/admin/OverviewPage").then(m => ({ default: m.OverviewPage })))
+const AdminPendingPage = safeLazy(() => import("@/pages/admin/AdminPendingPage").then(m => ({ default: m.AdminPendingPage })))
+const OrganizationsPage = safeLazy(() => import("@/pages/admin/OrganizationsPage").then(m => ({ default: m.OrganizationsPage })))
+const SubscriptionsPlansPage = safeLazy(() => import("@/pages/admin/SubscriptionsPlansPage").then(m => ({ default: m.SubscriptionsPlansPage })))
+const UsagePage = safeLazy(() => import("@/pages/admin/UsagePage").then(m => ({ default: m.UsagePage })))
+const FeatureFlagsPage = safeLazy(() => import("@/pages/admin/FeatureFlagsPage").then(m => ({ default: m.FeatureFlagsPage })))
+const UsersPage = safeLazy(() => import("@/pages/admin/UsersPage").then(m => ({ default: m.UsersPage })))
+const UpdatesPage = safeLazy(() => import("@/pages/admin/UpdatesPage").then(m => ({ default: m.UpdatesPage })))
+const SupportAdminPage = safeLazy(() => import("@/pages/admin/SupportAdminPage").then(m => ({ default: m.SupportAdminPage })))
+const PublicPlaybookPage = safeLazy(() => import("@/pages/PublicPlaybookPage").then(m => ({ default: m.PublicPlaybookPage })))
+const ProfileSettingsPage = safeLazy(() => import("@/pages/ProfileSettingsPage").then(m => ({ default: m.ProfileSettingsPage })))
+const SupportPage = safeLazy(() => import("@/pages/SupportPage").then(m => ({ default: m.SupportPage })))
+const NotificationsPage = safeLazy(() => import("@/pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })))
 
 const PUBLIC_TITLES = {
   "/sign-in": "Sign in",

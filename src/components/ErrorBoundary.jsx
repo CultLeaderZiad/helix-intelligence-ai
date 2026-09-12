@@ -21,9 +21,32 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error("Uncaught error caught by ErrorBoundary:", error, errorInfo)
+    const msg = String(error?.message || "")
+    if (
+      msg.includes("dynamically imported module") ||
+      msg.includes("Failed to fetch dynamically") ||
+      msg.includes("Importing a module script failed")
+    ) {
+      const lastReload = Number(sessionStorage.getItem("chunk_reload_lock") || 0)
+      const now = Date.now()
+      if (now - lastReload > 8000) {
+        sessionStorage.setItem("chunk_reload_lock", String(now))
+        console.warn("Stale chunk detected after deployment. Auto-reloading workspace...")
+        window.location.reload()
+      }
+    }
   }
 
   handleReset = () => {
+    const msg = String(this.state.error?.message || "")
+    if (
+      msg.includes("dynamically imported module") ||
+      msg.includes("Failed to fetch") ||
+      msg.includes("Importing a module script failed")
+    ) {
+      window.location.reload()
+      return
+    }
     this.setState({ hasError: false, error: null })
   }
 
