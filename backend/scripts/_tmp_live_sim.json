@@ -1,0 +1,83 @@
+{
+  "email": "livesim_1789185255_7283@example.com",
+  "creative_id": "e1235cef-afcf-4b52-aea7-a3d2000a15f2",
+  "signup": {
+    "http": 200,
+    "user_id": "f5b2deb4-eaac-4a11-9fbb-b638937a773e",
+    "credits": 25.0
+  },
+  "success": {
+    "http": 200,
+    "elapsed_s": 3.4,
+    "credits_before": 25.0,
+    "credits_after": 24.0,
+    "credit_delta": -1.0,
+    "model_version": "groq/openai/gpt-oss-120b",
+    "data_source": "simulated",
+    "detail": null,
+    "reactions": [
+      {
+        "segment_id": "price_sensitive_skeptic",
+        "segment_label": "Price-Sensitive Skeptic",
+        "appeal_score": 0.3,
+        "objections": [
+          "No price info",
+          "Superlative claim without proof",
+          "Feels like a generic fitness pitch"
+        ],
+        "confusing_claims": [
+          "\"Construyendo hombros. Sin excusas.\" is vague"
+        ],
+        "credibility_assessment": "They would doubt the ad because it offers no pricing or performance data.",
+        "compliance_risks": []
+      },
+      {
+        "segment_id": "trend_driven_gen_z",
+        "segment_label": "Trend-Driven Gen Z",
+        "appeal_score": 0.45,
+        "objections": [
+          "Looks like a copy of Gymshark content",
+          "Lacks humor or meme culture",
+          "Hashtag overload"
+        ],
+        "confusing_claims": [],
+        "credibility_assessment": "Will view it as a polished, inauthentic ad and likely scroll past.",
+        "compliance_risks": [
+          "Tagging @gymshark may be seen as unauthorized endorsement"
+        ]
+      },
+      {
+        "segment_id": "cautious_first_time_buyer",
+        "segment_label": "Cautious First-Time Buyer",
+        "appeal_score": 0.25,
+        "objections": [
+          "Unclear what is being sold",
+          "CTA to Instagram not a purchase path",
+          "No safety or guarantee info"
+        ],
+        "confusing_claims": [
+          "Phrase \"Construyendo hombros\" is not explained"
+        ],
+        "credibility_assessment": "Will feel uncertain and think the message is a vague marketing gimmick.",
+        "compliance_risks": [
+          "Redirecting to external Instagram profile could breach Meta's landing‑page rules"
+        ]
+      }
+    ],
+    "recommended_angles": [
+      "Include clear pricing or value proposition",
+      "Show authentic user‑generated clips or humor to boost relatability",
+      "Explain the meaning of \"Construyendo hombros\" and highlight safety/benefit details"
+    ]
+  },
+  "forced_failure": {
+    "http": 503,
+    "detail": {
+      "code": "simulation_unavailable",
+      "message": "Audience simulation is temporarily unavailable — the AI provider could not be reached. No credits were charged. Please try again shortly."
+    },
+    "credits_before": 24.0,
+    "credits_after": 24.0,
+    "credit_delta": 0.0
+  }
+}

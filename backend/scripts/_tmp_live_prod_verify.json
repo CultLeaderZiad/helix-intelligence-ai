@@ -1,0 +1,69 @@
+{
+  "email": "liveverify_1789185002_915ba2@example.com",
+  "base": "https://helix-intelligence-ai.onrender.com/api",
+  "steps": {
+    "signup": {
+      "http": 200,
+      "user_id": "9024350a-12e1-4d64-b06e-b7b33ca1622c",
+      "credit_balance": 25.0,
+      "role": "customer",
+      "has_token": true
+    },
+    "well_known_domain": {
+      "query": "nike.com",
+      "trigger_http": 200,
+      "trigger_job": {
+        "job_id": "564ea2c7-c339-4b97-aa27-95dd0f8cfff3",
+        "status": "running",
+        "records_found": 0,
+        "stage": "init",
+        "stage_label": "Initializing Search"
+      },
+      "final_job": {
+        "job_id": "564ea2c7-c339-4b97-aa27-95dd0f8cfff3",
+        "status": "failed",
+        "records_found": 0,
+        "stage": "normalizing",
+        "stage_label": "Normalizing & Saving",
+        "error": "name 'clean_query' is not defined",
+        "failure_kind": null,
+        "elapsed_ms": 30967
+      },
+      "results_http": 200,
+      "results_total": 0,
+      "sample": [],
+      "credits_before": 25.0,
+      "credits_after": 24.0,
+      "credit_delta": -1.0,
+      "elapsed_s": 34.5
+    },
+    "obscure_domain": {
+      "query": "shopify.com",
+      "trigger_http": 200,
+      "trigger_job": {
+        "job_id": "0464f456-fed0-4eec-b880-b996408fd5f2",
+        "status": "running",
+        "records_found": 0,
+        "stage": "init",
+        "stage_label": "Initializing Search"
+      },
+      "final_job": {
+        "job_id": "0464f456-fed0-4eec-b880-b996408fd5f2",
+        "status": "failed",
+        "records_found": 0,
+        "stage": "normalizing",
+        "stage_label": "Normalizing & Saving",
+        "error": "name 'clean_query' is not defined",
+        "failure_kind": null,
+        "elapsed_ms": 25296
+      },
+      "results_http": 200,
+      "results_total": 0,
+      "sample": [],
+      "credits_before": 24.0,
+      "credits_after": 23.0,
+      "credit_delta": -1.0,
+      "elapsed_s": 27.1
+    }
+  }
+}
