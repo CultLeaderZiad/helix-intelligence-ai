@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_, and_
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, BackgroundTasks
 import datetime
@@ -90,7 +90,11 @@ async def trigger_search(
     #     org -> return that job, so the second request polls the first
     #     search's result instead of creating (and charging) a duplicate.
     # 2b. 12-hour cache: an identical query already succeeded in this org in
-    #     the last 12h -> return the cached result (0 credits charged).
+    #     the last 12h AND found at least one creative -> return the cached
+    #     result (0 credits charged). A zero-result "succeeded" job is not
+    #     cached: a provider that returned nothing once (e.g. because a key
+    #     was missing) must be retried on the next search once fixed, not
+    #     silently replay the same empty result for 12 hours.
     # Matching is case-insensitive ("Nike" == "nike"): it is the same scrape.
     twelve_hours_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
     normalized_query = clean_query.lower()
@@ -98,7 +102,12 @@ async def trigger_search(
         select(ScrapeJob)
         .where(ScrapeJob.org_id == org_id)
         .where(func.lower(ScrapeJob.query) == normalized_query)
-        .where(ScrapeJob.status.in_(("queued", "running", "succeeded")))
+        .where(
+            or_(
+                ScrapeJob.status.in_(("queued", "running")),
+                and_(ScrapeJob.status == "succeeded", ScrapeJob.record_count > 0),
+            )
+        )
         .where(ScrapeJob.created_at >= twelve_hours_ago)
         .order_by(ScrapeJob.created_at.desc())
         .limit(1)
@@ -143,7 +152,12 @@ async def trigger_search(
             select(ScrapeJob)
             .where(ScrapeJob.org_id == org_id)
             .where(func.lower(ScrapeJob.query) == normalized_query)
-            .where(ScrapeJob.status.in_(("queued", "running", "succeeded")))
+            .where(
+                or_(
+                    ScrapeJob.status.in_(("queued", "running")),
+                    and_(ScrapeJob.status == "succeeded", ScrapeJob.record_count > 0),
+                )
+            )
             .order_by(ScrapeJob.created_at.desc())
             .limit(1)
         )
