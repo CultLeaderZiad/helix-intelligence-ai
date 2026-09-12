@@ -9,8 +9,44 @@ import traceback
 import uuid
 import time
 import os
+import re
 
 from app.schemas.discover import SearchParams, Job
+
+
+def _is_creative_relevant(creative, query: str) -> bool:
+    clean_q = (query or "").lower().strip()
+    if not clean_q or len(clean_q) < 3:
+        return True
+
+    if "." in clean_q and " " not in clean_q:
+        q_dom = clean_q.split("://")[-1].split("/")[0].replace("www.", "")
+        c_dom = (getattr(creative, "landing_domain", "") or "").lower()
+        if q_dom in c_dom or c_dom in q_dom:
+            return True
+
+    tokens = [t for t in re.findall(r"\w+", clean_q) if len(t) > 2]
+    if not tokens:
+        return True
+
+    text_corpus = " ".join([
+        getattr(creative, "headline", "") or "",
+        getattr(creative, "body", "") or "",
+        getattr(creative, "brand_name", "") or "",
+        getattr(creative, "landing_domain", "") or "",
+        getattr(creative, "cta", "") or ""
+    ]).lower()
+
+    if len(tokens) >= 2:
+        if clean_q in text_corpus:
+            return True
+        last_token = tokens[-1]
+        if last_token in text_corpus:
+            return True
+        matched = sum(1 for t in tokens if t in text_corpus)
+        return matched == len(tokens)
+
+    return tokens[0] in text_corpus
 from app.schemas.common import Paginated
 from app.models.scrape_job import ScrapeJob
 from app.models.organization import Organization
@@ -439,7 +475,10 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
             saved_creatives = 0
             rejected_templates = 0
             duplicates_skipped = 0
+            rejected_irrelevant = 0
             seen_content_keys = set()
+            normalized_records = []
+
             for rc, extra in enriched_creatives:
                 normalized = normalize_creative(rc, job_id, brand_id, extra, brand_label=brand_label)
                 if normalized is None:
@@ -447,6 +486,17 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
                     rejected_templates += 1
                     continue
                 db_creative, db_score = normalized
+                normalized_records.append((db_creative, db_score))
+
+            # Apply semantic relevance filtering to drop random false positives (e.g. car ads, jazz clubs)
+            relevant_records = [
+                (c, s) for c, s in normalized_records if _is_creative_relevant(c, query)
+            ]
+            rejected_irrelevant = len(normalized_records) - len(relevant_records)
+            # Use relevant records, or fallback to normalized if all were pruned to avoid empty state
+            final_records = relevant_records if relevant_records else normalized_records
+
+            for db_creative, db_score in final_records:
                 # Providers (especially Adyntel) can return the same snapshot
                 # many times; identical (format, headline, body) within one
                 # job is one creative, not ten.
@@ -462,9 +512,11 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
                 db.add(db_creative)
                 db.add(db_score)
                 saved_creatives += 1
-            if rejected_templates or duplicates_skipped:
+
+            if rejected_templates or duplicates_skipped or rejected_irrelevant:
                 print(
                     f"[DiscoverPipeline] job {job_id}: saved {saved_creatives}, "
+                    f"pruned {rejected_irrelevant} off-topic noise record(s), "
                     f"rejected {rejected_templates} template-only record(s), "
                     f"skipped {duplicates_skipped} duplicate(s)"
                 )

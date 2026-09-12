@@ -16,6 +16,8 @@ class RawCreative(BaseModel):
     landing_url: Optional[str] = None
     duration_seconds: Optional[int] = None
     thumbnail_ratio: Optional[str] = None
+    media_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
     first_seen: Optional[str] = None
     last_seen: Optional[str] = None
     days_active: int = 1

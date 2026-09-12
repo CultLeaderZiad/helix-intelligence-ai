@@ -13,6 +13,7 @@ class Creative(Base):
     job_id = Column(String, ForeignKey("scrape_jobs.id"), nullable=False)
     
     brand_id = Column(String, nullable=False) # Maps to brand
+    brand_name = Column(String, nullable=True) # Real advertiser page/brand name
     platform = Column(String, nullable=False) # 'meta'|'tiktok'|'youtube'|'linkedin'|'reddit'
     format = Column(String, nullable=False, default="video")
     
@@ -21,6 +22,8 @@ class Creative(Base):
     cta = Column(String, nullable=True)
     
     landing_domain = Column(String, nullable=True)
+    media_url = Column(String, nullable=True)
+    thumbnail_url = Column(String, nullable=True)
     thumbnail_ratio = Column(String, nullable=True)
     duration_seconds = Column(Integer, nullable=True)
     

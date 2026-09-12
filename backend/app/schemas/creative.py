@@ -17,6 +17,7 @@ class CreativeMetrics(BaseModel):
 class Creative(BaseModel):
     id: str
     brand_id: str
+    brand_name: Optional[str] = None
     platform: str
     format: str
     source_type: Optional[str] = "ad" # 'ad' | 'organic_content_proxy'
@@ -24,6 +25,8 @@ class Creative(BaseModel):
     body: str
     cta: str
     landing_domain: Optional[str] = None
+    media_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
     thumbnail_ratio: Optional[str] = None
     duration_seconds: Optional[int] = None
     first_seen: str

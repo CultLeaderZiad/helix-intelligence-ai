@@ -112,7 +112,7 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                 </td>
                 <td className="px-2 py-2">
                   <span className="block truncate text-xs text-text-muted">
-                    {brand?.name ?? "Unknown"}
+                    {c.brand_name || brand?.name || "Unknown"}
                   </span>
                 </td>
                 <td className="px-2 py-2">

@@ -33,24 +33,46 @@ const FORMAT_ICON = { video: Play, image: ImageIcon, carousel: Layers }
  * instead of faking a thumbnail. When the API embeds `media_url`, the
  * inner block becomes an <img>/<video> and nothing else moves.
  */
-function MediaFrame({ format, ratio, duration }) {
+function MediaFrame({ format, ratio, duration, mediaUrl, thumbnailUrl }) {
   const Icon = FORMAT_ICON[format] ?? ImageIcon
   const aspect = ratio ? ratio.replace(":", " / ") : "16 / 9"
+  const src = mediaUrl || thumbnailUrl
 
   return (
     <div className="flex justify-center border-b border-border bg-bg p-4">
       <div
-        className="grid-backdrop relative flex max-h-64 w-full items-center justify-center border border-border bg-surface"
+        className="grid-backdrop relative flex max-h-64 w-full items-center justify-center border border-border bg-surface overflow-hidden"
         style={{ aspectRatio: aspect, maxWidth: ratio === "9:16" ? "9rem" : "100%" }}
       >
-        <div className="flex flex-col items-center gap-2">
-          <Icon className="h-5 w-5 text-text-faint" aria-hidden="true" />
-          <span className="label-mono">asset not synced</span>
-        </div>
-        <span className="label-mono absolute left-2 top-2">{format}</span>
-        <span className="label-mono absolute right-2 top-2">{ratio}</span>
+        {src ? (
+          format === "video" && mediaUrl ? (
+            <video
+              src={mediaUrl}
+              poster={thumbnailUrl || undefined}
+              controls
+              playsInline
+              className="h-full w-full object-contain"
+            />
+          ) : (
+            <img
+              src={src}
+              alt="Ad asset preview"
+              className="h-full w-full object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = "none"
+              }}
+            />
+          )
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <Icon className="h-5 w-5 text-text-faint" aria-hidden="true" />
+            <span className="label-mono">asset not synced</span>
+          </div>
+        )}
+        <span className="label-mono absolute left-2 top-2 rounded bg-surface/80 px-1 py-0.5">{format}</span>
+        <span className="label-mono absolute right-2 top-2 rounded bg-surface/80 px-1 py-0.5">{ratio}</span>
         {duration ? (
-          <span className="label-mono tnum absolute bottom-2 right-2">
+          <span className="label-mono tnum absolute bottom-2 right-2 rounded bg-surface/80 px-1 py-0.5">
             {formatDuration(duration * 1000)}
           </span>
         ) : null}
@@ -236,6 +258,8 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
             format={data.format}
             ratio={data.thumbnail_ratio}
             duration={data.duration_seconds}
+            mediaUrl={data.media_url}
+            thumbnailUrl={data.thumbnail_url}
           />
 
           <div className="flex flex-col gap-4 p-3">
@@ -244,7 +268,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
               <div className="flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="truncate text-xs font-medium text-text">
-                    {data.brand?.name ?? "Unknown brand"}
+                    {data.brand_name || data.brand?.name || "Unknown brand"}
                   </span>
                   <Tag>{data.platform}</Tag>
                   {data.source_type === "organic_content_proxy" ? (

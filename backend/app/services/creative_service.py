@@ -79,6 +79,7 @@ async def list_creatives(
         items.append(CreativeSchema(
             id=c.id,
             brand_id=c.brand_id,
+            brand_name=getattr(c, "brand_name", None),
             platform=c.platform,
             format=c.format,
             source_type=getattr(c, "data_source", "ad") or "ad",
@@ -86,6 +87,8 @@ async def list_creatives(
             body=c.body or "",
             cta=c.cta or "",
             landing_domain=c.landing_domain,
+            media_url=getattr(c, "media_url", None),
+            thumbnail_url=getattr(c, "thumbnail_url", None),
             thumbnail_ratio=c.thumbnail_ratio,
             duration_seconds=c.duration_seconds,
             first_seen=c.first_seen or "",
@@ -148,6 +151,7 @@ async def get_creative_by_id(db: AsyncSession, creative_id: str) -> CreativeSche
     return CreativeSchema(
         id=c.id,
         brand_id=c.brand_id,
+        brand_name=getattr(c, "brand_name", None),
         platform=c.platform,
         format=c.format,
         source_type=getattr(c, "data_source", "ad") or "ad",
@@ -155,6 +159,8 @@ async def get_creative_by_id(db: AsyncSession, creative_id: str) -> CreativeSche
         body=c.body or "",
         cta=c.cta or "",
         landing_domain=c.landing_domain,
+        media_url=getattr(c, "media_url", None),
+        thumbnail_url=getattr(c, "thumbnail_url", None),
         thumbnail_ratio=c.thumbnail_ratio,
         duration_seconds=c.duration_seconds,
         first_seen=c.first_seen or "",
@@ -197,7 +203,11 @@ async def list_brands(db: AsyncSession, page: int = 1, page_size: int = 20) -> P
 
     # Since we don't have a separate Brand table, we can generate unique brands from creatives
     # Grouping creatives by brand_id
-    query = select(Creative.brand_id, func.count(Creative.id).label("ad_count")).group_by(Creative.brand_id)
+    query = select(
+        Creative.brand_id,
+        func.max(Creative.brand_name).label("brand_name"),
+        func.count(Creative.id).label("ad_count")
+    ).group_by(Creative.brand_id)
     result = await db.execute(query)
     rows = result.all()
     
@@ -206,10 +216,11 @@ async def list_brands(db: AsyncSession, page: int = 1, page_size: int = 20) -> P
     paginated_rows = rows[offset:offset+page_size]
     
     items = []
-    for brand_id, ad_count in paginated_rows:
+    for brand_id, brand_name, ad_count in paginated_rows:
+        display_name = (brand_name or "").strip() or brand_id.replace("-", " ").title()
         items.append(BrandSchema(
             id=brand_id,
-            name=brand_id.replace("-", " ").title(),
+            name=display_name,
             domain=f"{brand_id}.com",
             category="Other",
             ad_count=ad_count,
@@ -273,10 +284,14 @@ from app.models.user import User
 from typing import List
 
 async def generate_patterns_for_recent_creatives(db: AsyncSession, user: User, job_id: str, byok_key: str = None, byok_provider: str = None) -> List[PatternSchema]:
-    # Fetch recent creatives (e.g., last 10)
-    query = select(Creative).order_by(Creative.first_seen.desc()).limit(10)
+    # Fetch creatives for this specific job, or fallback to recent creatives
+    query = select(Creative).where(Creative.job_id == job_id).limit(10) if job_id else select(Creative).order_by(Creative.first_seen.desc()).limit(10)
     result = await db.execute(query)
     creatives_models = result.scalars().all()
+    if not creatives_models and job_id:
+        query = select(Creative).order_by(Creative.first_seen.desc()).limit(10)
+        result = await db.execute(query)
+        creatives_models = result.scalars().all()
     
     if not creatives_models:
         raise HTTPException(status_code=400, detail="No creatives available for pattern extraction")
@@ -451,6 +466,7 @@ async def list_saved_creatives(
         items.append(CreativeSchema(
             id=c.id,
             brand_id=c.brand_id,
+            brand_name=getattr(c, "brand_name", None),
             platform=c.platform,
             format=c.format,
             source_type=getattr(c, "data_source", "ad") or "ad",
@@ -458,6 +474,8 @@ async def list_saved_creatives(
             body=c.body or "",
             cta=c.cta or "",
             landing_domain=c.landing_domain,
+            media_url=getattr(c, "media_url", None),
+            thumbnail_url=getattr(c, "thumbnail_url", None),
             thumbnail_ratio=c.thumbnail_ratio,
             duration_seconds=c.duration_seconds,
             first_seen=c.first_seen or "",
