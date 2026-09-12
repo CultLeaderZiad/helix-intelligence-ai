@@ -171,7 +171,7 @@ async def trigger_search(
         provider="discover_composite",
         operation="discover_job_start",
         units=1.0,
-        cost_usd=ESTIMATED_PROVIDER_COSTS.get("apify_ad", 0.00075) * 15,
+        cost_usd=ESTIMATED_PROVIDER_COSTS.get("metapi_query", 0.001) * 15,
         job_id=new_job.id,
         metadata={"query": clean_query}
     )

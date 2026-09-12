@@ -7,25 +7,12 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env.local"))
 
 from app.db.session import async_session_maker
-from app.services.scraping.ad_library_provider import AdLibraryProvider
-from app.services.scraping.adyntel_provider import AdyntelProvider
 from app.services.scraping.metapi_provider import MetapiProvider
 
 async def test_providers():
     async with async_session_maker() as db:
-        print("Testing Apify...")
-        ad_lib = AdLibraryProvider(db, "org_id", "user_id")
-        creatives = await ad_lib.query_apify("Real madrid", "US", 10)
-        print(f"Apify found: {len(creatives)}")
-        
-        print("Testing Adyntel...")
-        adyntel = AdyntelProvider(db, "org_id", "user_id")
-        adyntel_creatives = await adyntel.search("Real madrid", 10)
-        print(f"Adyntel found: {len(adyntel_creatives)}")
-
-        print("\nTesting Metapi...")
+        print("Testing Metapi...")
         metapi = MetapiProvider(db, "org_id", "user_id")
-        metapi.metapi_api_key = "mk_live_cbd9917f030533d6a1bfe1d0897e900a002afef704458c459010271359c5f0e7"
         metapi_creatives = await metapi.search("shopify", 10)
         print(f"Metapi found: {len(metapi_creatives)}")
         if metapi_creatives:

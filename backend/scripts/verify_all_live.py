@@ -47,7 +47,7 @@ async def test_1_shopify_headlines(db, user, org):
 
 async def test_2_create_studio_tiering(db, admin_user, trial_user):
     print("\n" + "="*80)
-    print("TEST 2: CREATE STUDIO TIERED ROUTING (PAID/ADMIN -> HIGGSFIELD vs TRIAL -> GEMINI)")
+    print("TEST 2: CREATE STUDIO ROUTING (ALL USERS -> GEMINI)")
     print("="*80)
 
     # 1. Admin/Paid User Test
@@ -60,8 +60,8 @@ async def test_2_create_studio_tiering(db, admin_user, trial_user):
     
     job_paid = await media_service.create_media_job(db, admin_user, req_paid)
     print(f"  -> Created Job ID: {job_paid.id}")
-    print(f"  -> Assigned Provider in DB: '{job_paid.provider}' (Expected: 'higgsfield')")
-    assert job_paid.provider == "higgsfield", f"Expected higgsfield but got {job_paid.provider}"
+    print(f"  -> Assigned Provider in DB: '{job_paid.provider}' (Expected: 'gemini')")
+    assert job_paid.provider == "gemini", f"Expected gemini but got {job_paid.provider}"
 
     # 2. Trial User Test
     trial_org = await get_or_create_default_org(db, trial_user)

@@ -9,7 +9,7 @@ under the sidebar:
 |---|---|---|---|
 | Discover | `/discover` | **Live** | Query competitor ad libraries, run an async scrape job, browse/filter/sort the resulting creatives, inspect one in detail |
 | Intelligence | `/intelligence` | PLANNED | Mine recurring creative patterns across a discovered corpus |
-| Create | `/create` | **Live** | Draft new creative briefed on the patterns that win, using Higgsfield media generation via webhook/polling |
+| Create | `/create` | **Live** | Draft new creative briefed on the patterns that win, using Gemini/Pollinations media generation via job polling |
 | Performance | `/performance` | PLANNED | Feed live performance data back into the scoring model |
 
 The single source of truth for this list is `src/app/navigation.js`
@@ -240,17 +240,15 @@ endpoint mapping, and the mock ⇄ API parity guarantee.
    `JobProgress` renders the failed stage inline; `retry()` resubmits the
    last params.
 
-## 8. Current Create flow (Higgsfield Integration)
+## 8. Current Create flow (Gemini / Pollinations)
 
 1. User selects a Source Creative (from Discover) or provides a custom brief.
 2. The UI drafts a `CreativeBrief` using the AI Router (falling back across Groq, OpenRouter, Gemini, AIHubMix, Token Harbor).
-3. The user initiates generation by selecting a media capability (e.g., `IMAGE_FAST`).
+3. The user initiates generation by selecting a Create mode (image or video).
 4. The `mediaService.generateMedia` call creates a `MediaGenerationJob` in the backend.
-5. The backend (`HiggsfieldProvider`) submits a generation request to the Higgsfield API. It includes a `webhook` payload pointing to the backend's `/api/v1/webhooks/higgsfield` endpoint.
+5. The backend routes image generation to Gemini (or Pollinations for video), and stores the resulting binary media directly (no external webhook — this is synchronous within the background task, not a callback).
 6. The frontend uses `useMediaGeneration` to poll `mediaService.getJobStatus(jobId)` while waiting.
-7. Higgsfield processes the request. Upon completion (success or failure), it POSTs to the webhook endpoint.
-8. The backend's webhook handler dedupes the event, updates the job status, and if successful, downloads the generated artifact to persistent storage.
-9. The polling frontend receives the updated status (`succeeded`) and artifact URL, rendering the result with full lineage intact.
+7. The polling frontend receives the updated status (`succeeded`) and artifact URL, rendering the result with full lineage intact.
 
 ## 9. Future FastAPI integration — PLANNED
 

@@ -19,18 +19,24 @@ async def create_media_job(
 
 @router.get("/models")
 async def get_available_models():
-    """Returns the semantic capability catalogue."""
-    from app.services.media.higgsfield_registry import list_available_capabilities
-    return list_available_capabilities()
+    """Returns the available Create modes (image/video)."""
+    from app.services.media.mode_registry import MODE_OUTPUT_TYPES
+    return [{"mode": mode, "output_type": output_type} for mode, output_type in MODE_OUTPUT_TYPES.items()]
 
 @router.get("/providers")
 async def get_media_providers():
     """Returns active media providers."""
     return [
         {
-            "id": "higgsfield",
-            "name": "Higgsfield AI",
-            "capabilities": ["IMAGE_FAST", "IMAGE_PREMIUM", "IMAGE_CINEMATIC", "VIDEO_FAST", "VIDEO_STANDARD", "VIDEO_FIRST_LAST_FAST", "VIDEO_FIRST_LAST_STANDARD"],
+            "id": "gemini",
+            "name": "Google Gemini",
+            "capabilities": ["image"],
+            "status": "active"
+        },
+        {
+            "id": "pollinations",
+            "name": "Pollinations",
+            "capabilities": ["video"],
             "status": "active"
         }
     ]

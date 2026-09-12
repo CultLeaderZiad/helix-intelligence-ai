@@ -31,7 +31,7 @@ services:
     # ────────────────────────────────────────────────────────
     # GROQ_API_KEY, OPENROUTER_API_KEY, GEMINI_API_KEY,
     # SCRAPEGRAPH_API_KEY, META_ACCESS_TOKEN, BRIGHTDATA_API_KEY,
-    # APIFY_API_TOKEN
+    # METAPI_API_KEY
     #
     # ────────────────────────────────────────────────────────
     # Password reset (no mail provider is configured yet)
