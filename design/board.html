@@ -1,0 +1,899 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helix — UI Roadmap Board (before / after)</title>
+<style>
+  :root{
+    --bg:#09090b; --surface:#111115; --surface-2:#18181f; --surface-3:#22222b;
+    --border:#2a2a35; --border-strong:#3f3f4e;
+    --text:#ffffff; --muted:#cbd5e1; --faint:#94a3b8;
+    --accent:#d7ff4f; --accent-dim:#a8c93e; --accent-wash:rgba(215,255,79,.12);
+    --success:#4ade80; --warning:#fbbf24; --danger:#f87171; --info:#60a5fa;
+    --sans:"Inter","Inter Variable",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    --mono:"JetBrains Mono","JetBrains Mono Variable",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1500px;margin:0 auto;padding:40px 28px 120px}
+  a{color:var(--accent);text-decoration:none}
+  .label-mono{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  h1{font-size:30px;line-height:1.15;margin:0 0 6px;letter-spacing:-.02em}
+  h2{font-size:20px;margin:0;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:15px;max-width:96ch}
+  .rule{height:1px;background:var(--border);margin:34px 0}
+  .mono{font-family:var(--mono)}
+  .tnum{font-variant-numeric:tabular-nums}
+
+  /* ---------- top matter ---------- */
+  .kicker{display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+  .tag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--border-strong);padding:3px 8px;color:var(--muted)}
+  .tag.hot{border-color:var(--accent);color:var(--accent);background:var(--accent-wash)}
+  .grid{display:grid;gap:12px}
+  .g6{grid-template-columns:repeat(6,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  @media (max-width:1200px){.g6{grid-template-columns:repeat(3,1fr)}.g2{grid-template-columns:1fr}}
+  .stat{border:1px solid var(--border);background:var(--surface);padding:12px 14px}
+  .stat b{display:block;font-family:var(--mono);font-size:26px;letter-spacing:-.02em}
+  .stat span{color:var(--faint);font-size:13px}
+  .callout{border:1px solid var(--danger);background:rgba(248,113,113,.07);padding:16px 18px}
+  .callout h3{margin:0 0 6px;font-size:16px;color:var(--danger)}
+  .callout p{margin:0 0 8px;font-size:14.5px;color:var(--muted)}
+  .callout code{font-family:var(--mono);font-size:13px;color:var(--text);background:var(--surface-2);padding:1px 5px;border:1px solid var(--border)}
+
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  th,td{border-bottom:1px solid var(--border);text-align:left;padding:10px 12px;vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:500}
+  td.c{text-align:center;white-space:nowrap}
+  .pri{font-family:var(--mono);font-size:11px;border:1px solid var(--accent);color:var(--accent);padding:1px 6px}
+  .pri.sec{border-color:var(--danger);color:var(--danger)}
+  .pri.later{border-color:var(--border-strong);color:var(--faint)}
+
+  /* ---------- letter section ---------- */
+  .letter{border:1px solid var(--border);background:var(--surface);margin:26px 0}
+  .letter>header{display:flex;gap:14px;align-items:baseline;padding:16px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+  .badge{font-family:var(--mono);font-size:20px;color:var(--accent);border:1px solid var(--accent);padding:2px 10px;letter-spacing:.04em}
+  .letter>header .meta{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .why{padding:14px 18px;font-size:14.5px;color:var(--muted);border-bottom:1px solid var(--border);background:var(--surface-2)}
+  .why b{color:var(--text)}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  @media (max-width:1000px){.panes{grid-template-columns:1fr}}
+  .pane{padding:16px 18px;min-width:0}
+  .pane+.pane{border-left:1px solid var(--border)}
+  .pane.after{background:linear-gradient(180deg,rgba(215,255,79,.045),transparent 200px)}
+  .pane h4{margin:0 0 12px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:500}
+  .pane.after h4{color:var(--accent)}
+  .spec{border-top:1px solid var(--border);padding:14px 18px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media (max-width:1000px){.spec{grid-template-columns:1fr}}
+  .spec ul{margin:0;padding-left:17px;font-size:13.5px;color:var(--muted)}
+  .spec li{margin:3px 0}
+  .spec h5{margin:0 0 6px;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:500}
+  code.f{font-family:var(--mono);font-size:12.5px;color:var(--accent-dim)}
+
+  /* ---------- mock primitives ---------- */
+  .screen{border:1px solid var(--border-strong);background:var(--bg);padding:12px;overflow:hidden}
+  .screenbar{display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:10px}
+  .dot{width:7px;height:7px;background:var(--surface-3);border-radius:999px}
+  .panel{border:1px solid var(--border);background:var(--surface);padding:10px}
+  .row{display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--border);padding:6px 4px}
+  .row:last-child{border-bottom:0}
+  .bar{height:3px;background:var(--surface-3);position:relative;min-width:44px}
+  .bar i{position:absolute;inset:0 auto 0 0;background:var(--faint)}
+  .bar.hot i{background:var(--accent)}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-family:var(--sans);border:1px solid var(--accent);color:#0a0a0a;background:var(--accent);padding:5px 11px;font-size:12.5px;font-weight:600}
+  .btn.ghost{background:transparent;color:var(--muted);border-color:var(--border-strong);font-weight:500}
+  .btn.sm{padding:3px 8px;font-size:11px}
+  .btn.lg{padding:9px 16px;font-size:14.5px}
+  .chip{font-family:var(--mono);font-size:11px;border:1px solid var(--border-strong);padding:2px 7px;color:var(--muted);display:inline-flex;gap:5px;align-items:center}
+  .chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-wash)}
+  .toast{border:1px solid var(--border-strong);border-left-width:3px;background:var(--surface-2);padding:9px 12px;box-shadow:0 10px 30px rgba(0,0,0,.6);display:flex;gap:10px;align-items:flex-start;min-width:270px}
+  .toast.ok{border-left-color:var(--success)} .toast.err{border-left-color:var(--danger)} .toast.bill{border-left-color:var(--accent)}
+  .toast b{display:block;font-size:13.5px;font-weight:600}
+  .toast p{margin:1px 0 0;font-size:12.5px;color:var(--muted)}
+  .thumb{background:linear-gradient(135deg,var(--surface-3),var(--surface-2));border:1px solid var(--border)}
+  .meter{height:8px;background:var(--surface-3);border:1px solid var(--border);position:relative}
+  .meter i{position:absolute;inset:0 auto 0 0;background:var(--accent)}
+  .rtl{direction:rtl;text-align:right;font-family:var(--sans)}
+  .kbd{font-family:var(--mono);font-size:10.5px;border:1px solid var(--border-strong);padding:0 4px;color:var(--faint)}
+  .stages{display:flex;flex-direction:column;gap:0}
+  .st{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--faint);padding:3px 0}
+  .st .n{width:15px;height:15px;border:1px solid var(--border-strong);border-radius:999px;display:grid;place-items:center;font-family:var(--mono);font-size:9px;flex:none}
+  .st.done{color:var(--muted)} .st.done .n{border-color:var(--success);color:var(--success)}
+  .st.live{color:var(--text)} .st.live .n{border-color:var(--accent);color:var(--accent);background:var(--accent-wash)}
+  .check{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--border);padding:9px 10px;font-size:13px;background:var(--surface-2)}
+  .check .b{width:14px;height:14px;border:1px solid var(--border-strong);flex:none;margin-top:2px}
+  .check.done .b{border-color:var(--accent);background:var(--accent)}
+  .check.done{opacity:.75}
+  .phone{border:1px solid var(--border-strong);background:var(--bg);max-width:300px;padding:8px}
+  .tabs{display:flex;border-top:1px solid var(--border);margin-top:10px}
+  .tabs div{flex:1;text-align:center;font-family:var(--mono);font-size:10px;color:var(--faint);padding:7px 0}
+  .tabs div.on{color:var(--accent);border-top:2px solid var(--accent)}
+  .cap{font-size:12px;color:var(--faint);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="kicker">
+  <span class="tag hot">Design board</span>
+  <span class="tag">measured on <span class="mono">main @ bea7ff2</span> (PR&nbsp;#10 merged) + arena branch</span>
+  <span class="tag">2026-09-05</span>
+  <span class="tag">tokens copied from <span class="mono">src/styles/globals.css</span></span>
+</div>
+
+<h1>Helix UI roadmap — before / after, letter by letter</h1>
+<p class="sub">Every mockup below is drawn with the app's real tokens and its real current type sizes, so the left pane is
+literally what a tester sees today. Numbers in the evidence strip are counted from the source, not estimated.</p>
+
+<div class="grid g6" style="margin-top:22px">
+  <div class="stat"><b>203</b><span>text at ≤11px across <span class="mono">src/**</span> (9px:9, 10px:92, 11px:102)</span></div>
+  <div class="stat"><b>42</b><span>text at 13px — the only "readable" size in use</span></div>
+  <div class="stat"><b>5 / 30</b><span>pages that import <span class="mono">useLanguage</span> at all</span></div>
+  <div class="stat"><b>105</b><span>translation keys, all present in AR — dictionary is fine, wiring isn't</span></div>
+  <div class="stat"><b>0 / 9</b><span>admin tables with pagination (5 have a search box)</span></div>
+  <div class="stat"><b>1</b><span>page using <span class="mono">useIsBelowLg</span> — Discover</span></div>
+</div>
+<div class="grid g6" style="margin-top:12px">
+  <div class="stat"><b>2</b><span>pages that hand-roll a local <span class="mono">toast</span> state (ApiKeys, SwipeFiles)</span></div>
+  <div class="stat"><b>8</b><span><span class="mono">&lt;EmptyState&gt;</span> instances; 7 already accept an <span class="mono">action</span></span></div>
+  <div class="stat"><b>21</b><span>raw "no data / empty" strings outside that component</span></div>
+  <div class="stat"><b>0</b><span>places showing an action's credit cost before it is charged</span></div>
+  <div class="stat"><b>3</b><span>density/size mentions that are <span class="mono">size="lg"</span> opts, not a system</span></div>
+  <div class="stat"><b>~0</b><span>logical CSS properties (RTL relies on <span class="mono">dir</span> + flipped margins)</span></div>
+</div>
+
+<div class="rule"></div>
+
+<h2>Recommendation — do these three, in this order</h2>
+<p class="sub" style="margin:8px 0 14px">The argument for the order is not taste, it is dependency and current-state reality: your core loop is
+data-starved right now (Apify unfunded, Meta <span class="mono">2332002</span>, Higgsfield keys invalid), so any screen whose value is "look at my
+data" gets judged on an empty or thin dataset — while type size, feedback, and empty states are what a tester meets in minute one.
+A1 first also means you restyle once, not twice.</p>
+
+<table>
+<thead><tr><th style="width:52px">#</th><th style="width:230px">Item</th><th>Why in this slot</th><th style="width:110px" class="c">Effort</th><th style="width:230px">Unlocks / blocked by</th></tr></thead>
+<tbody>
+<tr><td class="c"><span class="pri sec">-1</span></td><td><b>PR #10 security tails</b><br><span class="label-mono">AUTH_DEV_RESET_RETURN · /auth/webhook</span></td>
+<td>Not UI, but it is live in production: the reset-link-return flag defaults to <span class="mono">True</span> in <span class="mono">config.py</span>, and <span class="mono">POST /api/auth/webhook</span> is unauthenticated with its HMAC <i>logged but never compared</i>. Do this before spending design hours.</td>
+<td class="c mono">≈1h</td><td>Nothing depends on it; it protects everything</td></tr>
+<tr><td class="c"><span class="pri">1</span></td><td><b>A1 Readability pass</b><br><span class="label-mono">tokenized type scale</span></td>
+<td>Every other item lands on top of the scale. Do C1/C2/C3 first and you re-do their spacing in A1. 203 sub-11px sites vs 42 at 13px is a systemic, not a page-level, defect — and it is the complaint you already have live.</td>
+<td class="c mono">0.5–1d</td><td>Unlocks A3 cheaply; makes C1–C3 one-pass</td></tr>
+<tr><td class="c"><span class="pri">2</span></td><td><b>A2 Toast system</b><br><span class="label-mono">ToastProvider + portal</span></td>
+<td>Second because it is the answer to "did that work?" — which right now is inline text on 2 pages and silence elsewhere. It is also the only good way to tell a tester "1 credit charged" or "refunded, no ad source answered" (that refund message currently hides inside a failed-state banner).</td>
+<td class="c mono">0.5d</td><td>Carries C4's cost feedback; reuses the 2 hand-rolled toasts</td></tr>
+<tr><td class="c"><span class="pri">3</span></td><td><b>B1 Teaching empty states</b><br><span class="label-mono">EmptyState action + cost + outcome</span></td>
+<td>Because of the provider outage, an empty state <i>is</i> your product's first screen for a new tester. The component already supports <span class="mono">action</span> and <span class="mono">size="lg"</span> (PR #10) — this is wiring 21 stray strings into it, not building a system.</td>
+<td class="c mono">0.5d</td><td>Completes the onboarding wizard you already ship</td></tr>
+<tr><td class="c"><span class="pri">4</span></td><td><b>C4 Credit cost before action</b><br><span class="label-mono">cost chip + confirm sheet</span></td>
+<td>Cheapest of the C's and the one that changes trust: a tester who hits a 402 without ever seeing a price loses confidence in the whole meter. Pairs with the refund logic just landed. (Correction to your note: a standard Discover search is <span class="mono">1.0</span> credit — <span class="mono">2.0</span> is the deep-search fallback.)</td>
+<td class="c mono">0.5d</td><td>Needs A2 to show the charge after</td></tr>
+<tr><td class="c"><span class="pri later">5</span></td><td><b>A3 Comfort / Compact toggle</b></td>
+<td>After A1 this is nearly free: one data-attribute swapping the same tokens. Doing it <i>before</i> A1 means inventing two scales where you only need one.</td>
+<td class="c mono">0.25d</td><td>Blocked by A1</td></tr>
+<tr><td class="c"><span class="pri later">6</span></td><td><b>C1 / C2 / C3 screen passes</b></td>
+<td>Do them as one pass on the new scale. Note C1's premise is half-done already: <span class="mono">ScoreBar</span> exists and is used in ResultsTable + detail panel — the gap is the row typography and filter affordances, not "bare numbers".</td>
+<td class="c mono">2–3d</td><td>Best after A1+A2</td></tr>
+<tr><td class="c"><span class="pri later">7</span></td><td><b>D2 Arabic completeness</b></td>
+<td>Reframed: the dictionary is complete (105/105 keys in AR) — 24 of 30 pages simply never call <span class="mono">t()</span>. Do the <i>mechanism</i> now (coverage check + logical properties), translate each page the pass that rewrites it. Translating first means re-translating after C1–C3.</td>
+<td class="c mono">1d + drip</td><td>Better after each C pass</td></tr>
+<tr><td class="c"><span class="pri later">8</span></td><td><b>B2 First-run checklist</b></td>
+<td>Good, but it is scaffolding for self-evident screens. Build it after B1 so the checklist points at states that already teach themselves.</td>
+<td class="c mono">1d</td><td>Blocked by B1</td></tr>
+<tr><td class="c"><span class="pri later">9</span></td><td><b>C5 Admin DataTable</b></td>
+<td>Real (0/9 paginated) but it is your surface, not the tester's. Batch it with the next admin touch.</td>
+<td class="c mono">1d</td><td>—</td></tr>
+<tr><td class="c"><span class="pri later">10</span></td><td><b>D1 Mobile / tablet</b></td>
+<td>A workstation product with a dense table spine. Do the 3-flow tablet pass only if your testers actually open it on a tablet/phone — otherwise it competes with items they will see every session.</td>
+<td class="c mono">2d</td><td>Deferred on evidence</td></tr>
+</tbody>
+</table>
+
+<div class="callout" style="margin-top:22px">
+<h3>Before any design work: two open tails on merged PR #10</h3>
+<p><b>1 · Reset links are returned to the caller by default.</b> <code>backend/app/core/config.py</code> →
+<code>AUTH_DEV_RESET_RETURN: bool = os.getenv("AUTH_DEV_RESET_RETURN", "True")</code>. If Render doesn't explicitly set it to
+<code>false</code>, <code>POST /api/auth/forgot-password {"email":"any@user"}</code> returns <code>reset_url</code> with a live token, and
+<code>POST /api/auth/reset-password</code> hands back a fresh session — i.e. takeover of any account, admin included. The reset flow itself is
+well built (hashed, single-use, purpose-claim, burned on bad guess); the <i>default</i> is the bug. Fix: default <code>False</code>, dev-only
+opt-in, and refuse to return the URL when <code>settings.ENV == "production"</code>. There is also no rate limit on this endpoint.</p>
+<p><b>2 · <code>POST /api/auth/webhook</code> accepts anyone.</b> It computes the expected HMAC, <b>logs both values, and never compares them</b>
+— no dependency, no 401 — then creates users with a 14-day trial (vs 7 in signup) plus an org. Logging the expected signature also puts secret
+material in Render logs. Fix: compare with <code>hmac.compare_digest</code>, 401 on mismatch/absence, drop the log line, align trial length.</p>
+<p><b>3 · <code>GET /api/media/jobs/{job_id}</code> has no ownership check.</b> <code>media_service.get_media_job</code>
+selects by <code>id</code> alone while every other read in the app is scoped by <code>user_id</code>/<code>org_id</code> — so any signed-in
+user can read another user's prompt, <code>result_url</code>, error and parameters (incl. <code>credential_mode</code>). A job id is not a
+capability; filter by owner and 404 otherwise. (<code>POST /media/jobs/{id}/cancel</code> also reports success while nothing cancels the task.)</p>
+<p style="margin-bottom:0;color:var(--faint)">Spot-check of the rest of PR #10's claims against HEAD: <span class="mono">import os</span> added to groq + openrouter ✓ · heuristic synthesizer gone from <span class="mono">ai/base.py</span> ✓ (zero matches for "heuristic") · dedup partial unique index + IntegrityError race handling ✓ · startup sweep refunds stuck discover jobs ✓ · reset token single-use with hash-burn ✓. One perf note: <span class="mono">get_password_hash</span> is 100k-round PBKDF2 called synchronously inside async endpoints (sign-up, reset) — on Render's single worker that's a ~60–90ms event-loop stall per call; wrap in <code>run_in_threadpool</code> or move to argon2/bcrypt via the passlib you already ship.</p>
+</div>
+
+<div class="rule"></div>
+
+<!-- ================= A1 ================= -->
+<section class="letter">
+  <header><span class="badge">A1</span><h2>Readability pass — one tokenized type scale</h2>
+    <span class="meta">0.5–1d · touches src/styles/globals.css + every page · no data dependency</span></header>
+  <div class="why">Not a Discover bug — a scale bug. <b>203</b> utilities sit at 9–11px against <b>42</b> at 13px, and
+  <code class="f">.label-mono</code> is hard-coded 11px, so labels and body text are 0–1px apart. Intelligence, Performance, Create and
+  Dashboard are 100% ≤11px. Fixing one page changes nothing; the fix is to declare the scale and let one class drive it.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — current Discover row (literal sizes)</h4>
+      <div class="screen">
+        <div class="screenbar"><span class="dot"></span><span class="label-mono">search results · 43 creatives</span><span class="label-mono" style="margin-left:auto">sort: composite</span></div>
+        <div class="row" style="padding:5px 4px"><div class="thumb" style="width:34px;height:26px"></div>
+          <div style="min-width:0;flex:1"><div style="font-size:11px">Just do it — new training kit</div><div style="font-size:10px;color:var(--faint)">nike.com · meta</div></div>
+          <div style="font-size:11px;color:var(--muted)">28d active</div><div style="font-size:11px">1.2M</div>
+          <div class="bar" style="width:44px"><i style="width:82%"></i></div><span style="font-size:11px" class="mono">8.2</span></div>
+        <div class="row" style="padding:5px 4px"><div class="thumb" style="width:34px;height:26px"></div>
+          <div style="min-width:0;flex:1"><div style="font-size:11px">Marathon week: train with coaches</div><div style="font-size:10px;color:var(--faint)">nike.com · instagram</div></div>
+          <div style="font-size:11px;color:var(--muted)">12d active</div><div style="font-size:11px">430K</div>
+          <div class="bar" style="width:44px"><i style="width:61%"></i></div><span style="font-size:11px" class="mono">6.1</span></div>
+        <div class="row" style="padding:5px 4px"><div class="thumb" style="width:34px;height:26px"></div>
+          <div style="min-width:0;flex:1"><div style="font-size:11px">{{product.brand}}: members get 40% off</div><div style="font-size:10px;color:var(--faint)">— · facebook</div></div>
+          <div style="font-size:11px;color:var(--muted)">3d active</div><div style="font-size:11px;color:var(--faint)">—</div>
+          <div class="bar" style="width:44px"><i style="width:0%"></i></div><span style="font-size:11px;color:var(--faint)">—</span></div>
+        <div class="cap">11px body on a #09090b field at 100% zoom = the "I have to lean in" complaint. Row rhythm is 6px of padding, so nothing anchors the eye.</div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — same rows on the new scale</h4>
+      <div class="screen">
+        <div class="screenbar"><span class="dot"></span><span class="label-mono">search results · 43 creatives</span><span class="label-mono" style="margin-left:auto">sort: composite</span></div>
+        <div class="row" style="padding:13px 6px"><div class="thumb" style="width:46px;height:34px"></div>
+          <div style="min-width:0;flex:1"><div style="font-size:15px;line-height:1.35">Just do it — new training kit</div><div style="font-size:12.5px;color:var(--muted)">nike.com · meta</div></div>
+          <div style="font-size:13px;color:var(--muted)">28d active</div><div style="font-size:13px" class="mono tnum">1.2M</div>
+          <div class="bar hot" style="width:64px;height:4px"><i style="width:82%"></i></div><span style="font-size:13.5px" class="mono tnum">8.2</span></div>
+        <div class="row" style="padding:13px 6px"><div class="thumb" style="width:46px;height:34px"></div>
+          <div style="min-width:0;flex:1"><div style="font-size:15px;line-height:1.35">Marathon week: train with coaches</div><div style="font-size:12.5px;color:var(--muted)">nike.com · instagram</div></div>
+          <div style="font-size:13px;color:var(--muted)">12d active</div><div style="font-size:13px" class="mono tnum">430K</div>
+          <div class="bar" style="width:64px;height:4px"><i style="width:61%"></i></div><span style="font-size:13.5px" class="mono tnum">6.1</span></div>
+        <div class="row" style="padding:13px 6px"><div class="thumb" style="width:46px;height:34px"></div>
+          <div style="min-width:0;flex:1"><div style="font-size:15px;line-height:1.35;color:var(--muted)">No copy captured for this snapshot</div><div style="font-size:12.5px;color:var(--faint)">— · facebook · not scored</div></div>
+          <div style="font-size:13px;color:var(--faint)">3d active</div><div style="font-size:13px;color:var(--faint)">—</div>
+          <div class="bar" style="width:64px;height:4px"><i style="width:0%"></i></div><span style="font-size:13.5px;color:var(--faint)">—</span></div>
+        <div class="cap" style="color:var(--accent-dim)">Headline becomes the object, metrics become scannable columns, and the empty score still reads as a state rather than a blank.</div>
+      </div>
+    </div>
+  </div>
+  <div class="spec">
+    <div>
+      <h5>Declare once — <code class="f">src/styles/globals.css</code></h5>
+      <ul>
+        <li><span class="mono">@theme</span> tokens: <span class="mono">--type-2xs:12px; --type-xs:13px; --type-sm:14px; --type-md:15.5px; --type-lg:19px; --type-xl:24px</span></li>
+        <li>Body default <span class="mono">14px / 1.55</span>; <span class="mono">.label-mono → var(--type-2xs)</span> and stop using it for sentences</li>
+        <li>Two-step rule: <b>data</b> = xs/sm, <b>copy</b> = sm/md, <b>labels</b> = 2xs mono, <b>panel titles</b> = lg. Nothing below 12px, ever.</li>
+        <li>Rhythm from the same tokens: row <span class="mono">padding: 12–14px</span>, panel <span class="mono">gap: 14px</span>, so size + space change together</li>
+      </ul>
+    </div>
+    <div>
+      <h5>Mechanics &amp; guardrail</h5>
+      <ul>
+        <li>Sweep = replace <span class="mono">text-[9px] text-[10px] text-[11px] text-[12px]</span> with the token classes; ~200 sites, scriptable per directory, reviewable in 4 commits</li>
+        <li>Keep <span class="mono">.tnum</span> + mono for all numerals — widening the numbers is what makes columns stay aligned</li>
+        <li>Add a lint gate: fail the build on any remaining <span class="mono">text-[9px]</span> / <span class="mono">text-[10px]</span> in <span class="mono">src/**</span> so the scale can't rot back</li>
+        <li>Acceptance: Discover, Intelligence, Create, Dashboard, Performance readable at 100% on a 13″ laptop without zoom; screenshots before/after attached to the PR</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= A2 ================= -->
+<section class="letter">
+  <header><span class="badge">A2</span><h2>Toast feedback system</h2>
+    <span class="meta">0.5d · new <code class="f">src/components/ui/Toast.jsx</code> + provider in AppShell</span></header>
+  <div class="why">Today "it worked" is invisible everywhere except two pages that each hand-rolled their own
+  <code class="f">const [toast, setToast]</code> with a 4s <span class="mono">setTimeout</span>. Toasts are also the natural carrier for money
+  events — a charge, a refund, a quota block — which is exactly what a tester is anxious about.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — silent success, invisible failure</h4>
+      <div class="screen">
+        <div class="panel" style="padding:12px">
+          <div style="font-size:11px;color:var(--faint);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase">api keys</div>
+          <div style="font-size:11px;margin-top:6px;color:var(--muted)">Google Gemini BYOK · connected</div>
+          <div style="margin-top:10px;display:flex;gap:8px"><span class="btn sm">Revoke key</span><span class="btn ghost sm">Copy</span></div>
+          <div style="font-size:11px;color:var(--faint);margin-top:8px">…click Copy and nothing visibly happens.</div>
+        </div>
+        <div class="panel" style="margin-top:10px;padding:12px">
+          <div style="font-size:11px;color:var(--faint);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em">discover</div>
+          <div style="font-size:11px;margin-top:6px;color:var(--danger)">Not enough credits for this action (0.5 available, 1.0 required). Upgrade or wait for trial reset.</div>
+          <div style="font-size:11px;color:var(--faint);margin-top:6px">The only feedback, mid-page, in 11px, and it disappears on the next poll.</div>
+        </div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — one stack, four intents</h4>
+      <div style="display:flex;flex-direction:column;gap:9px;align-items:flex-end">
+        <div class="toast ok"><b style="color:var(--success)">Key revoked</b><p>Gemini BYOK removed · workspace back on HELIX managed</p></div>
+        <div class="toast bill"><b style="color:var(--accent)">Search started · −1.0 credit</b><p>Balance 9.0 → 8.0 · nike.com · ~40s</p></div>
+        <div class="toast err"><b style="color:var(--danger)">No ad source answered</b><p>Apify: HTTP 402 (no usage credit) · Meta: 2332002 not authorized — <b style="color:var(--success)">1.0 credit refunded</b></p></div>
+        <div class="toast"><b>Copied to clipboard</b><p>helix_live_9f2c…</p></div>
+      </div>
+      <div class="cap" style="color:var(--accent-dim)">Same component answers "did it work", "what did it cost", and "why did it fail" — three different questions the app currently conflates into inline text.</div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Contract</h5><ul>
+      <li><span class="mono">useToast()</span> → <span class="mono">push({intent, title, body, ttl, action?})</span>; intents <span class="mono">ok · warn · err · bill</span> (bill = accent, always names the amount)</li>
+      <li>Portalled fixed stack, bottom-right, <span class="mono">role="status"</span> / <span class="mono">aria-live="polite"</span>, stacked max 3, dismiss on click, <span class="kbd">⌘/Ctrl+D</span> clears</li>
+      <li>Destructive or costly actions get <span class="mono">action</span> ("View job", "Upgrade") — never auto-dismiss under 6s for <span class="mono">err</span></li>
+      <li>Errors from <span class="mono">ServiceError</span> map centrally: 402 → bill/err with the ledger line, 403 trial_expired → CTA to /billing, network → "backend unreachable"</li>
+    </ul></div>
+    <div><h5>Where it lands first</h5><ul>
+      <li>Delete both local toasts (ApiKeysPage, SwipeFilesPage) — same behaviour, one implementation</li>
+      <li>Save / copy / remix / revoke / ticket-create / plan-edit / key-rotate across the app</li>
+      <li>Discover + Create + Intelligence on settle: charged, refunded (just-landed ledger), timed-out</li>
+      <li>Acceptance: no state-changing action in the app completes without one visible confirmation; error toast text is never a raw exception string</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ================= A3 ================= -->
+<section class="letter">
+  <header><span class="badge">A3</span><h2>Comfort / Compact density</h2>
+    <span class="meta">0.25d · after A1 · <code class="f">data-density</code> on &lt;html&gt;</span></header>
+  <div class="why">The instrument identity is real and worth keeping — but it shouldn't be the only setting. Once size lives in
+  tokens, density is a second token set, not a second stylesheet.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — one density, chosen for you</h4>
+      <div class="screen">
+        <div class="panel" style="padding:8px"><div style="font-size:11px;color:var(--faint);font-family:var(--mono);letter-spacing:.08em">TOP PERFORMERS</div>
+          <div class="row" style="padding:5px 2px"><span style="font-size:11px">Just do it — new training kit</span><span style="font-size:11px;margin-left:auto" class="mono">8.2</span></div>
+          <div class="row" style="padding:5px 2px"><span style="font-size:11px">Marathon week</span><span style="font-size:11px;margin-left:auto" class="mono">6.1</span></div>
+          <div class="row" style="padding:5px 2px"><span style="font-size:11px">Members 40% off</span><span style="font-size:11px;margin-left:auto" class="mono">5.4</span></div>
+          <div class="row" style="padding:5px 2px"><span style="font-size:11px">Run club sign-up</span><span style="font-size:11px;margin-left:auto" class="mono">4.9</span></div>
+          <div class="row" style="padding:5px 2px"><span style="font-size:11px">Retro runner drop</span><span style="font-size:11px;margin-left:auto" class="mono">4.1</span></div>
+        </div>
+        <div class="cap">Ten rows of a leaderboard in a screen's worth of height, all at one size, for a first-timer and a daily user alike.</div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — same panel, comfortable (default), switch in the shell</h4>
+      <div class="panel" style="padding:14px">
+        <div style="display:flex;align-items:center;gap:8px"><span class="label-mono">top performers</span>
+          <span class="chip on" style="margin-left:auto">Comfort</span><span class="chip">Compact</span></div>
+        <div class="row" style="padding:11px 2px"><span style="font-size:14.5px">Just do it — new training kit</span><span style="font-size:14px;margin-left:auto" class="mono tnum">8.2</span></div>
+        <div class="row" style="padding:11px 2px"><span style="font-size:14.5px">Marathon week</span><span style="font-size:14px;margin-left:auto" class="mono tnum">6.1</span></div>
+        <div class="row" style="padding:11px 2px" ><span style="font-size:14.5px;color:var(--muted)">Members 40% off — 2 more rows above the fold</span><span style="font-size:14px;margin-left:auto" class="mono tnum">5.4</span></div>
+      </div>
+      <div class="cap" style="color:var(--accent-dim)">Toggle lives next to the language switcher in StatusBar, persisted in localStorage, announced to screen readers, and applies to padding + size together.</div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Implementation</h5><ul>
+      <li><span class="mono">:root[data-density="comfort"]</span> sets <span class="mono">--type-*, --pad-row, --gap-panel, --rail</span>; compact = current values (9/10/11px allowed <i>only</i> in compact, and never below 11px for body)</li>
+      <li>Pages read tokens only — no component takes a <span class="mono">dense</span> prop, or the two modes drift in a month</li>
+      <li>Default Comfort for new sessions; remember per user in <span class="mono">localStorage</span>, seed from <span class="mono">prefers-contrast</span>/<span class="mono">prefers-reduced-motion</span> where relevant</li>
+    </ul></div>
+    <div><h5>Acceptance</h5><ul>
+      <li>Switch mid-task: scroll position, selection, open panel and poll state all survive</li>
+      <li>No layout shift larger than the row-height delta (test the 720px-wide results table)</li>
+      <li>Compact still passes the 11px floor, so the "power user" mode is not the old broken mode</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ================= B1 ================= -->
+<section class="letter">
+  <header><span class="badge">B1</span><h2>Teaching empty states</h2>
+    <span class="meta">0.5d · <code class="f">src/components/ui/States.jsx</code> + 21 call sites</span></header>
+  <div class="why"><b>8</b> real <span class="mono">&lt;EmptyState&gt;</span> uses (7 already take an <span class="mono">action</span>) against
+  <b>21</b> raw "no data" strings scattered in pages. And given the current provider outage, an empty state <i>is</i> the product for a new
+  tester — so this is not decoration, it is the front door.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — a verdict with no next step</h4>
+      <div class="screen">
+        <div class="panel grid-backdrop" style="padding:22px;text-align:center">
+          <div style="font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--faint)">NO DATA</div>
+          <div style="font-size:11px;color:var(--faint);margin-top:6px">No creatives match the current view.</div>
+        </div>
+        <div class="panel" style="margin-top:9px;padding:14px;text-align:center">
+          <div style="font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--faint)">INTELLIGENCE</div>
+          <div style="font-size:11px;color:var(--faint);margin-top:6px">Select a creative to analyze.</div>
+        </div>
+        <div class="cap">Three questions a tester has — what should I do, what will it cost, what happens if it fails — none answered.</div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — state + reason + one action + price + fallback</h4>
+      <div class="panel grid-backdrop" style="padding:22px">
+        <div style="display:flex;gap:16px;align-items:flex-start">
+          <div class="thumb" style="width:44px;height:44px;flex:none;border-color:var(--border-strong)"></div>
+          <div style="min-width:0">
+            <div class="label-mono">discover · empty</div>
+            <div style="font-size:19px;line-height:1.25;margin:5px 0 6px">Nothing has been searched yet</div>
+            <p style="margin:0;font-size:14px;color:var(--muted);max-width:60ch">Run a search on a brand domain to pull its live ads into
+            Helix. Most first searches return 20–60 creatives and take about 40 seconds.</p>
+            <div style="display:flex;gap:9px;align-items:center;margin-top:14px;flex-wrap:wrap">
+              <span class="btn lg">Run your first search</span><span class="chip">costs 1.0 credit</span><span class="chip">you have 25.0</span>
+            </div>
+            <div style="font-size:13px;color:var(--faint);margin-top:11px">No ads right now? Try a bigger domain (nike.com) or a niche phrase — a clean zero result is still billed, an unreachable source is refunded.</div>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:9px;padding:16px;display:flex;gap:14px;align-items:center">
+        <div class="bar" style="width:56px;height:4px"><i style="width:35%"></i></div>
+        <div style="font-size:14px"><b>3 of 6 core steps done</b> — next: score a creative in Intelligence</div>
+        <span class="chip" style="margin-left:auto">resume tour</span>
+      </div>
+      <div class="cap" style="color:var(--accent-dim)">The failure variant reuses the exact ledger copy from the backend: which source failed and that money came back.</div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Component work</h5><ul>
+      <li><span class="mono">EmptyState</span> gains <span class="mono">cost</span>, <span class="mono">nextStep</span>, <span class="mono">footnote</span>, <span class="mono">icon</span> — and a <span class="mono">tone="blocked"</span> for provider outages (danger hairline, no blame on the user)</li>
+      <li>Every data surface renders exactly one of: skeleton · empty · blocked · error · rows (the contract <span class="mono">States.jsx</span> already documents in prose)</li>
+      <li>Copy formula: <b>state → why → one action → what it costs → what happens if it fails.</b> Max one primary CTA per state.</li>
+      <li>Replace the 21 loose strings; add a lint rule banning the literal <span class="mono">"NO DATA"</span> outside <span class="mono">States.jsx</span></li>
+    </ul></div>
+    <div><h5>Per-surface first action</h5><ul>
+      <li>Discover → run first search · Intelligence → pick a creative from a live result (deep link) · Create → generate a 3:4 still</li>
+      <li>Performance / Dashboard → "run a search to populate" + link, never a bare axis · Swipe files → save the first one from a result row</li>
+      <li>Acceptance: a new account can reach its first meaningful screen on every page from the empty state alone, with no external instructions</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ================= B2 ================= -->
+<section class="letter">
+  <header><span class="badge">B2</span><h2>First-run checklist</h2>
+    <span class="meta">1d · after B1 · reuses wizard + driver.js tour</span></header>
+  <div class="why">You already ship a wizard modal and a tour — what's missing is <i>durable progress state</i>. The
+  <span class="mono">has_completed_onboarding</span> flag is binary and set by one call, so the app can't tell a tester is halfway through
+  the loop. Make the checklist derive from real events, not from clicks on a modal.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — modal that can't be resumed, flag that can't be trusted</h4>
+      <div class="screen" style="display:grid;place-items:center;padding:20px">
+        <div class="panel" style="width:70%;padding:16px">
+          <div class="label-mono">welcome to helix</div>
+          <div style="font-size:17px;margin:6px 0">4 steps to your first insight</div>
+          <div style="font-size:13px;color:var(--muted)">Click Next through the highlights of each screen.</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px"><span class="btn ghost sm">Skip</span><span class="btn sm">Next</span></div>
+        </div>
+        <div class="cap">Close the tab → the tour is gone. Complete step 2 → the flag still says "not onboarded". Nothing in the shell reflects progress.</div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — a status card whose steps are observed, not asserted</h4>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="check done"><span class="b"></span><div><b>Run a Discover search</b> <span style="color:var(--faint)">· 43 creatives · 1.0 credit</span></div></div>
+        <div class="check done"><span class="b"></span><div><b>Open a teardown</b> <span style="color:var(--faint)">· Intelligence scored 2 creatives</span></div></div>
+        <div class="check"><span class="b"></span><div><b>Generate one creative in Create</b> <span style="color:var(--muted)">· 3 videos/day left on trial</span> <span class="chip">start</span></div></div>
+        <div class="check"><span class="b"></span><div><b>Save a swipe file</b> <span style="color:var(--muted)">· builds your reference set</span> <span class="chip">open Discover</span></div></div>
+        <div style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--faint)"><span>3 of 4 · completes automatically</span><span class="chip" style="margin-left:auto">hide</span></div>
+      </div>
+      <div class="cap" style="color:var(--accent-dim)">Each step lights up from a backend event (job succeeded / insight row created / media job completed / saved_creative insert) — so a tester who does the real thing is credited for it.</div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Derivation, not bookkeeping</h5><ul>
+      <li>Server-side: one <span class="mono">/account/setup-state</span> read aggregating existing tables — <span class="mono">scrape_jobs</span>, <span class="mono">ai_insights</span>, <span class="mono">media_jobs</span>, <span class="mono">saved_creatives</span>. No new mutable truth, nothing to desync</li>
+      <li>Card renders in Dashboard + as a dismissible shell strip; dismissal persists, completion is permanent</li>
+      <li>Keep driver.js for the <i>tour</i>; the checklist is the <i>state</i>. "Resume tour" jumps to the first incomplete step</li>
+    </ul></div>
+    <div><h5>Acceptance</h5><ul>
+      <li>Reload at any point: progress identical (never derived from localStorage alone)</li>
+      <li>Admin/trial-expired/blocked users see the card with the blocker as step 0, not a false "go generate"</li>
+      <li>Completing all four sets <span class="mono">has_completed_onboarding</span> server-side, replacing the modal-click signal</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ================= C1 ================= -->
+<section class="letter">
+  <header><span class="badge">C1</span><h2>Discover — result cards, scores, filters</h2>
+    <span class="meta">1–1.5d · best done on the A1 scale</span></header>
+  <div class="why">Correction to the brief: score bars already exist (<span class="mono">ScoreBar</span> in
+  <span class="mono">components/ui/Metric.jsx</span>, used in ResultsTable + detail panel). What's actually missing: per-metric
+  visibility (hook/clarity/retention), <b>honesty about estimated data</b> (spend/impressions are provider estimates), and a filter rail whose
+  chips are 10px with no result counts.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — dense table, one number, silent filters</h4>
+      <div class="screen">
+        <div style="display:flex;gap:10px">
+          <div class="panel" style="width:112px;flex:none;padding:8px">
+            <div class="label-mono">filters</div>
+            <div style="font-size:10px;color:var(--faint);margin-top:6px">platform</div>
+            <div style="font-size:10px;color:var(--muted)">meta · tiktok · youtube</div>
+            <div style="font-size:10px;color:var(--faint);margin-top:6px">min days active</div>
+            <div style="font-size:10px;color:var(--muted)">7</div>
+            <div style="font-size:10px;color:var(--faint);margin-top:6px">spend band</div>
+            <div style="font-size:10px;color:var(--muted)">any</div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div class="row"><div style="min-width:0;flex:1"><div style="font-size:11px">Just do it — new training kit</div><div style="font-size:10px;color:var(--faint)">28d · 1.2M imp · est. spend mid</div></div><div class="bar" style="width:44px"><i style="width:82%"></i></div><span style="font-size:11px" class="mono">8.2</span></div>
+            <div class="row"><div style="min-width:0;flex:1"><div style="font-size:11px">Marathon week: train with coaches</div><div style="font-size:10px;color:var(--faint)">12d · 430K imp · est. spend low</div></div><div class="bar" style="width:44px"><i style="width:61%"></i></div><span style="font-size:11px" class="mono">6.1</span></div>
+            <div style="font-size:10px;color:var(--faint);padding:6px 4px">43 creatives · filters applied locally? (unclear — the endpoint ignores them)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — a card that shows the signal, and filters that show cost</h4>
+      <div class="screen">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+          <span class="chip on">meta <span class="mono">×23</span></span><span class="chip">instagram <span class="mono">×14</span></span>
+          <span class="chip">≥ 7 days active</span><span class="chip">spend band · any</span>
+          <span class="chip" style="margin-left:auto;border-color:var(--accent);color:var(--accent)">refine within these 43</span>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px;align-items:center">
+          <div class="thumb" style="width:64px;height:48px;flex:none"></div>
+          <div style="min-width:0;flex:1">
+            <div style="font-size:15px;line-height:1.35">Just do it — new training kit</div>
+            <div style="font-size:12.5px;color:var(--muted);margin-top:3px">nike.com · meta · video · 0:15</div>
+          </div>
+          <div style="display:flex;gap:14px;flex-wrap:wrap">
+            <div><div class="label-mono" style="font-size:10px">hook</div><div class="bar hot" style="width:52px;height:4px;margin-top:4px"><i style="width:91%"></i></div></div>
+            <div><div class="label-mono" style="font-size:10px">clarity</div><div class="bar" style="width:52px;height:4px;margin-top:4px"><i style="width:66%"></i></div></div>
+            <div><div class="label-mono" style="font-size:10px">composite</div><div class="bar hot" style="width:52px;height:4px;margin-top:4px"><i style="width:82%"></i></div><span class="mono" style="font-size:13px">8.2</span></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:12.5px;color:var(--faint)">
+          <span>28d active</span><span>·</span><span>1.2M impressions <span style="color:var(--warning)" title="provider estimate, not a platform-reported metric">≈ estimated</span></span>
+          <span style="margin-left:auto"><span class="chip">save to swipe</span><span class="chip">teardown</span></span>
+        </div>
+      </div>
+      <div class="cap" style="color:var(--accent-dim)">"estimated" is a badge, not a footnote — it is the difference between an intelligence product and a guess.</div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Design rules</h5><ul>
+      <li>Three signals per row, never more: hook / clarity / composite as bars + number. Retention lives in the detail panel</li>
+      <li>Estimated vs reported values get a persistent <span class="mono">≈</span> marker (same treatment as the composite disclaimer PR #10 shipped)</li>
+      <li>Filter chips carry counts of the <i>current</i> result set, and say "local filter" — the results endpoint ignores them today, so either apply server-side or label the client-side refinement honestly</li>
+      <li>Row → panel transition keeps position (the SkeletonRows contract already promises no reflow)</li>
+    </ul></div>
+    <div><h5>Backend asks (small)</h5><ul>
+      <li><span class="mono">GET /creatives</span> accepts <span class="mono">platform, min_days_active, spend_band, sort</span> so counts and results agree</li>
+      <li>Return <span class="mono">is_estimated</span> + <span class="mono">data_source</span> per creative (both columns exist on the model already)</li>
+      <li>Acceptance: counts on chips equal rows after applying; no row shows a number whose provenance isn't marked</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ================= C2 ================= -->
+<section class="letter">
+  <header><span class="badge">C2</span><h2>Create — previews, live stages, gallery</h2>
+    <span class="meta">1–1.5d · note: generation path is already tiered, not Gemini-only</span></header>
+  <div class="why">One correction to the audit brief: <span class="mono">CreatePage.jsx:202</span> sends
+  <span class="mono">provider: isTrial ? "gemini" : "higgsfield"</span>, and <span class="mono">media_service</span> routes accordingly — the
+  "Higgsfield is bypassed" item is stale. What is true: no live stage readout beyond a spinner, a small preview, and history as a text list.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — prompt in, wait, small image out</h4>
+      <div class="screen">
+        <div style="display:flex;gap:10px">
+          <div class="panel" style="flex:1;padding:9px"><div class="label-mono">prompt</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:5px">Premium sneaker drop, studio light, 3:4…</div>
+            <div style="margin-top:9px"><span class="btn sm">Generate creative</span></div></div>
+          <div class="panel" style="width:120px;padding:9px;text-align:center"><div class="label-mono">preview</div>
+            <div class="thumb" style="height:64px;margin-top:6px"></div><div style="font-size:10px;color:var(--faint);margin-top:5px">generating…</div></div>
+        </div>
+        <div class="cap">Nothing tells you whether the job is queued, generating, uploading, or dead — the poll is running, but the UI doesn't show it.</div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — stage rail with the provider named, gallery underneath</h4>
+      <div style="display:flex;gap:12px">
+        <div class="panel" style="flex:1;padding:12px">
+          <div style="display:flex;align-items:center;gap:8px"><span class="label-mono">premium_ad · soul v2</span><span class="chip" style="margin-left:auto">−3.0 credits</span></div>
+          <div class="thumb" style="height:132px;margin-top:10px"></div>
+          <div class="stages" style="margin-top:10px">
+            <div class="st done"><span class="n">✓</span>Job created · id 4f9a21</div>
+            <div class="st done"><span class="n">✓</span>Quota + trial gate passed</div>
+            <div class="st live"><span class="n">3</span>Higgsfield generating — 00:38 elapsed, 402 kept alive</div>
+            <div class="st"><span class="n">4</span>Store + post to gallery</div>
+          </div>
+        </div>
+        <div style="width:118px">
+          <div class="label-mono">yours · last 12</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px">
+            <div class="thumb" style="height:44px"></div><div class="thumb" style="height:44px"></div>
+            <div class="thumb" style="height:44px"></div><div class="thumb" style="height:44px;border-color:var(--accent)"></div>
+          </div>
+          <div style="font-size:11px;color:var(--faint);margin-top:6px">hover → prompt · click → remix</div>
+        </div>
+      </div>
+      <div class="cap" style="color:var(--accent-dim)">Failure states get the same rail with a red step and the actionable reason (401 creds / quota) plus "not charged".</div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Design</h5><ul>
+      <li>Stage rail drives off the real job record (<span class="mono">pending → running → in_progress → completed/failed</span>) — no synthetic timing animation</li>
+      <li>Preview occupies the column, not a corner; aspect-ratio switcher sits on the canvas edge where the crop happens</li>
+      <li>Gallery = thumbnail grid of the user's own media_jobs with prompt on hover, "remix" reuses the exact prompt + params</li>
+    </ul></div>
+    <div><h5>Backend asks</h5><ul>
+      <li><span class="mono">GET /media/jobs?mine=1&amp;limit=12</span> (list endpoint is missing; only single-job fetch exists)</li>
+      <li>Expose <span class="mono">error_message</span> + <span class="mono">provider</span> + <span class="mono">cost</span> on the job response so the rail and the toast stay honest</li>
+      <li>Acceptance: a generation started and abandoned mid-flight, on reload, resumes to the right stage instead of a spinner forever</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ================= C3 ================= -->
+<section class="letter">
+  <header><span class="badge">C3</span><h2>Dashboard — sentences, trends, next action</h2>
+    <span class="meta">1d · aggregation already exists in <code class="f">dashboard_service</code></span></header>
+  <div class="why">The panels read real Neon aggregates, but they speak in column names. <span class="mono">InfoTip</span>
+  tooltips (PR #10) explain what a metric means; the card itself should still say what <i>happened</i>.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — labeled numbers</h4>
+      <div class="screen" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="panel" style="padding:8px"><div class="label-mono">active ads</div><div style="font-size:20px;font-family:var(--mono)">43</div><div style="font-size:10px;color:var(--faint)">count(creatives)</div></div>
+        <div class="panel" style="padding:8px"><div class="label-mono">avg composite</div><div style="font-size:20px;font-family:var(--mono)">6.4</div><div style="font-size:10px;color:var(--faint)">avg(creative_scores.composite)</div></div>
+        <div class="panel" style="padding:8px"><div class="label-mono">ranked by</div><div style="font-size:20px;font-family:var(--mono)">3</div><div style="font-size:10px;color:var(--faint)">brands</div></div>
+        <div class="panel" style="padding:8px"><div class="label-mono">evergreen rate</div><div style="font-size:20px;font-family:var(--mono)">31%</div><div style="font-size:10px;color:var(--faint)">durability ≥ 14d</div></div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — a read + a delta + one move</h4>
+      <div class="screen" style="padding:12px">
+        <div style="font-size:19px;line-height:1.3">You found <b class="mono">43</b> live ads across <b class="mono">3</b> brands this week — <span style="color:var(--success)">12 more than last week</span>.</div>
+        <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
+          <div class="panel" style="flex:1;min-width:150px;padding:9px"><div class="label-mono">average signal</div><div style="font-size:16px;margin-top:3px">6.4 <span style="font-size:12px;color:var(--faint)">/10 · +0.3</span></div><div class="bar" style="width:100%;height:4px;margin-top:7px"><i style="width:64%"></i></div></div>
+          <div class="panel" style="flex:1;min-width:150px;padding:9px"><div class="label-mono">still running after 14d</div><div style="font-size:16px;margin-top:3px">31% <span style="font-size:12px;color:var(--faint)">of 43 · 13 ads</span></div><div class="bar hot" style="width:100%;height:4px;margin-top:7px"><i style="width:31%"></i></div></div>
+        </div>
+        <div style="display:flex;gap:9px;align-items:center;margin-top:12px;font-size:13.5px;color:var(--muted)">
+          <span class="btn sm">Open the 13 evergreen ads</span><span>Most of your durability comes from nike.com — worth a teardown.</span>
+        </div>
+      </div>
+      <div class="cap" style="color:var(--accent-dim)">Same aggregate, one sentence, one comparison, one action — with the tooltip still there for "how is composite computed?".</div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Rules</h5><ul>
+      <li>Number goes in a sentence first, metric name second (as the caption) — never the reverse</li>
+      <li>Every KPI needs a comparison or it shows "no baseline yet · needs 2 weeks of data" instead of a lonely number</li>
+      <li>"What to do next" is computed from the data (thinnest brand, highest-delta cohort, unscored creatives), not a fixed carousel</li>
+    </ul></div>
+    <div><h5>Backend asks</h5><ul>
+      <li>Add <span class="mono">?window=7d|30d</span> + previous-period value per metric to <span class="mono">/dashboard/metrics</span> so deltas are real, not client-guessed</li>
+      <li>Acceptance: no panel shows a bare number; every panel's action link lands on a filtered, populated view</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ================= C4 ================= -->
+<section class="letter">
+  <header><span class="badge">C4</span><h2>Billing — price the action before it runs</h2>
+    <span class="meta">0.5d · costs live in <code class="f">billing_service.CREDIT_COSTS</code>, mirror them to the client</span></header>
+  <div class="why">Zero surfaces mention cost before an action; the only place credits appear is the 402 after refusal or the
+  Billing page (19 mentions, all retrospective). The numbers also disagree today: <span class="mono">DISCOVER_SEARCH_CREDIT_COST = 1.0</span>
+  while the pipeline comment says "Upfront Base Charge (2.0 Credits)" and the <span class="mono">deep_search</span> fallback is 2.0 — so a UI
+  label must read from one shared source, not from copy.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — no price, then a surprise block</h4>
+      <div class="screen">
+        <div style="display:flex;gap:9px;align-items:center"><span class="btn">Run Discover Search</span><span style="font-size:11px;color:var(--faint)">no cost shown</span></div>
+        <div class="panel" style="margin-top:11px;padding:10px;border-color:var(--danger)">
+          <div class="label-mono" style="color:var(--danger)">action refused</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:5px">Not enough credits for this action (0.5 available, 1.0 required). Upgrade or wait for trial reset.</div>
+        </div>
+        <div class="cap">The first time a tester learns a search costs anything is the moment it is denied.</div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — price inline, meter visible, refusal pre-empted</h4>
+      <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
+        <div style="flex:1;min-width:230px">
+          <div style="display:flex;gap:9px;align-items:center"><span class="btn lg">Run search · 1.0 credit</span></div>
+          <div style="font-size:12.5px;color:var(--faint);margin-top:8px">Refunds are automatic: if no ad source can answer, the credit comes back and the job says so.</div>
+          <div class="panel" style="margin-top:11px;padding:11px;border-color:var(--danger)">
+            <div class="label-mono" style="color:var(--danger)">needs 2.0 · you have 0.5</div>
+            <div style="display:flex;gap:9px;align-items:center;margin-top:8px"><span class="btn sm">Add credits</span><span style="font-size:12.5px;color:var(--muted)">or wait for the daily reset in 6h 12m</span></div>
+          </div>
+        </div>
+        <div class="panel" style="width:236px;padding:11px">
+          <div class="label-mono">credits this cycle</div>
+          <div style="display:flex;align-items:baseline;gap:6px;margin-top:4px"><span class="mono tnum" style="font-size:22px">8.0</span><span style="font-size:12.5px;color:var(--faint)">of 30 left</span></div>
+          <div class="meter" style="margin-top:8px"><i style="width:27%"></i></div>
+          <div style="font-size:12px;color:var(--faint);margin-top:7px">search 1.0 · deep search 2.0 · teardown 0.5 · image 2.0 · video 5.0</div>
+        </div>
+      </div>
+      <div class="cap" style="color:var(--accent-dim)">StatusBar's balance chip becomes the meter, with a projected "≈7 more searches" — a number a tester can plan around.</div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Implementation</h5><ul>
+      <li>Expose one endpoint (<span class="mono">GET /account/costs</span>) or put the map on the session response — the client renders labels from it and never hard-codes a number</li>
+      <li>Every action button carries its cost as a suffix, not a tooltip; disabled-with-reason when balance &lt; cost</li>
+      <li>Fix the stale comment in <span class="mono">trigger_search</span> ("2.0 Credits") while you're in there — that mismatch is how UI copy goes wrong next</li>
+      <li>Confirm sheet only for the expensive ones (deep search, video) — never for a 0.5 teardown</li>
+    </ul></div>
+    <div><h5>Acceptance</h5><ul>
+      <li>No action can be initiated without its price visible on the control</li>
+      <li>Balance, projected count and cost labels agree with the server within one action</li>
+      <li>A 402 never appears without a "what would unblock this" line and a route to it</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ================= C5 ================= -->
+<section class="letter">
+  <header><span class="badge">C5</span><h2>Admin — one DataTable for nine screens</h2>
+    <span class="meta">1d · your surface, not the tester's — schedule last of the C's</span></header>
+  <div class="why">Measured: 5 of 9 admin pages have a search field, <b>0 have pagination</b>, filters are per-page ad-hoc.
+  Users / Organizations / Usage / Subscriptions each reimplement the same table with different affordances.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — nine dialects of the same table</h4>
+      <div class="screen">
+        <div style="display:flex;gap:7px;align-items:center"><span class="btn ghost sm">+ invite</span><span class="chip">search</span><span style="font-size:10px;color:var(--faint);margin-left:auto">1,284 users · no paging</span></div>
+        <div style="margin-top:8px;border-top:1px solid var(--border)">
+          <div class="row" style="font-size:10px;color:var(--muted)">ziad@… <span style="margin-left:auto">admin · 25.0cr · active</span></div>
+          <div class="row" style="font-size:10px;color:var(--muted)">a@… <span style="margin-left:auto">customer · 0.0cr · quota_exhausted</span></div>
+          <div class="row" style="font-size:10px;color:var(--muted)">b@… <span style="margin-left:auto">customer · 9.0cr · active</span></div>
+          <div class="row" style="font-size:10px;color:var(--faint)">…1,281 more rows in one DOM…</div>
+        </div>
+        <div class="cap">Ban / grant / edit-plan are inline buttons with no confirmation and no visible result — the same silence A2 fixes for customers.</div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — shared header, honest paging, actions that report back</h4>
+      <div class="screen">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="chip on">role · admin <span class="mono">×3</span></span><span class="chip">status · active</span><span class="chip">plan · trial</span>
+          <span class="chip" style="margin-left:auto">saved view: trial-abuse watch</span>
+        </div>
+        <div style="margin-top:9px;border-top:1px solid var(--border)">
+          <div class="row" style="font-size:13px"><span class="mono tnum">24 rows</span> · page 1 of 53 · 128.4ms<span style="margin-left:auto"><span class="chip">grant credits</span><span class="chip">ban</span></span></div>
+          <div class="row" style="font-size:13px;color:var(--muted)">Filters applied server-side · sort: last_login desc<span class="mono" style="margin-left:auto;font-size:12px">‹ 1 2 3 … 53 ›</span></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:9px"><div class="toast ok" style="box-shadow:none"><b style="color:var(--success)">+50 credits granted</b><p>org b7c2… 0.0 → 50.0 · ledger row written</p></div></div>
+      </div>
+      <div class="cap" style="color:var(--accent-dim)">Same component serves users · orgs · plans · usage logs · tickets · updates · pending loop — one pagination contract, one empty state, one toast.</div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Component</h5><ul>
+      <li><span class="mono">&lt;DataTable columns rows total page pageSize onQuery /&gt;</span>; URL-synced query state so an admin can paste a filtered link into Slack</li>
+      <li>Server-side search + page + sort (the admin endpoints already take page/page_size for a couple of them — finish the rest)</li>
+      <li>Row actions go through confirm + toast + optimistic ledger delta; destructive ones (ban) type-to-confirm</li>
+    </ul></div>
+    <div><h5>Acceptance</h5><ul>
+      <li>All 9 tables page at 25 with a total count; no table renders more than 50 rows</li>
+      <li>Every admin mutation shows its result; usage log rows appear for each grant/refund edit</li>
+      <li>Filters survive refresh and are shareable via URL</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ================= D1 ================= -->
+<section class="letter">
+  <header><span class="badge">D1</span><h2>Mobile / tablet</h2>
+    <span class="meta">2d · gate on evidence: do your testers open Helix on a tablet?</span></header>
+  <div class="why">Exactly one page (<span class="mono">DiscoverPage</span>) reads
+  <span class="mono">useIsBelowLg()</span>; breakpoint prefixes are thin (sm:63, md:46, lg:27 across all JSX) and results tables carry a
+  <span class="mono">min-w-[720px]</span>. On a phone the shell is scrollable-but-hostile; on a tablet it's a squeezed desktop.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — phone on a 720px table</h4>
+      <div class="screen" style="display:flex;justify-content:center;padding:16px">
+        <div class="phone"><div class="label-mono" style="font-size:9px">helix · discover</div>
+          <div style="border:1px solid var(--border);margin-top:6px;padding:5px;overflow-x:auto">
+            <div style="min-width:220px;font-size:9px;color:var(--faint)">← horizontally scrolling table, 11px cells, 10px meta →</div></div>
+          <div style="font-size:9px;color:var(--danger);margin-top:6px">detail panel opens off-screen · filter rail unreachable</div>
+          <div class="tabs"><div class="on">search</div><div>intel</div><div>create</div><div>more</div></div>
+        </div>
+      </div>
+      <div class="cap">Nothing is broken exactly — everything is just wrong-sized, which testers read as "not finished".</div>
+    </div>
+    <div class="pane after">
+      <h4>After — three flows designed, the rest left intact</h4>
+      <div style="display:flex;gap:14px;flex-wrap:wrap">
+        <div class="phone"><div class="label-mono" style="font-size:11px">discover</div>
+          <div style="border:1px solid var(--border-strong);padding:8px;margin-top:7px;font-size:14px">nike.com</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px"><span class="chip on">meta 23</span><span class="chip">ig 14</span><span class="chip">7d+</span></div>
+          <div style="border:1px solid var(--border);padding:8px;margin-top:8px"><div style="font-size:14px">Just do it — training kit</div><div style="font-size:12px;color:var(--muted)">28d · 1.2M <span style="color:var(--warning)">≈</span></div><div class="bar hot" style="width:60px;height:4px;margin-top:5px"><i style="width:82%"></i></div></div>
+          <div class="tabs"><div class="on">search</div><div>intel</div><div>create</div><div>you</div></div>
+        </div>
+        <div class="phone"><div class="label-mono" style="font-size:11px">creative · sheet</div>
+          <div class="thumb" style="height:74px;margin-top:7px"></div>
+          <div style="font-size:14px;margin-top:7px">Hook 9.1 · Clarity 6.6</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:4px">Composite 8.2 · Helix signal, not platform-reported</div>
+          <div style="display:flex;gap:7px;margin-top:9px"><span class="btn sm">Teardown</span><span class="btn ghost sm">Save</span></div>
+          <div style="text-align:center;font-size:11px;color:var(--faint);margin-top:8px">drag down to dismiss</div>
+        </div>
+      </div>
+      <div class="cap" style="color:var(--accent-dim)">Discover list → bottom sheet detail; Create = prompt + stage + preview stacked; Billing/credits as the "you" tab. Admin stays desktop-only and says so.</div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Approach</h5><ul>
+      <li>Two modes only: <span class="mono">shell ≥ lg</span> (rail + panels) and <span class="mono">&lt; lg</span> (tabs + sheets). No bespoke per-breakpoint layouts</li>
+      <li>Kill <span class="mono">min-w-[720px]</span> tables on small screens by swapping to a card list at the same breakpoints as A1's tokens</li>
+      <li>Detail panels become sheets with the same component and state (selection, teardown CTA, save)</li>
+    </ul></div>
+    <div><h5>Acceptance</h5><ul>
+      <li>Search → browse → open → save completable on a 390px viewport with no horizontal scroll</li>
+      <li>Tablet portrait: Discover + Dashboard legible in two columns; tap targets ≥ 40px</li>
+      <li>Admin routes below <span class="mono">lg</span> show "best on a larger screen" rather than a broken table</li>
+    </ul></div>
+  </div>
+</section>
+
+<!-- ================= D2 ================= -->
+<section class="letter">
+  <header><span class="badge">D2</span><h2>Arabic / RTL completeness</h2>
+    <span class="meta">1d mechanism + drip per page · 105/105 keys exist, 24 of 30 pages never call <code class="f">t()</code></span></header>
+  <div class="why">Reframe the task: the dictionary is complete (every EN key has an AR value, <span class="mono">dir=rtl</span>
+  is applied) — the gap is that only Discover, Intelligence, Performance, Dashboard and Swipe Files import
+  <span class="mono">useLanguage</span>. Create, Billing, Team, API keys, all 9 admin pages and all 4 auth pages are English-only, and
+  PR #10 itself lists "tooltip sentences stay English" as a known follow-up.</div>
+  <div class="panes">
+    <div class="pane">
+      <h4>Before — half a page flips, half stays LTR English</h4>
+      <div class="screen rtl" style="padding:12px">
+        <div class="label-mono" style="color:var(--muted)">لوحة القيادة</div>
+        <div style="font-size:15px;margin-top:7px">Top Performers · Reach Timeline · avg composite</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:5px">اكتشف · ذكاء · أنشئ — nav translated, panel titles and every tooltip are not</div>
+        <div style="display:flex;gap:8px;margin-top:9px"><span class="btn sm">Run search</span><span class="chip" style="direction:ltr">min_days_active ≥ 7</span></div>
+        <div class="cap" style="color:var(--danger);direction:ltr;text-align:left">English leftovers inside an RTL frame: mixed baselines, and chips that don't mirror because margins are physical (ml-/mr-).</div>
+      </div>
+    </div>
+    <div class="pane after">
+      <h4>After — full coverage, mirrored geometry, machine-checked</h4>
+      <div class="screen rtl" style="padding:14px">
+        <div class="label-mono" style="color:var(--muted)">لوحة القيادة · هذا الأسبوع</div>
+        <div style="font-size:19px;line-height:1.4;margin-top:7px">وجدت <b class="mono tnum">43</b> إعلانًا عبر <b class="mono tnum">3</b> علامات تجارية — <span style="color:var(--success)">+12 عن الأسبوع الماضي</span></div>
+        <div style="display:flex;gap:9px;margin-top:11px;flex-wrap:wrap">
+          <span class="panel" style="padding:8px 10px;font-size:13px">متوسط الإشارة <b class="mono">6.4</b> <span class="bar hot" style="width:46px;height:4px;display:inline-block;vertical-align:middle;margin-inline-start:6px"><i style="width:64%"></i></span></span>
+          <span class="chip">تكلفة البحث: 1.0 رصيد</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:11px"><span class="btn sm">شغّل بحثًا</span><span class="btn ghost sm">افتح التقرير</span></div>
+        <div class="cap" style="color:var(--accent-dim);direction:rtl;text-align:right">Digits stay Latin (tnum, LTR run) — Arabic UI convention for dashboards; everything else mirrors, including chips, meters and the sheet slide direction.</div>
+      </div>
+    </div>
+  </div>
+  <div class="spec">
+    <div><h5>Mechanism first, copy second</h5><ul>
+      <li>Physical → logical utilities: <span class="mono">ml-*/mr-*/pl-*/pr-*/left-*/right-*</span> → <span class="mono">ms/me/ps/pe/start/end</span>; a grep gate for the physical set in <span class="mono">src/**</span></li>
+      <li>Coverage check in CI: any string literal rendered in JSX without <span class="mono">t()</span> fails the page's bucket — that turns "audit that all copy is translated" into a number that only goes up</li>
+      <li>Split the dictionary per domain (<span class="mono">i18n/discover.json</span> …) instead of one 105-key file, so translation lands with the page work</li>
+      <li>Numbers policy: Latin digits + <span class="mono">tabular-nums</span> in an LTR isolate; currency/credits formatted <span class="mono">en</span> with Arabic unit words</li>
+    </ul></div>
+    <div><h5>Sequencing &amp; acceptance</h5><ul>
+      <li>Do the mechanism now; translate each page inside the pass that rewrites it (C1 → Discover, C3 → Dashboard…), else you translate twice</li>
+      <li>Wire the 4 auth pages + Create + Billing first: they're short, high-traffic, and already stable</li>
+      <li>Acceptance: no mixed-direction row, no untranslated string above the CI floor, RTL tour + toasts + sheets animate from the correct edge</li>
+    </ul></div>
+  </div>
+</section>
+
+<div class="rule"></div>
+<h2>Two things to settle before the first design commit</h2>
+<div class="grid g2" style="margin-top:12px">
+  <div class="callout" style="border-color:var(--border-strong);background:var(--surface)">
+    <h3 style="color:var(--text)">Your deployed backend is behind <span class="mono">main</span></h3>
+    <p style="color:var(--muted)">The audit describes the Discover chain as <span class="mono">Apify → Meta</span>; <span class="mono">main</span> has run
+    <span class="mono">Metapi → Adyntel → Meta → Apify</span> since PR #10, and the admin trial-expiry bug it flags is already fixed at
+    <span class="mono">services/ai/ai_router.py:93-95</span>. Redeploy Render before re-auditing anything, or the next report will also be describing stale code.
+    Same for <span class="mono">plans</span>: live rows are placeholder-ish (Pro $0.0, PayG $49, Enterprise $49) while the repo ships
+    <span class="mono">scripts/normalize_plans.py</span> with the real ones.</p>
+  </div>
+  <div class="callout" style="border-color:var(--border-strong);background:var(--surface)">
+    <h3 style="color:var(--text)">Design work on a data-starved core loop</h3>
+    <p style="color:var(--muted)">Until an ad source can answer, C1/C3 will be judged on 0–40 stored creatives, and C2 on a 401 from Higgsfield.
+    A1, A2, A3, B1 and C4 all look identical whether the corpus is 0 rows or 40k — which is the practical reason they're ranked above the
+    screen passes, not just a bigger payoff. If the provider funding decision is weeks away, B1 + A2 carry the demo entirely.</p>
+  </div>
+</div>
+
+<p class="cap" style="margin-top:26px">Board rendered from <span class="mono">main @ bea7ff2</span> + the arena branch's Discover/billing fixes.
+Left panes use the exact current px values found in source; right panes use the proposed tokens. Nothing here needs a new dependency —
+toasts, sheets, density and the type scale are all buildable on the tokens in <span class="mono">src/styles/globals.css</span>.</p>
+
+</div>
+</body>
+</html>

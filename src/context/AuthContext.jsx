@@ -112,6 +112,30 @@ export function AuthProvider({ children }) {
       setUser((prev) => (typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }))
     }, [])
 
+  /* Re-read the durable session from the server. Credits, plan and trial
+     dates are owned by the backend and move without anything happening in
+     this tab — a Discover search that got refunded, a UTC daily reset, an
+     admin plan edit. Any page that just triggered a billable action calls
+     this instead of guessing the new number locally.
+
+     A failed refresh keeps the last known user: dropping the header identity
+     over a transient network error is worse than a credit count that is one
+     beat stale. */
+  const refreshSession = useCallback(async () => {
+    try {
+      const session = await authService.getSession()
+      if (session?.user) {
+        setUser(session.user)
+        setStatus(AUTH_STATUS.AUTHENTICATED)
+        return session.user
+      }
+      return null
+    } catch (err) {
+      console.error("Session refresh failed; keeping last known user:", err)
+      return null
+    }
+  }, [])
+
     const completeOnboarding = useCallback(async () => {
       try {
         await authService.completeOnboarding()
@@ -134,9 +158,10 @@ export function AuthProvider({ children }) {
         requestPasswordReset,
         resetPassword,
         updateUser,
+        refreshSession,
         completeOnboarding,
       }),
-      [user, status, signIn, signUp, signOut, requestPasswordReset, resetPassword, updateUser, completeOnboarding],
+      [user, status, signIn, signUp, signOut, requestPasswordReset, resetPassword, updateUser, refreshSession, completeOnboarding],
     )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

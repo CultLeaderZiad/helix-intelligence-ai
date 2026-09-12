@@ -195,6 +195,45 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
                 latency_ms=None, last_checked=checked_at,
             ))
 
+    # --- Ad-source credential readiness ---
+    # Which links of the discovery chain can physically run right now. This is
+    # the question that used to require reading Render logs by hand: with a
+    # defunded Apify account and an unauthorized Meta app, every search
+    # "succeeded" with 0 results and looked like a quiet brand.
+    from app.core.config import settings as _settings
+    sources_ready = {
+        "Metapi": bool(_settings.METAPI_API_KEY),
+        "Adyntel": bool(_settings.ADYNTEL_API_KEY and _settings.ADYNTEL_EMAIL),
+        "Meta Graph API": bool(_settings.META_ACCESS_TOKEN),
+        "Apify (Facebook Ad Library)": bool(_settings.APIFY_API_TOKEN and getattr(_settings, "APIFY_ENABLED", False)),
+    }
+    live_sources = [name for name, ready in sources_ready.items() if ready]
+    missing = [name for name, ready in sources_ready.items() if not ready]
+    apify_dormant = bool(_settings.APIFY_API_TOKEN) and not getattr(_settings, "APIFY_ENABLED", False)
+    if not live_sources:
+        parts = [
+            "Apify (token present, APIFY_ENABLED=false)"
+            if name.startswith("Apify") and apify_dormant else name
+            for name in missing
+        ]
+        services.append(AdminServiceHealth(
+            id="ad-sources", name="Ad Library Sources",
+            status="danger",
+            detail="No ad source is usable — missing or insufficient: "
+                   + ", ".join(parts)
+                   + ". Discover searches are reported as failed and refunded, not billed.",
+            latency_ms=None, last_checked=checked_at,
+        ))
+    else:
+        services.append(AdminServiceHealth(
+            id="ad-sources", name="Ad Library Sources",
+            status="success" if not missing else "warning",
+            detail=f"{len(live_sources)} of {len(sources_ready)} sources live: "
+                   + ", ".join(live_sources)
+                   + (f" | unavailable: {', '.join(missing)}" if missing else ""),
+            latency_ms=None, last_checked=checked_at,
+        ))
+
     has_danger = any(s.status == "danger" for s in services)
     state = "degraded" if has_danger else "operational"
     return AdminSystemHealth(state=state, services=services)

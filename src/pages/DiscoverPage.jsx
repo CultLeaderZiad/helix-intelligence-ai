@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Radar, SearchX, Clock } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useTelemetry } from "@/app/TelemetryContext"
@@ -64,9 +64,23 @@ export function DiscoverPage() {
 
   const isBelowLg = useIsBelowLg()
   const { report } = useTelemetry()
-  const { user, completeOnboarding } = useAuth()
+  const { user, completeOnboarding, refreshSession } = useAuth()
   const { phase, job, results, error, submit, refine, cancel, retry, isBusy } =
     useDiscoverySearch()
+
+  /* The credit number belongs to the server, and a settled job can move it
+     either way: a search that genuinely matched nothing is billed, a search
+     whose ad sources were unreachable (defunded Apify, unauthorized Meta
+     app) is refunded. Discover cannot know which it got, so re-read the
+     session when a job settles instead of leaving the header stale. */
+  const settledJobRef = useRef(null)
+  useEffect(() => {
+    const jobId = job?.job_id
+    const settled = jobId && (phase === PHASE.READY || phase === PHASE.ERROR)
+    if (!settled || settledJobRef.current === jobId) return
+    settledJobRef.current = jobId
+    refreshSession?.()
+  }, [phase, job?.job_id, refreshSession])
 
   const dirty = useMemo(
     () => JSON.stringify(draftFilters) !== JSON.stringify(appliedFilters),

@@ -119,14 +119,49 @@ password hash the app cannot verify, so sign-in returns the generic
 
 1. `POST /api/auth/forgot-password` — always returns the same generic success
    (no account enumeration). For an existing account it mints a single-use,
-   30-minute JWT with `purpose: password_reset` (stored only as SHA-256).
-2. The link is logged server-side on every request. Because no mail provider
-   is configured yet, `AUTH_DEV_RESET_RETURN=true` additionally returns it in
-   the API response (`{"ok": true, "reset_url": "…"}`), which the
-   forgot-password page renders. Set it to `false` as soon as real email
-   delivery is wired up.
+   30-minute JWT with `purpose: password_reset` (stored only as SHA-256,
+   compared with `hmac.compare_digest`).
+2. The link is written to the application log on every request — with no mail
+   provider configured, that log line *is* the delivery channel, so treat
+   Render log access as privileged. `AUTH_DEV_RESET_RETURN=true` additionally
+   returns it in the API response (`{"ok": true, "reset_url": "…"}`) for local
+   testing, and the app **refuses** to do that unless `ENV` is one of
+   `local` / `dev` / `development` / `test` / `pytest`. Both checks live in
+   `settings.allow_reset_link_in_response`; `render.yaml` ships
+   `AUTH_DEV_RESET_RETURN=false` + `ENV=production` with real `value:` entries,
+   so a redeploy re-asserts them instead of trusting a dashboard edit.
+   Local development needs both lines in `.env`:
+
+   ```bash
+   ENV=development
+   AUTH_DEV_RESET_RETURN=true
+   ```
 3. `POST /api/auth/reset-password` redeems the token (single-use — a reused or
    expired token is rejected) and returns a fresh session, signing the user in.
+4. Throttling on all three (`/auth/sign-in`, `/auth/forgot-password`,
+   `/auth/reset-password`): a per-network sliding window
+   (`AUTH_IP_RATE_LIMIT` attempts per `AUTH_RATE_WINDOW_SECONDS`, default
+   8/300) that answers `429` with `Retry-After`, plus — for forgot-password —
+   a database-backed re-issue cooldown
+   (`AUTH_RESET_REISSUE_COOLDOWN_SECONDS`, default 120) so repeated clicks
+   cannot churn tokens and the first link stays valid. The window is
+   in-process (single uvicorn worker today, see `app/core/rate_limit.py`); the
+   cooldown is the part that survives a restart.
+
+### Inbound webhooks
+
+Two receivers, both authenticated. Neither accepts an unsigned body:
+
+| Route | Trust mechanism | If misconfigured |
+|---|---|---|
+| `POST /api/auth/webhook` (Neon/better-auth user sync) | `better-auth-signature` header = HMAC-SHA256 of the **raw body** under `NEON_WEBHOOK_SECRET`, constant-time compare | `503` — the route refuses everything rather than falling open |
+| `POST /api/webhooks/higgsfield` (generation callback) | `?token=` capability token, HMAC of that job's id under `SECRET_KEY`, minted into the callback URL at dispatch | `403` — and the job's own polling loop still delivers the result |
+
+A signature in a log line is a bearer credential that outlives the request, so
+no webhook logs the received value, the expected digest, or the secret — ever,
+at any level. Set `NEON_WEBHOOK_SECRET` in the Render dashboard before sending
+traffic at `/auth/webhook`; before this contract existed the route created users
+and opened trials for any anonymous caller while logging both signatures.
 
 Locked out as the owner? Run the recovery tool against the same database the
 API uses (no deploy needed):
@@ -185,6 +220,22 @@ Helix enforces strict server-side credit caps with database row-level locking (`
   }
   ```
 - `403 Forbidden` (`trial_expired` or `feature_disabled`).
+- `429 Too Many Requests` (auth throttle — same code as the credit limit,
+  different payload; clients must read `Retry-After` here):
+  ```json
+  {
+    "detail": {
+      "code": "too_many_requests",
+      "message": "Too many reset requests from this network. Please wait a few minutes."
+    }
+  }
+  ```
+- `500` / `503` from `POST /api/auth/sign-in` and `/sign-up` are deliberately
+  generic (`{"code": "internal_error", "message": "Sign-in could not be
+  completed. Try again."}` and `temporarily_unavailable` respectively). The
+  exception text — driver names, connection strings, query-order bugs — goes to
+  the server log only. Do not "improve debugging" by putting `str(e)` in a
+  response body on an anonymous route.
 
 ---
 
@@ -239,7 +290,7 @@ HELIX provides a 7-day free trial with daily image creation powered by the exist
 - **Trial Duration**: 7 days from signup (`trial_started_at` to `trial_expires_at`).
 - **Trial Daily Quota**: 5 image generations per UTC day (resets at 00:00 UTC).
 - **Trial Total Cap**: 25 total image generations across the entire trial.
-- **Video Generation**: Disabled during trial; available exclusively on paid plans.
+- **Video Generation**: Up to 3 per UTC day on the trial (the 4th is refused with `402 video_limit_reached`); 50/day on paid plans, unlimited for admins. *(Docs and `test_gemini_trial_suite` once claimed video was trial-disabled; the service and the Create UI both allow 3/day, and the suite now asserts that.)*
 - **Paid Plans**: 50+ images per day.
 - **Admin Users**: Unlimited bypass across all features.
 
@@ -258,13 +309,38 @@ ENABLE_GEMINI_LIVE_TEST=true python backend/scripts/test_gemini_image_live.py
 ```
 
 ### Running the Test Suites:
-```bash
-# Run Gemini Trial & Entitlement suite
-python backend/tests/test_gemini_trial_suite.py
+Every suite under `backend/tests/` runs offline against in-memory SQLite
+(`aiosqlite`) — no Postgres, no network, no provider credentials. They do read
+`app.core.config`, which fails fast if required env vars are missing, so give
+it the two it insists on (the `DATABASE_URL` value only has to parse; SQLite is
+substituted by the suites themselves):
 
-# Run Higgsfield Diagnostic suite
-python backend/tests/test_higgsfield_suite.py
+```bash
+export SECRET_KEY=*** DATABASE_URL=postgresql+asyncpg://u:p@127.0.0.1:5/db
+
+python backend/tests/test_gemini_trial_suite.py        # trial quotas, video cap, admin bypass
+python backend/tests/test_higgsfield_suite.py         # media capability catalogue + health payload
+python backend/tests/test_byok_suite.py               # BYOK encryption, masking, routing rules
+python backend/tests/test_auth_reset_suite.py         # password reset + case-insensitive email
+python backend/tests/test_discovery_chain_suite.py    # Discover billing truth (see below)
+python backend/tests/test_auth_security_suite.py      # HTTP-level auth/media security reproductions
 ```
+
+`test_discovery_chain_suite.py` pins the three outcomes a Discover search can
+end in, because they must not be conflated and only one of them is billable:
+a source answered with rows (billed), a source answered with nothing
+(billed, `stage=zero_results`), and no source could be reached at all
+(`stage=providers_unavailable`, refunded — a missing APIFY/Meta/Apify
+credential is not evidence that a brand does not advertise).
+
+`test_auth_security_suite.py` drives the real routers through
+`httpx.ASGITransport` (which skips the lifespan, so the Postgres-only startup
+DDL never runs). It exists because each of those bugs was invisible from the
+service layer: the leak was in a response body, the missing compare was in a
+decorator-free route, the IDOR was in one `where()` clause, and the fake cancel
+was in the endpoint itself. Four of its cases assert both directions — prod
+withholds the reset link *and* dev still returns it — so a "fix" that just
+breaks the feature would not pass.
 
 
 

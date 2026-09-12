@@ -82,9 +82,17 @@ async def test_health_check_structure():
     assert "configured" in health
     assert "authenticated" in health
     assert "base_url" in health
-    # Verify no credentials leaked
-    assert "HF_API_KEY_SECRET" not in str(health)
-    assert "Authorization" not in str(health)
+    # Verify no credentials leaked. Note the difference between a value and a
+    # variable name: when nothing is configured the payload legitimately says
+    # "Missing HF_API_KEY_ID or HF_API_KEY_SECRET" (operator guidance), which
+    # is not a leak — asserting the names never appear made this suite red
+    # whenever the keys were absent, i.e. on every clean checkout.
+    from app.core.config import settings
+    payload = str(health)
+    for value in (settings.HF_API_KEY_SECRET, settings.HF_API_KEY_ID):
+        assert not value or value not in payload, "raw Higgsfield credential leaked in health payload"
+    assert "Authorization" not in payload
+    assert "Bearer " not in payload
     print("[PASS] test_health_check_structure passed")
 
 if __name__ == "__main__":

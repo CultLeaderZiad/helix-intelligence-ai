@@ -13,12 +13,35 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "30"))
 
+    # Deployment environment. Anything that is not an explicit local/dev value
+    # is treated as production, so a forgotten env var fails closed.
+    ENV: str = os.getenv("ENV", "production").strip().lower()
+
     # Password reset delivery. The app has no mail provider bundled, so the
-    # reset link is logged server-side on every request. Set to true to also
-    # return it in the API response (dev/staging convenience only — anyone
-    # who can call the endpoint could reset any account). Disable as soon as
-    # real email delivery is wired up.
-    AUTH_DEV_RESET_RETURN: bool = os.getenv("AUTH_DEV_RESET_RETURN", "True").lower() in ("true", "1", "yes")
+    # reset link is logged server-side (which is fine: the logs are ours).
+    # Returning it in the API *response* is a dev-only convenience and is a
+    # complete account-takeover primitive — POST the email, read the link,
+    # own the account — so it is OFF by default and additionally refused
+    # unless ENV is a dev value (see allow_reset_link_in_response).
+    # render.yaml ships AUTH_DEV_RESET_RETURN=false and Render syncs that on
+    # every deploy, so it cannot silently come back after a redeploy.
+    AUTH_DEV_RESET_RETURN: bool = os.getenv("AUTH_DEV_RESET_RETURN", "False").lower() in ("true", "1", "yes")
+
+    # Throttles. The per-network buckets are in-process (see core/rate_limit.py
+    # for the exact scope caveat); the reset re-issue cooldown is enforced in
+    # the database and therefore holds across workers and restarts.
+    AUTH_IP_RATE_LIMIT: int = int(os.getenv("AUTH_IP_RATE_LIMIT", "8"))
+    AUTH_RATE_WINDOW_SECONDS: int = int(os.getenv("AUTH_RATE_WINDOW_SECONDS", "300"))
+    AUTH_RESET_REISSUE_COOLDOWN_SECONDS: int = int(
+        os.getenv("AUTH_RESET_REISSUE_COOLDOWN_SECONDS", "120")
+    )
+    WEBHOOK_RATE_LIMIT: int = int(os.getenv("WEBHOOK_RATE_LIMIT", "60"))
+    WEBHOOK_RATE_WINDOW_SECONDS: int = int(os.getenv("WEBHOOK_RATE_WINDOW_SECONDS", "60"))
+
+    @property
+    def allow_reset_link_in_response(self) -> bool:
+        """True only when the operator asked for it *and* we are not in prod."""
+        return bool(self.AUTH_DEV_RESET_RETURN) and self.ENV in ("local", "dev", "development", "test", "pytest")
 
     # Public app origin used to build password-reset links
     PUBLIC_APP_BASE_URL: str = os.getenv(

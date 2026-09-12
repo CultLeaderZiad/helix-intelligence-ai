@@ -52,7 +52,37 @@ async def cancel_media_job(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    return {"success": True, "message": "Job cancellation requested", "job_id": job_id}
+    """Cancel a queued/running generation.
+
+    This used to answer `{"success": true}` without touching the job, so the
+    UI reported a cancellation that had not happened and the job kept running
+    (and billing). It now delegates to the service, and the service is honest:
+    a job that already finished is a 409 with its real status, a job that is
+    not yours is a 404, and a genuine cancel says what it could and could not
+    recall from the provider.
+    """
+    outcome = await media_service.cancel_media_job(db, current_user, job_id)
+
+    if outcome["outcome"] == "not_found":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+
+    if outcome["outcome"] == "already_terminal":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "job_not_cancellable",
+                "message": outcome["message"],
+                "job_id": job_id,
+                "status": outcome["status"],
+            },
+        )
+
+    return {
+        "success": True,
+        "job_id": job_id,
+        "status": outcome["status"],
+        "message": outcome["message"],
+    }
 
 
 @router.post("/upload")
