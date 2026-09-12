@@ -394,7 +394,7 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
         async with async_session_maker() as db:
             await update_job_stage(db, job_id, "normalizing", "Normalizing & Saving", 0.6, 3)
             brand_id = str(uuid.uuid4())
-            brand_label = " ".join(w.capitalize() for w in clean_query.split())
+            brand_label = " ".join(w.capitalize() for w in query.split())
             saved_creatives = 0
             rejected_templates = 0
             duplicates_skipped = 0
