@@ -561,3 +561,115 @@ async def create_custom_swipe_reference(db: AsyncSession, user: "User", data: di
     return {"success": True, "message": "Reference added to swipe files", "creative_id": new_id}
 
 
+async def translate_ad_copy(text: str, target_lang: str = "en", breakdown: bool = True) -> dict:
+    clean_text = (text or "").strip()
+    if not clean_text:
+        return {
+            "target_lang": target_lang,
+            "detected_lang": "en",
+            "translated_text": "",
+            "breakdown": {
+                "hook": "",
+                "problem": "",
+                "solution": "",
+                "cta": ""
+            }
+        }
+
+    lang_map = {
+        "en": "English",
+        "es": "Spanish",
+        "zh": "Chinese",
+        "nl": "Dutch",
+        "ar": "Arabic"
+    }
+    target_lang_name = lang_map.get(target_lang.lower(), "English")
+
+    from app.core.credentials import env_secret
+    import httpx
+    import json
+
+    api_key = env_secret("GROQ_API_KEY", fallback=settings.GROQ_API_KEY)
+
+    prompt = f"""You are an elite multilingual advertising copywriter and analyst.
+Analyze the following ad copy, translate it into {target_lang_name}, and deconstruct it into clear, persuasive conversion elements so that a marketer can immediately understand its anatomy.
+
+Ad Copy:
+\"\"\"{clean_text}\"\"\"
+
+Task:
+1. Detect the original language code (e.g. "es", "en", "zh", "nl", "ar", etc.).
+2. Translate the entire ad copy naturally and persuasively into {target_lang_name}.
+3. Deconstruct the copy into 4 distinct marketing components in {target_lang_name}:
+   - "hook": The opening attention-grabber / pattern interrupt (first 1-2 lines).
+   - "problem": The core pain point, friction, agitation, or misconception being addressed.
+   - "solution": The mechanism, product claim, discovery, or transformation offered.
+   - "cta": The closing call to action or invitation.
+
+Return ONLY a JSON object with this exact schema:
+{{
+  "detected_lang": "code",
+  "translated_text": "Full fluent translation in {target_lang_name}",
+  "breakdown": {{
+    "hook": "Concise hook breakdown in {target_lang_name}",
+    "problem": "Clear problem breakdown in {target_lang_name}",
+    "solution": "Clear solution breakdown in {target_lang_name}",
+    "cta": "Clear CTA breakdown in {target_lang_name}"
+  }}
+}}"""
+
+    if api_key:
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "model": "openai/gpt-oss-120b",
+                        "temperature": 0.1,
+                        "messages": [
+                            {"role": "system", "content": "You are a professional advertising translator and copy analyst. Return only valid JSON."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "response_format": {"type": "json_object"}
+                    }
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    content = data["choices"][0]["message"]["content"]
+                    parsed = json.loads(content)
+                    return {
+                        "target_lang": target_lang,
+                        "detected_lang": parsed.get("detected_lang", "unknown"),
+                        "translated_text": parsed.get("translated_text", clean_text),
+                        "breakdown": parsed.get("breakdown", {
+                            "hook": clean_text[:80],
+                            "problem": clean_text[80:250],
+                            "solution": clean_text[250:500],
+                            "cta": clean_text[-100:]
+                        })
+                    }
+                else:
+                    logger.warning(f"Groq translation returned {resp.status_code}: {resp.text[:200]}")
+        except Exception as e:
+            logger.warning(f"Groq copy translation failed: {e}")
+
+    # Heuristic fallback if LLM is unavailable
+    sentences = [s.strip() for s in clean_text.replace("\n", " ").split(".") if s.strip()]
+    return {
+        "target_lang": target_lang,
+        "detected_lang": "unknown",
+        "translated_text": clean_text,
+        "breakdown": {
+            "hook": sentences[0] if sentences else clean_text[:80],
+            "problem": sentences[1] if len(sentences) > 1 else (clean_text[80:250] or clean_text),
+            "solution": " ".join(sentences[2:-1]) if len(sentences) > 3 else (clean_text[250:500] or "Core value proposition"),
+            "cta": sentences[-1] if len(sentences) > 2 else "Learn More / Take Action"
+        }
+    }
+
+
+

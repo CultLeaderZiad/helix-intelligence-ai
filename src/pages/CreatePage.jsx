@@ -91,7 +91,7 @@ export function CreatePage() {
   const isTrialExpired = user?.requires_plan || (isTrial && !isAdmin && daysLeft <= 0)
   const isDailyLimitReached = isTrial && !isAdmin && remainingToday <= 0
 
-  // Load source creative if sourceId is in URL
+  // Load source creative if sourceId is in URL, or inherit from activeCreative or Discover search
   useEffect(() => {
     if (sourceId) {
       creativeService.getCreativeById(sourceId).then((creative) => {
@@ -103,8 +103,15 @@ export function CreatePage() {
       })
     } else if (activeCreative && !sourceCreative) {
       applyCreativeToBrief(activeCreative)
+    } else if (!sourceCreative && latestSearch?.items?.length) {
+      applyCreativeToBrief(latestSearch.items[0])
+    } else if (!sourceCreative && !brief && latestSearch?.query) {
+      setBrief(
+        `Commercial advertising creative inspired by market intelligence for "${latestSearch.query}".\nStyle & Visual Direction: ${STYLE_PROMPTS.premium_ad}`
+      )
     }
-  }, [sourceId, activeCreative])
+  }, [sourceId, activeCreative, latestSearch])
+
 
   const STYLE_PROMPTS = {
     premium_ad: "Photorealistic high-end commercial ad, crisp studio softbox lighting, razor sharp 8k commercial photography, award-winning composition, clean minimalist presentation.",

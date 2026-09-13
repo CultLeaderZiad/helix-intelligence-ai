@@ -98,6 +98,21 @@ const creativeService = {
     await delay(100)
     return { success: true, message: "Removed from collection" }
   },
+
+  async translateCopy(text, targetLang = "en", breakdown = true) {
+    await delay(150)
+    return {
+      target_lang: targetLang,
+      detected_lang: "es",
+      translated_text: text,
+      breakdown: {
+        hook: text.slice(0, 80),
+        problem: text.slice(80, 250) || "Pain point identified",
+        solution: text.slice(250, 450) || "Product transformation",
+        cta: text.slice(-80) || "Take action now",
+      },
+    }
+  },
 }
 
 export default creativeService

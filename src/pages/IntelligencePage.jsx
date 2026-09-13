@@ -25,10 +25,22 @@ import {
   Play,
   Image as ImageIcon,
   Share2,
-  BookOpen
+  BookOpen,
+  Globe,
+  Languages,
+  Loader2
 } from "lucide-react"
 import { playbookService } from "@/services"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
+
+const COPY_LANGUAGES = [
+  { id: "en", label: "English", flag: "🇺🇸" },
+  { id: "es", label: "Spanish", flag: "🇪🇸" },
+  { id: "zh", label: "Chinese", flag: "🇨🇳" },
+  { id: "nl", label: "Dutch", flag: "🇳🇱" },
+  { id: "ar", label: "Arabic", flag: "🇸🇦" },
+]
+
 
 export function IntelligencePage() {
   const navigate = useNavigate()
@@ -93,6 +105,41 @@ export function IntelligencePage() {
 
   // Load or generate insight for selected creative
   const selectedCreative = creatives.find((c) => c.id === selectedCreativeId)
+
+  const [copyLang, setCopyLang] = useState("en")
+  const [translations, setTranslations] = useState({})
+  const [translatingCopy, setTranslatingCopy] = useState(false)
+  const [showRawCopy, setShowRawCopy] = useState(false)
+
+  // Auto-translate selected creative copy to English by default or user-selected language
+  useEffect(() => {
+    if (!selectedCreative?.body) return
+    const cacheKey = `${selectedCreative.id}_${copyLang}`
+    if (translations[cacheKey]) return
+
+    let isMounted = true
+    setTranslatingCopy(true)
+
+    creativeService
+      .translateCopy(selectedCreative.body, copyLang, true)
+      .then((res) => {
+        if (!isMounted) return
+        setTranslations((prev) => ({ ...prev, [cacheKey]: res }))
+      })
+      .catch((err) => {
+        console.warn("Copy translation failed:", err)
+      })
+      .finally(() => {
+        if (isMounted) setTranslatingCopy(false)
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [selectedCreative?.id, selectedCreative?.body, copyLang])
+
+  const currentTranslation = selectedCreative ? translations[`${selectedCreative.id}_${copyLang}`] : null
+  const breakdown = currentTranslation?.breakdown
 
   useEffect(() => {
     if (!selectedCreativeId) return
@@ -465,23 +512,124 @@ export function IntelligencePage() {
                   </div>
                 </div>
 
-                {/* Creative Copy Teardown */}
-                <div className="rounded border border-border bg-surface p-4 space-y-3">
-                  <span className="label-mono text-text flex items-center gap-1.5">
-                    <Target className="h-3.5 w-3.5 text-accent" />
-                    Ad Copy & Call to Action
-                  </span>
-                  
+                {/* Creative Copy Teardown & Multilingual Translation */}
+                <div className="rounded border border-border bg-surface p-4 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
+                    <span className="label-mono text-text flex items-center gap-1.5 font-bold">
+                      <Target className="h-3.5 w-3.5 text-accent" />
+                      Ad Copy & Conversion Anatomy
+                    </span>
+
+                    {/* Language Selector / Dragger Bar */}
+                    <div className="flex flex-wrap items-center gap-1 bg-surface-2 p-1 rounded-md border border-border">
+                      <Languages className="h-3 w-3 text-text-faint ml-1.5 mr-1" />
+                      {COPY_LANGUAGES.map((lang) => {
+                        const isActive = copyLang === lang.id
+                        return (
+                          <button
+                            key={lang.id}
+                            type="button"
+                            onClick={() => setCopyLang(lang.id)}
+                            className={`px-2.5 py-1 text-[11px] font-mono rounded transition-all flex items-center gap-1 ${
+                              isActive
+                                ? "bg-accent text-bg font-bold shadow-sm"
+                                : "text-text-muted hover:text-text hover:bg-surface-3"
+                            }`}
+                          >
+                            <span>{lang.flag}</span>
+                            <span>{lang.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Status / Loading indicator */}
+                  {translatingCopy && (
+                    <div className="flex items-center gap-2 py-2 px-3 text-xs text-accent bg-accent/10 border border-accent/20 rounded font-mono animate-pulse">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Translating copy into {COPY_LANGUAGES.find((l) => l.id === copyLang)?.label} & extracting structure…</span>
+                    </div>
+                  )}
+
+                  {/* Structured Breakdown: Hook, Problem, Solution, CTA */}
+                  {breakdown ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                      {/* Hook */}
+                      <div className="rounded bg-surface-2 p-3 border border-border/60 space-y-1">
+                        <div className="flex items-center gap-1.5 text-amber-400 font-mono text-[10px] uppercase font-bold tracking-wider">
+                          <Zap className="h-3 w-3" />
+                          <span>1. Hook / Pattern Interrupt</span>
+                        </div>
+                        <p className="text-xs text-text leading-relaxed font-sans">
+                          {breakdown.hook || "—"}
+                        </p>
+                      </div>
+
+                      {/* Problem & Agitation */}
+                      <div className="rounded bg-surface-2 p-3 border border-border/60 space-y-1">
+                        <div className="flex items-center gap-1.5 text-rose-400 font-mono text-[10px] uppercase font-bold tracking-wider">
+                          <Flame className="h-3 w-3" />
+                          <span>2. Problem & Agitation</span>
+                        </div>
+                        <p className="text-xs text-text leading-relaxed font-sans">
+                          {breakdown.problem || "—"}
+                        </p>
+                      </div>
+
+                      {/* Solution / Offer */}
+                      <div className="rounded bg-surface-2 p-3 border border-border/60 space-y-1">
+                        <div className="flex items-center gap-1.5 text-emerald-400 font-mono text-[10px] uppercase font-bold tracking-wider">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>3. Transformation & Solution</span>
+                        </div>
+                        <p className="text-xs text-text leading-relaxed font-sans">
+                          {breakdown.solution || "—"}
+                        </p>
+                      </div>
+
+                      {/* Call to Action */}
+                      <div className="rounded bg-surface-2 p-3 border border-border/60 space-y-1">
+                        <div className="flex items-center gap-1.5 text-cyan-400 font-mono text-[10px] uppercase font-bold tracking-wider">
+                          <ArrowRight className="h-3 w-3" />
+                          <span>4. Direct Call To Action</span>
+                        </div>
+                        <p className="text-xs text-text font-bold font-mono tracking-wide">
+                          {breakdown.cta || selectedCreative?.cta || "—"}
+                        </p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Clean Formatted Body Text */}
                   {selectedCreative.body && (
-                    <div className="rounded bg-surface-2 p-3 text-xs text-text leading-relaxed border border-border/50">
-                      <p className="font-mono text-[10px] text-text-faint uppercase mb-1">Primary Body Text</p>
-                      "{selectedCreative.body}"
+                    <div className="rounded bg-surface-2 p-3.5 text-xs text-text leading-relaxed border border-border/50 space-y-2">
+                      <div className="flex items-center justify-between border-b border-border/40 pb-1.5">
+                        <span className="font-mono text-[10px] text-text-faint uppercase tracking-wider flex items-center gap-1">
+                          <Globe className="h-3 w-3 text-accent" />
+                          {showRawCopy
+                            ? "Original Raw Copy (Verbatim)"
+                            : `Translated Body Text (${COPY_LANGUAGES.find((l) => l.id === copyLang)?.label})`}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowRawCopy((v) => !v)}
+                          className="font-mono text-[10px] text-text-muted hover:text-accent underline cursor-pointer"
+                        >
+                          {showRawCopy ? "Show Translated" : "View Original Copy"}
+                        </button>
+                      </div>
+                      <p className="whitespace-pre-line text-xs font-sans text-text leading-relaxed">
+                        {showRawCopy
+                          ? selectedCreative.body
+                          : currentTranslation?.translated_text || selectedCreative.body}
+                      </p>
                     </div>
                   )}
 
                   {selectedCreative.cta && (
                     <div className="flex items-center justify-between rounded bg-surface-2 px-3 py-2 text-xs border border-border/50">
-                      <span className="text-text-muted font-mono text-[11px]">Call To Action</span>
+                      <span className="text-text-muted font-mono text-[11px]">Primary Button / CTA</span>
                       <span className="font-mono font-semibold text-accent uppercase tracking-wider">
                         {selectedCreative.cta}
                       </span>

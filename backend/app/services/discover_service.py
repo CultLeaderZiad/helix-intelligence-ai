@@ -34,44 +34,81 @@ def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] =
 
     text_corpus = f"{headline} {body} {brand_name} {landing_domain} {cta}"
 
-    # 2. Entity Disambiguation (e.g. Content Creator / Streamer vs. Shoe Stores)
+    # 2. Entity Disambiguation (Creators, Streamers, Sports Clubs, Public Figures)
     is_creator = False
-    if entity_profile and entity_profile.get("entity_type") == "creator_streamer":
+    if entity_profile and entity_profile.get("entity_type") in ("creator_streamer", "influencer"):
         is_creator = True
-    elif clean_q in ("sneako", "andrew tate", "adin ross", "kai cenat"):
+    elif clean_q in ("sneako", "andrew tate", "adin ross", "kai cenat", "ishowspeed"):
         is_creator = True
 
     if is_creator:
-        # Footwear & shoe store false-positive markers
         footwear_markers = [
             "shoes", "shoe", "sneakers", "sneaker", "kicks", "nike tn", "triple black",
             "sizes available", "parañaque", "pre-order", "fresh drop", "same day delivery",
             "slip-on", "heels", "sandals", "footwear"
         ]
         has_footwear = any(m in text_corpus for m in footwear_markers)
-        # Check if creator is genuinely the advertiser or subject
         has_exact_creator_in_brand = bool(re.search(rf"\b{re.escape(clean_q)}\b", brand_name))
-        # If it's a shoe shop and doesn't clearly have the creator as the brand itself, reject
         if has_footwear and not has_exact_creator_in_brand:
             return False
+
+    # Check for Sports Club / Major Sports Entity
+    is_sports_entity = False
+    if entity_profile and any(k in str(entity_profile.get("category_label", "")).lower() for k in ("sport", "football", "soccer", "club")):
+        is_sports_entity = True
+    elif any(team in clean_q for team in ("real madrid", "fc barcelona", "manchester united", "arsenal", "liverpool", "chelsea")):
+        is_sports_entity = True
+
+    if is_sports_entity:
+        discordant_markers = [
+            "desparasitaria", "veterinaria", "perruna", "masticables para alergias", "perro", "gato",
+            "joyería", "joyeria", "curso presencial de joyeria", "orfebrería", "taller de joyeria",
+            "clínica dental", "implantes dentales", "fontanería", "cerrajería"
+        ]
+        has_discordant = any(m in text_corpus for m in discordant_markers)
+        has_club_in_brand = bool(re.search(rf"\b{re.escape(clean_q)}\b", brand_name))
+        if has_discordant and not has_club_in_brand:
+            return False
+
+    # Check any filtered categories from entity profile disambiguation
+    if entity_profile and entity_profile.get("disambiguation", {}).get("filtered_categories"):
+        for fc in entity_profile["disambiguation"]["filtered_categories"]:
+            fc_clean = fc.lower().strip()
+            if fc_clean and fc_clean in text_corpus and clean_q not in brand_name:
+                return False
 
     tokens = [t for t in re.findall(r"\w+", clean_q) if len(t) > 2]
     if not tokens:
         return True
 
-    # Exact full query match with word boundary
+    # 3. Exact full query phrase match with word boundary (Highest confidence)
     if re.search(rf"\b{re.escape(clean_q)}\b", text_corpus):
         return True
 
+    # 4. Multi-token queries (2+ words)
     if len(tokens) >= 2:
-        # Require all tokens or last token (surname/distinctive) on word boundaries
-        last_token = tokens[-1]
-        if re.search(rf"\b{re.escape(last_token)}\b", text_corpus):
+        # DO NOT allow single last_token match (which caused Madrid jewelry/dog medicine to match Real Madrid)
+        # Check if brand name contains all tokens
+        brand_matched = sum(1 for t in tokens if re.search(rf"\b{re.escape(t)}\b", brand_name))
+        if brand_matched == len(tokens):
             return True
-        matched = sum(1 for t in tokens if re.search(rf"\b{re.escape(t)}\b", text_corpus))
-        return matched == len(tokens)
 
-    # Single token match: MUST be an exact word-boundary match (not substring!)
+        # Check if headline contains all tokens
+        hl_matched = sum(1 for t in tokens if re.search(rf"\b{re.escape(t)}\b", headline))
+        if hl_matched == len(tokens):
+            return True
+
+        # Check if first two significant tokens appear within close proximity (<= 40 characters)
+        proximity_pattern = (
+            rf"\b{re.escape(tokens[0])}\b.{{0,40}}\b{re.escape(tokens[1])}\b|"
+            rf"\b{re.escape(tokens[1])}\b.{{0,40}}\b{re.escape(tokens[0])}\b"
+        )
+        if re.search(proximity_pattern, text_corpus, re.DOTALL):
+            return True
+
+        return False
+
+    # 5. Single token match: MUST be an exact word-boundary match (not substring!)
     return bool(re.search(rf"\b{re.escape(tokens[0])}\b", text_corpus))
 
 

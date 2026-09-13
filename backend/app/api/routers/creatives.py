@@ -115,3 +115,23 @@ async def generate_patterns(
     return await creative_service.generate_patterns_for_recent_creatives(
         db, current_user, byok_key, byok_provider
     )
+
+
+from pydantic import BaseModel
+
+class TranslateCopyRequest(BaseModel):
+    text: str
+    target_lang: str = "en"
+    breakdown: bool = True
+
+@router.post("/translate-copy")
+async def translate_copy(
+    payload: TranslateCopyRequest,
+    current_user: User = Depends(get_current_user)
+):
+    return await creative_service.translate_ad_copy(
+        text=payload.text,
+        target_lang=payload.target_lang,
+        breakdown=payload.breakdown
+    )
+

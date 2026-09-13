@@ -18,6 +18,8 @@ import { Panel, PanelBody, PanelHeader, PanelTitle } from "@/components/ui/Panel
 import { Tag } from "@/components/ui/Tag"
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States"
 import { useMonitors } from "@/hooks/useMonitors"
+import { useSearchContext } from "@/context/SearchContext"
+import { useEffect } from "react"
 
 const CADENCES = [
   { value: "every_6h", label: "Every 6 hours" },
@@ -88,10 +90,16 @@ function RunSummary({ monitor }) {
   )
 }
 
-function CreateMonitorForm({ onCreate, busy }) {
-  const [query, setQuery] = useState("")
+function CreateMonitorForm({ onCreate, busy, initialQuery = "" }) {
+  const [query, setQuery] = useState(initialQuery || "")
   const [cadence, setCadence] = useState("daily")
   const [notifyEmail, setNotifyEmail] = useState(false)
+
+  useEffect(() => {
+    if (initialQuery && !query) {
+      setQuery(initialQuery)
+    }
+  }, [initialQuery])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -236,6 +244,7 @@ export function MonitorsPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const focusId = searchParams.get("id")
+  const { latestSearch } = useSearchContext()
   const {
     monitors,
     events,
@@ -291,6 +300,36 @@ export function MonitorsPage() {
       />
 
       <div className="flex flex-col gap-4 p-6">
+        {latestSearch?.query ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-accent/40 bg-accent/5 px-4 py-2.5 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-accent animate-pulse" />
+              <span className="text-xs font-mono text-text">
+                Active search from Discover: <strong className="text-accent font-bold">"{latestSearch.query}"</strong>
+              </span>
+            </div>
+            <Button
+              size="xs"
+              variant="primary"
+              onClick={() => {
+                guard(() =>
+                  createMonitor({
+                    query: latestSearch.query,
+                    name: latestSearch.query,
+                    cadence: "daily",
+                    notify_in_app: true,
+                    notify_email: false,
+                  })
+                )
+              }}
+              disabled={busy}
+              className="text-xs font-mono"
+            >
+              + Watch "{latestSearch.query}" Daily
+            </Button>
+          </div>
+        ) : null}
+
         <Panel>
           <PanelHeader>
             <PanelTitle>New monitor</PanelTitle>
@@ -299,7 +338,11 @@ export function MonitorsPage() {
             </span>
           </PanelHeader>
           <PanelBody>
-            <CreateMonitorForm onCreate={(p) => guard(() => createMonitor(p))} busy={busy} />
+            <CreateMonitorForm
+              initialQuery={latestSearch?.query || ""}
+              onCreate={(p) => guard(() => createMonitor(p))}
+              busy={busy}
+            />
             {actionError ? (
               <p className="mt-2 text-xs text-danger">
                 {actionError.message || "That action could not be completed."}
