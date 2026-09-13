@@ -225,7 +225,9 @@ app.include_router(higgsfield.router, prefix="/higgsfield", tags=["higgsfield"])
 app.include_router(uploads.router, prefix="/uploads", tags=["uploads"])
 
 @app.get("/")
+@app.get("/api")
 @app.get("/health")
+@app.get("/api/health")
 def root():
     return {
         "status": "ok",

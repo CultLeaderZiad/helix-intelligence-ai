@@ -85,18 +85,18 @@ export async function request(path, options = {}, retryCount = 0) {
   } catch (err) {
     if (err?.name === "AbortError") throw err
 
-    // Transparent fast retry on network disconnect / connection drop (max 2 retries)
-    if (retryCount < 2 && method === "GET") {
-      await new Promise((resolve) => setTimeout(resolve, 300 * (retryCount + 1)))
+    // Transparent retry on network disconnect / connection drop (max 3 retries with backoff)
+    if (retryCount < 3) {
+      await new Promise((resolve) => setTimeout(resolve, 800 * Math.pow(1.5, retryCount)))
       return request(path, options, retryCount + 1)
     }
 
     throw new ServiceError("Network connection interrupted. Please try again.", { code: "network_error" })
   }
 
-  // If server returns 502, 503, or 504 gateway error, retry transparently
-  if ([502, 503, 504].includes(res.status) && retryCount < 2) {
-    await new Promise((resolve) => setTimeout(resolve, 500 * (retryCount + 1)))
+  // If server returns 502, 503, or 504 gateway error (Render cold-start or restart), retry transparently
+  if ([502, 503, 504].includes(res.status) && retryCount < 3) {
+    await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(1.5, retryCount)))
     return request(path, options, retryCount + 1)
   }
 

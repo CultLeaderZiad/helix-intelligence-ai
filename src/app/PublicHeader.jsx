@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext"
 import { APP_HOME } from "@/app/ProtectedRoute"
 import PillNav from "@/components/ui/PillNav"
 import { LanguageSwitcher } from "@/components/LanguageSwitcher"
+import { UpdatesBanner } from "@/components/UpdatesBanner"
 
 export function PublicHeader() {
   const { isAuthenticated } = useAuth()
@@ -19,7 +20,9 @@ export function PublicHeader() {
   ]
 
   return (
-    <header className="sticky top-0 z-50 w-full flex items-center justify-center px-4 pointer-events-auto relative">
+    <>
+      <UpdatesBanner />
+      <header className="sticky top-0 z-50 w-full flex items-center justify-center px-4 pointer-events-auto relative">
       <PillNav
         logo="/helix-logo.svg"
         logoAlt="Helix"
@@ -38,5 +41,6 @@ export function PublicHeader() {
         <LanguageSwitcher />
       </div>
     </header>
+    </>
   )
 }

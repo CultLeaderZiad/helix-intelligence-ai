@@ -559,9 +559,9 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
             trial_started_at=user.trial_started_at.isoformat() + "Z" if user.trial_started_at else None,
             trial_expires_at=user.trial_expires_at.isoformat() + "Z" if user.trial_expires_at else None,
             created_at=user.created_at.isoformat() + "Z" if user.created_at else "",
-            is_suspended=getattr(user, "is_suspended", False),
-            is_banned=getattr(user, "is_banned", False),
-            status="banned" if getattr(user, "is_banned", False) else ("suspended" if getattr(user, "is_suspended", False) else "active")
+            is_suspended=bool(getattr(user, "is_suspended", False) or False),
+            is_banned=bool(getattr(user, "is_banned", False) or False),
+            status="banned" if bool(getattr(user, "is_banned", False) or False) else ("suspended" if bool(getattr(user, "is_suspended", False) or False) else "active")
         ))
     return users
 

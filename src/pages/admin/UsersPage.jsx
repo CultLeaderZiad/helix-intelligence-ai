@@ -49,6 +49,13 @@ export function UsersPage() {
 
   useEffect(() => {
     fetchUsers()
+    // Real-time polling every 10s so new test users and status updates appear immediately
+    const interval = setInterval(() => {
+      adminService.listUsers().then((usersData) => {
+        if (Array.isArray(usersData)) setUsers(usersData)
+      }).catch(() => {})
+    }, 10000)
+    return () => clearInterval(interval)
   }, [])
 
   const showToast = (msg) => {
@@ -150,6 +157,39 @@ export function UsersPage() {
           {toast}
         </div>
       )}
+
+      {error && (
+        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-rose-400 text-sm flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={fetchUsers} className="underline text-xs font-mono ml-4">Retry</button>
+        </div>
+      )}
+
+      {/* Summary KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+          <span className="text-[11px] font-mono text-slate-400 block">Total Users</span>
+          <span className="text-xl font-bold font-mono text-slate-100">{users.length}</span>
+        </div>
+        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+          <span className="text-[11px] font-mono text-slate-400 block">Active Trials</span>
+          <span className="text-xl font-bold font-mono text-cyan-400">
+            {users.filter(u => u.is_trial_active || u.plan_id === "plan_trial_default").length}
+          </span>
+        </div>
+        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+          <span className="text-[11px] font-mono text-slate-400 block">Admins</span>
+          <span className="text-xl font-bold font-mono text-indigo-400">
+            {users.filter(u => u.role === "admin").length}
+          </span>
+        </div>
+        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+          <span className="text-[11px] font-mono text-slate-400 block">Active Filtered</span>
+          <span className="text-xl font-bold font-mono text-accent">
+            {filteredUsers.length}
+          </span>
+        </div>
+      </div>
 
       {/* Filter */}
       <div className="relative max-w-md">

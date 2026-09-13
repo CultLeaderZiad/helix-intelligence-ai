@@ -58,6 +58,9 @@ const FeatureFlagsPage = safeLazy(() => import("@/pages/admin/FeatureFlagsPage")
 const UsersPage = safeLazy(() => import("@/pages/admin/UsersPage").then(m => ({ default: m.UsersPage })))
 const UpdatesPage = safeLazy(() => import("@/pages/admin/UpdatesPage").then(m => ({ default: m.UpdatesPage })))
 const SupportAdminPage = safeLazy(() => import("@/pages/admin/SupportAdminPage").then(m => ({ default: m.SupportAdminPage })))
+const ScrapeJobsPage = safeLazy(() => import("@/pages/admin/ScrapeJobsPage").then(m => ({ default: m.ScrapeJobsPage })))
+const DataSourcesPage = safeLazy(() => import("@/pages/admin/DataSourcesPage").then(m => ({ default: m.DataSourcesPage })))
+const SystemHealthPage = safeLazy(() => import("@/pages/admin/SystemHealthPage").then(m => ({ default: m.SystemHealthPage })))
 const PublicPlaybookPage = safeLazy(() => import("@/pages/PublicPlaybookPage").then(m => ({ default: m.PublicPlaybookPage })))
 const ProfileSettingsPage = safeLazy(() => import("@/pages/ProfileSettingsPage").then(m => ({ default: m.ProfileSettingsPage })))
 const SupportPage = safeLazy(() => import("@/pages/SupportPage").then(m => ({ default: m.SupportPage })))
@@ -159,6 +162,9 @@ export default function App() {
                       <Route path="/admin/users" element={<UsersPage />} />
                       <Route path="/admin/updates" element={<UpdatesPage />} />
                       <Route path="/admin/support" element={<SupportAdminPage />} />
+                      <Route path="/admin/data-sources" element={<DataSourcesPage />} />
+                      <Route path="/admin/scrape-jobs" element={<ScrapeJobsPage />} />
+                      <Route path="/admin/health" element={<SystemHealthPage />} />
                       {ADMIN_NAV_ITEMS.filter((i) => !i.built).map((item) => (
                         <Route
                           key={item.key}

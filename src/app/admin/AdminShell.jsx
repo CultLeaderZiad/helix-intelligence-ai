@@ -3,6 +3,7 @@ import { Menu } from "lucide-react"
 import { AdminSidebar } from "./AdminSidebar"
 import { StatusBar } from "@/app/StatusBar"
 import { Button } from "@/components/ui/Button"
+import { UpdatesBanner } from "@/components/UpdatesBanner"
 
 /**
  * Operations console chrome — the structural twin of AppShell, with its
@@ -36,6 +37,7 @@ export function AdminShell({ children }) {
         ) : null}
 
         <main className="flex min-w-0 flex-1 flex-col">
+          <UpdatesBanner />
           <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border bg-surface px-2 md:hidden">
             <Button
               variant="ghost"

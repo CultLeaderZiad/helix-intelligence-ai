@@ -157,8 +157,8 @@ class AdminUserRow(BaseModel):
     trial_started_at: Optional[str] = None
     trial_expires_at: Optional[str] = None
     created_at: str
-    is_suspended: bool = False
-    is_banned: bool = False
+    is_suspended: Optional[bool] = False
+    is_banned: Optional[bool] = False
     status: str = "active"
 
 class UserStatusUpdate(BaseModel):

@@ -1,8 +1,33 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { Bell, Check, ExternalLink, Info, AlertTriangle, Sparkles, CheckCheck } from "lucide-react"
-import { notificationService } from "@/services"
+import { Bell, Check, ExternalLink, Info, AlertTriangle, Sparkles, CheckCheck, Megaphone } from "lucide-react"
+import { notificationService, updatesService } from "@/services"
 import { cn } from "@/lib/utils"
+
+function formatNotificationDate(raw) {
+  if (!raw) return "Recently"
+  try {
+    let s = String(raw).trim()
+    if (!s) return "Recently"
+    if (s.includes(" ") && !s.includes("T")) {
+      s = s.replace(" ", "T")
+    }
+    if (!s.endsWith("Z") && !s.includes("+") && !s.includes("-", 10)) {
+      s += "Z"
+    }
+    const d = new Date(s)
+    if (isNaN(d.getTime())) {
+      const d2 = new Date(raw)
+      if (!isNaN(d2.getTime())) {
+        return d2.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+      }
+      return "Recently"
+    }
+    return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+  } catch {
+    return "Recently"
+  }
+}
 
 export function NotificationBell({ className }) {
   const navigate = useNavigate()
@@ -14,9 +39,36 @@ export function NotificationBell({ className }) {
 
   const fetchNotifications = async () => {
     try {
-      const res = await notificationService.getNotifications()
-      setNotifications(res.items || [])
-      setUnreadCount(res.unread_count || 0)
+      const [res, publishedUpdates] = await Promise.all([
+        notificationService.getNotifications().catch(() => ({ items: [], unread_count: 0 })),
+        updatesService.getPublishedUpdates().catch(() => [])
+      ])
+
+      const updateItems = (Array.isArray(publishedUpdates) ? publishedUpdates : []).map((u) => {
+        const isRead = localStorage.getItem(`helix_update_read_${u.id}`) === "true"
+        return {
+          id: `update_${u.id}`,
+          originalUpdateId: u.id,
+          isUpdate: true,
+          type: u.level || "system",
+          title: u.title,
+          message: u.body || "System update published.",
+          link: u.link_url || null,
+          is_read: isRead,
+          created_at: u.created_at || new Date().toISOString(),
+        }
+      })
+
+      const personalItems = res?.items || []
+      const merged = [...updateItems, ...personalItems].sort((a, b) => {
+        const da = new Date(a.created_at || 0).getTime()
+        const db = new Date(b.created_at || 0).getTime()
+        return db - da
+      })
+
+      const totalUnread = merged.filter((item) => !item.is_read).length
+      setNotifications(merged)
+      setUnreadCount(totalUnread)
     } catch (err) {
       console.error("Failed to load notifications", err)
     }
@@ -24,7 +76,7 @@ export function NotificationBell({ className }) {
 
   useEffect(() => {
     fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000) // Poll every 30s
+    const interval = setInterval(fetchNotifications, 20000) // Poll every 20s
     return () => clearInterval(interval)
   }, [])
 
@@ -39,7 +91,16 @@ export function NotificationBell({ className }) {
   }, [])
 
   const handleMarkAsRead = async (id, e) => {
-    e.stopPropagation()
+    if (e) e.stopPropagation()
+    const target = notifications.find((n) => n.id === id)
+    if (target?.isUpdate) {
+      localStorage.setItem(`helix_update_read_${target.originalUpdateId}`, "true")
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      )
+      setUnreadCount((c) => Math.max(0, c - 1))
+      return
+    }
     try {
       await notificationService.markAsRead(id)
       setNotifications((prev) =>
@@ -53,7 +114,12 @@ export function NotificationBell({ className }) {
 
   const handleMarkAllRead = async () => {
     try {
-      await notificationService.markAllAsRead()
+      notifications.forEach((n) => {
+        if (n.isUpdate) {
+          localStorage.setItem(`helix_update_read_${n.originalUpdateId}`, "true")
+        }
+      })
+      await notificationService.markAllAsRead().catch(() => {})
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
       setUnreadCount(0)
     } catch (err) {
@@ -65,23 +131,25 @@ export function NotificationBell({ className }) {
     if (!n.link) return
     setOpen(false)
     if (!n.is_read) {
-      notificationService.markAsRead(n.id).catch(() => {})
-      setNotifications((prev) =>
-        prev.map((item) => (item.id === n.id ? { ...item, is_read: true } : item))
-      )
-      setUnreadCount((c) => Math.max(0, c - 1))
+      handleMarkAsRead(n.id)
     }
-    navigate(n.link)
+    if (n.link.startsWith("http")) {
+      window.open(n.link, "_blank", "noopener,noreferrer")
+    } else {
+      navigate(n.link)
+    }
   }
 
   const getTypeIcon = (type) => {
     switch (type) {
       case "alert":
-      case "quota":
       case "warning":
+      case "critical":
         return <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
       case "creative_found":
         return <Sparkles className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+      case "system":
+        return <Megaphone className="h-3.5 w-3.5 text-accent shrink-0" />
       default:
         return <Info className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
     }
@@ -107,7 +175,7 @@ export function NotificationBell({ className }) {
           <div className="flex items-center justify-between border-b border-border pb-2 px-2 pt-1">
             <span className="text-xs font-semibold text-text flex items-center gap-1.5">
               <Bell className="h-3.5 w-3.5 text-accent" />
-              Notifications
+              Notifications & Updates
             </span>
             {unreadCount > 0 && (
               <button
@@ -165,7 +233,7 @@ export function NotificationBell({ className }) {
                     {n.message}
                   </p>
                   <span className="text-[10px] font-mono text-text-faint pl-5">
-                    {n.created_at ? new Date(n.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ""}
+                    {formatNotificationDate(n.created_at)}
                   </span>
                 </div>
               ))
@@ -186,3 +254,5 @@ export function NotificationBell({ className }) {
     </div>
   )
 }
+
+export default NotificationBell
