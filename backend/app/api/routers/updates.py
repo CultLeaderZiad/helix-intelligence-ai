@@ -84,8 +84,14 @@ async def admin_create_update(
     """
     Admin: Create a new update or banner announcement.
     """
+    create_data = update_in.model_dump()
+    if create_data.get("starts_at") and getattr(create_data["starts_at"], "tzinfo", None):
+        create_data["starts_at"] = create_data["starts_at"].replace(tzinfo=None)
+    if create_data.get("ends_at") and getattr(create_data["ends_at"], "tzinfo", None):
+        create_data["ends_at"] = create_data["ends_at"].replace(tzinfo=None)
+
     update = AppUpdate(
-        **update_in.model_dump(),
+        **create_data,
         created_by=admin.id,
     )
     db.add(update)
@@ -111,6 +117,8 @@ async def admin_get_update(
 
 
 @router.patch("/admin/{update_id}", response_model=AppUpdateResponse)
+@router.put("/admin/{update_id}", response_model=AppUpdateResponse)
+@router.post("/admin/{update_id}", response_model=AppUpdateResponse)
 async def admin_update_update(
     update_id: str,
     update_in: AppUpdateUpdate,
@@ -126,8 +134,14 @@ async def admin_update_update(
         raise HTTPException(status_code=404, detail="Update not found")
 
     update_data = update_in.model_dump(exclude_unset=True)
+    if update_data.get("starts_at") and getattr(update_data["starts_at"], "tzinfo", None):
+        update_data["starts_at"] = update_data["starts_at"].replace(tzinfo=None)
+    if update_data.get("ends_at") and getattr(update_data["ends_at"], "tzinfo", None):
+        update_data["ends_at"] = update_data["ends_at"].replace(tzinfo=None)
+
     for field, value in update_data.items():
-        setattr(update, field, value)
+        if hasattr(update, field):
+            setattr(update, field, value)
 
     update.updated_at = datetime.datetime.utcnow()
     await db.commit()

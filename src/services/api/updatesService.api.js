@@ -28,7 +28,7 @@ export const updatesApi = {
   async createAdminUpdate(payload) {
     return request("/updates/admin", {
       method: "POST",
-      body: JSON.stringify(payload),
+      body: payload,
     })
   },
 
@@ -45,7 +45,7 @@ export const updatesApi = {
   async updateAdminUpdate(id, payload) {
     return request(`/updates/admin/${id}`, {
       method: "PATCH",
-      body: JSON.stringify(payload),
+      body: payload,
     })
   },
 
