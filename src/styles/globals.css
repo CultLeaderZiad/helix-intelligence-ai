@@ -73,7 +73,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    overscroll-behavior: none;
+    overscroll-behavior-y: auto;
+    overscroll-behavior-x: none;
     line-height: 1.5;
   }
 
@@ -93,21 +94,29 @@
     outline-offset: 1px;
   }
 
-  /* Thin instrument scrollbars */
+  /* Crisp, tactile instrument scrollbars — easily visible and draggable */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #4b4b5e rgba(255, 255, 255, 0.04);
+  }
+
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.03);
   }
   ::-webkit-scrollbar-thumb {
-    background: #33333f;
+    background: #4b4b5e;
     border: 2px solid var(--color-bg);
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #474757;
+    background: #686882;
+  }
+  ::-webkit-scrollbar-thumb:active {
+    background: #818cf8;
   }
   ::-webkit-scrollbar-corner {
     background: transparent;

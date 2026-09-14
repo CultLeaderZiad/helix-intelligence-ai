@@ -47,7 +47,7 @@ export function SystemHealthPage() {
   const services = healthData?.services || []
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col font-sans">
+    <div className="w-full flex-1 flex flex-col font-sans">
       <BreadcrumbBar
         trail={["Console", "System", "Health"]}
         meta={loading ? "probing" : error ? "unavailable" : `overall ${healthData?.state || "operational"}`}
@@ -59,7 +59,7 @@ export function SystemHealthPage() {
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
+      <div className="p-4 md:p-6 w-full">
         <div className="mx-auto flex max-w-7xl flex-col gap-6">
           <div className="flex items-center justify-between">
             <div>

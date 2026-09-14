@@ -84,7 +84,7 @@ export function NotificationsPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-slate-950 text-slate-100">
+    <div className="w-full flex-1 flex flex-col bg-slate-950 text-slate-100 font-sans">
       <BreadcrumbBar
         trail={["Helix", "Workspace", "Notifications & Messages"]}
         meta={`${notifications.length} messages (${unreadCount} unread)`}

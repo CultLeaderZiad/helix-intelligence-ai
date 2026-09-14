@@ -24,7 +24,7 @@ export function OverviewPage() {
   const { stats, jobs, health, organizations, users, loading, error, refetch } = useAdminOverview()
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="w-full flex-1 flex flex-col font-sans">
       <BreadcrumbBar
         trail={["Console", "Overview"]}
         meta={loading ? "loading" : error ? "unavailable" : "live"}
@@ -38,8 +38,8 @@ export function OverviewPage() {
       {error ? (
         <ErrorState error={error} onRetry={refetch} />
       ) : (
-        <div className="min-h-0 flex-1 overflow-auto p-3">
-          <div className="mx-auto flex max-w-6xl flex-col gap-3">
+        <div className="p-3 md:p-6 w-full">
+          <div className="mx-auto flex max-w-7xl flex-col gap-4">
             {loading || !stats ? (
               <Skeleton className="h-[92px] w-full rounded-sm" />
             ) : (

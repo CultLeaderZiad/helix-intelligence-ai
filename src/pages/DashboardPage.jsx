@@ -89,7 +89,7 @@ export default function DashboardPage() {
   const maxCount = Math.max(...(data?.timeline || []).map(t => t.count), 1)
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-background p-6">
+    <div className="w-full max-w-7xl mx-auto flex flex-col p-6 space-y-6">
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight text-text">Workspace Dashboard</h1>
         <p className="mt-1 font-mono text-xs text-text-muted">

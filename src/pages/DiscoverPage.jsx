@@ -307,7 +307,7 @@ export function DiscoverPage() {
         {!(isBelowLg && inspectorOpen) ? (
           <section
             id="tour-results-area"
-            className="flex min-w-0 flex-1 flex-col overflow-hidden"
+            className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden"
             aria-label={t("discoveryResults")}
           >
             {phase === PHASE.IDLE ? (

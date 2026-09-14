@@ -288,7 +288,7 @@ export function MonitorsPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div className="w-full flex-1 flex flex-col font-sans">
       <BreadcrumbBar
         trail={["Helix", "Monitors", "Scheduled Competitor Watches"]}
         meta={`${activeCount} active · ${events.length} recent changes`}

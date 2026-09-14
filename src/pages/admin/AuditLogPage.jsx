@@ -68,7 +68,7 @@ export function AuditLogPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col font-sans">
+    <div className="w-full flex-1 flex flex-col font-sans">
       <BreadcrumbBar
         trail={["Console", "System", "Audit Log"]}
         meta={loading ? "loading" : error ? "unavailable" : `live (${total} events)`}
@@ -80,7 +80,7 @@ export function AuditLogPage() {
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
+      <div className="p-4 md:p-6 w-full">
         <div className="mx-auto flex max-w-7xl flex-col gap-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>

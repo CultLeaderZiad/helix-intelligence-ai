@@ -188,7 +188,7 @@ export function GuidePage() {
   const currentStep = GUIDE_STEPS.find((s) => s.id === activeStepId) || GUIDE_STEPS[0]
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div className="w-full flex-1 flex flex-col font-sans">
       <BreadcrumbBar
         trail={["Helix", "Documentation", "Master Workflow Guide"]}
         meta="Step-by-Step Operating Playbook"

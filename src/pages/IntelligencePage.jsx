@@ -221,7 +221,7 @@ export function IntelligencePage() {
   const currentInsight = selectedCreativeId ? insights[selectedCreativeId] : null
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div className="flex min-h-0 flex-1 flex-col">
       <BreadcrumbBar
         trail={["Helix", "Intelligence", "Pattern Extraction"]}
         meta={

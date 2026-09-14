@@ -242,7 +242,7 @@ export function CreatePage() {
   const discoveredItems = latestSearch?.items || []
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+    <div className="w-full flex-1 flex flex-col">
       <BreadcrumbBar
         trail={["Helix", "Create", "Remix Studio"]}
         meta={

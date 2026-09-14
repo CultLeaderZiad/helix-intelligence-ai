@@ -161,7 +161,7 @@ export function DataSourcesPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col font-sans">
+    <div className="w-full flex-1 flex flex-col font-sans">
       <BreadcrumbBar
         trail={["Console", "Data", "Data Sources"]}
         meta={loading ? "probing" : error ? "unavailable" : `system ${healthData?.state || "operational"}`}
@@ -173,7 +173,7 @@ export function DataSourcesPage() {
         }
       />
 
-      <div className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
+      <div className="p-4 md:p-6 w-full">
         <div className="mx-auto flex max-w-7xl flex-col gap-6">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

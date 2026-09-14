@@ -74,7 +74,7 @@ export function SupportAdminPage() {
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-8 max-w-7xl mx-auto space-y-6 font-sans w-full">
+    <div className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-6 font-sans">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
