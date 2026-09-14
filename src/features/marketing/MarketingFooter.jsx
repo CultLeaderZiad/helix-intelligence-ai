@@ -1,114 +1,317 @@
+import React, { useState } from "react"
 import { Link } from "react-router-dom"
-import { Logo } from "@/components/ui/Logo"
+import { X, Shield, FileText, Lock, Cookie } from "lucide-react"
 
-/**
- * Public footer. Same hairline/mono system as the rest of the site; the
- * columns re-list the section anchors and the two auth entry points so the
- * whole public surface is reachable from the bottom of the page too.
- */
-const COLUMNS = [
-  {
-    heading: "Product",
-    links: [
-      { label: "Overview", href: "/#product" },
-      { label: "Pricing", href: "/#pricing" },
-      { label: "Updates & Changelog", href: "/updates" },
-      { label: "Docs Hub", href: "/docs" },
+const LEGAL_DOCS = {
+  terms: {
+    title: "Terms of Service",
+    icon: FileText,
+    updated: "September 2026",
+    content: [
+      {
+        heading: "1. Platform Usage & License",
+        body: "Helix Intelligence grants authorized users a non-exclusive, non-transferable right to access the workstation, competitor intelligence queries, and creative remix studio in accordance with their subscription tier.",
+      },
+      {
+        heading: "2. Data Extraction & Scraper Ethics",
+        body: "Our distributed crawler infrastructure operates exclusively against public ad libraries and verified social channels in strict adherence to robots.txt and automated rate limits.",
+      },
+      {
+        heading: "3. Creative IP & Commercial Rights",
+        body: "Any creative assets generated or remixed within the Create Studio remain 100% the intellectual property of the account holder. Helix does not claim royalties or proprietary rights over user-generated marketing collateral.",
+      },
+      {
+        heading: "4. Service Level & Termination",
+        body: "We maintain a 99.9% uptime target. Accounts violating fair API consumption or reverse-engineering policies may be terminated upon written notice.",
+      },
     ],
   },
-  {
-    heading: "Docs",
-    links: [
-      { label: "User Guide", href: "/docs/user-guide/quickstart-account-and-trial" },
-      { label: "API Reference", href: "/docs/api-reference/authentication" },
-      { label: "Scoring Model", href: "/docs/user-guide/concept-scoring-system" },
-      { label: "Credit Costs", href: "/docs/api-reference/credit-costs-and-limits" },
+  privacy: {
+    title: "Privacy Policy",
+    icon: Lock,
+    updated: "September 2026",
+    content: [
+      {
+        heading: "1. Information We Collect",
+        body: "We collect account profile information (email, team name), authentication credentials, and search history necessary to provide the intelligence workspace. We never access private customer advertising accounts or unreleased assets.",
+      },
+      {
+        heading: "2. Zero Third-Party Monetization",
+        body: "Helix Intelligence never sells, rents, or exchanges user telemetry or competitor search dossiers with third-party ad brokers.",
+      },
+      {
+        heading: "3. Global Compliance (GDPR & CCPA)",
+        body: "All data storage is encrypted at rest using AES-256. Users retain the right to request a complete audit log export or account purge at any time.",
+      },
     ],
   },
-]
+  security: {
+    title: "Security & Infrastructure",
+    icon: Shield,
+    updated: "September 2026",
+    content: [
+      {
+        heading: "1. SOC2 & TLS 1.3 Standards",
+        body: "All traffic across API endpoints, dashboard sessions, and edge scraping nodes is enforced with TLS 1.3 encryption and strict HTTP response headers.",
+      },
+      {
+        heading: "2. Sandboxed AI Generation",
+        body: "Generative model pipelines execute in isolated memory sandboxes. Prompt formulas and seed references are never retained in permanent training corpora.",
+      },
+      {
+        heading: "3. Continuous Vulnerability Audits",
+        body: "Automated penetration testing and daily dependency vulnerability sweeps guarantee platform integrity for enterprise brand portfolios.",
+      },
+    ],
+  },
+  cookie: {
+    title: "Cookie Policy",
+    icon: Cookie,
+    updated: "September 2026",
+    content: [
+      {
+        heading: "1. Essential Session Cookies",
+        body: "Helix employs strictly essential HTTP-only cookies to preserve authentication sessions and tenant security tokens.",
+      },
+      {
+        heading: "2. Zero Tracking Pixels",
+        body: "We do not embed third-party behavioral advertising pixels or cross-site tracking beacons on our public or console surfaces.",
+      },
+    ],
+  },
+}
 
 export function MarketingFooter() {
+  const [activeLegalModal, setActiveLegalModal] = useState(null)
+
+  const activeDoc = activeLegalModal ? LEGAL_DOCS[activeLegalModal] : null
+
   return (
-    <footer className="border-t border-border bg-bg">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-12 md:flex-row md:items-start md:justify-between md:px-6">
-        <div className="flex max-w-xs flex-col gap-3">
-          <Logo />
-          <p className="text-[13px] leading-relaxed text-text-muted">
-            Competitive ad intelligence, instrumented. Discover, mine, brief, and
-            measure — one loop at a time.
-          </p>
+    <footer className="relative border-t border-border bg-[#07080a] text-text overflow-hidden">
+      {/* Top Grid Border Texture — matching the screenshot header */}
+      <div className="relative h-14 sm:h-16 w-full border-b border-white/[0.06] overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px)`,
+            backgroundSize: "36px 36px",
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#07080a]/90" />
+      </div>
+
+      {/* Main Footer Body with Background HELIX Watermark */}
+      <div className="relative px-6 py-14 sm:px-8 sm:py-20 lg:px-12">
+        {/* Giant Watermark: "HELIX" spanning horizontally behind columns */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-12 z-0 mx-auto flex w-full max-w-7xl select-none items-end justify-between overflow-hidden px-4 md:px-8"
+        >
+          <div className="flex w-full items-end justify-between font-sans text-[18vw] font-black leading-none tracking-[-0.04em] text-white/[0.038] xl:text-[210px]">
+            <span>H</span>
+            <span>E</span>
+            <span>L</span>
+            <span>I</span>
+            <span>X</span>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-8 sm:flex-row sm:gap-16">
-          {COLUMNS.map((column) => (
-            <nav key={column.heading} className="flex flex-col gap-3" aria-label={column.heading}>
-              <span className="label-mono">{column.heading}</span>
-              <ul className="flex flex-col gap-2">
-                {column.links.map((link) => (
-                  <li key={link.label}>
-                    {link.href.startsWith("/") && !link.href.includes("#") ? (
-                      <Link
-                        to={link.href}
-                        className="text-[13px] text-text-muted transition-colors hover:text-text"
-                      >
-                        {link.label}
-                      </Link>
-                    ) : (
-                      <a
-                        href={link.href}
-                        className="text-[13px] text-text-muted transition-colors hover:text-text"
-                      >
-                        {link.label}
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </nav>
-          ))}
+        {/* Foreground Content Columns */}
+        <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 gap-12 sm:grid-cols-2 md:grid-cols-12 lg:gap-16">
+          {/* Brand Column */}
+          <div className="flex flex-col gap-4 sm:col-span-2 md:col-span-5 lg:col-span-4">
+            <Link to="/" className="flex items-center gap-2.5 text-white">
+              <span className="text-2xl font-bold tracking-tight text-white font-sans">
+                Helix
+              </span>
+            </Link>
+            <p className="max-w-sm text-[13.5px] leading-relaxed text-text-muted">
+              The creative discovery, intelligence, and ad performance
+              workstation — built for serious growth teams.
+            </p>
+          </div>
 
-          <nav className="flex flex-col gap-3" aria-label="Account">
-            <span className="label-mono">Account</span>
-            <ul className="flex flex-col gap-2">
+          {/* Product Column */}
+          <div className="flex flex-col gap-3.5 sm:col-span-1 md:col-span-2 lg:col-span-3">
+            <span className="font-mono text-[11px] font-semibold tracking-wider text-text-faint uppercase">
+              PRODUCT
+            </span>
+            <ul className="flex flex-col gap-2.5 text-[13px]">
               <li>
-                <Link
-                  to="/sign-in"
-                  className="text-[13px] text-text-muted transition-colors hover:text-text"
-                >
-                  Sign in
+                <Link to="/discover" className="text-text-muted hover:text-white transition-colors">
+                  Discover
                 </Link>
               </li>
               <li>
-                <Link
-                  to="/sign-up"
-                  className="text-[13px] text-text-muted transition-colors hover:text-text"
-                >
-                  Get started
+                <Link to="/intelligence" className="text-text-muted hover:text-white transition-colors">
+                  Intelligence
+                </Link>
+              </li>
+              <li>
+                <Link to="/create" className="text-text-muted hover:text-white transition-colors">
+                  Create Studio
+                </Link>
+              </li>
+              <li>
+                <Link to="/monitors" className="text-text-muted hover:text-white transition-colors">
+                  Monitors
+                </Link>
+              </li>
+              <li>
+                <Link to="/performance" className="text-text-muted hover:text-white transition-colors">
+                  Performance
+                </Link>
+              </li>
+              <li>
+                <Link to="/updates" className="text-text-muted hover:text-white transition-colors">
+                  Changelog & Updates
                 </Link>
               </li>
             </ul>
-          </nav>
-        </div>
-      </div>
+          </div>
 
-      <div className="border-t border-border">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 md:px-6">
-          <div className="flex items-center gap-3">
-            <img
-              src="/brand/helix-logo.png"
-              alt="Helix"
-              className="h-4 w-4 rounded-[2px] object-contain opacity-80"
-            />
-            <span className="font-mono text-[11px] text-text-faint">
-              Powered by Helix · © 2026 Helix Intelligence
+          {/* Company Column */}
+          <div className="flex flex-col gap-3.5 sm:col-span-1 md:col-span-2 lg:col-span-2">
+            <span className="font-mono text-[11px] font-semibold tracking-wider text-text-faint uppercase">
+              COMPANY
             </span>
+            <ul className="flex flex-col gap-2.5 text-[13px]">
+              <li>
+                <a href="/#product" className="text-text-muted hover:text-white transition-colors">
+                  About
+                </a>
+              </li>
+              <li>
+                <Link to="/docs" className="text-text-muted hover:text-white transition-colors">
+                  Documentation
+                </Link>
+              </li>
+              <li>
+                <Link to="/docs/api-reference/authentication" className="text-text-muted hover:text-white transition-colors">
+                  API Reference
+                </Link>
+              </li>
+              <li>
+                <a href="/#pricing" className="text-text-muted hover:text-white transition-colors">
+                  Pricing
+                </a>
+              </li>
+              <li>
+                <Link to="/updates" className="text-text-muted hover:text-white transition-colors">
+                  Press & Releases
+                </Link>
+              </li>
+            </ul>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="label-mono text-text-faint">all systems nominal</span>
+          {/* Legal Column */}
+          <div className="flex flex-col gap-3.5 sm:col-span-1 md:col-span-3 lg:col-span-3">
+            <span className="font-mono text-[11px] font-semibold tracking-wider text-text-faint uppercase">
+              LEGAL
+            </span>
+            <ul className="flex flex-col gap-2.5 text-[13px]">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveLegalModal("terms")}
+                  className="cursor-pointer text-left text-text-muted hover:text-white transition-colors"
+                >
+                  Terms of Service
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveLegalModal("privacy")}
+                  className="cursor-pointer text-left text-text-muted hover:text-white transition-colors"
+                >
+                  Privacy Policy
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveLegalModal("security")}
+                  className="cursor-pointer text-left text-text-muted hover:text-white transition-colors"
+                >
+                  Security
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveLegalModal("cookie")}
+                  className="cursor-pointer text-left text-text-muted hover:text-white transition-colors"
+                >
+                  Cookie Policy
+                </button>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
+
+      {/* Bottom Hairline & Operational Status Bar — matching screenshot */}
+      <div className="border-t border-white/[0.08] bg-[#050608]/90">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-6 py-5 sm:flex-row sm:px-8 lg:px-12">
+          {/* Left copyright notice */}
+          <div className="font-mono text-xs uppercase tracking-wider text-text-faint">
+            © 2026 HELIX. ALL RIGHTS RESERVED.
+          </div>
+
+          {/* Right systems indicator */}
+          <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-text-faint">
+            <span className="h-2 w-2 rounded-[1px] bg-[#ccff00] shadow-[0_0_8px_#ccff0088]" />
+            <span>ALL SYSTEMS OPERATIONAL</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Legal Dialog Modal */}
+      {activeLegalModal && activeDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="relative w-full max-w-2xl rounded-xl border border-border bg-surface p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div className="flex items-center gap-2.5">
+                <activeDoc.icon className="h-5 w-5 text-accent" />
+                <h3 className="text-lg font-bold text-text">{activeDoc.title}</h3>
+                <span className="font-mono text-[10px] text-text-faint px-2 py-0.5 rounded bg-surface-2 border border-border">
+                  Updated {activeDoc.updated}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveLegalModal(null)}
+                className="cursor-pointer rounded p-1.5 text-text-muted hover:bg-surface-2 hover:text-text transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] space-y-5 overflow-y-auto pr-2 text-sm text-text-muted leading-relaxed">
+              {activeDoc.content.map((sec) => (
+                <div key={sec.heading} className="space-y-1.5">
+                  <h4 className="font-semibold text-text text-sm">{sec.heading}</h4>
+                  <p className="text-xs text-text-muted">{sec.body}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end border-t border-border pt-4">
+              <button
+                type="button"
+                onClick={() => setActiveLegalModal(null)}
+                className="cursor-pointer px-4 py-2 rounded border border-border bg-surface-2 text-xs font-mono uppercase tracking-wider text-text hover:bg-surface-3 transition-colors"
+              >
+                Close Disclosure
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </footer>
   )
 }
+
+export default MarketingFooter
