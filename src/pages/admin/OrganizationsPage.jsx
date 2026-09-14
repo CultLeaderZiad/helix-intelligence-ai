@@ -127,7 +127,7 @@ export function OrganizationsPage() {
   ]
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
+    <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-8 max-w-7xl mx-auto space-y-8 font-sans w-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -171,8 +171,9 @@ export function OrganizationsPage() {
 
       {/* Table */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-        <table className="w-full text-left text-sm text-slate-300">
-          <thead className="bg-slate-950/60 text-slate-400 text-xs font-mono border-b border-slate-800 uppercase tracking-wider">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm text-slate-300 min-w-[760px]">
+            <thead className="bg-slate-950/60 text-slate-400 text-xs font-mono border-b border-slate-800 uppercase tracking-wider">
             <tr>
               <th className="py-3.5 px-4">Organization / Owner</th>
               <th className="py-3.5 px-4">Active Plan</th>
@@ -263,6 +264,7 @@ export function OrganizationsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {/* Grant Credits Modal */}

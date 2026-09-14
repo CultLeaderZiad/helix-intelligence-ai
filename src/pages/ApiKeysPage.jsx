@@ -212,7 +212,7 @@ export function ApiKeysPage() {
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
+    <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-8 max-w-7xl mx-auto space-y-8 font-sans w-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

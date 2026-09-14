@@ -134,7 +134,7 @@ export const ADMIN_NAV_GROUPS = [
         path: "/admin/audit-log",
         label: "Audit Log",
         icon: ScrollText,
-        built: false,
+        built: true,
       },
     ],
   },

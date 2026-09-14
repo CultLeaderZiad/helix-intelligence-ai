@@ -68,7 +68,7 @@ export function FeatureFlagsPage() {
   }, [])
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 font-sans">
+    <div className="flex-1 min-h-0 overflow-y-auto p-6 md:p-8 max-w-7xl mx-auto space-y-8 font-sans w-full">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -112,41 +112,43 @@ export function FeatureFlagsPage() {
           Plan Entitlement Matrix
         </h3>
         <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
-          <table className="w-full text-left text-sm text-slate-300">
-            <thead className="bg-slate-950/60 text-slate-400 text-xs font-mono border-b border-slate-800 uppercase tracking-wider">
-              <tr>
-                <th className="py-3 px-4">Feature</th>
-                {plans.map((p) => (
-                  <th key={p.id} className="py-3 px-4 text-center">{p.name}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
-              {ALL_FEATURES.map((feat) => (
-                <tr key={feat.key} className="hover:bg-slate-800/40 transition">
-                  <td className="py-3 px-4 font-sans font-medium text-slate-200">
-                    {feat.label}
-                  </td>
-                  {plans.map((p) => {
-                    const active = p.feature_flags && p.feature_flags[feat.key] !== false
-                    return (
-                      <td key={p.id} className="py-3 px-4 text-center">
-                        {active ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px]">
-                            Enabled
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-800 text-slate-500 text-[11px]">
-                            Disabled
-                          </span>
-                        )}
-                      </td>
-                    )
-                  })}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-slate-300 min-w-[600px]">
+              <thead className="bg-slate-950/60 text-slate-400 text-xs font-mono border-b border-slate-800 uppercase tracking-wider">
+                <tr>
+                  <th className="py-3 px-4">Feature</th>
+                  {plans.map((p) => (
+                    <th key={p.id} className="py-3 px-4 text-center">{p.name}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
+                {ALL_FEATURES.map((feat) => (
+                  <tr key={feat.key} className="hover:bg-slate-800/40 transition">
+                    <td className="py-3 px-4 font-sans font-medium text-slate-200">
+                      {feat.label}
+                    </td>
+                    {plans.map((p) => {
+                      const active = p.feature_flags && p.feature_flags[feat.key] !== false
+                      return (
+                        <td key={p.id} className="py-3 px-4 text-center">
+                          {active ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px]">
+                              Enabled
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-800 text-slate-500 text-[11px]">
+                              Disabled
+                            </span>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
