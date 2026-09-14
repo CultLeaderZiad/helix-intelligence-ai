@@ -10,6 +10,7 @@ class AppUpdate(Base):
     title = Column(String(255), nullable=False)
     body = Column(Text, nullable=True)
     level = Column(String(50), default="info", nullable=False)  # info | warning | success | critical
+    category = Column(String(100), default="General", nullable=True)  # Platform, AI Engine, API, Scraper, etc.
     is_published = Column(Boolean, default=False, nullable=False)
     show_as_banner = Column(Boolean, default=False, nullable=False)
     banner_dismissible = Column(Boolean, default=True, nullable=False)

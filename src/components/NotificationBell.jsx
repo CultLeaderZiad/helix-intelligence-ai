@@ -51,11 +51,12 @@ export function NotificationBell({ className }) {
           originalUpdateId: u.id,
           isUpdate: true,
           type: u.level || "system",
+          category: u.category || "General API",
           title: u.title,
           message: u.body || "System update published.",
-          link: u.link_url || null,
+          link: u.link_url || "/updates",
           is_read: isRead,
-          created_at: u.created_at || new Date().toISOString(),
+          created_at: u.starts_at || u.created_at || new Date().toISOString(),
         }
       })
 
@@ -232,21 +233,36 @@ export function NotificationBell({ className }) {
                   <p className="text-[11px] text-text-muted leading-relaxed pl-5 whitespace-pre-line font-sans">
                     {n.message}
                   </p>
-                  <span className="text-[10px] font-mono text-text-faint pl-5">
-                    {formatNotificationDate(n.created_at)}
-                  </span>
+                  <div className="flex items-center gap-2 pl-5 mt-1">
+                    <span className="text-[10px] font-mono text-text-faint flex items-center gap-1">
+                      <Clock className="h-2.5 w-2.5" />
+                      {formatNotificationDate(n.created_at)}
+                    </span>
+                    {n.isUpdate && n.category && (
+                      <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded border border-cyan-500/20 bg-cyan-500/10 text-cyan-400">
+                        {n.category}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))
             )}
           </div>
 
-          <div className="border-t border-border pt-2 px-2 text-center">
+          <div className="border-t border-border pt-2 px-2 flex items-center justify-between text-center">
+            <a
+              href="/updates"
+              onClick={() => setOpen(false)}
+              className="text-[10px] font-mono text-accent hover:underline inline-flex items-center gap-1"
+            >
+              <span>Platform Updates ↗</span>
+            </a>
             <a
               href="/notifications"
               onClick={() => setOpen(false)}
-              className="text-[11px] font-mono text-accent hover:underline inline-flex items-center gap-1"
+              className="text-[10px] font-mono text-text-muted hover:text-text inline-flex items-center gap-1"
             >
-              <span>View All Messages & Updates →</span>
+              <span>All Messages →</span>
             </a>
           </div>
         </div>

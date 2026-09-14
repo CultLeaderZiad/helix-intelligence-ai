@@ -63,6 +63,7 @@ const DataSourcesPage = safeLazy(() => import("@/pages/admin/DataSourcesPage").t
 const SystemHealthPage = safeLazy(() => import("@/pages/admin/SystemHealthPage").then(m => ({ default: m.SystemHealthPage })))
 const AuditLogPage = safeLazy(() => import("@/pages/admin/AuditLogPage").then(m => ({ default: m.AuditLogPage })))
 const PublicPlaybookPage = safeLazy(() => import("@/pages/PublicPlaybookPage").then(m => ({ default: m.PublicPlaybookPage })))
+const PublicUpdatesPage = safeLazy(() => import("@/pages/PublicUpdatesPage").then(m => ({ default: m.PublicUpdatesPage })))
 const ProfileSettingsPage = safeLazy(() => import("@/pages/ProfileSettingsPage").then(m => ({ default: m.ProfileSettingsPage })))
 const SupportPage = safeLazy(() => import("@/pages/SupportPage").then(m => ({ default: m.SupportPage })))
 const NotificationsPage = safeLazy(() => import("@/pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })))
@@ -153,6 +154,7 @@ export default function App() {
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/playbook/:publicId" element={<PublicPlaybookPage />} />
+                  <Route path="/updates" element={<PublicUpdatesPage />} />
 
                   {/* Public documentation system */}
                   <Route path="/docs" element={<DocsHomePage />} />

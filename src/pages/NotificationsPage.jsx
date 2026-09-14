@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { Bell, Check, CheckCheck, Info, AlertTriangle, Sparkles, Megaphone, Trash2, RefreshCw } from "lucide-react"
-import { notificationService } from "@/services"
+import { notificationService, updatesService } from "@/services"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
@@ -15,8 +15,36 @@ export function NotificationsPage() {
   const fetchNotifications = async () => {
     setLoading(true)
     try {
-      const res = await notificationService.getNotifications()
-      setNotifications(res.items || [])
+      const [res, publishedUpdates] = await Promise.all([
+        notificationService.getNotifications().catch(() => ({ items: [] })),
+        updatesService.getPublishedUpdates().catch(() => [])
+      ])
+
+      const updateItems = (Array.isArray(publishedUpdates) ? publishedUpdates : []).map((u) => {
+        const isRead = localStorage.getItem(`helix_update_read_${u.id}`) === "true"
+        return {
+          id: `update_${u.id}`,
+          originalUpdateId: u.id,
+          isUpdate: true,
+          type: "announcement",
+          level: u.level || "info",
+          category: u.category || "General API",
+          title: u.title,
+          message: u.body || "System update published.",
+          link: u.link_url || "/updates",
+          is_read: isRead,
+          created_at: u.starts_at || u.created_at || new Date().toISOString(),
+        }
+      })
+
+      const personalItems = res?.items || []
+      const merged = [...updateItems, ...personalItems].sort((a, b) => {
+        const da = new Date(a.created_at || 0).getTime()
+        const db = new Date(b.created_at || 0).getTime()
+        return db - da
+      })
+
+      setNotifications(merged)
     } catch (err) {
       console.error("Failed to load notifications", err)
     } finally {
@@ -90,6 +118,15 @@ export function NotificationsPage() {
         meta={`${notifications.length} messages (${unreadCount} unread)`}
         actions={
           <div className="flex items-center gap-2">
+            <a
+              href="/updates"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] font-mono px-2.5 py-1 rounded border border-slate-700 bg-slate-900 text-teal-300 hover:border-teal-500/40 transition-colors"
+            >
+              <span>Platform Updates</span>
+              <span className="text-xs">↗</span>
+            </a>
             <Button
               size="xs"
               variant="outline"
@@ -173,6 +210,11 @@ export function NotificationsPage() {
                 <div className="space-y-2 flex-1">
                   <div className="flex items-center gap-2.5">
                     {getTypeBadge(n.type)}
+                    {n.isUpdate && n.category && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                        {n.category}
+                      </span>
+                    )}
                     <h3 className="text-sm font-bold text-slate-100">{n.title}</h3>
                     {!n.is_read && (
                       <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
@@ -181,19 +223,23 @@ export function NotificationsPage() {
                   <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line font-sans">
                     {n.message}
                   </p>
-                  <div className="text-[11px] font-mono text-slate-500">
-                    {n.created_at ? new Date(n.created_at).toLocaleString() : "Just now"}
+                  <div className="text-[11px] font-mono text-slate-500 flex items-center gap-1.5">
+                    <span>Published: {n.created_at ? new Date(n.created_at).toLocaleDateString() : "Recently"}</span>
                   </div>
                   {n.link ? (
                     <button
                       type="button"
                       onClick={() => {
                         if (!n.is_read) handleMarkAsRead(n.id)
-                        navigate(n.link)
+                        if (n.link.startsWith("http")) {
+                          window.open(n.link, "_blank", "noopener,noreferrer")
+                        } else {
+                          navigate(n.link)
+                        }
                       }}
-                      className="text-[11px] font-mono text-teal-300 hover:underline text-left"
+                      className="text-[11px] font-mono text-teal-300 hover:underline text-left inline-flex items-center gap-1 mt-1"
                     >
-                      Open →
+                      {n.isUpdate ? "Read Full Release Notes →" : "Open →"}
                     </button>
                   ) : null}
                 </div>

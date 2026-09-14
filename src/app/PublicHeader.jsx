@@ -14,6 +14,7 @@ export function PublicHeader() {
     { label: "Product", href: isHome ? "#product" : "/#product" },
     { label: "Pricing", href: isHome ? "#pricing" : "/#pricing" },
     { label: "Docs", href: "/docs" },
+    { label: "Updates", href: "/updates" },
     ...(isAuthenticated
       ? [{ label: "Console", href: APP_HOME, isPrimary: true }]
       : [{ label: "Get started", href: "/sign-up", isPrimary: true }]

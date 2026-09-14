@@ -6,6 +6,7 @@ class AppUpdateBase(BaseModel):
     title: str
     body: Optional[str] = None
     level: str = "info"  # info | warning | success | critical
+    category: Optional[str] = "General"
     is_published: bool = False
     show_as_banner: bool = False
     banner_dismissible: bool = True
@@ -21,6 +22,7 @@ class AppUpdateUpdate(BaseModel):
     title: Optional[str] = None
     body: Optional[str] = None
     level: Optional[str] = None
+    category: Optional[str] = None
     is_published: Optional[bool] = None
     show_as_banner: Optional[bool] = None
     banner_dismissible: Optional[bool] = None
