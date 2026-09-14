@@ -18,83 +18,110 @@ async def compile_playbook(
     brand_name: str,
     query: str,
     job_id: Optional[str] = None,
-    custom_title: Optional[str] = None
+    custom_title: Optional[str] = None,
+    custom_summary: Optional[str] = None,
+    pre_creatives: Optional[List[Dict[str, Any]]] = None,
+    pre_insights: Optional[List[Dict[str, Any]]] = None,
+    pre_patterns: Optional[List[Dict[str, Any]]] = None,
 ) -> Playbook:
     # 1. Fetch user's org
     org = (await db.execute(select(Organization).where(Organization.owner_id == user.id))).scalar_one_or_none()
     org_id = org.id if org else None
 
-    # 2. Collect top real creatives for this brand/job
-    creatives_stmt = select(Creative)
-    if job_id:
-        creatives_stmt = creatives_stmt.where(Creative.job_id == job_id)
-    else:
-        creatives_stmt = creatives_stmt.where(Creative.brand_id.ilike(f"%{brand_name}%"))
-    creatives_stmt = creatives_stmt.order_by(desc(Creative.days_active)).limit(6)
-    
-    creatives_res = (await db.execute(creatives_stmt)).scalars().all()
-    
+    # 2. Collect top real creatives for this brand/job or use pre-provided
     formatted_creatives = []
-    for c in creatives_res:
-        formatted_creatives.append({
-            "id": c.id,
-            "headline": c.headline or "",
-            "body": c.body or "",
-            "cta": c.cta or "Learn More",
-            "platform": c.platform or "meta",
-            "format": c.format or "image",
-            "landing_domain": c.landing_domain or brand_name,
-            "landing_url": f"https://{c.landing_domain}" if c.landing_domain else None,
-            "days_active": c.days_active or 1,
-            "data_source": c.data_source or "ad_library_scrape",
-            "is_estimated": getattr(c, "is_estimated", True)
-        })
+    if pre_creatives and len(pre_creatives) > 0:
+        for c in pre_creatives:
+            formatted_creatives.append({
+                "id": str(c.get("id") or secrets.token_hex(8)),
+                "headline": c.get("headline") or "",
+                "body": c.get("body") or "",
+                "cta": c.get("cta") or "Learn More",
+                "platform": c.get("platform") or "meta",
+                "format": c.get("format") or "image",
+                "landing_domain": c.get("landing_domain") or brand_name,
+                "landing_url": f"https://{c.get('landing_domain')}" if c.get("landing_domain") else None,
+                "days_active": c.get("days_active") or 1,
+                "data_source": c.get("data_source") or "ad_library_scrape",
+                "is_estimated": c.get("is_estimated", True)
+            })
+    else:
+        creatives_stmt = select(Creative)
+        if job_id:
+            creatives_stmt = creatives_stmt.where(Creative.job_id == job_id)
+        else:
+            creatives_stmt = creatives_stmt.where(Creative.brand_id.ilike(f"%{brand_name}%"))
+        creatives_stmt = creatives_stmt.order_by(desc(Creative.days_active)).limit(6)
+        
+        creatives_res = (await db.execute(creatives_stmt)).scalars().all()
+        for c in creatives_res:
+            formatted_creatives.append({
+                "id": c.id,
+                "headline": c.headline or "",
+                "body": c.body or "",
+                "cta": c.cta or "Learn More",
+                "platform": c.platform or "meta",
+                "format": c.format or "image",
+                "landing_domain": c.landing_domain or brand_name,
+                "landing_url": f"https://{c.landing_domain}" if c.landing_domain else None,
+                "days_active": c.days_active or 1,
+                "data_source": c.data_source or "ad_library_scrape",
+                "is_estimated": getattr(c, "is_estimated", True)
+            })
 
-    # 3. Collect top patterns
-    patterns_stmt = select(Pattern)
-    if job_id:
-        patterns_stmt = patterns_stmt.where(Pattern.job_id == job_id)
-    patterns_stmt = patterns_stmt.limit(5)
-    patterns_res = (await db.execute(patterns_stmt)).scalars().all()
-
+    # 3. Collect top patterns or use pre-provided
     formatted_patterns = []
-    for p in patterns_res:
-        prevalence = float(getattr(p, "prevalence", 0.0) or 0.0)
-        lift_index = float(getattr(p, "lift_index", 1.0) or 1.0)
-        formatted_patterns.append({
-            "id": p.id,
-            "name": getattr(p, "label", None) or "Unnamed pattern",
-            "category": getattr(p, "family", None) or "unclassified",
-            "description": f"Detected in {prevalence * 100:.0f}% of the analyzed creatives.",
-            # Real signal only: prevalence is measured, lift comes from the
-            # model's lift_index. No invented confidence or lift values.
-            "confidence_score": round(prevalence, 2),
-            "estimated_lift_percent": int((lift_index - 1.0) * 100) if lift_index > 1.0 else None,
-            "visual_structure": None,
-        })
+    if pre_patterns and len(pre_patterns) > 0:
+        formatted_patterns = pre_patterns
+    else:
+        patterns_stmt = select(Pattern)
+        if job_id:
+            patterns_stmt = patterns_stmt.where(Pattern.job_id == job_id)
+        patterns_stmt = patterns_stmt.limit(5)
+        patterns_res = (await db.execute(patterns_stmt)).scalars().all()
 
-    # No invented fallback: a job without extracted patterns exports
-    # without patterns — the playbook never fabricates analysis.
+        for p in patterns_res:
+            prevalence = float(getattr(p, "prevalence", 0.0) or 0.0)
+            lift_index = float(getattr(p, "lift_index", 1.0) or 1.0)
+            formatted_patterns.append({
+                "id": p.id,
+                "name": getattr(p, "label", None) or "Unnamed pattern",
+                "category": getattr(p, "family", None) or "unclassified",
+                "description": f"Detected in {prevalence * 100:.0f}% of the analyzed creatives.",
+                "confidence_score": round(prevalence, 2),
+                "estimated_lift_percent": int((lift_index - 1.0) * 100) if lift_index > 1.0 else None,
+                "visual_structure": None,
+            })
 
-    # 4. Collect Insights
-    insights_stmt = select(AIInsight).limit(5)
-    if job_id:
-        insights_stmt = insights_stmt.join(Creative, AIInsight.creative_id == Creative.id).where(Creative.job_id == job_id)
-    insights_res = (await db.execute(insights_stmt)).scalars().all()
-
+    # 4. Collect Insights or use pre-provided
     formatted_insights = []
-    for ins in insights_res:
-        formatted_insights.append({
-            "id": ins.id,
-            "title": ins.title,
-            "summary": ins.summary,
-            "kind": ins.kind,
-            "confidence": ins.confidence
-        })
+    if pre_insights and len(pre_insights) > 0:
+        for ins in pre_insights:
+            formatted_insights.append({
+                "id": str(ins.get("id") or secrets.token_hex(6)),
+                "title": ins.get("title") or "Market Observation",
+                "summary": ins.get("summary") or "",
+                "kind": ins.get("kind") or "observation",
+                "confidence": ins.get("confidence") or 0.9
+            })
+    else:
+        insights_stmt = select(AIInsight).limit(5)
+        if job_id:
+            insights_stmt = insights_stmt.join(Creative, AIInsight.creative_id == Creative.id).where(Creative.job_id == job_id)
+        insights_res = (await db.execute(insights_stmt)).scalars().all()
+
+        for ins in insights_res:
+            formatted_insights.append({
+                "id": ins.id,
+                "title": ins.title,
+                "summary": ins.summary,
+                "kind": ins.kind,
+                "confidence": ins.confidence
+            })
 
     # 5. Create Playbook
     title = custom_title or f"{brand_name.capitalize()} Creative Strategy Playbook"
-    summary_text = (
+    summary_text = custom_summary or (
         f"Comprehensive competitive creative breakdown for {brand_name.capitalize()} covering {len(formatted_creatives)} "
         f"verified active campaigns, top {len(formatted_patterns)} high-converting visual patterns, and key AI teardown recommendations."
     )

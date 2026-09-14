@@ -13,4 +13,4 @@ async def get_metrics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return await dashboard_service.get_dashboard_metrics(db)
+    return await dashboard_service.get_dashboard_metrics(db, current_user)

@@ -14,6 +14,10 @@ class PlaybookCompileRequest(BaseModel):
     query: str
     job_id: Optional[str] = None
     custom_title: Optional[str] = None
+    summary: Optional[str] = None
+    creatives: Optional[List[Dict[str, Any]]] = None
+    insights: Optional[List[Dict[str, Any]]] = None
+    patterns: Optional[List[Dict[str, Any]]] = None
 
 @router.post("")
 async def compile_playbook(
@@ -27,7 +31,11 @@ async def compile_playbook(
         brand_name=body.brand_name,
         query=body.query,
         job_id=body.job_id,
-        custom_title=body.custom_title
+        custom_title=body.custom_title,
+        custom_summary=body.summary,
+        pre_creatives=body.creatives,
+        pre_insights=body.insights,
+        pre_patterns=body.patterns
     )
     return {
         "id": playbook.id,
