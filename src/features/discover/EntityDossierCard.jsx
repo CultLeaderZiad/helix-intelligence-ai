@@ -51,19 +51,49 @@ export function XLogo({ className = "size-4" }) {
   )
 }
 
-// Helper to determine platform metadata, logo, styling, and real verified channel URL
+export function InstagramLogo({ className = "size-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
+    </svg>
+  )
+}
+
+export function TikTokLogo({ className = "size-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.24 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z" />
+    </svg>
+  )
+}
+
+// Helper to determine platform metadata, logo, styling, and real verified channel & search URLs
 export function getPlatformMeta(platformName = "", entityName = "", query = "", profile = {}) {
   const p = platformName.toLowerCase()
   const cleanQ = (entityName || query || "").trim()
   const handle = cleanQ.split(" ")[0].toLowerCase().replace(/[^a-z0-9_]/g, "")
+  const isTate = /tate/i.test(cleanQ)
+  const isSneako = /sneako/i.test(cleanQ)
+  const isAdin = /adin/i.test(cleanQ)
+  const isKai = /kai/i.test(cleanQ)
+
+  const links = profile?.social_links || {}
 
   if (p.includes("kick")) {
-    const isSneako = /sneako/i.test(cleanQ)
-    const url = isSneako ? "https://kick.com/sneako" : `https://kick.com/${handle || "explore"}`
+    const keyData = links.kick || {}
+    const profile_url = keyData.profile_url || (isSneako ? "https://kick.com/sneako" : isTate ? "https://kick.com/tatespeech" : isAdin ? "https://kick.com/adinross" : `https://kick.com/${handle || "explore"}`)
+    const search_url = keyData.search_url || `https://kick.com/search?q=${encodeURIComponent(cleanQ)}`
+    const profileHandle = keyData.handle || (isSneako ? "sneako" : isTate ? "tatespeech" : isAdin ? "adinross" : handle)
+
     return {
       name: "Kick",
       label: "Kick",
-      url,
+      handle: profileHandle,
+      url: profile_url,
+      profile_url,
+      search_url,
       Icon: KickLogo,
       badgeClass: "bg-[#0e1f0e] text-[#53fc18] border-[#53fc18]/40 hover:bg-[#53fc18] hover:text-black hover:border-[#53fc18]",
       color: "#53fc18"
@@ -71,12 +101,18 @@ export function getPlatformMeta(platformName = "", entityName = "", query = "", 
   }
 
   if (p.includes("rumble")) {
-    const isSneako = /sneako/i.test(cleanQ)
-    const url = isSneako ? "https://rumble.com/c/Sneako" : `https://rumble.com/search/all?q=${encodeURIComponent(cleanQ)}`
+    const keyData = links.rumble || {}
+    const profile_url = keyData.profile_url || (isSneako ? "https://rumble.com/c/Sneako" : isTate ? "https://rumble.com/c/TateSpeech" : `https://rumble.com/search/all?q=${encodeURIComponent(cleanQ)}`)
+    const search_url = keyData.search_url || `https://rumble.com/search/all?q=${encodeURIComponent(cleanQ)}`
+    const profileHandle = keyData.handle || (isSneako ? "Sneako" : isTate ? "TateSpeech" : handle.toUpperCase())
+
     return {
       name: "Rumble",
       label: "Rumble",
-      url,
+      handle: profileHandle,
+      url: profile_url,
+      profile_url,
+      search_url,
       Icon: RumbleLogo,
       badgeClass: "bg-[#112211] text-[#85c742] border-[#85c742]/40 hover:bg-[#85c742] hover:text-black hover:border-[#85c742]",
       color: "#85c742"
@@ -84,12 +120,18 @@ export function getPlatformMeta(platformName = "", entityName = "", query = "", 
   }
 
   if (p.includes("youtube")) {
-    const isSneako = /sneako/i.test(cleanQ)
-    const url = isSneako ? "https://www.youtube.com/@TheUnfiltered" : `https://www.youtube.com/results?search_query=${encodeURIComponent(cleanQ)}`
+    const keyData = links.youtube || {}
+    const profile_url = keyData.profile_url || (isSneako ? "https://www.youtube.com/results?search_query=sneako" : isTate ? "https://www.youtube.com/results?search_query=andrew+tate" : `https://www.youtube.com/results?search_query=${encodeURIComponent(cleanQ)}`)
+    const search_url = keyData.search_url || `https://www.youtube.com/results?search_query=${encodeURIComponent(cleanQ)}`
+    const profileHandle = keyData.handle || (isSneako ? "@TheUnfiltered" : isTate ? "TateSpeech" : `@${handle}`)
+
     return {
       name: "YouTube",
       label: "YouTube",
-      url,
+      handle: profileHandle,
+      url: profile_url,
+      profile_url,
+      search_url,
       Icon: YouTubeLogo,
       badgeClass: "bg-[#250d0d] text-[#ff4444] border-[#ff4444]/40 hover:bg-[#ff0000] hover:text-white hover:border-[#ff0000]",
       color: "#ff4444"
@@ -97,22 +139,69 @@ export function getPlatformMeta(platformName = "", entityName = "", query = "", 
   }
 
   if (p.includes("twitter") || p.includes("x")) {
-    const isSneako = /sneako/i.test(cleanQ)
-    const url = isSneako ? "https://x.com/TheUnfiltered_" : `https://x.com/search?q=${encodeURIComponent(cleanQ)}&f=user`
+    const keyData = links.x || {}
+    const profile_url = keyData.profile_url || (isSneako ? "https://x.com/TheSneako" : isTate ? "https://x.com/Cobratate" : isAdin ? "https://x.com/adinross" : isKai ? "https://x.com/KaiCenat" : `https://x.com/${handle}`)
+    const search_url = keyData.search_url || `https://x.com/search?q=${encodeURIComponent(cleanQ)}&src=typeahead_click`
+    const profileHandle = keyData.handle || (isSneako ? "@TheSneako" : isTate ? "@Cobratate" : isAdin ? "@adinross" : isKai ? "@KaiCenat" : `@${handle}`)
+
     return {
       name: "X",
       label: "X (Twitter)",
-      url,
+      handle: profileHandle,
+      url: profile_url,
+      profile_url,
+      search_url,
       Icon: XLogo,
       badgeClass: "bg-[#1a1c23] text-white border-white/30 hover:bg-white hover:text-black hover:border-white",
       color: "#ffffff"
     }
   }
 
+  if (p.includes("instagram") || p.includes("insta")) {
+    const keyData = links.instagram || {}
+    const profile_url = keyData.profile_url || (isSneako ? "https://instagram.com/sneako" : isTate ? "https://instagram.com/cobratate" : isKai ? "https://instagram.com/kaicenat" : `https://instagram.com/${handle}`)
+    const search_url = keyData.search_url || `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(cleanQ)}`
+    const profileHandle = keyData.handle || (isSneako ? "@sneako" : isTate ? "@cobratate" : isKai ? "@kaicenat" : `@${handle}`)
+
+    return {
+      name: "Instagram",
+      label: "Instagram",
+      handle: profileHandle,
+      url: profile_url,
+      profile_url,
+      search_url,
+      Icon: InstagramLogo,
+      badgeClass: "bg-[#250d18] text-[#ff4da6] border-[#ff4da6]/40 hover:bg-[#ff4da6] hover:text-black hover:border-[#ff4da6]",
+      color: "#ff4da6"
+    }
+  }
+
+  if (p.includes("tiktok")) {
+    const keyData = links.tiktok || {}
+    const profile_url = keyData.profile_url || (isSneako ? "https://www.tiktok.com/tag/sneako" : isTate ? "https://www.tiktok.com/tag/andrewtate" : `https://www.tiktok.com/search?q=${encodeURIComponent(cleanQ)}`)
+    const search_url = keyData.search_url || `https://www.tiktok.com/search?q=${encodeURIComponent(cleanQ)}`
+    const profileHandle = keyData.handle || (isSneako ? "@sneako" : isTate ? "@cobratate" : `@${handle}`)
+
+    return {
+      name: "TikTok",
+      label: "TikTok",
+      handle: profileHandle,
+      url: profile_url,
+      profile_url,
+      search_url,
+      Icon: TikTokLogo,
+      badgeClass: "bg-[#0b1f24] text-[#25f4ee] border-[#25f4ee]/40 hover:bg-[#25f4ee] hover:text-black hover:border-[#25f4ee]",
+      color: "#25f4ee"
+    }
+  }
+
   return {
     name: platformName,
     label: platformName,
+    handle: `@${handle}`,
     url: `https://www.google.com/search?q=${encodeURIComponent(cleanQ + " " + platformName)}`,
+    profile_url: `https://www.google.com/search?q=${encodeURIComponent(cleanQ + " " + platformName)}`,
+    search_url: `https://www.google.com/search?q=${encodeURIComponent(cleanQ + " " + platformName)}`,
     Icon: ExternalLink,
     badgeClass: "bg-surface-elevated text-text border-border hover:border-accent hover:text-accent",
     color: "#a3e635"
@@ -143,9 +232,10 @@ export function EntityDossierCard({ profile, query, isZeroResults = false }) {
   const hasDisambiguation = disambiguation?.has_confusion
 
   // Ensure standard streaming / social platforms exist for creator entities
+  const defaultPlatforms = ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"]
   const platformsToRender = primary_platforms.length > 0
-    ? primary_platforms
-    : ["Kick", "Rumble", "YouTube", "X (Twitter)"]
+    ? Array.from(new Set([...primary_platforms, ...defaultPlatforms]))
+    : defaultPlatforms
 
   return (
     <div className="border-b border-border bg-gradient-to-b from-[#14161f] via-[#0f1016] to-[#0a0b0e] px-4 py-3.5 transition-all text-text">
@@ -356,41 +446,58 @@ export function EntityDossierCard({ profile, query, isZeroResults = false }) {
                   {t("creatorHubTitle")}
                 </h3>
                 <p className="text-[11px] text-text-muted font-sans mt-0.5">
-                  {t("creatorHubSubtitle")}
+                  Direct Verified Account Profiles & Platform Search Feeds
                 </p>
               </div>
               <span className="text-[10px] font-mono text-accent bg-accent/10 border border-accent/30 rounded px-2 py-0.5">
-                Live Broadcast Feeds Active
+                Multi-Platform Intelligence Active
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {platformsToRender.map((platform) => {
                 const meta = getPlatformMeta(platform, entity_name, query, profile)
                 const { Icon } = meta
                 return (
-                  <a
+                  <div
                     key={platform}
-                    href={meta.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between p-3 rounded-md bg-surface border border-border hover:border-accent/60 hover:bg-surface-elevated transition-all group shadow-sm"
+                    className="flex flex-col justify-between p-3 rounded-md bg-surface border border-border hover:border-accent/60 transition-all shadow-sm group"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 mb-2.5">
                       <div className={`p-2 rounded-md ${meta.badgeClass.split(" ")[0]} border ${meta.badgeClass.split(" ")[2]}`}>
                         <Icon className="size-4 shrink-0" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <span className="text-xs font-bold text-white block group-hover:text-accent transition-colors truncate">
                           {meta.label}
                         </span>
-                        <span className="text-[10px] text-text-muted font-mono block truncate">
-                          Channel / Feed ↗
+                        <span className="text-[10px] text-accent font-mono block truncate">
+                          {meta.handle || "Official"}
                         </span>
                       </div>
                     </div>
-                    <ExternalLink className="size-3.5 text-text-faint group-hover:text-accent transition-colors shrink-0 ml-2" />
-                  </a>
+
+                    <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                      <a
+                        href={meta.profile_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 inline-flex items-center justify-center gap-1 rounded bg-surface-2 px-2 py-1.5 text-[11px] font-mono font-medium text-text hover:bg-accent hover:text-black transition-colors"
+                        title={`Open official profile for ${entity_name} on ${meta.label}`}
+                      >
+                        Profile ↗
+                      </a>
+                      <a
+                        href={meta.search_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 inline-flex items-center justify-center gap-1 rounded bg-surface-2 px-2 py-1.5 text-[11px] font-mono font-medium text-text-muted hover:text-white hover:bg-surface-elevated transition-colors"
+                        title={`Search for "${query || entity_name}" on ${meta.label}`}
+                      >
+                        Search ↗
+                      </a>
+                    </div>
+                  </div>
                 )
               })}
             </div>

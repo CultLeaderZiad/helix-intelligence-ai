@@ -1,5 +1,5 @@
 import { useRef } from "react"
-import { Search, SlidersHorizontal } from "lucide-react"
+import { Search, SlidersHorizontal, Bookmark } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Select } from "@/components/ui/Field"
 import { KeyHint } from "@/components/ui/KeyHint"
@@ -19,6 +19,7 @@ export function SearchQueryBar({
   canSort,
   queryLanguage = "en",
   onQueryLanguageChange,
+  onOpenDrafts,
 }) {
   const { t, isRtl } = useLanguage()
   // Synchronous double-submit guard: bridges the gap between the click and
@@ -114,6 +115,19 @@ export function SearchQueryBar({
           {t("langArabic", "Arabic")}
         </button>
       </div>
+
+      {onOpenDrafts && (
+        <Button
+          variant="outline"
+          size="md"
+          onClick={onOpenDrafts}
+          title="Search history and saved drafts"
+          className="flex items-center gap-1.5"
+        >
+          <Bookmark className="h-3.5 w-3.5 text-accent" />
+          <span className="hidden sm:inline">Drafts & History</span>
+        </Button>
+      )}
 
       <Button variant="primary" size="md" onClick={handleSubmit} disabled={isBusy || !query.trim()} className="font-bold">
         {isBusy ? t("running", "Running...") : t("runDiscovery", "Run discovery")}

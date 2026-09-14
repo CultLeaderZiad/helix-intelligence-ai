@@ -1,4 +1,5 @@
 import { Database, Clock, Layers } from "lucide-react"
+import { useLocation } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { DATA_SOURCE } from "@/services"
 import { API_BASE_URL } from "@/services/config"
@@ -24,15 +25,18 @@ const STATE_TONE = {
  * from the completed job.
  */
 export function StatusBar() {
+  const location = useLocation()
   const { telemetry } = useTelemetry()
   const { user, isAuthenticated } = useAuth()
 
-  const isAdmin = user?.role === "admin" || user?.is_superuser === true || user?.is_admin === true
+  // Only display raw backend API URL when user is an admin AND specifically on an admin dashboard route
+  const isAdminRoute = location.pathname.startsWith("/admin")
+  const showAdminDiagnostics = (user?.role === "admin" || user?.is_superuser === true || user?.is_admin === true) && isAdminRoute
   const isTrial = user?.plan_id?.includes("trial") || user?.trial_days_remaining != null
 
   return (
     <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-border bg-surface px-3 font-mono text-[10px] uppercase tracking-[0.06em] text-text-faint">
-      {isAdmin ? (
+      {showAdminDiagnostics ? (
         <>
           <span className="flex items-center gap-1.5">
             <Database className="h-3 w-3 text-text-faint" aria-hidden="true" />
@@ -93,7 +97,7 @@ export function StatusBar() {
         )}
 
         <span className="flex items-center gap-1.5">
-          {isAdmin && telemetry.lastJobId ? (
+          {showAdminDiagnostics && telemetry.lastJobId ? (
             <span className="hidden truncate text-text-muted md:inline">
               {telemetry.lastJobId}
             </span>

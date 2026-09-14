@@ -44,63 +44,92 @@ class PollinationsProvider:
 
     async def generate_image(self, prompt: str, reference_images: list = None, **kwargs) -> Dict[str, Any]:
         """
-        Generates an image using Pollinations.
+        Generates an image using Pollinations with random seed and automatic watermark badge removal.
         """
         from app.core.config import settings
+        import random
+        from PIL import Image
+        import io
+
         logger.info("Generating image with Pollinations: %s", prompt[:50])
         
         encoded_prompt = quote(prompt)
         
-        # Default dimensions for 1:1
-        width = 1024
-        height = 1024
-        
+        # Dimensions mapped to target aspect ratios
         aspect_ratio = kwargs.get("aspect_ratio", "1:1")
         if aspect_ratio == "16:9":
-            width, height = 1280, 720
+            width, height = 1024, 576
         elif aspect_ratio == "9:16":
-            width, height = 720, 1280
+            width, height = 576, 1024
         elif aspect_ratio == "4:5":
-            width, height = 800, 1000
+            width, height = 820, 1024
         elif aspect_ratio == "3:4":
             width, height = 768, 1024
         elif aspect_ratio == "4:3":
             width, height = 1024, 768
+        else:
+            width, height = 1024, 1024
             
+        seed = kwargs.get("seed") or random.randint(1, 1000000000)
+
         headers = {}
         if settings.POLLINATIONS_API_KEY:
-            url = f"https://gen.pollinations.ai/image/{encoded_prompt}?width={width}&height={height}&nologo=true"
+            url = f"https://gen.pollinations.ai/image/{encoded_prompt}?width={width}&height={height}&seed={seed}&nologo=true"
             headers["Authorization"] = f"Bearer {settings.POLLINATIONS_API_KEY}"
         else:
-            url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&nologo=true"
+            url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&seed={seed}&nologo=true&nofeed=true"
         
         async with httpx.AsyncClient(timeout=60.0) as client:
             try:
                 resp = await client.get(url, headers=headers)
                 if resp.status_code == 200:
-                    image_bytes = resp.content
+                    raw_bytes = resp.content
+                    
+                    # Clean any watermark banner from the bottom edge using Pillow
+                    cleaned_bytes = self._clean_watermark(raw_bytes, width, height)
+
                     return {
-                        "provider": "pollinations",
+                        "provider": "helix_managed",
                         "model": self.image_model,
                         "media_type": "image",
                         "mime_type": "image/jpeg",
-                        "data": image_bytes,
+                        "data": cleaned_bytes,
                         "metadata": {
                             "prompt": prompt,
                             "aspect_ratio": aspect_ratio,
-                            "model": self.image_model
+                            "width": width,
+                            "height": height,
+                            "seed": seed
                         }
                     }
                 elif resp.status_code == 429:
-                    raise ValueError("Pollinations API rate limit reached. Please try again later.")
+                    raise ValueError("Image generation rate limit reached. Please try again later.")
                 else:
-                    raise ValueError(f"Pollinations API error: HTTP {resp.status_code}")
+                    raise ValueError(f"Image generation error: HTTP {resp.status_code}")
                     
             except httpx.TimeoutException:
-                raise ValueError("Pollinations API request timed out after 60 seconds.")
+                raise ValueError("Image generation request timed out after 60 seconds.")
             except Exception as e:
                 logger.error("Pollinations generation error: %s", e)
                 raise ValueError(f"Image generation failed: {str(e)}")
+
+    def _clean_watermark(self, raw_bytes: bytes, target_w: int, target_h: int) -> bytes:
+        """Strips watermark badge from the bottom edge and preserves target dimensions."""
+        try:
+            from PIL import Image
+            import io
+            im = Image.open(io.BytesIO(raw_bytes))
+            w, h = im.size
+            # Crop bottom 48px to eliminate any watermark badge
+            crop_h = max(h - 48, int(h * 0.9))
+            cropped = im.crop((0, 0, w, crop_h))
+            resized = cropped.resize((target_w, target_h), Image.Resampling.LANCZOS)
+            out = io.BytesIO()
+            resized.save(out, format="JPEG", quality=95)
+            return out.getvalue()
+        except Exception as err:
+            logger.warning("Watermark strip failed: %s", err)
+            return raw_bytes
 
     async def generate_video(self, prompt: str, **kwargs) -> Dict[str, Any]:
         """

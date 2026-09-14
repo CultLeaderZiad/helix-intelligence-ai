@@ -15,7 +15,8 @@ import {
   RefreshCw,
   Settings2,
   Key,
-  HelpCircle
+  HelpCircle,
+  Bookmark
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { creativeService } from "@/services"
@@ -25,6 +26,7 @@ import { useAuth } from "@/context/AuthContext"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 import { MessageSquarePlus } from "lucide-react"
 import { AudienceSimulationPanel } from "@/features/create/AudienceSimulationPanel"
+import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 
 const CREATIVE_MODES = {
   image: [
@@ -67,6 +69,7 @@ export function CreatePage() {
   const [customApiKey, setCustomApiKey] = useState("")
   const [customModel, setCustomModel] = useState("gemini-2.0-flash-lite-preview-02-05")
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showDraftsModal, setShowDraftsModal] = useState(false)
   
   const { phase, job, result, error, isServiceRestart, submit, cancel, isBusy } = useMediaGenerate()
 
@@ -192,7 +195,8 @@ export function CreatePage() {
       aspect_ratio: aspectRatio,
       kind: activeCategory,
       source_creative_id: sourceCreative?.id || sourceId,
-      reference_images: []
+      reference_images: [],
+      seed: Math.floor(Math.random() * 1000000000) + 1
     }
 
     if (startImageUrl.trim()) {
@@ -247,11 +251,20 @@ export function CreatePage() {
         trail={["Helix", "Create", "Remix Studio"]}
         meta={
           isAdmin 
-            ? "Gemini Flash Image · Admin Unlimited"
+            ? "Helix High-Res Engine · Admin Unlimited"
             : `Trial: ${usedToday}/${dailyLimit} images today · ${daysLeft} days left`
         }
         actions={
           <div className="flex items-center gap-2">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => setShowDraftsModal(true)}
+              className="flex items-center gap-1 text-xs text-text hover:border-accent"
+            >
+              <Bookmark className="w-3.5 h-3.5 text-accent" />
+              Saved Drafts & Searches
+            </Button>
             <Button
               size="xs"
               variant="ghost"
@@ -509,9 +522,18 @@ export function CreatePage() {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                   <label className="label-mono text-text">Generation Prompt / Creative Brief</label>
-                  <span className="text-[10px] font-mono text-text-faint">
-                    {brief.length} characters
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDraftsModal(true)}
+                      className="text-[11px] font-mono text-accent hover:underline flex items-center gap-1"
+                    >
+                      <Bookmark className="w-3 h-3" /> Save / Load Drafts
+                    </button>
+                    <span className="text-[10px] font-mono text-text-faint">
+                      {brief.length} characters
+                    </span>
+                  </div>
                 </div>
                 <textarea
                   rows={5}
@@ -605,7 +627,7 @@ export function CreatePage() {
                 {isBusy ? (
                   <>
                     <Loader className="h-4 w-4 animate-spin text-black" />
-                    {customApiKey.trim() ? "Generating with Gemini..." : "Generating Image..."}
+                    {customApiKey.trim() ? "Generating with BYOK..." : "Synthesizing Creative..."}
                   </>
                 ) : isTrialExpired ? (
                   "Trial Ended — Select a Plan to Generate"
@@ -614,7 +636,7 @@ export function CreatePage() {
                 ) : (
                   <>
                     <Wand2 className="h-4 w-4 text-black" />
-                    {customApiKey.trim() ? "Generate with Gemini" : "Generate Image"}
+                    {customApiKey.trim() ? "Generate with Custom Key" : "Generate Creative Asset"}
                   </>
                 )}
               </Button>
@@ -622,7 +644,12 @@ export function CreatePage() {
 
             {/* Preview Output Panel */}
             <div className="lg:col-span-5 flex flex-col gap-4">
-              <label className="label-mono text-text">Live Output</label>
+              <div className="flex items-center justify-between">
+                <label className="label-mono text-text">Live Output</label>
+                <span className="font-mono text-[10px] text-accent/80 border border-border px-1.5 py-0.5 rounded bg-surface">
+                  Ratio: {aspectRatio}
+                </span>
+              </div>
               
               <div className="flex-1 min-h-[360px] rounded-lg border border-border bg-surface p-4 flex flex-col items-center justify-center relative overflow-hidden">
                 {isBusy ? (
@@ -631,16 +658,13 @@ export function CreatePage() {
                       <div className="h-12 w-12 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
                       <Sparkles className="h-5 w-5 text-accent absolute inset-0 m-auto animate-pulse" />
                     </div>
-                    <span className="text-xs font-semibold text-text">Gemini AI Generating Visual</span>
+                    <span className="text-xs font-semibold text-text">Helix AI Generating Creative</span>
                     <span className="text-[11px] font-mono text-text-muted">
-                      {job?.status ? `Status: ${job.status}` : "Synthesizing image concept..."}
+                      {job?.status ? `Status: ${job.status}` : "Synthesizing visual concept..."}
                     </span>
                   </div>
                 ) : displayErrorMessage ? (
                   <div className="flex flex-col items-center gap-3 text-center p-4">
-                    {/* An interrupted generation is not a rejected prompt.
-                        Showing the same red "Generation Issue" for both makes
-                        users rewrite a prompt that was never the problem. */}
                     <AlertCircle className={`h-8 w-8 ${isServiceRestart ? "text-text-muted" : "text-destructive"}`} />
                     <span className={`text-xs font-bold ${isServiceRestart ? "text-text" : "text-destructive"}`}>
                       {isServiceRestart ? "Interrupted by a service restart" : "Generation Issue"}
@@ -656,11 +680,21 @@ export function CreatePage() {
                   </div>
                 ) : displayUrl ? (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-3">
-                    <img
-                      src={displayUrl}
-                      alt="Generated AI Creative"
-                      className="max-h-[320px] w-auto rounded-lg object-contain border border-border shadow-md"
-                    />
+                    <div className={`relative flex items-center justify-center w-full transition-all duration-300 ${
+                      aspectRatio === "1:1" ? "max-w-[340px] aspect-square" :
+                      aspectRatio === "4:5" ? "max-w-[300px] aspect-[4/5]" :
+                      aspectRatio === "9:16" ? "max-w-[240px] aspect-[9/16]" :
+                      "max-w-[480px] aspect-[16/9]"
+                    }`}>
+                      <img
+                        src={displayUrl}
+                        alt="Generated AI Creative"
+                        className="w-full h-full rounded-lg object-cover border border-border shadow-md"
+                      />
+                      <span className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 font-mono text-[9px] text-accent backdrop-blur-xs border border-accent/30">
+                        {aspectRatio}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-2">
                       <a
                         href={displayUrl}
@@ -692,6 +726,29 @@ export function CreatePage() {
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
         initialContext={{ page: "Create Remix Studio", category: activeCategory, mode: selectedMode, tag: "create" }}
+      />
+
+      <SavedDraftsModal
+        isOpen={showDraftsModal}
+        onClose={() => setShowDraftsModal(false)}
+        currentQuery={brief}
+        onSelectSearch={(searchItem) => {
+          if (searchItem.items && searchItem.items.length) {
+            applyCreativeToBrief(searchItem.items[0])
+            selectActiveCreative(searchItem.items[0])
+          } else {
+            setBrief(
+              `Commercial advertising creative inspired by market intelligence for "${searchItem.query}".\nStyle & Visual Direction: ${STYLE_PROMPTS.premium_ad}`
+            )
+          }
+        }}
+        onSelectDraft={(draft) => {
+          if (draft.requirements) {
+            setBrief(`${draft.title}\nRequirements: ${draft.requirements}\nStyle & Visual Direction: ${STYLE_PROMPTS[selectedMode] || STYLE_PROMPTS.premium_ad}`)
+          } else {
+            setBrief(draft.title || draft.query)
+          }
+        }}
       />
     </div>
   )

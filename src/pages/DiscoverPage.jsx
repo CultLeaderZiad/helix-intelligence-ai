@@ -20,6 +20,7 @@ import { OnboardingWizardModal } from "@/components/OnboardingWizardModal"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 import { MessageSquarePlus } from "lucide-react"
 import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
+import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 
 const EMPTY_FILTERS = {
   country: "ALL",
@@ -52,9 +53,9 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 export function DiscoverPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { latestSearch, saveCompletedSearch, selectActiveCreative } = useSearchContext()
+  const { latestSearch, saveCompletedSearch, selectActiveCreative, selectSearchSession } = useSearchContext()
   const { t } = useLanguage()
-  const [query, setQuery] = useState(() => searchParams.get("q") || "")
+  const [query, setQuery] = useState(() => searchParams.get("q") || latestSearch?.query || "")
   const [queryLanguage, setQueryLanguage] = useState(() => {
     try {
       return localStorage.getItem("helix_search_lang") === "ar" ? "ar" : "en"
@@ -70,6 +71,7 @@ export function DiscoverPage() {
   const [showOnboardingModal, setShowOnboardingModal] = useState(false)
   const [tourEnabled, setTourEnabled] = useState(false)
   const [showSupportModal, setShowSupportModal] = useState(false)
+  const [showDraftsModal, setShowDraftsModal] = useState(false)
 
   const isBelowLg = useIsBelowLg()
   const { report } = useTelemetry()
@@ -192,7 +194,21 @@ export function DiscoverPage() {
     setDraftFilters(EMPTY_FILTERS)
   }
 
-  const items = results?.items ?? []
+  const displayResults = results || (phase === PHASE.IDLE && latestSearch?.items?.length ? {
+    total: latestSearch.total || latestSearch.items.length,
+    items: latestSearch.items,
+    took_ms: latestSearch.tookMs || 0,
+    page: 1,
+  } : null)
+  const displayJob = job || (phase === PHASE.IDLE && latestSearch?.entity_profile ? {
+    job_id: latestSearch.jobId,
+    entity_profile: latestSearch.entity_profile,
+    stage_label: "Saved Search Session",
+    stage: "complete",
+    records_found: latestSearch.total || latestSearch.items?.length || 0,
+  } : job)
+
+  const items = displayResults?.items ?? []
   /* Zero-result honesty: the results endpoint never applies the filter
      rail, so an empty set almost always means the scrape itself found
      nothing — the backend's zero_results stage_label says exactly why. */
@@ -221,10 +237,12 @@ export function DiscoverPage() {
       <BreadcrumbBar
         trail={[t("discovery", "Discovery"), t("search", "Live Search"), query ? `"${query}"` : null].filter(Boolean)}
         meta={
-          phase === PHASE.READY
+          phase === PHASE.READY && results
             ? `${formatInt(results?.total ?? 0)} records · ${formatDuration(
                 results?.took_ms ?? 0,
               )}`
+            : displayResults && phase === PHASE.IDLE
+            ? `${formatInt(displayResults.total)} records (saved)`
             : null
         }
         actions={
@@ -253,6 +271,7 @@ export function DiscoverPage() {
         canSort={phase === PHASE.READY || phase === PHASE.IDLE}
         queryLanguage={queryLanguage}
         onQueryLanguageChange={setQueryLanguage}
+        onOpenDrafts={() => setShowDraftsModal(true)}
       />
 
       {showProgress ? (
@@ -261,10 +280,10 @@ export function DiscoverPage() {
         <div id="tour-job-progress" className="w-full h-0" />
       )}
 
-      {phase === PHASE.READY && results ? (
+      {(phase === PHASE.READY || (phase === PHASE.IDLE && displayResults)) && displayResults ? (
         <ResultSummary
-          query={query}
-          results={results}
+          query={query || latestSearch?.query || ""}
+          results={displayResults}
           sort={sort}
           filterCount={activeFilterCount}
           selectedId={selectedId}
@@ -310,7 +329,7 @@ export function DiscoverPage() {
             className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden"
             aria-label={t("discoveryResults")}
           >
-            {phase === PHASE.IDLE ? (
+            {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile ? (
               <EmptyState
                 icon={Radar}
                 title={t("noRunYet")}
@@ -326,6 +345,12 @@ export function DiscoverPage() {
                   </Button>
                 }
               />
+            ) : null}
+
+            {phase === PHASE.IDLE && items.length === 0 && displayJob?.entity_profile ? (
+              <div className="flex flex-1 flex-col overflow-y-auto">
+                <EntityDossierCard profile={displayJob.entity_profile} query={query || latestSearch?.query} isZeroResults={true} />
+              </div>
             ) : null}
 
             {phase === PHASE.SUBMITTING ||
@@ -377,13 +402,13 @@ export function DiscoverPage() {
             ) : null}
 
             {phase === PHASE.READY && items.length === 0 ? (
-              job?.entity_profile ? (
+              displayJob?.entity_profile ? (
                 <div className="flex flex-1 flex-col overflow-y-auto">
-                  <EntityDossierCard profile={job.entity_profile} query={query} isZeroResults={true} />
+                  <EntityDossierCard profile={displayJob.entity_profile} query={query} isZeroResults={true} />
                   <div className="flex flex-col items-center justify-center p-8 text-center">
                     <p className="max-w-md text-xs leading-relaxed text-text-muted">
-                      {job?.stage_label && job.stage_label !== "complete"
-                        ? job.stage_label
+                      {displayJob?.stage_label && displayJob.stage_label !== "complete"
+                        ? displayJob.stage_label
                         : t("noMetaAdsNotice")}
                     </p>
                     {filtersWereApplied ? (
@@ -405,8 +430,8 @@ export function DiscoverPage() {
                   }
                   description={
                     scrapedNothing
-                      ? job?.stage_label && job?.stage !== "complete"
-                        ? job.stage_label
+                      ? displayJob?.stage_label && displayJob?.stage !== "complete"
+                        ? displayJob.stage_label
                         : 'The ad libraries had no active ads for this query. Try a company domain (e.g. "nike.com") or a broader industry keyword, then re-run.'
                       : t("noMatchesDesc")
                   }
@@ -421,10 +446,10 @@ export function DiscoverPage() {
               )
             ) : null}
 
-            {phase === PHASE.READY && items.length > 0 ? (
+            {(phase === PHASE.READY || (phase === PHASE.IDLE && items.length > 0)) && items.length > 0 ? (
               <>
-                {job?.entity_profile ? (
-                  <EntityDossierCard profile={job.entity_profile} query={query} isZeroResults={false} />
+                {displayJob?.entity_profile ? (
+                  <EntityDossierCard profile={displayJob.entity_profile} query={query || latestSearch?.query} isZeroResults={false} />
                 ) : null}
                 <ErrorBoundary variant="compact" label="The results table">
                   <ResultsTable
@@ -435,23 +460,26 @@ export function DiscoverPage() {
                 </ErrorBoundary>
                 <div className="flex h-8 shrink-0 items-center gap-3 border-t border-border bg-surface px-3">
                   <span className="label-mono">
-                    page {results.page} · {formatInt(items.length)} of{" "}
-                    {formatInt(results.total)}
+                    page {displayResults?.page || 1} · {formatInt(items.length)} of{" "}
+                    {formatInt(displayResults?.total || items.length)}
+                    {phase === PHASE.IDLE && (
+                      <span className="ml-2 text-accent font-mono text-[10px]">(Saved Session)</span>
+                    )}
                   </span>
                   <div className="ml-auto flex items-center gap-1.5">
                     <Button
                       size="xs"
                       variant="outline"
-                      disabled={results.page <= 1}
-                      onClick={() => refine({ page: results.page - 1, sort })}
+                      disabled={!displayResults?.page || displayResults.page <= 1 || phase === PHASE.IDLE}
+                      onClick={() => refine({ page: (displayResults?.page || 1) - 1, sort })}
                     >
                       Prev
                     </Button>
                     <Button
                       size="xs"
                       variant="outline"
-                      disabled={!results.has_more}
-                      onClick={() => refine({ page: results.page + 1, sort })}
+                      disabled={!displayResults?.has_more || phase === PHASE.IDLE}
+                      onClick={() => refine({ page: (displayResults?.page || 1) + 1, sort })}
                     >
                       Next
                     </Button>
@@ -483,6 +511,19 @@ export function DiscoverPage() {
         isOpen={showSupportModal}
         onClose={() => setShowSupportModal(false)}
         initialContext={{ page: "Discover", query, tag: "discover" }}
+      />
+
+      <SavedDraftsModal
+        isOpen={showDraftsModal}
+        onClose={() => setShowDraftsModal(false)}
+        currentQuery={query}
+        onSelectSearch={(item) => {
+          selectSearchSession(item)
+          setQuery(item.query)
+        }}
+        onSelectDraft={(draft) => {
+          setQuery(draft.query || draft.title)
+        }}
       />
     </div>
   )

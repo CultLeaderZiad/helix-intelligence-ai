@@ -3,15 +3,20 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 const STORAGE_LATEST_KEY = "helix_latest_search"
 const STORAGE_HISTORY_KEY = "helix_search_history"
 const STORAGE_ACTIVE_CREATIVE_KEY = "helix_active_creative"
+const STORAGE_DRAFTS_KEY = "helix_saved_drafts"
 
 const SearchContext = createContext({
   latestSearch: null,
   searchHistory: [],
   activeCreative: null,
+  drafts: [],
   saveCompletedSearch: () => {},
   selectActiveCreative: () => {},
+  selectSearchSession: () => {},
   clearActiveCreative: () => {},
   clearSearchHistory: () => {},
+  saveDraft: () => {},
+  deleteDraft: () => {},
 })
 
 const DEFAULT_SEARCH_HISTORY = [
@@ -191,6 +196,55 @@ export function SearchProvider({ children }) {
     }
   }, [])
 
+  const [drafts, setDrafts] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_DRAFTS_KEY)
+      if (!raw) return []
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  })
+
+  const saveDraft = useCallback((draft) => {
+    if (!draft) return
+    const id = draft.id || `draft_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    const entry = {
+      id,
+      title: draft.title || draft.query || "Untitled Draft",
+      query: draft.query || "",
+      requirements: draft.requirements || draft.notes || "",
+      filters: draft.filters || {},
+      category_label: draft.category_label || "Research Draft",
+      source_id: draft.source_id || null,
+      timestamp: new Date().toISOString(),
+    }
+    setDrafts((prev) => {
+      const filtered = prev.filter((d) => d.id !== id)
+      const updated = [entry, ...filtered].slice(0, 30) // Keep up to 30 drafts
+      try {
+        localStorage.setItem(STORAGE_DRAFTS_KEY, JSON.stringify(updated))
+      } catch (e) {
+        console.warn("Failed to persist drafts to localStorage", e)
+      }
+      return updated
+    })
+    return entry
+  }, [])
+
+  const deleteDraft = useCallback((draftId) => {
+    setDrafts((prev) => {
+      const updated = prev.filter((d) => d.id !== draftId)
+      try {
+        localStorage.setItem(STORAGE_DRAFTS_KEY, JSON.stringify(updated))
+      } catch (e) {
+        console.warn("Failed to update drafts in localStorage", e)
+      }
+      return updated
+    })
+  }, [])
+
   const clearSearchHistory = useCallback(() => {
     setSearchHistory([])
     setLatestSearch(null)
@@ -204,11 +258,14 @@ export function SearchProvider({ children }) {
         latestSearch,
         searchHistory,
         activeCreative,
+        drafts,
         saveCompletedSearch,
         selectActiveCreative,
         selectSearchSession,
         clearActiveCreative,
         clearSearchHistory,
+        saveDraft,
+        deleteDraft,
       }}
     >
       {children}

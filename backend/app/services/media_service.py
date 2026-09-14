@@ -119,6 +119,7 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
                     prompt=job.prompt,
                     reference_images=reference_images,
                     aspect_ratio=aspect_ratio,
+                    seed=params.get("seed"),
                 )
 
             # Store binary media

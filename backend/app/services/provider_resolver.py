@@ -14,6 +14,7 @@ from fastapi import HTTPException, status
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.workspace_credential import WorkspaceProviderCredential
+from app.services.ai.aihubmix_image_provider import AIHubMixImageProvider
 from app.services.ai.gemini_provider import GeminiProvider
 from app.services.ai.pollinations_provider import PollinationsProvider
 from app.services.security_service import decrypt_secret
@@ -21,27 +22,33 @@ from app.services.billing_service import is_trial_active
 
 logger = logging.getLogger(__name__)
 
+def _get_managed_provider():
+    aihubmix = AIHubMixImageProvider()
+    if aihubmix.is_configured:
+        return aihubmix
+    return PollinationsProvider()
+
 async def resolve_image_provider(
     db: AsyncSession,
     user: User,
     org: Organization
 ) -> Tuple[Any, str]:
     """
-    Resolves the appropriate GeminiProvider instance and credential mode.
+    Resolves the appropriate image provider instance and credential mode.
     Returns:
         (provider_instance, credential_mode) where credential_mode in ('managed', 'byok')
     
     Rules:
-      - Trial accounts ALWAYS use HELIX Managed Gemini (managed).
-      - Paid workspaces / Admins may use BYOK if explicitly configured and selected.
-      - If BYOK is active, returns GeminiProvider initialized with the decrypted workspace key.
+      - Primary Managed Provider: AIHubMix gpt-image-2-free (clean commercial PNG, 0 watermarks).
+      - Secondary Managed Fallback: Pollinations with Pillow watermark-strip.
+      - BYOK: Workspace configured Google Gemini key.
     """
     is_trial = is_trial_active(user) and (org.plan == "trial" or bool(org.plan_id and org.plan_id.startswith("plan_trial")))
     is_admin = getattr(user, "role", "") == "admin"
 
     # Trial accounts always use managed provider
     if is_trial and not is_admin:
-        return PollinationsProvider(), "managed"
+        return _get_managed_provider(), "managed"
 
     # Query workspace provider credential
     stmt = select(WorkspaceProviderCredential).where(
@@ -66,5 +73,5 @@ async def resolve_image_provider(
                 }
             )
 
-    # Default to HELIX Managed Provider (now Pollinations instead of Gemini to avoid quota)
-    return PollinationsProvider(), "managed"
+    # Default to HELIX Managed Provider (AIHubMix or Pollinations fallback)
+    return _get_managed_provider(), "managed"

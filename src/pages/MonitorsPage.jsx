@@ -10,6 +10,7 @@ import {
   Sparkles,
   PenLine,
   CircleSlash,
+  Bookmark,
 } from "lucide-react"
 
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
@@ -19,6 +20,7 @@ import { Tag } from "@/components/ui/Tag"
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States"
 import { useMonitors } from "@/hooks/useMonitors"
 import { useSearchContext } from "@/context/SearchContext"
+import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 import { useEffect } from "react"
 
 const CADENCES = [
@@ -96,7 +98,7 @@ function CreateMonitorForm({ onCreate, busy, initialQuery = "" }) {
   const [notifyEmail, setNotifyEmail] = useState(false)
 
   useEffect(() => {
-    if (initialQuery && !query) {
+    if (initialQuery) {
       setQuery(initialQuery)
     }
   }, [initialQuery])
@@ -259,6 +261,8 @@ export function MonitorsPage() {
   } = useMonitors()
 
   const [busy, setBusy] = useState(false)
+  const [showDraftsModal, setShowDraftsModal] = useState(false)
+  const [selectedQuery, setSelectedQuery] = useState(latestSearch?.query || "")
 
   const activeCount = useMemo(
     () => monitors.filter((m) => m.status === "active").length,
@@ -293,9 +297,20 @@ export function MonitorsPage() {
         trail={["Helix", "Monitors", "Scheduled Competitor Watches"]}
         meta={`${activeCount} active · ${events.length} recent changes`}
         actions={
-          <Button size="xs" variant="outline" onClick={() => refresh()}>
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => setShowDraftsModal(true)}
+              className="flex items-center gap-1 text-xs text-text hover:border-accent"
+            >
+              <Bookmark className="w-3.5 h-3.5 text-accent" />
+              Saved Drafts & Searches
+            </Button>
+            <Button size="xs" variant="outline" onClick={() => refresh()}>
+              Refresh
+            </Button>
+          </div>
         }
       />
 
@@ -339,7 +354,7 @@ export function MonitorsPage() {
           </PanelHeader>
           <PanelBody>
             <CreateMonitorForm
-              initialQuery={latestSearch?.query || ""}
+              initialQuery={selectedQuery}
               onCreate={(p) => guard(() => createMonitor(p))}
               busy={busy}
             />
@@ -412,6 +427,14 @@ export function MonitorsPage() {
           </>
         )}
       </div>
+
+      <SavedDraftsModal
+        isOpen={showDraftsModal}
+        onClose={() => setShowDraftsModal(false)}
+        currentQuery={selectedQuery}
+        onSelectSearch={(item) => setSelectedQuery(item.query)}
+        onSelectDraft={(draft) => setSelectedQuery(draft.query || draft.title)}
+      />
     </div>
   )
 }

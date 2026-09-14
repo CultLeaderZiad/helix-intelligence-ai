@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 import { Tag } from "@/components/ui/Tag"
 import { useMonitors } from "@/hooks/useMonitors"
+import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 
 /**
  * Replaces the browser-only strategy scratchpad that used to sit here. Notes in
@@ -136,6 +137,7 @@ export function PerformancePage() {
   const [filterFormat, setFilterFormat] = useState("ALL")
   const [minDays, setMinDays] = useState(0)
   const [quickQuery, setQuickQuery] = useState("")
+  const [showDraftsModal, setShowDraftsModal] = useState(false)
 
   function handleQuickSearch(e) {
     e.preventDefault()
@@ -188,14 +190,26 @@ export function PerformancePage() {
     const totalDays = creatives.reduce((acc, c) => acc + (c.days_active || 1), 0)
     const survivors = creatives.filter((c) => (c.days_active || 1) >= 14).length
     const videos = creatives.filter((c) => c.format === "video").length
+    const hookSum = creatives.reduce((acc, c) => acc + (c.scores?.hook || 0), 0)
+    const topHookAvg = Math.round(hookSum / creatives.length)
+
+    const formats = {
+      image: creatives.filter((c) => c.format === "image").length,
+      video: creatives.filter((c) => c.format === "video").length
+    }
+
     const scores = creatives.filter((c) => c.scores?.composite).map((c) => c.scores.composite)
     const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(0) : "—"
 
     return {
-      avgDays: Math.round(totalDays / creatives.length),
-      survivorCount: survivors,
-      survivorRate: Math.round((survivors / creatives.length) * 100),
-      videoCount: videos,
+      avgDays,
+      survivorRate,
+      survivorCount: survivors.length,
+      fatiguedCount: fatigued.length,
+      scalingCount: scaling.length,
+      topHookAvg,
+      formats,
+      videoCount: formats.video,
       avgScore
     }
   }, [creatives])
@@ -230,9 +244,20 @@ export function PerformancePage() {
             : `${creatives.length} competitor ads indexed`
         }
         actions={
-          <Button size="xs" variant="outline" onClick={() => navigate("/discover")}>
-            New Search
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={() => setShowDraftsModal(true)}
+              className="flex items-center gap-1 text-xs text-text hover:border-accent"
+            >
+              <Bookmark className="w-3.5 h-3.5 text-accent" />
+              Saved Drafts & Searches
+            </Button>
+            <Button size="xs" variant="outline" onClick={() => navigate("/discover")}>
+              New Search
+            </Button>
+          </div>
         }
       />
 
@@ -556,6 +581,18 @@ export function PerformancePage() {
 
         </div>
       )}
+
+      <SavedDraftsModal
+        isOpen={showDraftsModal}
+        onClose={() => setShowDraftsModal(false)}
+        currentQuery={quickQuery || latestSearch?.query || ""}
+        onSelectSearch={(item) => {
+          navigate(`/discover?q=${encodeURIComponent(item.query)}`)
+        }}
+        onSelectDraft={(draft) => {
+          navigate(`/discover?q=${encodeURIComponent(draft.query || draft.title)}`)
+        }}
+      />
     </div>
   )
 }

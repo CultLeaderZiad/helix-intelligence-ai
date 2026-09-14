@@ -19,16 +19,105 @@ from app.core.credentials import env_secret
 
 logger = logging.getLogger(__name__)
 
+def build_social_links(query: str, custom_handles: Optional[Dict[str, str]] = None) -> Dict[str, Dict[str, str]]:
+    q_enc = query.replace(" ", "%20")
+    h_default = query.split(" ")[0].lower().replace("@", "")
+    handles = custom_handles or {}
+
+    x_h = handles.get("x", f"@{h_default}")
+    ig_h = handles.get("instagram", f"@{h_default}")
+    kick_h = handles.get("kick", h_default)
+    rumble_h = handles.get("rumble", h_default.title())
+    yt_h = handles.get("youtube", f"@{h_default}")
+    tt_h = handles.get("tiktok", f"@{h_default}")
+
+    return {
+        "x": {
+            "name": "X (Twitter)",
+            "handle": x_h,
+            "profile_url": handles.get("x_profile") or f"https://x.com/{x_h.replace('@', '')}",
+            "search_url": f"https://x.com/search?q={q_enc}&src=typed_query",
+        },
+        "instagram": {
+            "name": "Instagram",
+            "handle": ig_h,
+            "profile_url": handles.get("ig_profile") or f"https://instagram.com/{ig_h.replace('@', '')}",
+            "search_url": f"https://www.instagram.com/explore/search/keyword/?q={q_enc}",
+        },
+        "kick": {
+            "name": "Kick",
+            "handle": kick_h,
+            "profile_url": handles.get("kick_profile") or f"https://kick.com/{kick_h}",
+            "search_url": f"https://kick.com/search?q={q_enc}",
+        },
+        "rumble": {
+            "name": "Rumble",
+            "handle": rumble_h,
+            "profile_url": handles.get("rumble_profile") or f"https://rumble.com/c/{rumble_h}",
+            "search_url": f"https://rumble.com/search/all?q={q_enc}",
+        },
+        "youtube": {
+            "name": "YouTube",
+            "handle": yt_h,
+            "profile_url": handles.get("yt_profile") or f"https://www.youtube.com/results?search_query={q_enc}",
+            "search_url": f"https://www.youtube.com/results?search_query={q_enc}",
+        },
+        "tiktok": {
+            "name": "TikTok",
+            "handle": tt_h,
+            "profile_url": handles.get("tt_profile") or f"https://www.tiktok.com/tag/{tt_h.replace('@', '')}",
+            "search_url": f"https://www.tiktok.com/search?q={q_enc}",
+        },
+    }
+
 # Curated high-precision knowledge base for instant 0ms responses on key entities
 KNOWN_ENTITIES: Dict[str, Dict[str, Any]] = {
     "sneako": {
         "entity_name": "Sneako (Nicolas Kenn De Balinthazy)",
         "entity_type": "creator_streamer",
         "category_label": "Content Creator & Streamer",
-        "primary_platforms": ["Kick", "Rumble", "YouTube", "X (Twitter)"],
+        "primary_platforms": ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"],
         "summary": "High-profile online creator, livestreamer, and commentator known for IRL streams, commentary, ideological debates, and multi-platform broadcasting.",
         "runs_direct_meta_ads": False,
         "marketing_archetype": "Controversy-Driven Organic Clipping & Multi-Platform Streaming",
+        "social_links": {
+            "x": {
+                "name": "X (Twitter)",
+                "handle": "@TheSneako",
+                "profile_url": "https://x.com/TheSneako",
+                "search_url": "https://x.com/search?q=sneako&src=typed_query",
+            },
+            "instagram": {
+                "name": "Instagram",
+                "handle": "@sneako",
+                "profile_url": "https://instagram.com/sneako",
+                "search_url": "https://www.instagram.com/explore/search/keyword/?q=sneako",
+            },
+            "kick": {
+                "name": "Kick",
+                "handle": "sneako",
+                "profile_url": "https://kick.com/sneako",
+                "search_url": "https://kick.com/search?q=sneako",
+            },
+            "rumble": {
+                "name": "Rumble",
+                "handle": "Sneako",
+                "profile_url": "https://rumble.com/c/Sneako",
+                "search_url": "https://rumble.com/search/all?q=sneako",
+            },
+            "youtube": {
+                "name": "YouTube",
+                "handle": "@TheUnfiltered",
+                "profile_url": "https://www.youtube.com/results?search_query=sneako",
+                "search_url": "https://www.youtube.com/results?search_query=sneako",
+            },
+            "tiktok": {
+                "name": "TikTok",
+                "handle": "@sneako",
+                "profile_url": "https://www.tiktok.com/tag/sneako",
+                "search_url": "https://www.tiktok.com/search?q=sneako",
+            },
+        },
         "online_presence": {
             "reach_overview": "Hundreds of thousands of concurrent livestream viewers and millions of organic short-form video impressions across social platforms.",
             "viral_engine": "Decentralized short-form clipping network (TikTok, YouTube Shorts, X) where fan channels syndicate livestream highlights.",
@@ -70,10 +159,48 @@ KNOWN_ENTITIES: Dict[str, Dict[str, Any]] = {
         "entity_name": "Andrew Tate (Emory Andrew Tate III)",
         "entity_type": "creator_streamer",
         "category_label": "Media Personality & Entrepreneur",
-        "primary_platforms": ["X (Twitter)", "Rumble", "Podcasts"],
+        "primary_platforms": ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"],
         "summary": "Former kickboxer and controversial media personality known for Hustler's University / The Real World, luxury lifestyle marketing, and debate-heavy podcasts.",
         "runs_direct_meta_ads": False,
         "marketing_archetype": "Affiliate Army Syndication & High-Polarity PR",
+        "social_links": {
+            "x": {
+                "name": "X (Twitter)",
+                "handle": "@Cobratate",
+                "profile_url": "https://x.com/Cobratate",
+                "search_url": "https://x.com/search?q=andrew%20tate&src=typeahead_click",
+            },
+            "instagram": {
+                "name": "Instagram",
+                "handle": "@cobratate",
+                "profile_url": "https://instagram.com/cobratate",
+                "search_url": "https://www.instagram.com/explore/search/keyword/?q=andrew%20tate",
+            },
+            "kick": {
+                "name": "Kick",
+                "handle": "tatespeech",
+                "profile_url": "https://kick.com/tatespeech",
+                "search_url": "https://kick.com/search?q=andrew%20tate",
+            },
+            "rumble": {
+                "name": "Rumble",
+                "handle": "TateSpeech",
+                "profile_url": "https://rumble.com/c/TateSpeech",
+                "search_url": "https://rumble.com/search/all?q=andrew%20tate",
+            },
+            "youtube": {
+                "name": "YouTube",
+                "handle": "TateSpeech",
+                "profile_url": "https://www.youtube.com/results?search_query=andrew+tate",
+                "search_url": "https://www.youtube.com/results?search_query=andrew+tate",
+            },
+            "tiktok": {
+                "name": "TikTok",
+                "handle": "@cobratate",
+                "profile_url": "https://www.tiktok.com/tag/andrewtate",
+                "search_url": "https://www.tiktok.com/search?q=andrew%20tate",
+            },
+        },
         "online_presence": {
             "reach_overview": "Global notoriety driven by billions of organic short-form impressions through syndicated affiliate channels.",
             "viral_engine": "Multi-tier affiliate marketing model where members repost short-form clips with custom referral funnels.",
@@ -110,10 +237,11 @@ KNOWN_ENTITIES: Dict[str, Dict[str, Any]] = {
         "entity_name": "Adin Ross",
         "entity_type": "creator_streamer",
         "category_label": "Livestreamer & Content Creator",
-        "primary_platforms": ["Kick", "YouTube", "X (Twitter)"],
+        "primary_platforms": ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"],
         "summary": "High-profile gaming and IRL livestreamer who transitioned from Twitch to an exclusive contract with Kick, hosting celebrity interviews and high-stakes games.",
         "runs_direct_meta_ads": False,
         "marketing_archetype": "Celebrity Collaboration & High-Stakes Streaming",
+        "social_links": build_social_links("adin ross", {"kick": "adinross", "x": "@adinross", "kick_profile": "https://kick.com/adinross", "x_profile": "https://x.com/adinross"}),
         "online_presence": {
             "reach_overview": "Tens of millions of followers across social platforms with top-tier livestream viewership.",
             "viral_engine": "High-profile celebrity and rapper collaborations turned into viral clips.",
@@ -146,10 +274,11 @@ KNOWN_ENTITIES: Dict[str, Dict[str, Any]] = {
         "entity_name": "Kai Cenat",
         "entity_type": "creator_streamer",
         "category_label": "Livestreamer & Entertainer",
-        "primary_platforms": ["Twitch", "YouTube", "X (Twitter)"],
+        "primary_platforms": ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"],
         "summary": "Record-breaking Twitch streamer, Streamer of the Year, and cultural icon famous for 30-day subathons, celebrity marathons, and AMP group content.",
         "runs_direct_meta_ads": False,
         "marketing_archetype": "Event-Based Cultural Spectacle Streaming",
+        "social_links": build_social_links("kai cenat", {"x": "@KaiCenat", "instagram": "@kaicenat", "x_profile": "https://x.com/KaiCenat", "ig_profile": "https://instagram.com/kaicenat"}),
         "online_presence": {
             "reach_overview": "Top creator in global live entertainment with mainstream hip-hop and Hollywood crossovers.",
             "viral_engine": "High-energy comedic moments and unscripted celebrity visits syndicating across TikTok and Reels.",
@@ -240,10 +369,11 @@ def _heuristic_entity_classification(query: str) -> Dict[str, Any]:
         "entity_name": title_q,
         "entity_type": "general",
         "category_label": "Market Entity / Keyword",
-        "primary_platforms": ["Digital & Social Channels"],
+        "primary_platforms": ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"],
         "summary": f"Search intelligence for '{title_q}'. Monitored across Meta Ad Library, web presence, and digital marketing footprints.",
         "runs_direct_meta_ads": True,
         "marketing_archetype": "Multi-Channel Digital Marketing",
+        "social_links": build_social_links(clean_q),
         "online_presence": {
             "reach_overview": f"Digital footprint across social platforms and search engines for {title_q}.",
             "viral_engine": "Content publishing and paid ad creative.",
@@ -365,6 +495,8 @@ Respond ONLY with valid JSON matching this schema:
                 content = data["choices"][0]["message"]["content"]
                 parsed = json.loads(content)
                 if isinstance(parsed, dict) and "entity_name" in parsed:
+                    if not parsed.get("social_links"):
+                        parsed["social_links"] = build_social_links(clean_q)
                     return parsed
     except Exception as exc:
         logger.warning("Groq entity intelligence call failed or timed out: %s. Using heuristic fallback.", exc)
