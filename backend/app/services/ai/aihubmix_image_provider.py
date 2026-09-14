@@ -80,8 +80,11 @@ class AIHubMixImageProvider(AIProvider):
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Generates an image via AIHubMix gpt-image-2-free without any watermark,
-        then crops/scales to the exact aspect ratio requested.
+        Generates an image via AIHubMix:
+        1. Attempts multimodal generation via Gemini image models (e.g. gemini-3.1-flash-image-preview-free),
+           supporting native aspect ratios and image-to-image reference editing.
+        2. Gracefully falls back to gpt-image-2-free via /images/generations for commercial-grade output.
+        3. Formats/crops to exact pixel dimensions with zero watermarks.
         """
         if not self.is_configured:
             raise ValueError("AIHUBMIX_API_KEY is not configured")
@@ -89,21 +92,127 @@ class AIHubMixImageProvider(AIProvider):
         target_w, target_h = DIMENSIONS_MAP.get(aspect_ratio, (1024, 1024))
         random_seed = kwargs.get("seed") or random.randint(1, 1000000000)
 
-        # Enhance prompt slightly for commercial ad style and seed variation
-        enhanced_prompt = f"{prompt.strip()} --seed {random_seed}"
+        # 1. Attempt Gemini Multimodal Image Generation
+        gemini_result = await self._try_gemini_generation(
+            prompt=prompt,
+            reference_images=reference_images,
+            aspect_ratio=aspect_ratio,
+            target_w=target_w,
+            target_h=target_h,
+            random_seed=random_seed
+        )
+        if gemini_result is not None:
+            return gemini_result
 
+        # 2. Fallback to GPT Image 2 Free (/images/generations)
+        return await self._generate_gpt_image(
+            prompt=prompt,
+            aspect_ratio=aspect_ratio,
+            target_w=target_w,
+            target_h=target_h,
+            random_seed=random_seed
+        )
+
+    async def _try_gemini_generation(
+        self,
+        prompt: str,
+        reference_images: Optional[List[str]],
+        aspect_ratio: str,
+        target_w: int,
+        target_h: int,
+        random_seed: int
+    ) -> Optional[Dict[str, Any]]:
+        """Attempts image generation/editing via Gemini multimodal endpoint."""
+        model_name = "gemini-3.1-flash-image-preview-free"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+
+        # Build user message content
+        user_content: List[Dict[str, Any]] = [
+            {"type": "text", "text": f"{prompt.strip()} (Style: commercial high-resolution advertisement)"}
+        ]
+
+        if reference_images:
+            for ref in reference_images:
+                if ref:
+                    url = ref if ref.startswith("data:") or ref.startswith("http") else f"data:image/png;base64,{ref}"
+                    user_content.append({
+                        "type": "image_url",
+                        "image_url": {"url": url}
+                    })
+
+        payload = {
+            "model": model_name,
+            "messages": [
+                {"role": "system", "content": f"aspect_ratio={aspect_ratio}"},
+                {"role": "user", "content": user_content}
+            ],
+            "modalities": ["text", "image"]
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=45.0) as client:
+                resp = await client.post(f"{self.base_url}/chat/completions", headers=headers, json=payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    choice = data.get("choices", [{}])[0].get("message", {})
+                    parts = choice.get("multi_mod_content") or choice.get("content")
+                    if parts and isinstance(parts, list):
+                        for part in parts:
+                            if isinstance(part, dict) and "inline_data" in part:
+                                raw_b64 = part["inline_data"].get("data")
+                                if raw_b64:
+                                    raw_bytes = base64.b64decode(raw_b64)
+                                    formatted_bytes = self._format_to_aspect_ratio(raw_bytes, target_w, target_h)
+                                    logger.info("Generated image via AIHubMix Gemini model: %s", model_name)
+                                    return {
+                                        "provider": "helix_managed",
+                                        "model": model_name,
+                                        "media_type": "image",
+                                        "mime_type": "image/png",
+                                        "data": formatted_bytes,
+                                        "metadata": {
+                                            "prompt": prompt,
+                                            "aspect_ratio": aspect_ratio,
+                                            "width": target_w,
+                                            "height": target_h,
+                                            "seed": random_seed
+                                        }
+                                    }
+                else:
+                    logger.warning(
+                        "AIHubMix Gemini image generation returned HTTP %s (%s), falling back to GPT Image 2",
+                        resp.status_code, resp.text[:120]
+                    )
+        except Exception as e:
+            logger.warning("AIHubMix Gemini image attempt failed: %s, falling back to GPT Image 2", e)
+
+        return None
+
+    async def _generate_gpt_image(
+        self,
+        prompt: str,
+        aspect_ratio: str,
+        target_w: int,
+        target_h: int,
+        random_seed: int
+    ) -> Dict[str, Any]:
+        """Generates image via GPT Image 2 Free."""
+        enhanced_prompt = f"{prompt.strip()} --seed {random_seed}"
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
         payload = {
-            "model": self.image_model,
+            "model": "gpt-image-2-free",
             "prompt": enhanced_prompt,
             "n": 1,
             "size": "1024x1024"
         }
 
-        logger.info("Generating image via AIHubMix (%s, %s): %s", self.image_model, aspect_ratio, prompt[:60])
+        logger.info("Generating image via AIHubMix gpt-image-2-free (%s): %s", aspect_ratio, prompt[:60])
 
         async with httpx.AsyncClient(timeout=60.0) as client:
             try:
@@ -129,12 +238,11 @@ class AIHubMixImageProvider(AIProvider):
                 else:
                     raise ValueError("No image payload received from AIHubMix")
 
-                # Format/crop image to target aspect ratio using Pillow
                 formatted_bytes = self._format_to_aspect_ratio(raw_bytes, target_w, target_h)
 
                 return {
                     "provider": "helix_managed",
-                    "model": self.image_model,
+                    "model": "gpt-image-2-free",
                     "media_type": "image",
                     "mime_type": "image/png",
                     "data": formatted_bytes,
@@ -147,7 +255,7 @@ class AIHubMixImageProvider(AIProvider):
                     }
                 }
             except Exception as e:
-                logger.error("AIHubMix image generation error: %s", e)
+                logger.error("AIHubMix GPT image generation error: %s", e)
                 raise ValueError(f"Image generation failed: {str(e)}")
 
     def _format_to_aspect_ratio(self, raw_bytes: bytes, target_w: int, target_h: int) -> bytes:
