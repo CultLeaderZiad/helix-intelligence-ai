@@ -10,9 +10,18 @@ const COLUMNS = [
   {
     heading: "Product",
     links: [
-      { label: "Overview", href: "#product" },
-      { label: "Pricing", href: "#pricing" },
-      { label: "Docs", href: "#docs" },
+      { label: "Overview", href: "/#product" },
+      { label: "Pricing", href: "/#pricing" },
+      { label: "Docs Hub", href: "/docs" },
+    ],
+  },
+  {
+    heading: "Docs",
+    links: [
+      { label: "User Guide", href: "/docs/user-guide/quickstart-account-and-trial" },
+      { label: "API Reference", href: "/docs/api-reference/authentication" },
+      { label: "Scoring Model", href: "/docs/user-guide/concept-scoring-system" },
+      { label: "Credit Costs", href: "/docs/api-reference/credit-costs-and-limits" },
     ],
   },
 ]
@@ -36,12 +45,21 @@ export function MarketingFooter() {
               <ul className="flex flex-col gap-2">
                 {column.links.map((link) => (
                   <li key={link.label}>
-                    <a
-                      href={link.href}
-                      className="text-[13px] text-text-muted transition-colors hover:text-text"
-                    >
-                      {link.label}
-                    </a>
+                    {link.href.startsWith("/") && !link.href.includes("#") ? (
+                      <Link
+                        to={link.href}
+                        className="text-[13px] text-text-muted transition-colors hover:text-text"
+                      >
+                        {link.label}
+                      </Link>
+                    ) : (
+                      <a
+                        href={link.href}
+                        className="text-[13px] text-text-muted transition-colors hover:text-text"
+                      >
+                        {link.label}
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>

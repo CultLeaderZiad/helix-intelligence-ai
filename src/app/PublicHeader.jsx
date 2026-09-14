@@ -9,10 +9,11 @@ export function PublicHeader() {
   const { isAuthenticated } = useAuth()
   const location = useLocation()
 
+  const isHome = location.pathname === "/"
   const navItems = [
-    { label: "Product", href: "#product" },
-    { label: "Pricing", href: "#pricing" },
-    { label: "Docs", href: "#docs" },
+    { label: "Product", href: isHome ? "#product" : "/#product" },
+    { label: "Pricing", href: isHome ? "#pricing" : "/#pricing" },
+    { label: "Docs", href: "/docs" },
     ...(isAuthenticated
       ? [{ label: "Console", href: APP_HOME, isPrimary: true }]
       : [{ label: "Get started", href: "/sign-up", isPrimary: true }]

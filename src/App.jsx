@@ -66,8 +66,11 @@ const PublicPlaybookPage = safeLazy(() => import("@/pages/PublicPlaybookPage").t
 const ProfileSettingsPage = safeLazy(() => import("@/pages/ProfileSettingsPage").then(m => ({ default: m.ProfileSettingsPage })))
 const SupportPage = safeLazy(() => import("@/pages/SupportPage").then(m => ({ default: m.SupportPage })))
 const NotificationsPage = safeLazy(() => import("@/pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })))
+const DocsHomePage = safeLazy(() => import("@/pages/docs/DocsHomePage").then(m => ({ default: m.DocsHomePage })))
+const DocsDetailPage = safeLazy(() => import("@/pages/docs/DocsDetailPage").then(m => ({ default: m.DocsDetailPage })))
 
 const PUBLIC_TITLES = {
+  "/docs": "Documentation & API Reference",
   "/sign-in": "Sign in",
   "/sign-up": "Create account",
   "/forgot-password": "Reset password",
@@ -150,6 +153,11 @@ export default function App() {
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/playbook/:publicId" element={<PublicPlaybookPage />} />
+
+                  {/* Public documentation system */}
+                  <Route path="/docs" element={<DocsHomePage />} />
+                  <Route path="/docs/:section" element={<DocsDetailPage />} />
+                  <Route path="/docs/:section/:slug" element={<DocsDetailPage />} />
 
                   {/* Admin console — admin role only */}
                   <Route element={<ProtectedRoute requireRole="admin" />}>

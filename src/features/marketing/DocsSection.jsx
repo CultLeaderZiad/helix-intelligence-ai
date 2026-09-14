@@ -8,16 +8,18 @@ import { Button } from "@/components/ui/Button"
  * console is one. Kept as a template string so the JSON braces never hit the
  * JSX parser.
  */
-const SNIPPET = `$ curl -X POST https://api.helix.io/v1/loops/discover \\
-    -H "Authorization: Bearer $HELIX_KEY" \\
-    -d '{ "query": "meta ads · dtc skincare", "sort": "composite_desc" }'
+const SNIPPET = `$ curl -X POST https://api.helix.io/api/discovery/jobs \\
+    -H "X-API-Key: $HELIX_KEY" \\
+    -d '{ "query": "dtc skincare", "sort": "composite_desc" }'
 
 {
-  "job_id": "job_7f3a91",
-  "status": "ready",
-  "records_found": 1284,
-  "top_score": 0.94,
-  "took_ms": 3180
+  "job_id": "job_01j7b9k2x4p0m",
+  "status": "in_progress",
+  "progress": 0.25,
+  "stage": "targeting_ad_libraries",
+  "stage_label": "Targeting verified ad libraries",
+  "records_found": 0,
+  "elapsed_ms": 420
 }`
 
 export function DocsSection() {
@@ -36,17 +38,20 @@ export function DocsSection() {
             job, and pull ranked records straight into your own pipeline —
             webhooks included.
           </p>
-          <div className="mt-3">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button as={Link} to="/docs" variant="primary" size="lg">
+              Explore Docs
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+            </Button>
             <Button as={Link} to="/sign-up" variant="outline" size="lg">
               Get an API key
-              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </Button>
           </div>
         </div>
 
         <div className="overflow-hidden rounded-sm border border-border bg-surface">
           <div className="flex items-center gap-2 border-b border-border bg-surface-2 px-3 py-2">
-            <span className="label-mono">POST /v1/loops/discover</span>
+            <span className="label-mono">POST /api/discovery/jobs</span>
             <span className="ml-auto label-mono text-accent-dim">200 ok</span>
           </div>
           <pre className="overflow-x-auto px-4 py-4">
