@@ -382,7 +382,9 @@ export function DiscoverPage() {
                   <EntityDossierCard profile={job.entity_profile} query={query} isZeroResults={true} />
                   <div className="flex flex-col items-center justify-center p-8 text-center">
                     <p className="max-w-md text-xs leading-relaxed text-text-muted">
-                      {job?.stage_label || "No direct self-serve Meta ad campaigns found. Explore their organic viral clipping, streaming reach, and monetization playbook in the dossier above."}
+                      {job?.stage_label && job.stage_label !== "complete"
+                        ? job.stage_label
+                        : t("noMetaAdsNotice")}
                     </p>
                     {filtersWereApplied ? (
                       <Button size="sm" variant="outline" onClick={clearFilters} className="mt-3">

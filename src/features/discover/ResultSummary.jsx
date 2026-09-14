@@ -1,6 +1,7 @@
 import { useMemo } from "react"
 import { formatDuration, formatInt } from "@/lib/format"
 import { SORT_OPTIONS } from "@/lib/constants"
+import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * Result-set readout. A completed query is a research artefact, so its
@@ -21,6 +22,7 @@ function Cell({ label, children }) {
 }
 
 export function ResultSummary({ query, results, sort, filterCount, selectedId }) {
+  const { t } = useLanguage()
   const sortLabel =
     SORT_OPTIONS.find((o) => o.value === sort)?.label?.toLowerCase() ?? sort
 
@@ -37,18 +39,18 @@ export function ResultSummary({ query, results, sort, filterCount, selectedId })
   return (
     <div className="flex shrink-0 flex-wrap items-baseline gap-x-5 gap-y-1 border-b border-border bg-surface px-3 py-2">
       <span className="flex min-w-0 items-baseline gap-1.5">
-        <span className="label-mono">query</span>
+        <span className="label-mono">{t("queryLabel", "query")}</span>
         <span className="truncate font-mono text-[11px] text-text">
           &quot;{query?.trim() || "*"}&quot;
         </span>
       </span>
-      <Cell label="creatives">{formatInt(results.total)}</Cell>
-      <Cell label="active ≤7d">
+      <Cell label={t("creativesLabel", "creatives")}>{formatInt(results.total)}</Cell>
+      <Cell label={t("active7dLabel", "active ≤7d")}>
         {formatInt(activeOnPage)}
         <span className="text-text-faint">/page</span>
       </Cell>
-      <Cell label="filters">{formatInt(filterCount)}</Cell>
-      <Cell label="sort">{sortLabel}</Cell>
+      <Cell label={t("filtersLabel", "filters")}>{formatInt(filterCount)}</Cell>
+      <Cell label={t("sortLabel", "sort")}>{sortLabel}</Cell>
       {selectedId ? (
         <span className="flex items-baseline gap-1.5">
           <span className="label-mono">selected</span>
@@ -61,3 +63,5 @@ export function ResultSummary({ query, results, sort, filterCount, selectedId })
     </div>
   )
 }
+
+export default ResultSummary
