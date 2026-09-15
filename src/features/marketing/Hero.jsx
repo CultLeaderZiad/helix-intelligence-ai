@@ -47,10 +47,10 @@ const PRODUCT_STEPS = [
 export function Hero() {
   return (
     <section className="grid-backdrop relative border-b border-border bg-bg overflow-hidden min-h-[600px]">
-      {/* Interactive PixelBlast Background Layer */}
+      {/* Interactive PixelBlast Ambient Background */}
       <div 
-        className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-60"
-        style={{ width: '100%', height: '100%' }}
+        className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-50"
+        aria-hidden="true"
       >
         <PixelBlast
           variant="diamond"
@@ -69,7 +69,6 @@ export function Hero() {
           liquidWobbleSpeed={5}
           speed={1.15}
           edgeFade={0.09}
-          transparent
         />
       </div>
 

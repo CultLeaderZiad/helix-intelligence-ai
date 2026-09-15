@@ -1,143 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import * as THREE from 'three';
-import { Effect, EffectComposer, EffectPass, RenderPass } from 'postprocessing';
 import './PixelBlast.css';
 
-const createTouchTexture = () => {
-  const size = 64;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  const texture = new THREE.Texture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.generateMipmaps = false;
-  const trail = [];
-  let last = null;
-  const maxAge = 64;
-  let radius = 0.1 * size;
-  const speed = 1 / maxAge;
-
-  const clear = () => {
-    ctx.fillStyle = 'black';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  };
-
-  const drawPoint = (p) => {
-    const pos = { x: p.x * size, y: (1 - p.y) * size };
-    let intensity = 1;
-    const easeOutSine = (t) => Math.sin((t * Math.PI) / 2);
-    const easeOutQuad = (t) => -t * (t - 2);
-    if (p.age < maxAge * 0.3) intensity = easeOutSine(p.age / (maxAge * 0.3));
-    else intensity = easeOutQuad(1 - (p.age - maxAge * 0.3) / (maxAge * 0.7)) || 0;
-    intensity *= p.force;
-    const color = `${((p.vx + 1) / 2) * 255}, ${((p.vy + 1) / 2) * 255}, ${intensity * 255}`;
-    const offset = size * 5;
-    ctx.shadowOffsetX = offset;
-    ctx.shadowOffsetY = offset;
-    ctx.shadowBlur = radius;
-    ctx.shadowColor = `rgba(${color},${0.22 * intensity})`;
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(255,0,0,1)';
-    ctx.arc(pos.x - offset, pos.y - offset, radius, 0, Math.PI * 2);
-    ctx.fill();
-  };
-
-  const addTouch = (norm) => {
-    let force = 0;
-    let vx = 0;
-    let vy = 0;
-    if (last) {
-      const dx = norm.x - last.x;
-      const dy = norm.y - last.y;
-      if (dx === 0 && dy === 0) return;
-      const dd = dx * dx + dy * dy;
-      const d = Math.sqrt(dd);
-      vx = dx / (d || 1);
-      vy = dy / (d || 1);
-      force = Math.min(dd * 10000, 1);
-    }
-    last = { x: norm.x, y: norm.y };
-    trail.push({ x: norm.x, y: norm.y, age: 0, force, vx, vy });
-  };
-
-  const update = () => {
-    clear();
-    for (let i = trail.length - 1; i >= 0; i--) {
-      const point = trail[i];
-      const f = point.force * speed * (1 - point.age / maxAge);
-      point.x += point.vx * f;
-      point.y += point.vy * f;
-      point.age++;
-      if (point.age > maxAge) trail.splice(i, 1);
-    }
-    for (let i = 0; i < trail.length; i++) drawPoint(trail[i]);
-    texture.needsUpdate = true;
-  };
-
-  return {
-    canvas,
-    texture,
-    addTouch,
-    update,
-    set radiusScale(v) {
-      radius = 0.1 * size * v;
-    },
-    get radiusScale() {
-      return radius / (0.1 * size);
-    },
-    size
-  };
-};
-
-const createLiquidEffect = (texture, opts) => {
-  const fragment = `
-    uniform sampler2D uTexture;
-    uniform float uStrength;
-    uniform float uTime;
-    uniform float uFreq;
-
-    void mainUv(inout vec2 uv) {
-      vec4 tex = texture2D(uTexture, uv);
-      float vx = tex.r * 2.0 - 1.0;
-      float vy = tex.g * 2.0 - 1.0;
-      float intensity = tex.b;
-
-      float wave = 0.5 + 0.5 * sin(uTime * uFreq + intensity * 6.2831853);
-
-      float amt = uStrength * intensity * wave;
-
-      uv += vec2(vx, vy) * amt;
-    }
-  `;
-  return new Effect('LiquidEffect', fragment, {
-    uniforms: new Map([
-      ['uTexture', new THREE.Uniform(texture)],
-      ['uStrength', new THREE.Uniform(opts?.strength ?? 0.025)],
-      ['uTime', new THREE.Uniform(0)],
-      ['uFreq', new THREE.Uniform(opts?.freq ?? 4.5)]
-    ])
-  });
-};
-
-const SHAPE_MAP = {
-  square: 0,
-  circle: 1,
-  triangle: 2,
-  diamond: 3
-};
-
-const VERTEX_SRC = `
+const VERTEX_SHADER = `
+attribute vec2 a_position;
 void main() {
-  gl_Position = vec4(position, 1.0);
+  gl_Position = vec4(a_position, 0.0, 1.0);
 }
 `;
 
-const FRAGMENT_SRC = `
+const FRAGMENT_SHADER = `
 precision highp float;
 
 uniform vec3  uColor;
@@ -152,45 +23,41 @@ uniform float uRippleSpeed;
 uniform float uRippleThickness;
 uniform float uRippleIntensity;
 uniform float uEdgeFade;
-
 uniform int   uShapeType;
-const int SHAPE_SQUARE   = 0;
-const int SHAPE_CIRCLE   = 1;
-const int SHAPE_TRIANGLE = 2;
-const int SHAPE_DIAMOND  = 3;
+uniform float uLiquidStrength;
+uniform float uLiquidWobbleSpeed;
 
-const int   MAX_CLICKS = 10;
-
-uniform vec2  uClickPos  [MAX_CLICKS];
+const int MAX_CLICKS = 8;
+uniform vec2  uClickPos[MAX_CLICKS];
 uniform float uClickTimes[MAX_CLICKS];
-
-out vec4 fragColor;
 
 float Bayer2(vec2 a) {
   a = floor(a);
-  return fract(a.x / 2. + a.y * a.y * .75);
+  return fract(a.x / 2.0 + a.y * a.y * 0.75);
 }
-#define Bayer4(a) (Bayer2(.5*(a))*0.25 + Bayer2(a))
-#define Bayer8(a) (Bayer4(.5*(a))*0.25 + Bayer2(a))
+#define Bayer4(a) (Bayer2(0.5 * (a)) * 0.25 + Bayer2(a))
+#define Bayer8(a) (Bayer4(0.5 * (a)) * 0.25 + Bayer2(a))
 
-#define FBM_OCTAVES     5
-#define FBM_LACUNARITY  1.25
-#define FBM_GAIN        1.0
+#define FBM_OCTAVES 4
+#define FBM_LACUNARITY 1.25
+#define FBM_GAIN 1.0
 
-float hash11(float n){ return fract(sin(n)*43758.5453); }
+float hash11(float n) {
+  return fract(sin(n) * 43758.5453);
+}
 
-float vnoise(vec3 p){
+float vnoise(vec3 p) {
   vec3 ip = floor(p);
   vec3 fp = fract(p);
-  float n000 = hash11(dot(ip + vec3(0.0,0.0,0.0), vec3(1.0,57.0,113.0)));
-  float n100 = hash11(dot(ip + vec3(1.0,0.0,0.0), vec3(1.0,57.0,113.0)));
-  float n010 = hash11(dot(ip + vec3(0.0,1.0,0.0), vec3(1.0,57.0,113.0)));
-  float n110 = hash11(dot(ip + vec3(1.0,1.0,0.0), vec3(1.0,57.0,113.0)));
-  float n001 = hash11(dot(ip + vec3(0.0,0.0,1.0), vec3(1.0,57.0,113.0)));
-  float n101 = hash11(dot(ip + vec3(1.0,0.0,1.0), vec3(1.0,57.0,113.0)));
-  float n011 = hash11(dot(ip + vec3(0.0,1.0,1.0), vec3(1.0,57.0,113.0)));
-  float n111 = hash11(dot(ip + vec3(1.0,1.0,1.0), vec3(1.0,57.0,113.0)));
-  vec3 w = fp*fp*fp*(fp*(fp*6.0-15.0)+10.0);
+  float n000 = hash11(dot(ip + vec3(0.0, 0.0, 0.0), vec3(1.0, 57.0, 113.0)));
+  float n100 = hash11(dot(ip + vec3(1.0, 0.0, 0.0), vec3(1.0, 57.0, 113.0)));
+  float n010 = hash11(dot(ip + vec3(0.0, 1.0, 0.0), vec3(1.0, 57.0, 113.0)));
+  float n110 = hash11(dot(ip + vec3(1.0, 1.0, 0.0), vec3(1.0, 57.0, 113.0)));
+  float n001 = hash11(dot(ip + vec3(0.0, 0.0, 1.0), vec3(1.0, 57.0, 113.0)));
+  float n101 = hash11(dot(ip + vec3(1.0, 0.0, 1.0), vec3(1.0, 57.0, 113.0)));
+  float n011 = hash11(dot(ip + vec3(0.0, 1.0, 1.0), vec3(1.0, 57.0, 113.0)));
+  float n111 = hash11(dot(ip + vec3(1.0, 1.0, 1.0), vec3(1.0, 57.0, 113.0)));
+  vec3 w = fp * fp * fp * (fp * (fp * 6.0 - 15.0) + 10.0);
   float x00 = mix(n000, n100, w.x);
   float x10 = mix(n010, n110, w.x);
   float x01 = mix(n001, n101, w.x);
@@ -200,89 +67,83 @@ float vnoise(vec3 p){
   return mix(y0, y1, w.z) * 2.0 - 1.0;
 }
 
-float fbm2(vec2 uv, float t){
+float fbm2(vec2 uv, float t) {
   vec3 p = vec3(uv * uScale, t);
-  float amp = 1.0;
+  float amp = 0.5;
   float freq = 1.0;
-  float sum = 1.0;
-  for (int i = 0; i < FBM_OCTAVES; ++i){
-    sum  += amp * vnoise(p * freq);
-    freq *= FBM_LACUNARITY;
-    amp  *= FBM_GAIN;
+  float sum = 0.0;
+  float norm = 0.0;
+  for (int i = 0; i < FBM_OCTAVES; ++i) {
+    sum  += amp * (vnoise(p * freq) * 0.5 + 0.5);
+    norm += amp;
+    freq *= 1.8;
+    amp  *= 0.5;
   }
-  return sum * 0.5 + 0.5;
+  return sum / norm;
 }
 
-float maskCircle(vec2 p, float cov){
-  float r = sqrt(cov) * .25;
-  float d = length(p - 0.5) - r;
-  float aa = 0.5 * fwidth(d);
-  return cov * (1.0 - smoothstep(-aa, aa, d * 2.0));
+float maskCircle(vec2 p, float cov) {
+  if (cov <= 0.02) return 0.0;
+  float r = sqrt(cov) * 0.55;
+  return step(length(p - 0.5), r);
 }
 
-float maskTriangle(vec2 p, vec2 id, float cov){
-  bool flip = mod(id.x + id.y, 2.0) > 0.5;
-  if (flip) p.x = 1.0 - p.x;
-  float r = sqrt(cov);
-  float d  = p.y - r*(1.0 - p.x);
-  float aa = fwidth(d);
-  return cov * clamp(0.5 - d/aa, 0.0, 1.0);
+float maskDiamond(vec2 p, float cov) {
+  if (cov <= 0.02) return 0.0;
+  float r = sqrt(cov) * 0.75;
+  return step(abs(p.x - 0.5) + abs(p.y - 0.5), r);
 }
 
-float maskDiamond(vec2 p, float cov){
-  float r = sqrt(cov) * 0.564;
-  return step(abs(p.x - 0.49) + abs(p.y - 0.49), r);
-}
+void main() {
+  float pixelSize = max(uPixelSize, 1.0);
+  vec2 fragCoord = gl_FragCoord.xy;
+  float aspectRatio = uResolution.x / max(uResolution.y, 1.0);
 
-void main(){
-  float pixelSize = uPixelSize;
-  vec2 fragCoord = gl_FragCoord.xy - uResolution * .5;
-  float aspectRatio = uResolution.x / uResolution.y;
-
-  vec2 pixelId = floor(fragCoord / pixelSize);
   vec2 pixelUV = fract(fragCoord / pixelSize);
 
-  float cellPixelSize = 8.0 * pixelSize;
+  float cellPixelSize = 6.0 * pixelSize;
   vec2 cellId = floor(fragCoord / cellPixelSize);
   vec2 cellCoord = cellId * cellPixelSize;
-  vec2 uv = cellCoord / uResolution * vec2(aspectRatio, 1.0);
+  vec2 uv = ((cellCoord - uResolution * 0.5) / uResolution) * vec2(aspectRatio, 1.0);
 
-  float base = fbm2(uv, uTime * 0.05);
-  base = base * 0.5 - 0.65;
+  // Liquid wobble distortion
+  if (uLiquidStrength > 0.0) {
+    float wave = 0.5 + 0.5 * sin(uTime * uLiquidWobbleSpeed + (uv.x + uv.y) * 6.2831853);
+    uv += vec2(sin(uTime * 1.5 + uv.y * 6.0), cos(uTime * 1.5 + uv.x * 6.0)) * (uLiquidStrength * wave * 0.04);
+  }
 
-  float feed = base + (uDensity - 0.5) * 0.3;
-
-  float speed     = uRippleSpeed;
-  float thickness = uRippleThickness;
-  const float dampT     = 1.0;
-  const float dampR     = 10.0;
+  float noise = fbm2(uv, uTime * 0.06);
+  float dist = length(uv);
+  float blast = exp(-dist * 0.7) * 0.3;
+  float feed = (noise * 0.55 + blast) * (uDensity * 0.7);
 
   if (uEnableRipples == 1) {
-    for (int i = 0; i < MAX_CLICKS; ++i){
+    for (int i = 0; i < MAX_CLICKS; ++i) {
       vec2 pos = uClickPos[i];
       if (pos.x < 0.0) continue;
-      float cellPixelSize = 8.0 * pixelSize;
-      vec2 cuv = (((pos - uResolution * .5 - cellPixelSize * .5) / (uResolution))) * vec2(aspectRatio, 1.0);
+      vec2 cuv = (((pos - cellPixelSize * 0.5) - uResolution * 0.5) / uResolution) * vec2(aspectRatio, 1.0);
       float t = max(uTime - uClickTimes[i], 0.0);
       float r = distance(uv, cuv);
-      float waveR = speed * t;
-      float ring  = exp(-pow((r - waveR) / thickness, 2.0));
-      float atten = exp(-dampT * t) * exp(-dampR * r);
+      float waveR = uRippleSpeed * t;
+      float ring  = exp(-pow((r - waveR) / max(uRippleThickness, 0.01), 2.0));
+      float atten = exp(-1.0 * t) * exp(-6.0 * r);
       feed = max(feed, ring * atten * uRippleIntensity);
     }
   }
 
-  float bayer = Bayer8(fragCoord / uPixelSize) - 0.5;
-  float bw = step(0.5, feed + bayer);
+  float bayer = Bayer8(fragCoord / pixelSize);
+  float bw = step(bayer, feed);
 
-  float h = fract(sin(dot(floor(fragCoord / uPixelSize), vec2(127.1, 311.7))) * 43758.5453);
-  float jitterScale = 1.0 + (h - 0.5) * uPixelJitter;
-  float coverage = bw * jitterScale;
-  float M;
-  if      (uShapeType == SHAPE_CIRCLE)   M = maskCircle (pixelUV, coverage);
-  else if (uShapeType == SHAPE_TRIANGLE) M = maskTriangle(pixelUV, pixelId, coverage);
-  else if (uShapeType == SHAPE_DIAMOND)  M = maskDiamond(pixelUV, coverage);
-  else                                   M = coverage;
+  float h = fract(sin(dot(floor(fragCoord / pixelSize), vec2(127.1, 311.7))) * 43758.5453);
+  float jitterScale = clamp(1.0 + (h - 0.5) * uPixelJitter, 0.3, 1.7);
+  float coverage = clamp(bw * jitterScale, 0.0, 1.0);
+
+  float M = coverage;
+  if (uShapeType == 1) {
+    M = maskCircle(pixelUV, coverage);
+  } else if (uShapeType == 3) {
+    M = maskDiamond(pixelUV, coverage);
+  }
 
   if (uEdgeFade > 0.0) {
     vec2 norm = gl_FragCoord.xy / uResolution;
@@ -291,376 +152,264 @@ void main(){
     M *= fade;
   }
 
-  vec3 color = uColor;
-
-  // sRGB gamma correction - convert linear to sRGB for accurate color output
   vec3 srgbColor = mix(
-    color * 12.92,
-    1.055 * pow(color, vec3(1.0 / 2.4)) - 0.055,
-    step(0.0031308, color)
+    uColor * 12.92,
+    1.055 * pow(uColor, vec3(1.0 / 2.4)) - 0.055,
+    step(0.0031308, uColor)
   );
 
-  fragColor = vec4(srgbColor, M);
+  gl_FragColor = vec4(srgbColor, M);
 }
 `;
 
-const MAX_CLICKS = 10;
+const parseHexColor = (hex) => {
+  const clean = hex.replace('#', '');
+  if (clean.length === 3) {
+    return [
+      parseInt(clean[0] + clean[0], 16) / 255,
+      parseInt(clean[1] + clean[1], 16) / 255,
+      parseInt(clean[2] + clean[2], 16) / 255
+    ];
+  }
+  return [
+    parseInt(clean.substring(0, 2), 16) / 255,
+    parseInt(clean.substring(2, 4), 16) / 255,
+    parseInt(clean.substring(4, 6), 16) / 255
+  ];
+};
+
+const SHAPE_MAP = {
+  square: 0,
+  circle: 1,
+  triangle: 2,
+  diamond: 3
+};
 
 export const PixelBlast = ({
-  variant = 'square',
-  pixelSize = 3,
+  variant = 'diamond',
+  pixelSize = 2,
   color = '#29e23f',
   className = '',
   style = {},
-  antialias = true,
-  patternScale = 2,
-  patternDensity = 1,
-  liquid = false,
-  liquidStrength = 0.1,
-  liquidRadius = 1,
-  pixelSizeJitter = 0,
+  patternScale = 3,
+  patternDensity = 1.2,
+  liquid = true,
+  liquidStrength = 0.12,
+  liquidWobbleSpeed = 5,
+  pixelSizeJitter = 1.55,
   enableRipples = true,
-  rippleIntensityScale = 1,
-  rippleThickness = 0.1,
-  rippleSpeed = 0.3,
-  liquidWobbleSpeed = 4.5,
+  rippleIntensityScale = 1.5,
+  rippleThickness = 0.12,
+  rippleSpeed = 0.4,
   autoPauseOffscreen = true,
-  speed = 0.5,
-  transparent = true,
-  edgeFade = 0.5,
-  noiseAmount = 0
+  speed = 1.15,
+  edgeFade = 0.09
 }) => {
   const containerRef = useRef(null);
-  const visibilityRef = useRef({ visible: true });
-  const speedRef = useRef(speed);
-
-  const threeRef = useRef(null);
-  const prevConfigRef = useRef(null);
+  const canvasRef = useRef(null);
+  const isVisibleRef = useRef(true);
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
-    speedRef.current = speed;
+    const canvas = canvasRef.current;
+    if (!container || !canvas) return;
 
-    // IntersectionObserver to auto-pause offscreen (saves mobile/battery/GPU)
-    let observer;
+    // Use WebGL context (WebGL2 or WebGL1 fallback)
+    const gl = canvas.getContext('webgl2', { alpha: true, antialias: false, powerPreference: 'low-power', preserveDrawingBuffer: true }) ||
+               canvas.getContext('webgl', { alpha: true, antialias: false, powerPreference: 'low-power', preserveDrawingBuffer: true });
+    if (!gl) return;
+
+    // Enable proper alpha blending for transparency
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    const compileShader = (type, source) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, source);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        console.warn('Shader compile error:', gl.getShaderInfoLog(s));
+        gl.deleteShader(s);
+        return null;
+      }
+      return s;
+    };
+
+    const vs = compileShader(gl.VERTEX_SHADER, VERTEX_SHADER);
+    const fs = compileShader(gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+    if (!vs || !fs) return;
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.warn('Program link error:', gl.getProgramInfoLog(program));
+      return;
+    }
+
+    gl.useProgram(program);
+
+    // Fullscreen quad buffer
+    const positionBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([
+        -1, -1,
+         1, -1,
+        -1,  1,
+        -1,  1,
+         1, -1,
+         1,  1
+      ]),
+      gl.STATIC_DRAW
+    );
+
+    const posLoc = gl.getAttribLocation(program, 'a_position');
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+    // Uniform locations
+    const uLocs = {
+      color: gl.getUniformLocation(program, 'uColor'),
+      resolution: gl.getUniformLocation(program, 'uResolution'),
+      time: gl.getUniformLocation(program, 'uTime'),
+      pixelSize: gl.getUniformLocation(program, 'uPixelSize'),
+      scale: gl.getUniformLocation(program, 'uScale'),
+      density: gl.getUniformLocation(program, 'uDensity'),
+      pixelJitter: gl.getUniformLocation(program, 'uPixelJitter'),
+      enableRipples: gl.getUniformLocation(program, 'uEnableRipples'),
+      rippleSpeed: gl.getUniformLocation(program, 'uRippleSpeed'),
+      rippleThickness: gl.getUniformLocation(program, 'uRippleThickness'),
+      rippleIntensity: gl.getUniformLocation(program, 'uRippleIntensity'),
+      edgeFade: gl.getUniformLocation(program, 'uEdgeFade'),
+      shapeType: gl.getUniformLocation(program, 'uShapeType'),
+      liquidStrength: gl.getUniformLocation(program, 'uLiquidStrength'),
+      liquidWobbleSpeed: gl.getUniformLocation(program, 'uLiquidWobbleSpeed'),
+      clickPos: gl.getUniformLocation(program, 'uClickPos'),
+      clickTimes: gl.getUniformLocation(program, 'uClickTimes')
+    };
+
+    const maxClicks = 8;
+    const clickPositions = new Float32Array(maxClicks * 2).fill(-1);
+    const clickTimes = new Float32Array(maxClicks).fill(0);
+    let clickIndex = 0;
+
+    const rgb = parseHexColor(color);
+    gl.uniform3f(uLocs.color, rgb[0], rgb[1], rgb[2]);
+    gl.uniform1f(uLocs.scale, patternScale);
+    gl.uniform1f(uLocs.density, patternDensity);
+    gl.uniform1f(uLocs.pixelJitter, pixelSizeJitter);
+    gl.uniform1i(uLocs.enableRipples, enableRipples ? 1 : 0);
+    gl.uniform1f(uLocs.rippleSpeed, rippleSpeed);
+    gl.uniform1f(uLocs.rippleThickness, rippleThickness);
+    gl.uniform1f(uLocs.rippleIntensity, rippleIntensityScale);
+    gl.uniform1f(uLocs.edgeFade, edgeFade);
+    gl.uniform1i(uLocs.shapeType, SHAPE_MAP[variant] ?? 3);
+    gl.uniform1f(uLocs.liquidStrength, liquid ? liquidStrength : 0.0);
+    gl.uniform1f(uLocs.liquidWobbleSpeed, liquidWobbleSpeed);
+
+    // Resolution handling with mobile optimization
+    const updateSize = () => {
+      const isMobile = window.innerWidth < 768;
+      const dpr = isMobile ? 1 : Math.min(window.devicePixelRatio || 1, 1.25);
+      const width = Math.max(1, Math.floor(container.clientWidth * dpr));
+      const height = Math.max(1, Math.floor(container.clientHeight * dpr));
+      
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+        gl.viewport(0, 0, width, height);
+        gl.uniform2f(uLocs.resolution, width, height);
+        gl.uniform1f(uLocs.pixelSize, pixelSize * dpr);
+      }
+    };
+    updateSize();
+
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(container);
+
+    // Pointer down ripple effect
+    const handlePointer = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / (rect.width || 1);
+      const scaleY = canvas.height / (rect.height || 1);
+      const fx = (e.clientX - rect.left) * scaleX;
+      const fy = (rect.height - (e.clientY - rect.top)) * scaleY;
+
+      clickPositions[clickIndex * 2] = fx;
+      clickPositions[clickIndex * 2 + 1] = fy;
+      clickTimes[clickIndex] = currentTime;
+      clickIndex = (clickIndex + 1) % maxClicks;
+
+      gl.uniform2fv(uLocs.clickPos, clickPositions);
+      gl.uniform1fv(uLocs.clickTimes, clickTimes);
+    };
+
+    window.addEventListener('pointerdown', handlePointer, { passive: true });
+
+    // IntersectionObserver to sleep when off-screen
+    let io;
     if (autoPauseOffscreen && typeof IntersectionObserver !== 'undefined') {
-      observer = new IntersectionObserver(
-        ([entry]) => {
-          visibilityRef.current.visible = entry.isIntersecting;
-        },
-        { threshold: 0.01 }
-      );
-      observer.observe(container);
+      io = new IntersectionObserver(([entry]) => {
+        isVisibleRef.current = entry.isIntersecting;
+      }, { threshold: 0.0, rootMargin: '200px 0px 200px 0px' });
+      io.observe(container);
     }
 
-    const needsReinitKeys = ['antialias', 'liquid', 'noiseAmount'];
-    const cfg = { antialias, liquid, noiseAmount };
-    let mustReinit = false;
-    if (!threeRef.current) mustReinit = true;
-    else if (prevConfigRef.current) {
-      for (const k of needsReinitKeys) {
-        if (prevConfigRef.current[k] !== cfg[k]) {
-          mustReinit = true;
-          break;
-        }
+    const handleVisibility = () => {
+      isVisibleRef.current = !document.hidden;
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    let rafId = 0;
+    let startTime = performance.now();
+    let currentTime = 0;
+
+    const render = (now) => {
+      if (isVisibleRef.current && canvas.width > 0 && canvas.height > 0) {
+        gl.useProgram(program);
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.uniform2f(uLocs.resolution, canvas.width, canvas.height);
+        currentTime = (now - startTime) * 0.001 * speed;
+        gl.uniform1f(uLocs.time, currentTime);
+        gl.clearColor(0, 0, 0, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
       }
-    }
-
-    if (mustReinit) {
-      if (threeRef.current) {
-        const t = threeRef.current;
-        t.resizeObserver?.disconnect();
-        cancelAnimationFrame(t.raf);
-        t.quad?.geometry.dispose();
-        t.material.dispose();
-        t.composer?.dispose();
-        t.renderer.dispose();
-        t.renderer.forceContextLoss();
-        if (t.renderer.domElement.parentElement === container) {
-          container.removeChild(t.renderer.domElement);
-        }
-        threeRef.current = null;
-      }
-
-      let renderer;
-      try {
-        const canvas = document.createElement('canvas');
-        renderer = new THREE.WebGLRenderer({
-          canvas,
-          antialias,
-          alpha: true,
-          powerPreference: 'high-performance'
-        });
-      } catch (err) {
-        console.warn('WebGL initialization failed in PixelBlast:', err);
-        return () => {
-          if (observer) observer.disconnect();
-        };
-      }
-
-      renderer.domElement.style.width = '100%';
-      renderer.domElement.style.height = '100%';
-      renderer.domElement.style.pointerEvents = 'auto';
-      // Cap pixel ratio to max 2 to ensure ultra-smooth performance on high-DPI phones & laptops
-      const dpr = Math.min(typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, 2);
-      renderer.setPixelRatio(dpr);
-      container.appendChild(renderer.domElement);
-
-      if (transparent) renderer.setClearAlpha(0);
-      else renderer.setClearColor(0x000000, 1);
-
-      const uniforms = {
-        uResolution: { value: new THREE.Vector2(0, 0) },
-        uTime: { value: 0 },
-        uColor: { value: new THREE.Color(color) },
-        uClickPos: {
-          value: Array.from({ length: MAX_CLICKS }, () => new THREE.Vector2(-1, -1))
-        },
-        uClickTimes: { value: new Float32Array(MAX_CLICKS) },
-        uShapeType: { value: SHAPE_MAP[variant] ?? 0 },
-        uPixelSize: { value: pixelSize * renderer.getPixelRatio() },
-        uScale: { value: patternScale },
-        uDensity: { value: patternDensity },
-        uPixelJitter: { value: pixelSizeJitter },
-        uEnableRipples: { value: enableRipples ? 1 : 0 },
-        uRippleSpeed: { value: rippleSpeed },
-        uRippleThickness: { value: rippleThickness },
-        uRippleIntensity: { value: rippleIntensityScale },
-        uEdgeFade: { value: edgeFade }
-      };
-
-      const scene = new THREE.Scene();
-      const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-      const material = new THREE.ShaderMaterial({
-        vertexShader: VERTEX_SRC,
-        fragmentShader: FRAGMENT_SRC,
-        uniforms,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-        glslVersion: THREE.GLSL3
-      });
-
-      const quadGeom = new THREE.PlaneGeometry(2, 2);
-      const quad = new THREE.Mesh(quadGeom, material);
-      scene.add(quad);
-      const clock = new THREE.Clock();
-
-      const setSize = () => {
-        const w = container.clientWidth || 1;
-        const h = container.clientHeight || 1;
-        renderer.setSize(w, h, false);
-        uniforms.uResolution.value.set(renderer.domElement.width, renderer.domElement.height);
-        if (threeRef.current?.composer) {
-          threeRef.current.composer.setSize(renderer.domElement.width, renderer.domElement.height);
-        }
-        uniforms.uPixelSize.value = pixelSize * renderer.getPixelRatio();
-      };
-      setSize();
-
-      const ro = new ResizeObserver(setSize);
-      ro.observe(container);
-
-      const randomFloat = () => {
-        if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
-          const u32 = new Uint32Array(1);
-          window.crypto.getRandomValues(u32);
-          return u32[0] / 0xffffffff;
-        }
-        return Math.random();
-      };
-      const timeOffset = randomFloat() * 1000;
-
-      let composer;
-      let touch;
-      let liquidEffect;
-
-      if (liquid) {
-        touch = createTouchTexture();
-        if (touch) {
-          touch.radiusScale = liquidRadius;
-          composer = new EffectComposer(renderer);
-          const renderPass = new RenderPass(scene, camera);
-          liquidEffect = createLiquidEffect(touch.texture, {
-            strength: liquidStrength,
-            freq: liquidWobbleSpeed
-          });
-          const effectPass = new EffectPass(camera, liquidEffect);
-          effectPass.renderToScreen = true;
-          composer.addPass(renderPass);
-          composer.addPass(effectPass);
-        }
-      }
-
-      if (noiseAmount > 0) {
-        if (!composer) {
-          composer = new EffectComposer(renderer);
-          composer.addPass(new RenderPass(scene, camera));
-        }
-        const noiseEffect = new Effect(
-          'NoiseEffect',
-          `uniform float uTime; uniform float uAmount; float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453);} void mainUv(inout vec2 uv){} void mainImage(const in vec4 inputColor,const in vec2 uv,out vec4 outputColor){ float n=hash(floor(uv*vec2(1920.0,1080.0))+floor(uTime*60.0)); float g=(n-0.5)*uAmount; outputColor=inputColor+vec4(vec3(g),0.0);} `,
-          {
-            uniforms: new Map([
-              ['uTime', new THREE.Uniform(0)],
-              ['uAmount', new THREE.Uniform(noiseAmount)]
-            ])
-          }
-        );
-        const noisePass = new EffectPass(camera, noiseEffect);
-        noisePass.renderToScreen = true;
-        if (composer && composer.passes.length > 0) {
-          composer.passes.forEach((p) => {
-            p.renderToScreen = false;
-          });
-        }
-        composer.addPass(noisePass);
-      }
-
-      if (composer) composer.setSize(renderer.domElement.width, renderer.domElement.height);
-
-      const mapToPixels = (e) => {
-        const rect = renderer.domElement.getBoundingClientRect();
-        const scaleX = renderer.domElement.width / (rect.width || 1);
-        const scaleY = renderer.domElement.height / (rect.height || 1);
-        const fx = (e.clientX - rect.left) * scaleX;
-        const fy = (rect.height - (e.clientY - rect.top)) * scaleY;
-        return {
-          fx,
-          fy,
-          w: renderer.domElement.width,
-          h: renderer.domElement.height
-        };
-      };
-
-      const onPointerDown = (e) => {
-        const { fx, fy } = mapToPixels(e);
-        const ix = threeRef.current?.clickIx ?? 0;
-        uniforms.uClickPos.value[ix].set(fx, fy);
-        uniforms.uClickTimes.value[ix] = uniforms.uTime.value;
-        if (threeRef.current) threeRef.current.clickIx = (ix + 1) % MAX_CLICKS;
-      };
-
-      const onPointerMove = (e) => {
-        if (!touch) return;
-        const { fx, fy, w, h } = mapToPixels(e);
-        touch.addTouch({ x: fx / w, y: fy / h });
-      };
-
-      renderer.domElement.addEventListener('pointerdown', onPointerDown, { passive: true });
-      renderer.domElement.addEventListener('pointermove', onPointerMove, { passive: true });
-
-      let raf = 0;
-      const animate = () => {
-        if (autoPauseOffscreen && !visibilityRef.current.visible) {
-          raf = requestAnimationFrame(animate);
-          return;
-        }
-        uniforms.uTime.value = timeOffset + clock.getElapsedTime() * speedRef.current;
-        if (liquidEffect) {
-          const timeUniform = liquidEffect.uniforms.get('uTime');
-          if (timeUniform) timeUniform.value = uniforms.uTime.value;
-        }
-        if (composer) {
-          if (touch) touch.update();
-          composer.passes.forEach((p) => {
-            if (p.effects) {
-              p.effects.forEach((eff) => {
-                const timeUniform = eff.uniforms?.get('uTime');
-                if (timeUniform) timeUniform.value = uniforms.uTime.value;
-              });
-            }
-          });
-          composer.render();
-        } else {
-          renderer.render(scene, camera);
-        }
-        raf = requestAnimationFrame(animate);
-      };
-      raf = requestAnimationFrame(animate);
-
-      threeRef.current = {
-        renderer,
-        scene,
-        camera,
-        material,
-        clock,
-        clickIx: 0,
-        uniforms,
-        resizeObserver: ro,
-        raf,
-        quad,
-        timeOffset,
-        composer,
-        touch,
-        liquidEffect,
-        observer
-      };
-    } else {
-      const t = threeRef.current;
-      t.uniforms.uShapeType.value = SHAPE_MAP[variant] ?? 0;
-      t.uniforms.uPixelSize.value = pixelSize * t.renderer.getPixelRatio();
-      t.uniforms.uColor.value.set(color);
-      t.uniforms.uScale.value = patternScale;
-      t.uniforms.uDensity.value = patternDensity;
-      t.uniforms.uPixelJitter.value = pixelSizeJitter;
-      t.uniforms.uEnableRipples.value = enableRipples ? 1 : 0;
-      t.uniforms.uRippleIntensity.value = rippleIntensityScale;
-      t.uniforms.uRippleThickness.value = rippleThickness;
-      t.uniforms.uRippleSpeed.value = rippleSpeed;
-      t.uniforms.uEdgeFade.value = edgeFade;
-      if (transparent) t.renderer.setClearAlpha(0);
-      else t.renderer.setClearColor(0x000000, 1);
-      if (t.liquidEffect) {
-        const uStrength = t.liquidEffect.uniforms.get('uStrength');
-        if (uStrength) uStrength.value = liquidStrength;
-        const uFreq = t.liquidEffect.uniforms.get('uFreq');
-        if (uFreq) uFreq.value = liquidWobbleSpeed;
-      }
-      if (t.touch) t.touch.radiusScale = liquidRadius;
-    }
-
-    prevConfigRef.current = cfg;
+      rafId = requestAnimationFrame(render);
+    };
+    rafId = requestAnimationFrame(render);
 
     return () => {
-      if (observer) observer.disconnect();
-      if (threeRef.current && mustReinit) return;
-      if (!threeRef.current) return;
-      const t = threeRef.current;
-      t.resizeObserver?.disconnect();
-      cancelAnimationFrame(t.raf);
-      t.quad?.geometry.dispose();
-      t.material.dispose();
-      t.composer?.dispose();
-      t.renderer.dispose();
-      t.renderer.forceContextLoss();
-      if (t.renderer.domElement.parentElement === container) {
-        container.removeChild(t.renderer.domElement);
-      }
-      threeRef.current = null;
+      cancelAnimationFrame(rafId);
+      ro.disconnect();
+      if (io) io.disconnect();
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pointerdown', handlePointer);
+      gl.deleteBuffer(positionBuffer);
+      gl.deleteProgram(program);
+      gl.deleteShader(vs);
+      gl.deleteShader(fs);
     };
   }, [
-    antialias,
-    liquid,
-    noiseAmount,
+    variant,
     pixelSize,
+    color,
     patternScale,
     patternDensity,
+    liquid,
+    liquidStrength,
+    liquidWobbleSpeed,
+    pixelSizeJitter,
     enableRipples,
     rippleIntensityScale,
     rippleThickness,
     rippleSpeed,
-    pixelSizeJitter,
-    edgeFade,
-    transparent,
-    liquidStrength,
-    liquidRadius,
-    liquidWobbleSpeed,
     autoPauseOffscreen,
-    variant,
-    color,
-    speed
+    speed,
+    edgeFade
   ]);
 
   return (
@@ -668,8 +417,10 @@ export const PixelBlast = ({
       ref={containerRef}
       className={`pixel-blast-container ${className}`}
       style={style}
-      aria-label="PixelBlast interactive background"
-    />
+      aria-hidden="true"
+    >
+      <canvas ref={canvasRef} />
+    </div>
   );
 };
 

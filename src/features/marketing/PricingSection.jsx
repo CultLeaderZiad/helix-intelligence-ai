@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/Button"
+import { PixelBlast } from "@/components/ui/PixelBlast"
 
 /**
  * Pricing — priced by loop volume, not seats, because the product's unit of
@@ -61,8 +62,33 @@ const TIERS = [
 
 export function PricingSection() {
   return (
-    <section id="pricing" className="scroll-mt-16 border-b border-border">
-      <div className="mx-auto w-full max-w-6xl px-4 py-20 md:px-6">
+    <section id="pricing" className="scroll-mt-16 border-b border-border bg-bg relative overflow-hidden">
+      {/* Interactive PixelBlast Ambient Background */}
+      <div 
+        className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-45"
+        aria-hidden="true"
+      >
+        <PixelBlast
+          variant="diamond"
+          pixelSize={2}
+          color="#29e23f"
+          patternScale={3}
+          patternDensity={1.2}
+          pixelSizeJitter={1.55}
+          enableRipples
+          rippleSpeed={0.4}
+          rippleThickness={0.12}
+          rippleIntensityScale={1.5}
+          liquid
+          liquidStrength={0.12}
+          liquidRadius={1.2}
+          liquidWobbleSpeed={5}
+          speed={1.15}
+          edgeFade={0.09}
+        />
+      </div>
+
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-4 py-20 md:px-6">
         <div className="flex flex-col gap-3 md:max-w-2xl">
           <span className="font-mono text-[10px] uppercase leading-none tracking-[0.14em] text-accent-dim">
             Pricing
