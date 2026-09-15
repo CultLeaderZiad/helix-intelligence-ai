@@ -87,9 +87,13 @@ export function MarketingFooter() {
   const activeDoc = activeLegalModal ? LEGAL_DOCS[activeLegalModal] : null
 
   return (
-    <footer className="relative border-t border-border bg-[#07080a] text-text overflow-hidden">
-      {/* Top Grid Border Texture — matching the screenshot header */}
-      <div className="relative h-14 sm:h-16 w-full border-b border-white/[0.06] overflow-hidden">
+    <footer className="relative bg-[#050508] border-t border-white/[0.08] overflow-hidden text-neutral-400 font-sans">
+      {/* Top subtle grid lines aesthetic */}
+      <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent z-10" />
+      <div className="absolute top-0 inset-x-0 h-6 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/10 via-transparent to-transparent z-10" />
+
+      {/* Top Grid Border Texture strip */}
+      <div className="relative h-12 sm:h-14 w-full border-b border-white/[0.06] overflow-hidden">
         <div
           className="absolute inset-0 opacity-40"
           style={{
@@ -97,23 +101,22 @@ export function MarketingFooter() {
             backgroundSize: "36px 36px",
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#07080a]/90" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#050508]/90" />
       </div>
 
       {/* Main Footer Body with Background HELIX Watermark */}
       <div className="relative px-6 py-14 sm:px-8 sm:py-20 lg:px-12">
-        {/* Giant Watermark: "HELIX" spanning horizontally behind columns */}
-        <div
+        {/* Massive Background Watermark Typography: "HELIX" */}
+        <div 
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-12 z-0 mx-auto flex w-full max-w-7xl select-none items-end justify-between overflow-hidden px-4 md:px-8"
+          className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden"
         >
-          <div className="flex w-full items-end justify-between font-sans text-[18vw] font-black leading-none tracking-[-0.04em] text-white/[0.038] xl:text-[210px]">
-            <span>H</span>
-            <span>E</span>
-            <span>L</span>
-            <span>I</span>
-            <span>X</span>
-          </div>
+          <span
+            className="font-sans font-black text-[clamp(7rem,25vw,22rem)] tracking-[-0.04em] text-white/[0.11] leading-none uppercase select-none pointer-events-none whitespace-nowrap"
+            style={{ willChange: "transform" }}
+          >
+            HELIX
+          </span>
         </div>
 
         {/* Foreground Content Columns */}
@@ -122,7 +125,7 @@ export function MarketingFooter() {
           <div className="flex flex-col gap-4 sm:col-span-2 md:col-span-5 lg:col-span-4">
             <Link to="/" className="flex items-center gap-2.5 text-white">
               <span className="text-2xl font-bold tracking-tight text-white font-sans">
-                Helix
+                Helix Intelligence
               </span>
             </Link>
             <p className="max-w-sm text-[13.5px] leading-relaxed text-text-muted">

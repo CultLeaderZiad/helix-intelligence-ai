@@ -2,6 +2,7 @@ import { Link } from "react-router-dom"
 import { ArrowRight, Sparkles, Check, TrendingUp, Layers, Zap, Eye, Terminal as TerminalIcon } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
+import { PixelBlast } from "@/components/ui/PixelBlast"
 
 /**
  * =======================================================================
@@ -45,8 +46,34 @@ const PRODUCT_STEPS = [
 
 export function Hero() {
   return (
-    <section className="grid-backdrop relative border-b border-border bg-bg overflow-hidden">
-      <div className="mx-auto flex w-full max-w-6xl flex-col px-4 py-20 md:px-6 md:py-32">
+    <section className="grid-backdrop relative border-b border-border bg-bg overflow-hidden min-h-[600px]">
+      {/* Interactive PixelBlast Background Layer */}
+      <div 
+        className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-60"
+        style={{ width: '100%', height: '100%' }}
+      >
+        <PixelBlast
+          variant="diamond"
+          pixelSize={2}
+          color="#29e23f"
+          patternScale={3}
+          patternDensity={1.2}
+          pixelSizeJitter={1.55}
+          enableRipples
+          rippleSpeed={0.4}
+          rippleThickness={0.12}
+          rippleIntensityScale={1.5}
+          liquid
+          liquidStrength={0.12}
+          liquidRadius={1.2}
+          liquidWobbleSpeed={5}
+          speed={1.15}
+          edgeFade={0.09}
+          transparent
+        />
+      </div>
+
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col px-4 py-20 md:px-6 md:py-32">
         
         {/* --- Top Status Badge --- */}
         <div className="flex items-center">
