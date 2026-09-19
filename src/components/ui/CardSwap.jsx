@@ -123,13 +123,33 @@ export const CardSwap = ({
   const intervalRef = useRef(0)
   const container = useRef(null)
   const isAnimatingRef = useRef(false)
+  const [isInView, setIsInView] = useState(false)
+
+  // IntersectionObserver to freeze animations completely when off-screen
+  useEffect(() => {
+    const node = container.current
+    if (!node || typeof IntersectionObserver === 'undefined') {
+      setIsInView(true)
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsInView(entry.isIntersecting)
+      },
+      { threshold: 0.15 }
+    )
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
 
   // Fast, crisp animation timing
   const config = useMemo(() => ({
     ease: 'power3.out',
-    durDrop: 0.55,
-    durMove: 0.55,
-    durReturn: 0.55,
+    durDrop: 0.5,
+    durMove: 0.5,
+    durReturn: 0.5,
     promoteOverlap: 0.75,
     returnDelay: 0.08
   }), [])
@@ -272,9 +292,13 @@ export const CardSwap = ({
     }
   }, [activeCardIndex, jumpTo])
 
-  // Interval timer for auto-swap
+  // Interval timer for auto-swap — ONLY runs when visible in viewport
   useEffect(() => {
-    if (delay <= 0) return
+    if (delay <= 0 || !isInView) {
+      tlRef.current?.pause()
+      clearInterval(intervalRef.current)
+      return
+    }
 
     intervalRef.current = window.setInterval(swap, delay)
 
@@ -285,6 +309,7 @@ export const CardSwap = ({
         clearInterval(intervalRef.current)
       }
       const resume = () => {
+        if (!isInView) return
         tlRef.current?.play()
         clearInterval(intervalRef.current)
         intervalRef.current = window.setInterval(swap, delay)
@@ -303,7 +328,7 @@ export const CardSwap = ({
       clearInterval(intervalRef.current)
       tlRef.current?.kill()
     }
-  }, [delay, pauseOnHover, swap])
+  }, [delay, pauseOnHover, swap, isInView])
 
   const rendered = childArr.map((child, i) =>
     isValidElement(child)

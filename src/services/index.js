@@ -25,6 +25,9 @@ import playbookApi from "./api/playbookService.api"
 import { updatesApi } from "./api/updatesService.api"
 import monitorApi from "./api/monitorService.api"
 
+import scoutMock from "./mock/scoutService.mock"
+import scoutApi from "./api/scoutService.api"
+
 const useApi = DATA_SOURCE === "api"
 
 export const discoverService = useApi ? discoverApi : discoverMock
@@ -43,6 +46,7 @@ export const simulationService = useApi ? simulationApi : simulationMock
 export const supportService = supportApi
 export const playbookService = playbookApi
 export const updatesService = updatesApi
+export const scoutService = useApi ? scoutApi : scoutMock
 // Monitors are inherently server-side state (a scheduler runs them), so there
 // is no mock counterpart to switch between.
 export const monitorService = monitorApi

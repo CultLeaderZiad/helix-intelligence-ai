@@ -70,6 +70,8 @@ const SupportPage = safeLazy(() => import("@/pages/SupportPage").then(m => ({ de
 const NotificationsPage = safeLazy(() => import("@/pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })))
 const DocsHomePage = safeLazy(() => import("@/pages/docs/DocsHomePage").then(m => ({ default: m.DocsHomePage })))
 const DocsDetailPage = safeLazy(() => import("@/pages/docs/DocsDetailPage").then(m => ({ default: m.DocsDetailPage })))
+const ScoutPage = safeLazy(() => import("@/pages/ScoutPage").then(m => ({ default: m.default || m.ScoutPage })))
+const ScoutCliDocsPage = safeLazy(() => import("@/pages/docs/ScoutCliDocsPage").then(m => ({ default: m.default || m.ScoutCliDocsPage })))
 
 const PUBLIC_TITLES = {
   "/docs": "Documentation & API Reference",
@@ -87,6 +89,8 @@ const PUBLIC_TITLES = {
   "/settings": "Profile & Settings",
   "/support": "Support & Feedback",
   "/notifications": "Notifications & Announcements",
+  "/scout": "Scout · Social Lead Gen",
+  "/docs/scout-cli": "Scout CLI Reference",
 }
 
 function DocumentTitle() {
@@ -164,6 +168,7 @@ export default function App() {
 
                   {/* Public documentation system */}
                   <Route path="/docs" element={<DocsHomePage />} />
+                  <Route path="/docs/scout-cli" element={<ScoutCliDocsPage />} />
                   <Route path="/docs/:section" element={<DocsDetailPage />} />
                   <Route path="/docs/:section/:slug" element={<DocsDetailPage />} />
 
@@ -200,6 +205,7 @@ export default function App() {
                       <Route path="/intelligence" element={<IntelligencePage />} />
                       <Route path="/create" element={<CreatePage />} />
                       <Route path="/monitors" element={<MonitorsPage />} />
+                      <Route path="/scout" element={<ScoutPage />} />
                       <Route path="performance" element={<PerformancePage />} />
                       <Route path="dashboard" element={<DashboardPage />} />
                       <Route path="/swipe-files" element={<SwipeFilesPage />} />

@@ -226,4 +226,45 @@
  * @property {AdminServiceHealth[]} services
  */
 
+/**
+ * @typedef {Object} ScoutLead
+ * @property {string} id
+ * @property {string} job_id
+ * @property {string} platform
+ * @property {string} handle
+ * @property {string|null} name
+ * @property {string|null} email
+ * @property {string|null} phone
+ * @property {string|null} website
+ * @property {string|null} bio
+ * @property {number} followers
+ * @property {number} lead_score
+ * @property {Record<string, any>} sources
+ * @property {string} created_at
+ */
+
+/**
+ * @typedef {Object} ScoutJob
+ * @property {string} job_id
+ * @property {'queued'|'running'|'succeeded'|'failed'} status
+ * @property {string} stage
+ * @property {string} stage_label
+ * @property {number} stage_index
+ * @property {number} stages_total
+ * @property {string[]} logs
+ * @property {number} leads_count
+ * @property {number} elapsed_ms
+ * @property {number} credits_used
+ * @property {string|null} error_msg
+ * @property {string} created_at
+ * @property {string|null} completed_at
+ */
+
+/**
+ * @typedef {Object} ScoutJobParams
+ * @property {string[]} platforms
+ * @property {string[]} handles
+ * @property {boolean} enrich_emails
+ */
+
 export {}

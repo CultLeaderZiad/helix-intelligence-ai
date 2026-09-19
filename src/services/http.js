@@ -35,7 +35,7 @@ function buildQuery(params = {}) {
  * Pings backend health in the background on startup and every 3 minutes
  * so all requests, logins, searches, and button clicks respond instantly with 0 delay.
  */
-let isWarmedUp = false
+// Ping immediately on startup and keep backend warm every 2 minutes
 export function startBackendKeepAlive() {
   if (typeof window === "undefined") return
   
@@ -50,8 +50,8 @@ export function startBackendKeepAlive() {
 
   // Ping immediately
   ping()
-  // Keep warm every 3 minutes
-  setInterval(ping, 3 * 60 * 1000)
+  // Keep warm every 2 minutes so Render backend never goes cold
+  setInterval(ping, 2 * 60 * 1000)
 }
 
 // Start keepalive automatically on import in browser
@@ -59,7 +59,8 @@ startBackendKeepAlive()
 
 /**
  * Core HTTP Request dispatcher with automatic resilient retries.
- * Automatically retries up to 2 times on transient network glitches or 502/503/504 errors.
+ * Automatically retries up to 6 times on transient network glitches or 502/503/504 errors
+ * to gracefully absorb Render cold-start latency.
  */
 export async function request(path, options = {}, retryCount = 0) {
   const { method = "GET", params, body, signal, headers: extraHeaders } = options
@@ -85,18 +86,18 @@ export async function request(path, options = {}, retryCount = 0) {
   } catch (err) {
     if (err?.name === "AbortError") throw err
 
-    // Transparent retry on network disconnect / connection drop (max 3 retries with backoff)
-    if (retryCount < 3) {
-      await new Promise((resolve) => setTimeout(resolve, 800 * Math.pow(1.5, retryCount)))
+    // Transparent retry on network disconnect / Render waking up (up to 5 retries)
+    if (retryCount < 5) {
+      await new Promise((resolve) => setTimeout(resolve, 1200 * Math.pow(1.3, retryCount)))
       return request(path, options, retryCount + 1)
     }
 
     throw new ServiceError("Network connection interrupted. Please try again.", { code: "network_error" })
   }
 
-  // If server returns 502, 503, or 504 gateway error (Render cold-start or restart), retry transparently
-  if ([502, 503, 504].includes(res.status) && retryCount < 3) {
-    await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(1.5, retryCount)))
+  // If server returns 502, 503, or 504 gateway error (Render cold-start boot), retry transparently
+  if ([502, 503, 504].includes(res.status) && retryCount < 6) {
+    await new Promise((resolve) => setTimeout(resolve, 1500 * Math.pow(1.3, retryCount)))
     return request(path, options, retryCount + 1)
   }
 

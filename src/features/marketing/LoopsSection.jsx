@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   Clock,
   Eye,
-  Check
+  Check,
+  Crosshair,
 } from "lucide-react"
 
 export function LoopsSection() {
@@ -62,6 +63,14 @@ export function LoopsSection() {
       desc: "Composite ad scoring and cross-brand reach leaderboards grounded in real data.",
       icon: TrendingUp,
       tag: "Benchmarking"
+    },
+    {
+      num: "06",
+      key: "scout",
+      title: "Helix Scout Engine",
+      desc: "Scrape social profiles, enrich direct contact databases, and export verified leads.",
+      icon: Crosshair,
+      tag: "Social Lead Gen"
     }
   ]
 
@@ -544,6 +553,85 @@ export function LoopsSection() {
                     <span className="text-accent font-bold flex items-center gap-1 hover:underline">
                       Share Playbook →
                     </span>
+                  </div>
+                </Card>
+
+                {/* ============================================================ */}
+                {/* CARD 5: HELIX SCOUT ENGINE (Loop 06) */}
+                {/* ============================================================ */}
+                <Card className="bg-[#0e1115] border border-white/10 p-4 sm:p-6 text-left flex flex-col justify-between shadow-2xl h-full">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-border/80 pb-2.5 sm:pb-3 gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-accent" />
+                      </span>
+                      <Crosshair className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent shrink-0" />
+                      <span className="font-mono text-[11px] sm:text-xs lg:text-sm font-bold text-text truncate">
+                        Scout &gt; Social Lead Gen
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full border border-accent/40 bg-accent/15 text-accent font-mono text-[9px] sm:text-[11px] font-semibold shrink-0">
+                      ● Active Pipeline
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 sm:space-y-2.5 py-1">
+                    {/* Platforms Bar */}
+                    <div className="p-2 sm:p-2.5 rounded-xl border border-border bg-surface flex items-center justify-between text-xs font-mono">
+                      <span className="text-text-muted">Target Handles: <strong className="text-white">3 queued</strong></span>
+                      <div className="flex gap-1">
+                        {["IG", "GH", "LT", "TT"].map((p) => (
+                          <span key={p} className="px-1.5 py-0.5 rounded border border-accent/30 bg-accent/10 text-accent font-mono text-[9.5px] font-bold">
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Verified Lead Snapshot */}
+                    <div className="p-2.5 sm:p-3 rounded-xl border border-border bg-surface/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-xs sm:text-sm font-mono">@helixagency</span>
+                          <span className="text-[10px] font-mono text-text-faint">(Instagram)</span>
+                        </div>
+                        <span className="px-2 py-0.5 rounded border border-accent/40 bg-accent/15 text-accent font-mono text-[11px] font-extrabold shadow-sm shadow-accent/20">
+                          SCORE: 78
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                        <div>
+                          <span className="text-text-faint text-[10px] block">EMAIL (BIO VERIFIED)</span>
+                          <span className="text-text font-semibold truncate block">hello@helixx.xo.je</span>
+                        </div>
+                        <div>
+                          <span className="text-text-faint text-[10px] block">PHONE (WHATSAPP)</span>
+                          <span className="text-text font-semibold truncate block">+966 50 123 4567</span>
+                        </div>
+                      </div>
+
+                      {/* Score bar */}
+                      <div className="space-y-1 pt-1">
+                        <div className="flex justify-between text-[10px] font-mono text-text-muted">
+                          <span>Contact Enrichment Confidence</span>
+                          <span className="text-accent font-bold">90%</span>
+                        </div>
+                        <div className="h-1 w-full rounded-full bg-[#1c1c24] overflow-hidden">
+                          <div className="h-full bg-accent rounded-full" style={{ width: "90%" }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-text-faint">
+                    <span>kiryano/Scout MIT Adapted</span>
+                    <a href="/scout" className="text-accent font-bold flex items-center gap-1 hover:underline">
+                      Launch Scout Loop →
+                    </a>
                   </div>
                 </Card>
               </CardSwap>

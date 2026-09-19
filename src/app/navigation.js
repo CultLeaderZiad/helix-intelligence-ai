@@ -1,4 +1,4 @@
-import { Radar, Network, PenLine, Activity, BookOpen, Eye } from "lucide-react"
+import { Radar, Network, PenLine, Activity, BookOpen, Eye, Crosshair } from "lucide-react"
 
 /**
  * The loops of the product. Single source of truth for the sidebar,
@@ -44,6 +44,14 @@ export const NAV_SECTIONS = [
     label: "Monitors",
     icon: Eye,
     description: "Re-run a search on a schedule and report what changed.",
+    status: "live",
+  },
+  {
+    key: "scout",
+    path: "/scout",
+    label: "Scout",
+    icon: Crosshair,
+    description: "Scrape social profiles, enrich contacts, export leads.",
     status: "live",
   },
 ]

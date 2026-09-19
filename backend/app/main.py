@@ -33,6 +33,7 @@ from app.api.routers import (
     simulation,
     uploads,
     monitors,
+    scout,
 )
 
 @asynccontextmanager
@@ -220,6 +221,7 @@ app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", 
 app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation", tags=["simulation"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", tags=["monitors"])
+app.include_router(scout.router, prefix=f"{settings.API_V1_STR}/scout", tags=["scout"])
 app.include_router(higgsfield.router, prefix=f"{settings.API_V1_STR}/higgsfield", tags=["higgsfield"])
 app.include_router(higgsfield.router, prefix="/higgsfield", tags=["higgsfield"])
 
