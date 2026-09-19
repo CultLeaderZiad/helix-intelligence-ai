@@ -68,11 +68,14 @@ export function SignInPage() {
       
       navigate(finalRedirect, { replace: true })
     } catch (err) {
+      const isCold = err?.code === "network_error" || (err?.status >= 502 && err?.status <= 504)
       setAuthError({
-        status: "auth failed",
-        tone: "danger",
-        message: err instanceof ServiceError ? err.message : (err?.message || "Sign in failed. Please try again."),
-        isColdStart: false,
+        status: isCold ? "server waking" : "auth failed",
+        tone: isCold ? "warning" : "danger",
+        message: isCold
+          ? "The backend is waking up from sleep. Click retry below to complete sign in."
+          : (err instanceof ServiceError ? err.message : (err?.message || "Sign in failed. Please try again.")),
+        isColdStart: isCold,
       })
       setSubmitting(false)
     }

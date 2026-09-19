@@ -26,7 +26,7 @@ export const scoutApi = {
   },
 
   exportCsv(jobId) {
-    const token = localStorage.getItem("token") || ""
+    const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token") || ""
     const exportUrl = `${API_BASE_URL}/scout/export?job_id=${encodeURIComponent(jobId)}`
     
     // Trigger download with auth header

@@ -13,6 +13,7 @@ from app.core.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.scout import ScoutJob, ScoutLead
+from app.services.billing_service import get_or_create_default_org
 from app.services.scout_service import run_scout_job_worker
 
 router = APIRouter()
@@ -43,11 +44,9 @@ async def create_scout_job(
     handle_count = len(clean_handles)
     credit_cost = 1.0 + (0.5 * handle_count) + (0.5 * handle_count if req.enrich_emails else 0.0)
 
-    # Check organization credits unless admin
-    is_admin = current_user.role == "admin" or current_user.is_superuser
+    org = await get_or_create_default_org(db, current_user)
+    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False)
     if not is_admin:
-        org_res = await db.execute(select(Organization).where(Organization.id == current_user.org_id))
-        org = org_res.scalars().first()
         if not org or (org.credit_balance or 0.0) < credit_cost:
             raise HTTPException(
                 status_code=402,
@@ -56,7 +55,7 @@ async def create_scout_job(
         org.credit_balance = max(0.0, (org.credit_balance or 0.0) - credit_cost)
 
     job = ScoutJob(
-        org_id=current_user.org_id,
+        org_id=org.id,
         user_id=current_user.id,
         status="queued",
         platforms=req.platforms,
@@ -91,9 +90,12 @@ async def get_scout_job(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    res = await db.execute(
-        select(ScoutJob).where(ScoutJob.id == job_id, ScoutJob.org_id == current_user.org_id)
-    )
+    org = await get_or_create_default_org(db, current_user)
+    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False)
+    query = select(ScoutJob).where(ScoutJob.id == job_id)
+    if not is_admin:
+        query = query.where(ScoutJob.org_id == org.id)
+    res = await db.execute(query)
     job = res.scalars().first()
     if not job:
         raise HTTPException(status_code=404, detail="Scout job not found")
@@ -121,9 +123,12 @@ async def get_scout_leads(
     current_user: User = Depends(get_current_user),
 ):
     # Verify job access
-    job_res = await db.execute(
-        select(ScoutJob).where(ScoutJob.id == job_id, ScoutJob.org_id == current_user.org_id)
-    )
+    org = await get_or_create_default_org(db, current_user)
+    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False)
+    query = select(ScoutJob).where(ScoutJob.id == job_id)
+    if not is_admin:
+        query = query.where(ScoutJob.org_id == org.id)
+    job_res = await db.execute(query)
     job = job_res.scalars().first()
     if not job:
         raise HTTPException(status_code=404, detail="Scout job not found")
@@ -160,12 +165,12 @@ async def get_org_scout_jobs(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    res = await db.execute(
-        select(ScoutJob)
-        .where(ScoutJob.org_id == current_user.org_id)
-        .order_by(desc(ScoutJob.created_at))
-        .limit(30)
-    )
+    org = await get_or_create_default_org(db, current_user)
+    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False)
+    query = select(ScoutJob).order_by(desc(ScoutJob.created_at)).limit(30)
+    if not is_admin:
+        query = query.where(ScoutJob.org_id == org.id)
+    res = await db.execute(query)
     jobs = res.scalars().all()
     return {
         "items": [
@@ -190,9 +195,12 @@ async def export_scout_leads_csv(
     current_user: User = Depends(get_current_user),
 ):
     # Verify job access
-    job_res = await db.execute(
-        select(ScoutJob).where(ScoutJob.id == job_id, ScoutJob.org_id == current_user.org_id)
-    )
+    org = await get_or_create_default_org(db, current_user)
+    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False)
+    query = select(ScoutJob).where(ScoutJob.id == job_id)
+    if not is_admin:
+        query = query.where(ScoutJob.org_id == org.id)
+    job_res = await db.execute(query)
     job = job_res.scalars().first()
     if not job:
         raise HTTPException(status_code=404, detail="Scout job not found")
@@ -231,8 +239,7 @@ async def get_scout_settings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    org_res = await db.execute(select(Organization).where(Organization.id == current_user.org_id))
-    org = org_res.scalars().first()
+    org = await get_or_create_default_org(db, current_user)
     flags = (org.custom_feature_flags if org else {}) or {}
 
     return {
@@ -249,8 +256,7 @@ async def update_scout_settings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    org_res = await db.execute(select(Organization).where(Organization.id == current_user.org_id))
-    org = org_res.scalars().first()
+    org = await get_or_create_default_org(db, current_user)
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 

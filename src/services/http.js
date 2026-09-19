@@ -35,6 +35,12 @@ function buildQuery(params = {}) {
  * Pings backend health in the background on startup and every 3 minutes
  * so all requests, logins, searches, and button clicks respond instantly with 0 delay.
  */
+let isWarmedUp = false
+
+export function getIsWarmedUp() {
+  return isWarmedUp
+}
+
 // Ping immediately on startup and keep backend warm every 2 minutes
 export function startBackendKeepAlive() {
   if (typeof window === "undefined") return

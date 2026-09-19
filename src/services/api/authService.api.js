@@ -17,11 +17,15 @@ export function getStoredToken() {
 }
 
 function storeToken(token) {
-  if (token) localStorage.setItem(TOKEN_KEY, token)
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token)
+    localStorage.setItem("helix_auth_token", token)
+  }
 }
 
 function clearToken() {
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem("helix_auth_token")
 }
 
 /**
