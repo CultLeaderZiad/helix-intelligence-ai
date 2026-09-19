@@ -1,3 +1,4 @@
+import hmac
 import os
 import hashlib
 import secrets
@@ -99,8 +100,9 @@ def get_password_hash(password: str) -> str:
     key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
     return f"pbkdf2:sha256:100000${salt}${key.hex()}"
 
-async def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify plain password against hashed password."""
+def _verify_password_sync(plain_password: str, hashed_password: str) -> bool:
+    """Blocking verification — run via asyncio.to_thread so the event loop is
+    never stalled by PBKDF2's 100k iterations (a DoS amplifier on auth)."""
     if not hashed_password or not plain_password:
         return False
     try:
@@ -123,3 +125,23 @@ async def verify_password(plain_password: str, hashed_password: str) -> bool:
     except Exception as e:
         logger.error(f"Password verification error: {e}")
         return False
+
+async def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a hash, off the event loop."""
+    import asyncio
+    return await asyncio.to_thread(_verify_password_sync, plain_password, hashed_password)
+
+def verify_hmac_signature(body: bytes, signature: str, secret: str) -> bool:
+    """Constant-time HMAC-SHA256 check for inbound webhook signatures.
+
+    Accepts a raw hex digest or a `sha256=<hex>` prefixed header value.
+    Returns False (never raises) for any missing/blank input, so callers can
+    treat "unverified" and "malformed" identically.
+    """
+    if not body or not signature or not secret:
+        return False
+    sig = signature.strip()
+    if sig.lower().startswith("sha256="):
+        sig = sig[7:]
+    expected = hmac.new(secret.encode("utf-8"), body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, sig)

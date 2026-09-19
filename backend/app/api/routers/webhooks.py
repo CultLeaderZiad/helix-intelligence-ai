@@ -53,6 +53,31 @@ async def _mirror_to_storage(job_id: str, source_url: str) -> None:
 
 @router.post("/higgsfield")
 async def higgsfield_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    # ── Authentication: verify the HMAC-SHA256 signature BEFORE trusting any
+    # field in the body. An unsigned callback can otherwise forge a job
+    # completion (or mass-fail jobs) with nothing but a guessable request_id.
+    from app.core.config import settings as _settings
+    from app.core.security import verify_hmac_signature
+
+    if not _settings.HF_WEBHOOK_SECRET:
+        # Closed by default: refuse every callback until a secret is configured
+        # rather than accept unsigned forgeries. Jobs stay "running" and are
+        # swept by the reconciler until this is set.
+        logger.error("Higgsfield webhook received but HF_WEBHOOK_SECRET is not configured — refusing (503).")
+        raise HTTPException(status_code=503, detail="Webhook endpoint is not configured")
+
+    body = await request.body()
+    signature = (
+        request.headers.get("x-higgsfield-signature")
+        or request.headers.get("x-signature")
+        or request.headers.get("x-hub-signature-256")
+        or ""
+    )
+    if not verify_hmac_signature(body, signature, _settings.HF_WEBHOOK_SECRET):
+        logger.warning("Higgsfield webhook signature verification FAILED from %s", request.client.host if request.client else "unknown")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+
     try:
         payload = await request.json()
     except Exception:

@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom"
 import { ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { PixelBlast } from "@/components/ui/PixelBlast"
 
 /**
  * Docs teaser. The technical voice earns a real artifact: a mono terminal
@@ -26,31 +25,6 @@ const SNIPPET = `$ curl -X POST https://api.helix.io/api/discovery/jobs \\
 export function DocsSection() {
   return (
     <section id="docs" className="scroll-mt-16 border-b border-border bg-bg relative overflow-hidden">
-      {/* Interactive PixelBlast Ambient Background */}
-      <div 
-        className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-45"
-        aria-hidden="true"
-      >
-        <PixelBlast
-          variant="diamond"
-          pixelSize={2}
-          color="#29e23f"
-          patternScale={3}
-          patternDensity={1.2}
-          pixelSizeJitter={1.55}
-          enableRipples
-          rippleSpeed={0.4}
-          rippleThickness={0.12}
-          rippleIntensityScale={1.5}
-          liquid
-          liquidStrength={0.12}
-          liquidRadius={1.2}
-          liquidWobbleSpeed={5}
-          speed={1.15}
-          edgeFade={0.09}
-        />
-      </div>
-
       <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 py-20 md:grid-cols-2 md:px-6">
         <div className="flex flex-col gap-3 md:pt-4">
           <span className="font-mono text-[10px] uppercase leading-none tracking-[0.14em] text-accent-dim">

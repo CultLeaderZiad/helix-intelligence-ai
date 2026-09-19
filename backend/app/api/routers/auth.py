@@ -99,6 +99,13 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
         user = await auth_service.register_user(db, user_in)
         from app.core.security import create_access_token
         token = create_access_token(subject=user.id, role=user.role)
+        # Fire-and-forget welcome email — never block or fail sign-up on email.
+        try:
+            import asyncio
+            from app.services import lifecycle_email_service
+            asyncio.create_task(lifecycle_email_service.send_welcome_email(user))
+        except Exception as mail_err:
+            logger.warning(f"Welcome email scheduling failed for {user.email}: {mail_err}")
         return await build_session_response(db, user, access_token=token)
     except HTTPException:
         raise

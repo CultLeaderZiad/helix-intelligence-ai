@@ -130,4 +130,20 @@ async def tick(
     if not x_cron_secret or not hmac.compare_digest(x_cron_secret, settings.CRON_SECRET):
         raise HTTPException(status_code=403, detail="Invalid cron secret.")
 
+    # Piggyback trial-expiry lifecycle emails on this authenticated tick so no
+    # separate scheduler is needed. Fire-and-forget with its own session.
+    try:
+        import asyncio
+        from app.db.session import async_session_maker
+        from app.services import lifecycle_email_service
+
+        async def _trial_reminders():
+            async with async_session_maker() as session:
+                await lifecycle_email_service.send_due_trial_reminders(session)
+
+        asyncio.create_task(_trial_reminders())
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Trial reminder scheduling failed: %s", e)
+
     return await monitor_service.tick()

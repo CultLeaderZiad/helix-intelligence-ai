@@ -16,9 +16,10 @@ class Settings(BaseSettings):
     # Password reset delivery. The app has no mail provider bundled, so the
     # reset link is logged server-side on every request. Set to true to also
     # return it in the API response (dev/staging convenience only — anyone
-    # who can call the endpoint could reset any account). Disable as soon as
-    # real email delivery is wired up.
-    AUTH_DEV_RESET_RETURN: bool = os.getenv("AUTH_DEV_RESET_RETURN", "True").lower() in ("true", "1", "yes")
+    # who can call the endpoint could reset any account).
+    # DEFAULTS TO FALSE: must be explicitly opted into. Wire real email
+    # delivery (Resend) instead of enabling this in any shared environment.
+    AUTH_DEV_RESET_RETURN: bool = os.getenv("AUTH_DEV_RESET_RETURN", "False").lower() in ("true", "1", "yes")
 
     # Public app origin used to build password-reset links
     PUBLIC_APP_BASE_URL: str = os.getenv(
@@ -51,6 +52,31 @@ class Settings(BaseSettings):
         "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth"
     )
     NEON_WEBHOOK_SECRET: str = os.getenv("NEON_WEBHOOK_SECRET", "")
+
+    # HIGGSFIELD WEBHOOK AUTHENTICATION
+    # Shared secret used to verify HMAC-SHA256 signatures on inbound Higgsfield
+    # callbacks (POST /api/webhooks/higgsfield). Higgsfield signs each webhook
+    # with the project secret; set this to that value.
+    # SECURITY: when UNSET the endpoint refuses every callback (503) rather
+    # than accept unsigned forgeries. A closed webhook beats an open one —
+    # generation jobs simply stay "running" until this is configured.
+    HF_WEBHOOK_SECRET: str = os.getenv(
+        "HF_WEBHOOK_SECRET",
+        os.getenv("HIGGSFIELD_WEBHOOK_SECRET", ""),
+    )
+
+    # RATE LIMITING (in-memory, per-process token buckets)
+    # Protects credential endpoints (brute force / account enumeration) and
+    # expensive AI/scrape endpoints (credit burn) from bursts. On a single
+    # Render web instance this is sufficient; it is per-process, not global,
+    # so limits scale with instance count. Set RATE_LIMIT_ENABLED=false only
+    # for local load testing.
+    RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "True").lower() in ("true", "1", "yes")
+    # path-prefix -> (max_requests, window_seconds)
+    AUTH_RATE_LIMIT: int = int(os.getenv("AUTH_RATE_LIMIT", "10"))            # per IP per window
+    AUTH_RATE_LIMIT_WINDOW_S: int = int(os.getenv("AUTH_RATE_LIMIT_WINDOW_S", "60"))
+    EXPENSIVE_RATE_LIMIT: int = int(os.getenv("EXPENSIVE_RATE_LIMIT", "20"))  # per IP per window
+    EXPENSIVE_RATE_LIMIT_WINDOW_S: int = int(os.getenv("EXPENSIVE_RATE_LIMIT_WINDOW_S", "60"))
 
     def __init__(self, **values):
         super().__init__(**values)

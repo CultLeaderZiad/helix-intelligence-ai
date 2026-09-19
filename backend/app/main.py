@@ -10,6 +10,7 @@ from app.core.config import settings, cors_origins
 from app.db.session import engine, async_session_maker
 from app.db.base import Base
 from app.services.billing_service import refund, DISCOVER_SEARCH_CREDIT_COST
+from app.middleware.rate_limit import RateLimitMiddleware
 import app.models
 
 from app.api.routers import (
@@ -194,6 +195,10 @@ if cors_origins:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+# Rate limiting: shields credential + expensive AI/scrape endpoints from
+# brute-force and credit-burn bursts. Added after CORS so preflight OPTIONS
+# requests are never throttled.
+app.add_middleware(RateLimitMiddleware)
 
 # Include routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])

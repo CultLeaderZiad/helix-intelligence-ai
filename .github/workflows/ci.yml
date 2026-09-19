@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+        env:
+          CI: true
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt
+      - name: Compile check (syntax)
+        run: python -m compileall -q app
+      - name: Import smoke test (app boots)
+        env:
+          SECRET_KEY: ci_test_secret_key_not_real_0123456789abcdef
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db
+        run: |
+          python -c "import app.main; print('FastAPI app imported OK; routes:', len(app.main.app.routes))"
+
+  security-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Verify webhook HMAC + reset-token defaults are hardened
+        run: |
+          python - <<'PY'
+          import re, pathlib
+          root = pathlib.Path("backend")
+
+          # 1. AUTH_DEV_RESET_RETURN must default to False (account-takeover guard)
+          cfg = (root / "app/core/config.py").read_text()
+          assert 'AUTH_DEV_RESET_RETURN", "False"' in cfg, "AUTH_DEV_RESET_RETURN must default to False"
+
+          # 2. Higgsfield webhook must verify a signature and fail closed
+          wh = (root / "app/api/routers/webhooks.py").read_text()
+          assert "verify_hmac_signature" in wh, "webhook must call verify_hmac_signature"
+          assert "HF_WEBHOOK_SECRET" in wh, "webhook must require HF_WEBHOOK_SECRET"
+          assert 'status_code=503' in wh, "webhook must fail closed (503) when secret unset"
+
+          # 3. Rate limiting middleware must exist and be registered
+          assert (root / "app/middleware/rate_limit.py").exists(), "rate limiter missing"
+          main = (root / "app/main.py").read_text()
+          assert "RateLimitMiddleware" in main, "rate limiter not registered in main.py"
+
+          print("security smoke checks passed")
+          PY

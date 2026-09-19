@@ -2,7 +2,6 @@ import React, { useState } from "react"
 import { cn } from "@/lib/utils"
 import { NAV_SECTIONS } from "@/app/navigation"
 import CardSwap, { Card } from "@/components/ui/CardSwap"
-import { PixelBlast } from "@/components/ui/PixelBlast"
 import {
   Compass,
   Cpu,
@@ -67,31 +66,6 @@ export function LoopsSection() {
 
   return (
     <section id="product" className="scroll-mt-16 border-b border-border bg-bg overflow-hidden py-20 lg:py-28 relative">
-      {/* Interactive PixelBlast Ambient Background */}
-      <div 
-        className="pointer-events-none absolute inset-0 z-0 overflow-hidden opacity-40"
-        aria-hidden="true"
-      >
-        <PixelBlast
-          variant="diamond"
-          pixelSize={2}
-          color="#29e23f"
-          patternScale={3}
-          patternDensity={1.2}
-          pixelSizeJitter={1.55}
-          enableRipples
-          rippleSpeed={0.4}
-          rippleThickness={0.12}
-          rippleIntensityScale={1.5}
-          liquid
-          liquidStrength={0.12}
-          liquidRadius={1.2}
-          liquidWobbleSpeed={5}
-          speed={1.15}
-          edgeFade={0.09}
-        />
-      </div>
-
       {/* Subtle background glow */}
       <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
 

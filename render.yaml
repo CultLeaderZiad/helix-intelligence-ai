@@ -69,6 +69,21 @@ services:
     # APIFY_API_TOKEN, APIFY_ENABLED
     #
     # ────────────────────────────────────────────────────────
+    # Security hardening (added 2026-09)
+    # ────────────────────────────────────────────────────────
+    # HF_WEBHOOK_SECRET – HMAC secret Higgsfield uses to sign webhook callbacks.
+    #   When UNSET, POST /api/webhooks/higgsfield refuses every callback (503)
+    #   so unsigned forgeries are never accepted. Required for media jobs to
+    #   complete via webhook.
+    # RATE_LIMIT_ENABLED – default true. In-memory per-IP limits on auth
+    #   endpoints (10/min) and expensive discovery/media job creation (20/min).
+    # AUTH_DEV_RESET_RETURN – now DEFAULTS TO FALSE in code. Only set "true"
+    #   for local dev. Wire Resend for real reset emails.
+    #
+    # ────────────────────────────────────────────────────────
+    # Password reset (no mail provider is configured yet)
+    # ────────────────────────────────────────────────────────
+    # ────────────────────────────────────────────────────────
     # Password reset (no mail provider is configured yet)
     # ────────────────────────────────────────────────────────
     # PUBLIC_APP_BASE_URL               – Frontend origin used to build reset

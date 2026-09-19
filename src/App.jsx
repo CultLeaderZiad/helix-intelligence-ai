@@ -11,6 +11,7 @@ import { SearchProvider } from "@/context/SearchContext"
 import { LanguageProvider } from "@/context/LanguageContext"
 import { LandingPage } from "@/pages/LandingPage"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
+import { trackPageview } from "@/lib/analytics"
 
 // Safe lazy-loading with automatic auto-reload on stale deployment chunks
 function safeLazy(importFn) {
@@ -98,6 +99,11 @@ function DocumentTitle() {
     const section = NAV_SECTIONS.find((s) => pathname.startsWith(s.path))
     const label = PUBLIC_TITLES[pathname] ?? adminItem?.label ?? section?.label
     document.title = label ? `${label} · Helix Intelligence` : "Helix Intelligence"
+  }, [pathname])
+
+  // SPA pageview on every route change (Plausible does not auto-track client routing)
+  useEffect(() => {
+    trackPageview(pathname)
   }, [pathname])
 
   return null

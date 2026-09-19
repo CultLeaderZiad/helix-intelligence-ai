@@ -1,0 +1,8 @@
+﻿User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /settings
+Disallow: /billing
+Disallow: /api-keys
+
+Sitemap: https://helix-intelligence-ai-six.vercel.app/sitemap.xml
