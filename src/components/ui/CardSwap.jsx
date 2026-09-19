@@ -5,7 +5,9 @@ import React, {
   isValidElement,
   useEffect,
   useMemo,
-  useRef
+  useRef,
+  useState,
+  useCallback
 } from 'react'
 import gsap from 'gsap'
 import './CardSwap.css'
@@ -20,12 +22,17 @@ export const Card = forwardRef(({ customClass, className, style, ...rest }, ref)
 ))
 Card.displayName = 'Card'
 
-const makeSlot = (i, distX, distY, total) => ({
-  x: i * distX,
-  y: -i * distY,
-  z: -i * distX * 1.5,
-  zIndex: total - i
-})
+const makeSlot = (i, distX, distY, total) => {
+  // Center the stack horizontally and vertically so it never clips or overflows
+  const centerOffsetX = -((total - 1) * distX) / 2
+  const centerOffsetY = ((total - 1) * distY) / 2
+  return {
+    x: centerOffsetX + i * distX,
+    y: centerOffsetY - i * distY,
+    z: -i * distX * 1.5,
+    zIndex: total - i
+  }
+}
 
 const placeNow = (el, slot, skew) => {
   if (!el) return
@@ -43,35 +50,70 @@ const placeNow = (el, slot, skew) => {
 }
 
 export const CardSwap = ({
-  width = 540,
-  height = 420,
-  cardDistance = 60,
-  verticalDistance = 55,
-  delay = 4500,
+  width = 580,
+  height = 450,
+  cardDistance = 38,
+  verticalDistance = 40,
+  delay = 2800,
   pauseOnHover = true,
   onCardClick,
-  skewAmount = 4,
-  easing = 'elastic',
+  onActiveChange,
+  activeCardIndex,
+  skewAmount = 3.5,
   children
 }) => {
-  const config =
-    easing === 'elastic'
-      ? {
-          ease: 'elastic.out(0.6,0.9)',
-          durDrop: 1.8,
-          durMove: 1.8,
-          durReturn: 1.8,
-          promoteOverlap: 0.9,
-          returnDelay: 0.05
-        }
-      : {
-          ease: 'power1.inOut',
-          durDrop: 0.8,
-          durMove: 0.8,
-          durReturn: 0.8,
-          promoteOverlap: 0.45,
-          returnDelay: 0.2
-        }
+  const [windowWidth, setWindowWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1200
+  )
+
+  useEffect(() => {
+    let timer
+    const handleResize = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        setWindowWidth(window.innerWidth)
+      }, 80)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
+
+  const isMobile = windowWidth < 640
+  const isTablet = windowWidth >= 640 && windowWidth < 1024
+
+  // Compute responsive dimensions dynamically so mobile screens never clip
+  const effectiveWidth = useMemo(() => {
+    if (isMobile) return Math.min(windowWidth - 36, 350)
+    if (isTablet) return Math.min(windowWidth - 80, 500)
+    return width
+  }, [width, windowWidth, isMobile, isTablet])
+
+  const effectiveHeight = useMemo(() => {
+    if (isMobile) return Math.min(Math.round(effectiveWidth * 1.25), 450)
+    if (isTablet) return 420
+    return height
+  }, [height, effectiveWidth, isMobile, isTablet])
+
+  const effectiveCardDist = useMemo(() => {
+    if (isMobile) return 12
+    if (isTablet) return 24
+    return cardDistance
+  }, [cardDistance, isMobile, isTablet])
+
+  const effectiveVertDist = useMemo(() => {
+    if (isMobile) return 16
+    if (isTablet) return 26
+    return verticalDistance
+  }, [verticalDistance, isMobile, isTablet])
+
+  const effectiveSkew = useMemo(() => {
+    if (isMobile) return 1.5
+    if (isTablet) return 2.5
+    return skewAmount
+  }, [skewAmount, isMobile, isTablet])
 
   const childArr = useMemo(() => Children.toArray(children), [children])
   const refs = useMemo(() => childArr.map(() => React.createRef()), [childArr.length])
@@ -80,79 +122,159 @@ export const CardSwap = ({
   const tlRef = useRef(null)
   const intervalRef = useRef(0)
   const container = useRef(null)
+  const isAnimatingRef = useRef(false)
 
+  // Fast, crisp animation timing
+  const config = useMemo(() => ({
+    ease: 'power3.out',
+    durDrop: 0.55,
+    durMove: 0.55,
+    durReturn: 0.55,
+    promoteOverlap: 0.75,
+    returnDelay: 0.08
+  }), [])
+
+  // Position all elements on mount or responsive dimension changes
   useEffect(() => {
     const total = refs.length
     if (total === 0) return
 
-    refs.forEach((r, i) => {
-      if (r.current) {
-        placeNow(r.current, makeSlot(i, cardDistance, verticalDistance, total), skewAmount)
+    order.current.forEach((originalIdx, slotIdx) => {
+      const el = refs[originalIdx]?.current
+      if (el) {
+        placeNow(el, makeSlot(slotIdx, effectiveCardDist, effectiveVertDist, total), effectiveSkew)
       }
     })
+  }, [effectiveCardDist, effectiveVertDist, effectiveSkew, refs])
 
-    const swap = () => {
-      if (order.current.length < 2) return
+  // Core fast swap animation
+  const swap = useCallback(() => {
+    if (order.current.length < 2 || isAnimatingRef.current) return
+    isAnimatingRef.current = true
 
-      const [front, ...rest] = order.current
-      const elFront = refs[front]?.current
-      if (!elFront) return
+    const [front, ...rest] = order.current
+    const elFront = refs[front]?.current
+    if (!elFront) {
+      isAnimatingRef.current = false
+      return
+    }
 
-      const tl = gsap.timeline()
-      tlRef.current = tl
+    const tl = gsap.timeline({
+      onComplete: () => {
+        isAnimatingRef.current = false
+      }
+    })
+    tlRef.current = tl
 
-      tl.to(elFront, {
-        y: '+=500',
-        duration: config.durDrop,
-        ease: config.ease
-      })
+    // Drop front card down
+    tl.to(elFront, {
+      y: '+=420',
+      duration: config.durDrop,
+      ease: config.ease
+    })
 
-      tl.addLabel('promote', `-=${config.durDrop * config.promoteOverlap}`)
-      rest.forEach((idx, i) => {
-        const el = refs[idx]?.current
-        if (!el) return
-        const slot = makeSlot(i, cardDistance, verticalDistance, refs.length)
-        tl.set(el, { zIndex: slot.zIndex }, 'promote')
-        tl.to(
-          el,
-          {
-            x: slot.x,
-            y: slot.y,
-            z: slot.z,
-            duration: config.durMove,
-            ease: config.ease
-          },
-          `promote+=${i * 0.15}`
-        )
-      })
-
-      const backSlot = makeSlot(refs.length - 1, cardDistance, verticalDistance, refs.length)
-      tl.addLabel('return', `promote+=${config.durMove * config.returnDelay}`)
-      tl.call(
-        () => {
-          if (elFront) {
-            gsap.set(elFront, { zIndex: backSlot.zIndex })
-          }
-        },
-        undefined,
-        'return'
-      )
+    tl.addLabel('promote', `-=${config.durDrop * config.promoteOverlap}`)
+    
+    // Move remaining cards forward by one slot
+    rest.forEach((idx, i) => {
+      const el = refs[idx]?.current
+      if (!el) return
+      const slot = makeSlot(i, effectiveCardDist, effectiveVertDist, refs.length)
+      tl.set(el, { zIndex: slot.zIndex }, 'promote')
       tl.to(
-        elFront,
+        el,
         {
-          x: backSlot.x,
-          y: backSlot.y,
-          z: backSlot.z,
-          duration: config.durReturn,
+          x: slot.x,
+          y: slot.y,
+          z: slot.z,
+          duration: config.durMove,
           ease: config.ease
         },
-        'return'
+        `promote+=${i * 0.04}`
       )
+    })
 
-      tl.call(() => {
-        order.current = [...rest, front]
-      })
+    // Slide front card into back slot
+    const backSlot = makeSlot(refs.length - 1, effectiveCardDist, effectiveVertDist, refs.length)
+    tl.addLabel('return', `promote+=${config.durMove * config.returnDelay}`)
+    tl.call(
+      () => {
+        if (elFront) {
+          gsap.set(elFront, { zIndex: backSlot.zIndex })
+        }
+      },
+      undefined,
+      'return'
+    )
+    tl.to(
+      elFront,
+      {
+        x: backSlot.x,
+        y: backSlot.y,
+        z: backSlot.z,
+        duration: config.durReturn,
+        ease: config.ease
+      },
+      'return'
+    )
+
+    tl.call(() => {
+      order.current = [...rest, front]
+      onActiveChange?.(rest[0])
+    })
+  }, [config, effectiveCardDist, effectiveVertDist, refs, onActiveChange])
+
+  // Instant smooth jump to target card
+  const jumpTo = useCallback((targetIdx) => {
+    if (order.current.length < 2 || targetIdx === order.current[0] || isAnimatingRef.current) return
+    const pos = order.current.indexOf(targetIdx)
+    if (pos === -1) return
+
+    isAnimatingRef.current = true
+    const newOrder = [
+      ...order.current.slice(pos),
+      ...order.current.slice(0, pos)
+    ]
+    order.current = newOrder
+
+    const tl = gsap.timeline({
+      onComplete: () => {
+        isAnimatingRef.current = false
+      }
+    })
+    tlRef.current = tl
+
+    newOrder.forEach((idx, slotIdx) => {
+      const el = refs[idx]?.current
+      if (!el) return
+      const slot = makeSlot(slotIdx, effectiveCardDist, effectiveVertDist, refs.length)
+      tl.set(el, { zIndex: slot.zIndex })
+      tl.to(
+        el,
+        {
+          x: slot.x,
+          y: slot.y,
+          z: slot.z,
+          duration: 0.45,
+          ease: 'power3.out'
+        },
+        0
+      )
+    })
+
+    onActiveChange?.(targetIdx)
+  }, [effectiveCardDist, effectiveVertDist, refs, onActiveChange])
+
+  // External sync from activeCardIndex prop
+  useEffect(() => {
+    if (activeCardIndex !== undefined && activeCardIndex !== order.current[0]) {
+      jumpTo(activeCardIndex)
     }
+  }, [activeCardIndex, jumpTo])
+
+  // Interval timer for auto-swap
+  useEffect(() => {
+    if (delay <= 0) return
 
     intervalRef.current = window.setInterval(swap, delay)
 
@@ -164,6 +286,7 @@ export const CardSwap = ({
       }
       const resume = () => {
         tlRef.current?.play()
+        clearInterval(intervalRef.current)
         intervalRef.current = window.setInterval(swap, delay)
       }
       node.addEventListener('mouseenter', pause)
@@ -180,24 +303,40 @@ export const CardSwap = ({
       clearInterval(intervalRef.current)
       tlRef.current?.kill()
     }
-  }, [cardDistance, verticalDistance, delay, pauseOnHover, skewAmount, easing, refs])
+  }, [delay, pauseOnHover, swap])
 
   const rendered = childArr.map((child, i) =>
     isValidElement(child)
       ? cloneElement(child, {
           key: i,
           ref: refs[i],
-          style: { width, height, ...(child.props.style ?? {}) },
+          style: {
+            width: effectiveWidth,
+            height: effectiveHeight,
+            ...(child.props.style ?? {})
+          },
           onClick: (e) => {
             child.props.onClick?.(e)
             onCardClick?.(i)
+            if (i !== order.current[0]) {
+              jumpTo(i)
+            } else {
+              swap()
+            }
           }
         })
       : child
   )
 
   return (
-    <div ref={container} className="card-swap-container" style={{ width, height }}>
+    <div
+      ref={container}
+      className="card-swap-container"
+      style={{
+        width: effectiveWidth,
+        height: effectiveHeight
+      }}
+    >
       {rendered}
     </div>
   )
