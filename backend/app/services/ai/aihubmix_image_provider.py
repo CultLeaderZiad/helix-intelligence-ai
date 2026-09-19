@@ -15,7 +15,10 @@ import logging
 import random
 from typing import Any, Dict, List, Optional
 import httpx
-from PIL import Image
+try:
+    from PIL import Image
+except ImportError:
+    Image = None
 
 from app.core.config import settings
 from app.services.ai.base import AIProvider
@@ -260,6 +263,8 @@ class AIHubMixImageProvider(AIProvider):
 
     def _format_to_aspect_ratio(self, raw_bytes: bytes, target_w: int, target_h: int) -> bytes:
         """Resizes and center-crops the image to strictly adhere to the target dimensions."""
+        if Image is None:
+            return raw_bytes
         try:
             im = Image.open(io.BytesIO(raw_bytes))
             orig_w, orig_h = im.size
