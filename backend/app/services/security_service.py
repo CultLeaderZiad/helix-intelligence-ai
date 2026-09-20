@@ -45,3 +45,75 @@ def mask_api_key(key: str) -> str:
     if len(clean) <= 6:
         return "••••••••"
     return f"••••••••{clean[-4:]}"
+
+
+# --- SSRF Protection ---
+
+import ipaddress
+import socket
+from urllib.parse import urlparse
+
+BLOCKED_NETWORKS = [
+    ipaddress.ip_network("0.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("100.64.0.0/10"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),       # Cloud IMDS (169.254.169.254)
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.0.0.0/24"),
+    ipaddress.ip_network("192.0.2.0/24"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("198.18.0.0/15"),
+    ipaddress.ip_network("198.51.100.0/24"),
+    ipaddress.ip_network("203.0.113.0/24"),
+    ipaddress.ip_network("224.0.0.0/4"),
+    ipaddress.ip_network("240.0.0.0/4"),
+    ipaddress.ip_network("255.255.255.255/32"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+]
+
+BLOCKED_HOSTNAMES = {"localhost", "metadata", "instance-data"}
+
+
+def is_safe_public_url(url: str) -> bool:
+    """
+    Validates that a URL is a legitimate public web destination.
+    Rejects private IPs, loopback, AWS/GCP/Azure metadata services, and internal hostnames.
+    Prevents Server-Side Request Forgery (SSRF).
+    """
+    if not url or not isinstance(url, str):
+        return False
+    try:
+        parsed = urlparse(url.strip())
+        if parsed.scheme.lower() not in ("http", "https"):
+            return False
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+        hostname_lower = hostname.lower().strip(".")
+        if hostname_lower in BLOCKED_HOSTNAMES or hostname_lower.endswith(".local") or hostname_lower.endswith(".internal"):
+            return False
+
+        # If hostname is direct IP literal
+        try:
+            ip = ipaddress.ip_address(hostname_lower)
+            return not any(ip in net for net in BLOCKED_NETWORKS)
+        except ValueError:
+            pass
+
+        # Resolve DNS to check resulting IPs
+        addr_info = socket.getaddrinfo(hostname_lower, None)
+        for _, _, _, _, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            try:
+                ip = ipaddress.ip_address(ip_str)
+                if any(ip in net for net in BLOCKED_NETWORKS):
+                    return False
+            except ValueError:
+                return False
+        return True
+    except Exception:
+        return False
+

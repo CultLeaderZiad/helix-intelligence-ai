@@ -13,6 +13,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 9
+          run_install: false
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -50,7 +51,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Verify webhook HMAC + reset-token defaults are hardened
+      - name: Verify webhook HMAC, SSRF guard, security headers, and rate limiter
         run: |
           python - <<'PY'
           import re, pathlib
@@ -71,5 +72,15 @@ jobs:
           main = (root / "app/main.py").read_text()
           assert "RateLimitMiddleware" in main, "rate limiter not registered in main.py"
 
-          print("security smoke checks passed")
+          # 4. SSRF protection guard must exist and block cloud metadata IMDS
+          sec = (root / "app/services/security_service.py").read_text()
+          assert "is_safe_public_url" in sec, "is_safe_public_url missing from security_service"
+          assert "169.254.0.0/16" in sec, "IMDS link-local network missing from SSRF guard"
+
+          # 5. Security headers middleware must be registered
+          assert "add_security_headers" in main, "security headers middleware missing from main.py"
+          assert "X-Frame-Options" in main, "X-Frame-Options missing"
+          assert "Strict-Transport-Security" in main, "HSTS missing"
+
+          print("All security smoke checks passed successfully!")
           PY

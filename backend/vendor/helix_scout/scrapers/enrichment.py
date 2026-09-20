@@ -30,6 +30,13 @@ class LeadEnricher:
         if not url.startswith("http://") and not url.startswith("https://"):
             url = "https://" + url
 
+        try:
+            from app.services.security_service import is_safe_public_url
+            if not is_safe_public_url(url):
+                return {"emails": [], "phones": [], "socials": {}, "email_source": None}
+        except ImportError:
+            pass
+
         targets = [url]
         base_domain = url.split("?")[0].rstrip("/")
         if base_domain.count("/") <= 3:

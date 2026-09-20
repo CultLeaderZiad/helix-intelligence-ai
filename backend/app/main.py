@@ -208,6 +208,21 @@ if cors_origins:
 # requests are never throttled.
 app.add_middleware(RateLimitMiddleware)
 
+# Enterprise Security Headers Middleware
+from starlette.requests import Request
+from starlette.responses import Response
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response: Response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    return response
+
 # Include routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(account.router, prefix=f"{settings.API_V1_STR}/account", tags=["account"])

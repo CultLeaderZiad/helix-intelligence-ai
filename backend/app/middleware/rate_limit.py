@@ -46,6 +46,8 @@ def _rules() -> list[Tuple[str, int, int]]:
         ("/api/auth/reset-password", settings.AUTH_RATE_LIMIT, settings.AUTH_RATE_LIMIT_WINDOW_S),
         ("/api/discovery/jobs", settings.EXPENSIVE_RATE_LIMIT, settings.EXPENSIVE_RATE_LIMIT_WINDOW_S),
         ("/api/media/jobs", settings.EXPENSIVE_RATE_LIMIT, settings.EXPENSIVE_RATE_LIMIT_WINDOW_S),
+        ("/api/scout/jobs", settings.EXPENSIVE_RATE_LIMIT, settings.EXPENSIVE_RATE_LIMIT_WINDOW_S),
+        ("/api/scout/maps/jobs", settings.EXPENSIVE_RATE_LIMIT, settings.EXPENSIVE_RATE_LIMIT_WINDOW_S),
     ]
 
 
