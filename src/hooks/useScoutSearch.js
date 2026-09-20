@@ -125,6 +125,15 @@ export function useScoutSearch() {
     }
   }, [])
 
+  const exportCsv = useCallback(async () => {
+    if (!job?.job_id) return
+    try {
+      await scoutService.exportCsv(job.job_id)
+    } catch (err) {
+      console.error("Export error:", err)
+    }
+  }, [job])
+
   return {
     phase,
     job,

@@ -131,6 +131,15 @@ export function useMapsScoutSearch() {
     }
   }, [])
 
+  const exportCsv = useCallback(async () => {
+    if (!job?.job_id) return
+    try {
+      await mapsScoutService.exportCsv(job.job_id)
+    } catch (err) {
+      console.error("Maps Export error:", err)
+    }
+  }, [job])
+
   return {
     phase,
     job,
