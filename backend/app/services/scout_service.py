@@ -31,6 +31,9 @@ from app.services.atlas_pipeline import run_atlas_pipeline
 from app.services.scout_parse import parse_input_targets, parse_line
 from app.services.scrapegraph_lead_service import extract_profile_with_scrapegraph
 
+# Alias for backwards compatibility
+parse_scout_input = parse_input_targets
+
 
 def normalize_profile(platform: str, raw: Dict[str, Any]) -> Dict[str, Any]:
     """

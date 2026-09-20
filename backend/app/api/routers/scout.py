@@ -14,7 +14,7 @@ from app.models.user import User
 from app.models.organization import Organization
 from app.models.scout import ScoutJob, ScoutLead, ScoutMapsJob, ScoutMapsLead
 from app.services.billing_service import get_or_create_default_org
-from app.services.scout_service import run_scout_job_worker, parse_scout_input
+from app.services.scout_service import run_scout_job_worker
 from app.services.scout_parse import parse_input_targets
 from app.services.maps_scout_service import run_maps_scout_worker
 
