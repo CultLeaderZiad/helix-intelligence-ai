@@ -248,86 +248,98 @@ async def run_maps_scout_worker(job_id: str):
         start_time = time.time()
         logs = list(job.logs)
 
-        async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
-            # 1. Geocode
-            lat_lon = await geocode_city(job.city, client)
-            if lat_lon:
-                job.lat, job.lon = lat_lon
-                logs.append(f"> geocode: lat={lat_lon[0]:.4f}, lon={lat_lon[1]:.4f} · resolved")
-            else:
-                logs.append(f"> geocode: standard city query dispatch for '{job.city}'")
+        try:
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True) as client:
+                # 1. Geocode
+                lat_lon = await geocode_city(job.city, client)
+                if lat_lon:
+                    job.lat, job.lon = lat_lon
+                    logs.append(f"> geocode: lat={lat_lon[0]:.4f}, lon={lat_lon[1]:.4f} · resolved")
+                else:
+                    logs.append(f"> geocode: standard city query dispatch for '{job.city}'")
 
-            # 2. Search
-            job.stage = "search"
-            job.stage_label = f"Scraping Google Maps directory for '{job.keyword}' in {job.city}"
-            job.stage_index = 2
-            job.logs = logs
-            await db.commit()
+                # 2. Search
+                job.stage = "search"
+                job.stage_label = f"Scraping Google Maps directory for '{job.keyword}' in {job.city}"
+                job.stage_index = 2
+                job.logs = logs
+                await db.commit()
 
-            raw_places = await scrape_maps_places(
-                keyword=job.keyword,
-                city=job.city,
-                depth=job.depth,
-                client=client
-            )
-            logs.append(f"> search: discovered {len(raw_places)} real business listings")
-
-            # 3. Enrich Websites (emails & socials)
-            job.stage = "enrich"
-            job.stage_label = "Enriching discovered business websites with emails & social profiles"
-            job.stage_index = 3
-            job.logs = logs
-            await db.commit()
-
-            saved_leads = []
-            for p in raw_places:
-                website = p.get("website")
-                emails_found = []
-                socials_found = {}
-
-                if website and (job.extract_emails or job.pull_socials):
-                    enrich_data = await enrich_from_website(website, client)
-                    if job.extract_emails:
-                        emails_found = enrich_data.get("emails", [])
-                    if job.pull_socials:
-                        socials_found = enrich_data.get("socials", {})
-
-                lead = ScoutMapsLead(
-                    job_id=job.id,
-                    org_id=job.org_id,
-                    title=p.get("title") or "Business",
-                    phone=p.get("phone"),
-                    email=emails_found[0] if emails_found else None,
-                    emails_found=emails_found,
-                    website=website,
-                    category=p.get("category") or job.keyword.title(),
-                    address=p.get("address") or job.city,
+                raw_places = await scrape_maps_places(
+                    keyword=job.keyword,
                     city=job.city,
-                    rating=p.get("rating"),
-                    reviews_count=p.get("reviews_count", 0),
-                    instagram=socials_found.get("instagram"),
-                    facebook=socials_found.get("facebook"),
-                    linkedin=socials_found.get("linkedin"),
-                    twitter=socials_found.get("twitter"),
-                    socials=socials_found,
-                    metadata_raw={"source": "google_maps_scraper_kit"},
+                    depth=job.depth,
+                    client=client
                 )
-                db.add(lead)
-                saved_leads.append(lead)
+                logs.append(f"> search: discovered {len(raw_places)} real business listings")
 
-                email_str = f"email: {lead.email}" if lead.email else "no email"
-                social_str = f"socials: {len(socials_found)}" if socials_found else "no socials"
-                logs.append(f"> lead: {lead.title[:30]} · {email_str} · {social_str}")
+                # 3. Enrich Websites (emails & socials)
+                job.stage = "enrich"
+                job.stage_label = "Enriching discovered business websites with emails & social profiles"
+                job.stage_index = 3
+                job.logs = logs
+                await db.commit()
 
-            # 4. Finalize
-            job.status = "succeeded"
-            job.stage = "complete"
-            job.stage_label = f"Scout Maps complete · {len(saved_leads)} leads indexed"
-            job.stage_index = 4
-            job.results_count = len(saved_leads)
-            job.elapsed_ms = int((time.time() - start_time) * 1000)
-            logs.append(f"> job completed in {job.elapsed_ms / 1000:.1f}s with {len(saved_leads)} verified leads")
+                saved_leads = []
+                for p in raw_places:
+                    website = p.get("website")
+                    emails_found = []
+                    socials_found = {}
+
+                    if website and (job.extract_emails or job.pull_socials):
+                        try:
+                            enrich_data = await enrich_from_website(website, client)
+                            if job.extract_emails:
+                                emails_found = enrich_data.get("emails", [])
+                            if job.pull_socials:
+                                socials_found = enrich_data.get("socials", {})
+                        except Exception:
+                            pass
+
+                    lead = ScoutMapsLead(
+                        job_id=job.id,
+                        org_id=job.org_id,
+                        title=p.get("title") or "Business",
+                        phone=p.get("phone"),
+                        email=emails_found[0] if emails_found else None,
+                        emails_found=emails_found,
+                        website=website,
+                        category=p.get("category") or job.keyword.title(),
+                        address=p.get("address") or job.city,
+                        city=job.city,
+                        rating=p.get("rating"),
+                        reviews_count=p.get("reviews_count", 0),
+                        instagram=socials_found.get("instagram"),
+                        facebook=socials_found.get("facebook"),
+                        linkedin=socials_found.get("linkedin"),
+                        twitter=socials_found.get("twitter"),
+                        socials=socials_found,
+                        metadata_raw={"source": "google_maps_scraper_kit"},
+                    )
+                    db.add(lead)
+                    saved_leads.append(lead)
+
+                    email_str = f"email: {lead.email}" if lead.email else "no email"
+                    social_str = f"socials: {len(socials_found)}" if socials_found else "no socials"
+                    logs.append(f"> lead: {lead.title[:30]} · {email_str} · {social_str}")
+
+                # 4. Finalize
+                job.status = "succeeded"
+                job.stage = "complete"
+                job.stage_label = f"Scout Maps complete · {len(saved_leads)} leads indexed"
+                job.stage_index = 4
+                job.results_count = len(saved_leads)
+                job.elapsed_ms = int((time.time() - start_time) * 1000)
+                logs.append(f"> job completed in {job.elapsed_ms / 1000:.1f}s with {len(saved_leads)} verified leads")
+                job.logs = logs
+                job.completed_at = datetime.now(timezone.utc)
+                await db.commit()
+
+        except Exception as exc:
+            job.status = "failed"
+            job.stage = "error"
+            job.stage_label = f"Maps Scout error: {str(exc)}"
+            logs.append(f"> error: {str(exc)}")
             job.logs = logs
             job.completed_at = datetime.now(timezone.utc)
-
             await db.commit()

@@ -37,7 +37,7 @@ export function useMapsScoutSearch() {
           const updatedJob = await mapsScoutService.getJob(jobId)
           setJob(updatedJob)
 
-          if (updatedJob.status === "succeeded") {
+          if (updatedJob.status === "succeeded" || updatedJob.status === "completed") {
             stopPolling()
             const leadsData = await mapsScoutService.getLeads(jobId)
             const items = leadsData.items || []
