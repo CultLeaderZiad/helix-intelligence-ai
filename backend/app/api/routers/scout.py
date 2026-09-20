@@ -15,6 +15,7 @@ from app.models.organization import Organization
 from app.models.scout import ScoutJob, ScoutLead, ScoutMapsJob, ScoutMapsLead
 from app.services.billing_service import get_or_create_default_org
 from app.services.scout_service import run_scout_job_worker, parse_scout_input
+from app.services.scout_parse import parse_input_targets
 from app.services.maps_scout_service import run_maps_scout_worker
 
 router = APIRouter()
@@ -56,9 +57,13 @@ async def create_scout_job(
     if len(raw_lines) > 25:
         raise HTTPException(status_code=400, detail="Max 25 handles or URLs per job")
 
-    targets, parse_errors = parse_scout_input(raw_lines, req.platforms)
-    if parse_errors and not targets:
-        raise HTTPException(status_code=400, detail="; ".join(parse_errors))
+    try:
+        targets = parse_input_targets(raw_lines, req.platforms)
+    except ValueError as parse_err:
+        raise HTTPException(status_code=400, detail=str(parse_err))
+
+    if not targets:
+        raise HTTPException(status_code=400, detail="No valid handles or URLs provided")
 
     # Credit computation: 1.0 base + 0.5/target + 0.5 if enrich
     target_count = len(targets)
@@ -178,6 +183,8 @@ async def get_scout_leads(
                 "lead_score": l.lead_score,
                 "profile_url": l.profile_url,
                 "scrape_status": l.scrape_status or "ok",
+                "account_type": getattr(l, "account_type", None) or (l.atlas or {}).get("profile_analysis", {}).get("account_type"),
+                "priority_level": getattr(l, "priority_level", None) or (l.atlas or {}).get("lead_scoring", {}).get("priority_level"),
                 "atlas": l.atlas or {},
                 "sources": l.sources or {},
                 "created_at": l.created_at.isoformat() if l.created_at else None,

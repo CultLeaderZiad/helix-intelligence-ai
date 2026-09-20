@@ -1,6 +1,7 @@
 import React, { useRef } from "react"
 import { Upload, Play, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
+import { TargetCategoryField } from "./TargetCategoryField"
 import { cn } from "@/lib/utils"
 
 export function HandleInput({
@@ -53,24 +54,11 @@ export function HandleInput({
   return (
     <div className="space-y-4">
       {/* Target Category (Atlas Context) */}
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <label className="block font-mono text-[10px] uppercase tracking-[0.14em] text-accent font-bold">
-            TARGET CATEGORY / BUSINESS CONTEXT (ATLAS)
-          </label>
-          <span className="text-[10px] font-mono text-text-faint">
-            Required for category match & outreach personalization
-          </span>
-        </div>
-        <input
-          type="text"
-          disabled={disabled}
-          value={targetCategory}
-          onChange={(e) => onChangeTargetCategory?.(e.target.value)}
-          placeholder="e.g. Beauty clinics MENA, Specialty coffee Austin, AI B2B SaaS Founders"
-          className="w-full rounded-[4px] border border-border bg-[#09090b] px-3 py-2 font-mono text-[12px] text-text placeholder:text-text-faint focus:border-accent focus:outline-none transition-colors"
-        />
-      </div>
+      <TargetCategoryField
+        value={targetCategory}
+        onChange={onChangeTargetCategory}
+        disabled={disabled}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-start">
         {/* Handles Textarea */}

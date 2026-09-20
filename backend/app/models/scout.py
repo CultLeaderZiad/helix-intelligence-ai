@@ -56,6 +56,8 @@ class ScoutLead(Base):
     lead_score = Column(Integer, default=0)   # 0..100
     profile_url = Column(String, nullable=True)
     scrape_status = Column(String, default="ok") # ok | needs_manual_review | rate_limited | not_found
+    account_type = Column(String, nullable=True)  # business | influencer | personal | unknown
+    priority_level = Column(String, nullable=True) # high | medium | low
     atlas = Column(JSON, default=dict)        # full Atlas JSON contract
     sources = Column(JSON, default=dict)      # {"email_source": "bio", "confidence": 90, ...}
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

@@ -1,5 +1,6 @@
 import React, { useState } from "react"
 import { Copy, Check, ExternalLink, Sparkles, User, Target, Send, Code, ShieldAlert, CheckCircle2 } from "lucide-react"
+import { AtlasJsonView } from "./AtlasJsonView"
 import { cn } from "@/lib/utils"
 
 export function LeadDetailPanel({ lead }) {
@@ -468,22 +469,7 @@ export function LeadDetailPanel({ lead }) {
         {/* TAB 4: RAW ATLAS JSON */}
         {/* ============================================================ */}
         {activeTab === "json" && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-[10px] text-text-faint uppercase">
-              <span>Atlas Contract Schema</span>
-              <button
-                type="button"
-                onClick={() => handleCopy(atlas, "raw_json")}
-                className="text-accent hover:underline flex items-center gap-1"
-              >
-                {copiedKey === "raw_json" ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
-                {copiedKey === "raw_json" ? "COPIED" : "COPY RAW JSON"}
-              </button>
-            </div>
-            <pre className="rounded-[4px] border border-border bg-surface-2 p-3 text-[10px] text-text-muted overflow-x-auto max-h-80 leading-relaxed">
-              {JSON.stringify(atlas, null, 2)}
-            </pre>
-          </div>
+          <AtlasJsonView data={atlas} />
         )}
       </div>
     </div>

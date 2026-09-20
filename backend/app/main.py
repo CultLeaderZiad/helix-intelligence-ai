@@ -82,6 +82,8 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE scout_jobs ADD COLUMN IF NOT EXISTS generate_outreach BOOLEAN DEFAULT TRUE;",
                 "ALTER TABLE scout_leads ADD COLUMN IF NOT EXISTS atlas JSON DEFAULT '{}'::json;",
                 "ALTER TABLE scout_leads ADD COLUMN IF NOT EXISTS scrape_status VARCHAR DEFAULT 'ok';",
+                "ALTER TABLE scout_leads ADD COLUMN IF NOT EXISTS account_type VARCHAR;",
+                "ALTER TABLE scout_leads ADD COLUMN IF NOT EXISTS priority_level VARCHAR;",
             ]
             for query in migrations:
                 try:
