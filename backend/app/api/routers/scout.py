@@ -25,6 +25,8 @@ class CreateScoutJobRequest(BaseModel):
     platforms: List[str] = Field(default_factory=lambda: ["instagram", "github", "linktree"])
     handles: List[str] = Field(default_factory=list)
     enrich_emails: bool = True
+    target_category: Optional[str] = None
+    generate_outreach: bool = True
 
 class CreateMapsJobRequest(BaseModel):
     keyword: str = Field(..., min_length=2, description="Niche keyword, e.g. dentists")
@@ -81,12 +83,14 @@ async def create_scout_job(
         platforms=req.platforms,
         handles=raw_lines,
         enrich_emails=req.enrich_emails,
+        target_category=req.target_category.strip() if req.target_category else None,
+        generate_outreach=req.generate_outreach,
         stage="init",
-        stage_label="Queued Scout job",
+        stage_label="Queued Scout Atlas job",
         stage_index=0,
         stages_total=4,
         credits_used=credit_cost if not is_admin else 0.0,
-        logs=[f"> job queued with {len(targets)} targets across {len(req.platforms)} platforms"],
+        logs=[f"> job queued with {len(targets)} targets (category: {req.target_category or 'general'})"],
     )
     db.add(job)
     await db.commit()
@@ -173,6 +177,8 @@ async def get_scout_leads(
                 "followers": l.followers,
                 "lead_score": l.lead_score,
                 "profile_url": l.profile_url,
+                "scrape_status": l.scrape_status or "ok",
+                "atlas": l.atlas or {},
                 "sources": l.sources or {},
                 "created_at": l.created_at.isoformat() if l.created_at else None,
             }
@@ -205,6 +211,9 @@ async def get_org_scout_jobs(
                 "created_at": j.created_at.isoformat() if j.created_at else None,
             }
             for j in jobs
+        ]
+    }
+
 @router.get("/latest-job")
 async def get_latest_scout_job(
     db: AsyncSession = Depends(get_db),
@@ -235,6 +244,7 @@ async def get_latest_scout_job(
             "stages_total": job.stages_total,
             "platforms": job.platforms,
             "handles": job.handles,
+            "target_category": job.target_category,
             "leads_count": len(leads),
             "credits_used": job.credits_used,
             "logs": job.logs,
@@ -253,6 +263,8 @@ async def get_latest_scout_job(
                 "followers": l.followers,
                 "lead_score": l.lead_score,
                 "profile_url": l.profile_url,
+                "scrape_status": l.scrape_status or "ok",
+                "atlas": l.atlas or {},
                 "sources": l.sources or {},
                 "created_at": l.created_at.isoformat() if l.created_at else None,
             }
@@ -283,23 +295,38 @@ async def export_scout_leads_csv(
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Handle", "Platform", "Name", "Email", "Phone", "Website", "Followers", "Score", "Profile URL", "Bio"])
+    writer.writerow([
+        "Handle", "Platform", "Name", "Score", "Priority", "Account Type", "Primary Niche",
+        "Email", "Email Source", "Phone", "Website", "Followers", "Scrape Status",
+        "Outreach Subject", "Outreach Email Body", "Profile URL", "Bio"
+    ])
     for l in leads:
+        atlas = l.atlas or {}
+        outreach = atlas.get("outreach", {}) or {}
+        analysis = atlas.get("profile_analysis", {}) or {}
+        scoring = atlas.get("lead_scoring", {}) or {}
         writer.writerow([
             l.handle,
             l.platform,
             l.name or "",
+            l.lead_score or 0,
+            scoring.get("priority_level") or "low",
+            analysis.get("account_type") or "unknown",
+            analysis.get("primary_niche") or "",
             l.email or "",
+            (l.sources or {}).get("email_source") or "",
             l.phone or "",
             l.website or "",
             l.followers or 0,
-            l.lead_score or 0,
+            l.scrape_status or "ok",
+            outreach.get("email_subject") or "",
+            outreach.get("email_body") or "",
             l.profile_url or "",
             l.bio or "",
         ])
 
     output.seek(0)
-    filename = f"helix_scout_leads_{job_id[:8]}.csv"
+    filename = f"helix_scout_atlas_leads_{job_id[:8]}.csv"
     return StreamingResponse(
         io.BytesIO(output.getvalue().encode("utf-8")),
         media_type="text/csv",
@@ -609,7 +636,6 @@ async def get_scout_settings(
 
     hunter_configured = bool(flags.get("hunter_api_key") or os.environ.get("HUNTER_API_KEY"))
     linkedin_configured = bool(flags.get("linkedin_cookie") or flags.get("linkedin_byok_cookie"))
-    apify_configured = bool(os.environ.get("APIFY_API_TOKEN"))
     smtp_configured = bool(os.environ.get("SCOUT_SMTP_VERIFY", "false").lower() == "true")
     proxy_configured = bool(os.environ.get("SCOUT_PROXY"))
     scrapegraph_configured = bool(os.environ.get("SCRAPEGRAPH_API_KEY"))
@@ -617,11 +643,11 @@ async def get_scout_settings(
     return {
         "hunter_configured": hunter_configured,
         "linkedin_configured": linkedin_configured,
-        "apify_configured": apify_configured,
         "smtp_configured": smtp_configured,
         "scrapegraph_configured": scrapegraph_configured,
         "proxy_status": "Managed Residential Pool (active)" if proxy_configured else "Direct Web & Safe Pool",
         "free_proxy_allowed": False,
+        "engine": "kiryano/Scout OSS (MIT) + Helix Atlas Pipeline",
         "maps_service": "gosom/google-maps-scraper kit engine (MIT) + ScrapeGraph AI",
     }
 

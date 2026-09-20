@@ -9,6 +9,8 @@ export const scoutApi = {
         platforms: params.platforms || ["instagram", "github", "linktree"],
         handles: params.handles || [],
         enrich_emails: params.enrich_emails !== false,
+        target_category: params.target_category || "",
+        generate_outreach: params.generate_outreach !== false,
       },
     })
   },

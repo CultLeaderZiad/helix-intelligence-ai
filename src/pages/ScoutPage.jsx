@@ -29,6 +29,8 @@ export function ScoutPage() {
   const [selectedPlatforms, setSelectedPlatforms] = useState(["instagram", "github", "linktree"])
   const [handlesText, setHandlesText] = useState("cultleaderziad\nhttps://github.com/cultleaderziad")
   const [enrichEmails, setEnrichEmails] = useState(true)
+  const [targetCategory, setTargetCategory] = useState("MENA clinics / beauty brands / SaaS founders")
+  const [generateOutreach, setGenerateOutreach] = useState(true)
 
   // Maps Mode State
   const [mapsKeyword, setMapsKeyword] = useState("Dentists")
@@ -113,6 +115,8 @@ export function ScoutPage() {
       platforms: selectedPlatforms,
       handles: handleList,
       enrich_emails: enrichEmails,
+      target_category: targetCategory,
+      generate_outreach: generateOutreach,
     })
   }
 
@@ -365,6 +369,10 @@ export function ScoutPage() {
                 onChange={setHandlesText}
                 enrichEmails={enrichEmails}
                 onToggleEnrich={setEnrichEmails}
+                targetCategory={targetCategory}
+                onChangeTargetCategory={setTargetCategory}
+                generateOutreach={generateOutreach}
+                onToggleOutreach={setGenerateOutreach}
                 onSubmit={handleRunSocialScout}
                 isBusy={isSocialBusy}
                 disabled={isSocialBusy}

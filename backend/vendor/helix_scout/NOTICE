@@ -1,0 +1,9 @@
+Helix Scout (Adapted from kiryano/Scout)
+Copyright (c) 2024 kiryano
+Portions Copyright (c) 2026 Helix Intelligence
+
+This software contains code derived from kiryano/Scout, licensed under the MIT License:
+https://github.com/kiryano/Scout
+
+Includes scrapers, stealth session handling, and lead enrichment adapted for Helix Intelligence Atlas pipeline.
+Zero third-party agent SaaS. Zero Apify dependency.

@@ -19,11 +19,12 @@ export function LeadsTable({ leads, selectedLead, onSelectLead }) {
         <thead>
           <tr className="border-b border-border bg-surface-2 text-[10px] uppercase tracking-[0.1em] text-text-faint sticky top-0 z-10">
             <th className="py-2.5 px-3 font-semibold">HANDLE</th>
-            <th className="py-2.5 px-2 font-semibold">PLATFORM</th>
-            <th className="py-2.5 px-3 font-semibold">NAME</th>
+            <th className="py-2.5 px-2 font-semibold">TYPE</th>
+            <th className="py-2.5 px-3 font-semibold">PRIMARY NICHE</th>
+            <th className="py-2.5 px-2 font-semibold text-center">SCORE</th>
+            <th className="py-2.5 px-2 font-semibold text-center">PRIORITY</th>
             <th className="py-2.5 px-3 font-semibold">EMAIL</th>
-            <th className="py-2.5 px-3 font-semibold">PHONE</th>
-            <th className="py-2.5 px-3 font-semibold text-right">SCORE</th>
+            <th className="py-2.5 px-2 font-semibold text-right">STATUS</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/60">
@@ -33,6 +34,13 @@ export function LeadsTable({ leads, selectedLead, onSelectLead }) {
               code: lead.platform.substring(0, 2).toUpperCase(),
               bg: "bg-surface-3 text-text-muted border-border",
             }
+            const atlas = lead.atlas || {}
+            const analysis = atlas.profile_analysis || {}
+            const scoring = atlas.lead_scoring || {}
+            const priority = (scoring.priority_level || lead.sources?.priority || "low").toLowerCase()
+            const accountType = analysis.account_type || lead.sources?.account_type || "creator"
+            const primaryNiche = analysis.primary_niche || lead.sources?.primary_niche || "General"
+            const scrapeStatus = lead.scrape_status || "ok"
 
             return (
               <tr
@@ -45,41 +53,82 @@ export function LeadsTable({ leads, selectedLead, onSelectLead }) {
                     : "hover:bg-surface-2/60 text-text-muted"
                 )}
               >
+                {/* Handle & Platform */}
                 <td className="py-3 px-3">
-                  <span className={cn("font-semibold", isSelected ? "text-white" : "text-text")}>
-                    {lead.handle}
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={cn(
+                        "inline-block rounded px-1.5 py-0.5 text-[9.5px] font-bold border shrink-0",
+                        badge.bg
+                      )}
+                    >
+                      {badge.code}
+                    </span>
+                    <span className={cn("font-semibold truncate max-w-[130px]", isSelected ? "text-white" : "text-text")}>
+                      {lead.handle}
+                    </span>
+                  </div>
+                </td>
+
+                {/* Account Type */}
+                <td className="py-3 px-2">
+                  <span className="capitalize text-[11px] text-text-muted">
+                    {accountType}
                   </span>
                 </td>
-                <td className="py-3 px-2">
+
+                {/* Primary Niche */}
+                <td className="py-3 px-3 text-text-muted truncate max-w-[140px]">
+                  <span className="text-[11px] truncate block text-text">
+                    {primaryNiche}
+                  </span>
+                </td>
+
+                {/* Atlas Score */}
+                <td className="py-3 px-2 text-center">
+                  <span className="font-bold text-accent tnum text-xs">
+                    {lead.lead_score}
+                  </span>
+                </td>
+
+                {/* Priority Badge */}
+                <td className="py-3 px-2 text-center">
                   <span
                     className={cn(
-                      "inline-block rounded px-1.5 py-0.5 text-[9.5px] font-bold border",
-                      badge.bg
+                      "inline-block rounded px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider border",
+                      priority === "high"
+                        ? "bg-accent/15 text-accent border-accent/40"
+                        : priority === "medium"
+                        ? "bg-amber-500/15 text-amber-400 border-amber-500/40"
+                        : "bg-surface-3 text-text-faint border-border"
                     )}
                   >
-                    {badge.code}
+                    {priority}
                   </span>
                 </td>
-                <td className="py-3 px-3 text-text-muted truncate max-w-[140px]">
-                  {lead.name || "—"}
-                </td>
+
+                {/* Email */}
                 <td className="py-3 px-3 text-text-muted truncate max-w-[160px]">
                   {lead.email ? (
-                    <span className="text-text">{lead.email}</span>
+                    <span className="text-text truncate block">{lead.email}</span>
                   ) : (
-                    <span className="text-text-faint">—</span>
+                    <span className="text-text-faint text-[10px]">No email</span>
                   )}
                 </td>
-                <td className="py-3 px-3 text-text-muted truncate max-w-[110px]">
-                  {lead.phone ? (
-                    <span className="text-text">{lead.phone}</span>
-                  ) : (
-                    <span className="text-text-faint">—</span>
-                  )}
-                </td>
-                <td className="py-3 px-3 text-right">
-                  <span className="font-bold text-accent tnum">
-                    {lead.lead_score}
+
+                {/* Scrape Status */}
+                <td className="py-3 px-2 text-right">
+                  <span
+                    className={cn(
+                      "text-[9px] uppercase font-mono px-1.5 py-0.5 rounded border inline-block",
+                      scrapeStatus === "ok" || scrapeStatus === "verified"
+                        ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                        : scrapeStatus === "needs_manual_review"
+                        ? "border-amber-500/30 text-amber-400 bg-amber-500/10"
+                        : "border-border text-text-faint bg-surface-3"
+                    )}
+                  >
+                    {scrapeStatus === "ok" ? "VERIFIED" : scrapeStatus === "needs_manual_review" ? "REVIEW" : scrapeStatus}
                   </span>
                 </td>
               </tr>

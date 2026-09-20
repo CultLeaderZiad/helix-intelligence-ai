@@ -63,14 +63,20 @@ export function useScoutSearch() {
   )
 
   const submit = useCallback(
-    async ({ platforms, handles, enrich_emails = true }) => {
-      lastParamsRef.current = { platforms, handles, enrich_emails }
+    async ({ platforms, handles, enrich_emails = true, target_category = "", generate_outreach = true }) => {
+      lastParamsRef.current = { platforms, handles, enrich_emails, target_category, generate_outreach }
       setIsBusy(true)
       setError(null)
       setPhase(SCOUT_PHASE.RUNNING)
 
       try {
-        const initialJob = await scoutService.submitJob({ platforms, handles, enrich_emails })
+        const initialJob = await scoutService.submitJob({
+          platforms,
+          handles,
+          enrich_emails,
+          target_category,
+          generate_outreach,
+        })
         setJob(initialJob)
         pollJob(initialJob.job_id)
       } catch (err) {

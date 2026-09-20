@@ -17,6 +17,8 @@ class ScoutJob(Base):
     platforms = Column(JSON, default=list)     # ["instagram", "github", "linktree", ...]
     handles = Column(JSON, default=list)       # ["helixagency", "cultleaderziad", ...]
     enrich_emails = Column(Boolean, default=True)
+    target_category = Column(String, nullable=True) # e.g. "beauty clinics MENA"
+    generate_outreach = Column(Boolean, default=True)
 
     stage = Column(String, default="queued")   # queued | init | scrape | enrich | complete | failed
     stage_label = Column(String, default="Job queued")
@@ -53,6 +55,8 @@ class ScoutLead(Base):
     followers = Column(Integer, default=0)
     lead_score = Column(Integer, default=0)   # 0..100
     profile_url = Column(String, nullable=True)
+    scrape_status = Column(String, default="ok") # ok | needs_manual_review | rate_limited | not_found
+    atlas = Column(JSON, default=dict)        # full Atlas JSON contract
     sources = Column(JSON, default=dict)      # {"email_source": "bio", "confidence": 90, ...}
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
