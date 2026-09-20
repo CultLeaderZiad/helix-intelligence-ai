@@ -10,6 +10,7 @@ from sqlalchemy import select, update
 from app.models.scout import ScoutJob, ScoutLead
 from app.models.organization import Organization
 from app.db.session import async_session_maker
+from app.services.scrapegraph_lead_service import extract_profile_with_scrapegraph
 
 EMAIL_REGEX = re.compile(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")
 PHONE_REGEX = re.compile(r"(\+?[0-9]{1,3}[-.\s]?)?(\(?\d{2,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}")
@@ -250,6 +251,22 @@ async def scrape_linktree_profile(handle: str, client: httpx.AsyncClient) -> Dic
                 tel_match = re.search(r'href="tel:([^"]+)"', html)
                 if tel_match:
                     phone = tel_match.group(1)
+
+            # ScrapeGraph AI Deep Extraction if email is still missing
+            if not email or not phone:
+                try:
+                    sg_res = await extract_profile_with_scrapegraph(url, client)
+                    if sg_res:
+                        if not email and sg_res.get("email"):
+                            email = sg_res["email"]
+                        if not phone and sg_res.get("phone"):
+                            phone = sg_res["phone"]
+                        if not name and sg_res.get("name"):
+                            name = sg_res["name"]
+                        if not bio and sg_res.get("bio"):
+                            bio = sg_res["bio"]
+                except Exception:
+                    pass
 
             return {
                 "name": name or handle,
@@ -552,6 +569,7 @@ async def run_scout_job_worker(job_id: str):
                 if lead_data and "error" not in lead_data:
                     # Optional Website Enrichment pass
                     website = lead_data.get("website")
+                    target_url = target.get("profile_url") or website
                     if job.enrich_emails and website and not lead_data.get("email"):
                         enrich_res = await enrich_from_website(website, client)
                         en_emails = enrich_res.get("emails", [])
@@ -562,6 +580,26 @@ async def run_scout_job_worker(job_id: str):
                         if en_phones and not lead_data.get("phone"):
                             lead_data["phone"] = en_phones[0]
                             lead_data["phone_source"] = "website_contact_page"
+
+                    # ScrapeGraph AI deep extraction pass if contacts still missing
+                    if job.enrich_emails and (not lead_data.get("email") or not lead_data.get("phone")):
+                        enrich_target = website or target_url
+                        if enrich_target and ("http://" in enrich_target or "https://" in enrich_target):
+                            try:
+                                sg_res = await extract_profile_with_scrapegraph(enrich_target, client)
+                                if sg_res:
+                                    if not lead_data.get("email") and sg_res.get("email"):
+                                        lead_data["email"] = sg_res["email"]
+                                        lead_data["email_source"] = "scrapegraph_ai_extract"
+                                    if not lead_data.get("phone") and sg_res.get("phone"):
+                                        lead_data["phone"] = sg_res["phone"]
+                                        lead_data["phone_source"] = "scrapegraph_ai_extract"
+                                    if not lead_data.get("name") and sg_res.get("name"):
+                                        lead_data["name"] = sg_res["name"]
+                                    if not lead_data.get("bio") and sg_res.get("bio"):
+                                        lead_data["bio"] = sg_res["bio"]
+                            except Exception:
+                                pass
 
                     score = compute_lead_score(
                         lead_data.get("email"),

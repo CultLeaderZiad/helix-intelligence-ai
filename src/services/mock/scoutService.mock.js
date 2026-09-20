@@ -127,6 +127,22 @@ export const scoutMock = {
     }
   },
 
+  async getLatestJob() {
+    return {
+      job: mockJob || {
+        job_id: "job_scout_8f2a",
+        status: "succeeded",
+        stage: "complete",
+        stage_label: "Complete",
+        handles_count: 3,
+        leads_count: mockLeads.length,
+        logs: ["> engine: helix_scout/v1 (MIT adapted) · ok", "> leads loaded"],
+        created_at: new Date().toISOString(),
+      },
+      leads: [...mockLeads],
+    }
+  },
+
   async exportCsv(jobId) {
     const csvContent = [
       "Handle,Platform,Name,Email,Phone,Website,Followers,Score,Bio",

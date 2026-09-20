@@ -205,6 +205,58 @@ async def get_org_scout_jobs(
                 "created_at": j.created_at.isoformat() if j.created_at else None,
             }
             for j in jobs
+@router.get("/latest-job")
+async def get_latest_scout_job(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    org = await get_or_create_default_org(db, current_user)
+    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False)
+    query = select(ScoutJob).order_by(desc(ScoutJob.created_at)).limit(1)
+    if not is_admin:
+        query = query.where(ScoutJob.org_id == org.id)
+    res = await db.execute(query)
+    job = res.scalars().first()
+    if not job:
+        return {"job": None, "leads": []}
+
+    leads_res = await db.execute(
+        select(ScoutLead).where(ScoutLead.job_id == job.id).order_by(desc(ScoutLead.lead_score))
+    )
+    leads = leads_res.scalars().all()
+
+    return {
+        "job": {
+            "job_id": job.id,
+            "status": job.status,
+            "stage": job.stage,
+            "stage_label": job.stage_label,
+            "stage_index": job.stage_index,
+            "stages_total": job.stages_total,
+            "platforms": job.platforms,
+            "handles": job.handles,
+            "leads_count": len(leads),
+            "credits_used": job.credits_used,
+            "logs": job.logs,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+        },
+        "leads": [
+            {
+                "id": l.id,
+                "handle": l.handle,
+                "platform": l.platform,
+                "name": l.name,
+                "email": l.email,
+                "phone": l.phone,
+                "website": l.website,
+                "bio": l.bio,
+                "followers": l.followers,
+                "lead_score": l.lead_score,
+                "profile_url": l.profile_url,
+                "sources": l.sources or {},
+                "created_at": l.created_at.isoformat() if l.created_at else None,
+            }
+            for l in leads
         ]
     }
 
@@ -430,6 +482,66 @@ async def get_org_maps_jobs(
         ]
     }
 
+@router.get("/maps/latest-job")
+async def get_latest_maps_job(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    org = await get_or_create_default_org(db, current_user)
+    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False)
+    query = select(ScoutMapsJob).order_by(desc(ScoutMapsJob.created_at)).limit(1)
+    if not is_admin:
+        query = query.where(ScoutMapsJob.org_id == org.id)
+    res = await db.execute(query)
+    job = res.scalars().first()
+    if not job:
+        return {"job": None, "leads": []}
+
+    leads_res = await db.execute(
+        select(ScoutMapsLead).where(ScoutMapsLead.job_id == job.id).order_by(desc(ScoutMapsLead.reviews_count))
+    )
+    leads = leads_res.scalars().all()
+
+    return {
+        "job": {
+            "job_id": job.id,
+            "status": job.status,
+            "keyword": job.keyword,
+            "city": job.city,
+            "depth": job.depth,
+            "stage": job.stage,
+            "stage_label": job.stage_label,
+            "stage_index": job.stage_index,
+            "stages_total": job.stages_total,
+            "results_count": len(leads),
+            "credits_used": job.credits_used,
+            "logs": job.logs,
+            "created_at": job.created_at.isoformat() if job.created_at else None,
+        },
+        "leads": [
+            {
+                "id": l.id,
+                "title": l.title,
+                "phone": l.phone,
+                "email": l.email,
+                "emails_found": l.emails_found or [],
+                "website": l.website,
+                "category": l.category,
+                "address": l.address,
+                "city": l.city,
+                "rating": l.rating,
+                "reviews_count": l.reviews_count,
+                "instagram": l.instagram,
+                "facebook": l.facebook,
+                "linkedin": l.linkedin,
+                "twitter": l.twitter,
+                "socials": l.socials or {},
+                "created_at": l.created_at.isoformat() if l.created_at else None,
+            }
+            for l in leads
+        ]
+    }
+
 @router.get("/maps/export")
 async def export_maps_leads_csv(
     job_id: str,
@@ -500,15 +612,17 @@ async def get_scout_settings(
     apify_configured = bool(os.environ.get("APIFY_API_TOKEN"))
     smtp_configured = bool(os.environ.get("SCOUT_SMTP_VERIFY", "false").lower() == "true")
     proxy_configured = bool(os.environ.get("SCOUT_PROXY"))
+    scrapegraph_configured = bool(os.environ.get("SCRAPEGRAPH_API_KEY"))
 
     return {
         "hunter_configured": hunter_configured,
         "linkedin_configured": linkedin_configured,
         "apify_configured": apify_configured,
         "smtp_configured": smtp_configured,
+        "scrapegraph_configured": scrapegraph_configured,
         "proxy_status": "Managed Residential Pool (active)" if proxy_configured else "Direct Web & Safe Pool",
         "free_proxy_allowed": False,
-        "maps_service": "gosom/google-maps-scraper kit engine (MIT)",
+        "maps_service": "gosom/google-maps-scraper kit engine (MIT) + ScrapeGraph AI",
     }
 
 @router.post("/settings")

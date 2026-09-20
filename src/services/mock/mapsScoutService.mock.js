@@ -171,6 +171,23 @@ export const mapsScoutMock = {
     }
   },
 
+  async getLatestJob() {
+    return {
+      job: mockMapsJob || {
+        job_id: "job_maps_sample_1",
+        keyword: "dentists",
+        city: "Riyadh, SA",
+        status: "succeeded",
+        stage: "complete",
+        stage_label: "Maps Scout complete",
+        results_count: SAMPLE_MAPS_LEADS.length,
+        logs: ["> engine: helix_maps_scout/v1 · ok", "> 3 leads loaded"],
+        created_at: new Date().toISOString(),
+      },
+      leads: [...SAMPLE_MAPS_LEADS],
+    }
+  },
+
   async exportCsv(jobId) {
     const csvContent = "Business Name,Phone,Email,Website,Category,Address,City,Rating,Reviews\n" +
       SAMPLE_MAPS_LEADS.map(l => `"${l.title}","${l.phone}","${l.email}","${l.website}","${l.category}","${l.address}","${l.city}",${l.rating},${l.reviews_count}`).join("\n")

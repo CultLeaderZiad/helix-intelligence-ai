@@ -56,6 +56,8 @@ export function ScoutPage() {
     submit: submitSocial,
     retry: retrySocial,
     exportCsv: exportSocialCsv,
+    loadJob: loadSocialJob,
+    loadLatestJob: loadLatestSocialJob,
   } = useScoutSearch()
 
   // Maps Hook
@@ -70,6 +72,8 @@ export function ScoutPage() {
     submit: submitMaps,
     retry: retryMaps,
     exportCsv: exportMapsCsv,
+    loadJob: loadMapsJob,
+    loadLatestJob: loadLatestMapsJob,
   } = useMapsScoutSearch()
 
   // Fetch settings on mount
@@ -79,18 +83,22 @@ export function ScoutPage() {
     }).catch(() => {})
   }, [settingsOpen])
 
-  // Load org jobs for admin tab
+  // Load latest runs on initial mount to immediately populate workspace with real leads
   useEffect(() => {
-    if (isAdmin) {
-      scoutService.getOrgJobs?.().then((res) => {
-        setOrgSocialJobs(res.items || [])
-      }).catch(() => {})
+    loadLatestSocialJob?.()
+    loadLatestMapsJob?.()
+  }, [loadLatestSocialJob, loadLatestMapsJob])
 
-      mapsScoutService.getOrgJobs?.().then((res) => {
-        setOrgMapsJobs(res.items || [])
-      }).catch(() => {})
-    }
-  }, [isAdmin])
+  // Load org runs / past history
+  useEffect(() => {
+    scoutService.getOrgJobs?.().then((res) => {
+      setOrgSocialJobs(res.items || [])
+    }).catch(() => {})
+
+    mapsScoutService.getOrgJobs?.().then((res) => {
+      setOrgMapsJobs(res.items || [])
+    }).catch(() => {})
+  }, [socialPhase, mapsPhase])
 
   // Handlers
   const handleRunSocialScout = () => {
@@ -245,14 +253,33 @@ export function ScoutPage() {
             </div>
             <div className="divide-y divide-border/40">
               {orgSocialJobs.map((j) => (
-                <div key={j.job_id} className="py-2.5 flex items-center justify-between">
+                <div
+                  key={j.job_id}
+                  onClick={() => {
+                    loadSocialJob(j.job_id)
+                    setMode("social")
+                    setAdminTab("current")
+                  }}
+                  className="py-3 px-2 rounded flex items-center justify-between hover:bg-surface-hover/70 cursor-pointer transition-colors group"
+                >
                   <div>
-                    <span className="text-white font-bold block">{j.job_id}</span>
-                    <span className="text-text-muted text-[11px]">{j.handles_count} targets · {j.status}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold group-hover:text-accent transition-colors">{j.job_id}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-border text-text-muted uppercase">{j.status}</span>
+                    </div>
+                    <span className="text-text-muted text-[11px]">{j.handles_count} targets</span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-accent font-bold">{j.leads_count} verified leads</span>
-                    <span className="text-text-faint text-[10px] block">{j.created_at?.substring(0, 16)}</span>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <span className="text-accent font-bold block">{j.leads_count} verified leads</span>
+                      <span className="text-text-faint text-[10px]">{j.created_at?.substring(0, 16)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="px-2.5 py-1 text-[11px] font-bold uppercase rounded border border-accent/40 bg-accent/10 text-accent group-hover:bg-accent group-hover:text-black transition-colors"
+                    >
+                      View Leads →
+                    </button>
                   </div>
                 </div>
               ))}
@@ -269,14 +296,33 @@ export function ScoutPage() {
             </div>
             <div className="divide-y divide-border/40">
               {orgMapsJobs.map((j) => (
-                <div key={j.job_id} className="py-2.5 flex items-center justify-between">
+                <div
+                  key={j.job_id}
+                  onClick={() => {
+                    loadMapsJob(j.job_id)
+                    setMode("maps")
+                    setAdminTab("current")
+                  }}
+                  className="py-3 px-2 rounded flex items-center justify-between hover:bg-surface-hover/70 cursor-pointer transition-colors group"
+                >
                   <div>
-                    <span className="text-white font-bold block">{j.keyword} ({j.city})</span>
-                    <span className="text-text-muted text-[11px]">{j.job_id} · {j.status}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold group-hover:text-accent transition-colors">{j.keyword} ({j.city})</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-border text-text-muted uppercase">{j.status}</span>
+                    </div>
+                    <span className="text-text-muted text-[11px]">{j.job_id}</span>
                   </div>
-                  <div className="text-right">
-                    <span className="text-accent font-bold">{j.results_count} leads</span>
-                    <span className="text-text-faint text-[10px] block">{j.created_at?.substring(0, 16)}</span>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <span className="text-accent font-bold block">{j.results_count} leads</span>
+                      <span className="text-text-faint text-[10px]">{j.created_at?.substring(0, 16)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="px-2.5 py-1 text-[11px] font-bold uppercase rounded border border-accent/40 bg-accent/10 text-accent group-hover:bg-accent group-hover:text-black transition-colors"
+                    >
+                      View Leads →
+                    </button>
                   </div>
                 </div>
               ))}
@@ -287,6 +333,26 @@ export function ScoutPage() {
           /* MODE A: SOCIAL PROFILES */
           /* ============================================================ */
           <>
+            {orgSocialJobs.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 font-mono text-[11px]">
+                <span className="text-text-faint uppercase shrink-0">Recent Runs:</span>
+                {orgSocialJobs.slice(0, 5).map((oj) => (
+                  <button
+                    key={oj.job_id}
+                    type="button"
+                    onClick={() => loadSocialJob(oj.job_id)}
+                    className={`px-2 py-0.5 rounded border transition-colors shrink-0 ${
+                      socialJob?.job_id === oj.job_id
+                        ? "border-accent bg-accent/15 text-accent font-bold"
+                        : "border-border/60 bg-surface/60 text-text-muted hover:text-white"
+                    }`}
+                  >
+                    {oj.job_id.substring(0, 8)} ({oj.leads_count} leads)
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="rounded-[4px] border border-border bg-surface p-4 sm:p-5 space-y-4">
               <PlatformPicker
                 selectedPlatforms={selectedPlatforms}
@@ -363,13 +429,40 @@ export function ScoutPage() {
                   </button>
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="rounded-[4px] border border-border bg-surface/40 p-8 text-center font-mono space-y-2">
+                <div className="text-white text-xs font-semibold">No Social Leads Found</div>
+                <div className="text-text-muted text-[11px] max-w-md mx-auto">
+                  No public contact information was extracted for the queried profile(s). Ensure handles exist on the chosen platforms or provide direct profile URLs.
+                </div>
+              </div>
+            )}
           </>
         ) : (
           /* ============================================================ */
           /* MODE B: MAPS LEADS */
           /* ============================================================ */
           <>
+            {orgMapsJobs.length > 0 && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 font-mono text-[11px]">
+                <span className="text-text-faint uppercase shrink-0">Recent Runs:</span>
+                {orgMapsJobs.slice(0, 5).map((mj) => (
+                  <button
+                    key={mj.job_id}
+                    type="button"
+                    onClick={() => loadMapsJob(mj.job_id)}
+                    className={`px-2 py-0.5 rounded border transition-colors shrink-0 ${
+                      mapsJob?.job_id === mj.job_id
+                        ? "border-accent bg-accent/15 text-accent font-bold"
+                        : "border-border/60 bg-surface/60 text-text-muted hover:text-white"
+                    }`}
+                  >
+                    {mj.keyword} - {mj.city} ({mj.results_count} leads)
+                  </button>
+                ))}
+              </div>
+            )}
+
             <MapsQueryForm
               keyword={mapsKeyword}
               setKeyword={setMapsKeyword}
@@ -446,7 +539,14 @@ export function ScoutPage() {
                   </button>
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <div className="rounded-[4px] border border-border bg-surface/40 p-8 text-center font-mono space-y-2">
+                <div className="text-white text-xs font-semibold">No Maps Leads Found</div>
+                <div className="text-text-muted text-[11px] max-w-md mx-auto">
+                  No businesses were found matching your keyword and location criteria. Try searching with a broader keyword (e.g. "Dentist" or "Hospital") or another city format.
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

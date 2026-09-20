@@ -27,6 +27,10 @@ export const mapsScoutApi = {
     return request("/scout/maps/org-jobs")
   },
 
+  getLatestJob() {
+    return request("/scout/maps/latest-job")
+  },
+
   exportCsv(jobId) {
     const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token") || ""
     const exportUrl = `${API_BASE_URL}/scout/maps/export?job_id=${encodeURIComponent(jobId)}`

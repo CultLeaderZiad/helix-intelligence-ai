@@ -88,14 +88,42 @@ export function useScoutSearch() {
     }
   }, [submit])
 
-  const exportCsv = useCallback(async () => {
-    if (!job?.job_id) return
+  const loadJob = useCallback(async (jobId) => {
+    if (!jobId) return
+    setIsBusy(true)
+    setError(null)
     try {
-      await scoutService.exportCsv(job.job_id)
+      const [fetchedJob, leadsData] = await Promise.all([
+        scoutService.getJob(jobId),
+        scoutService.getLeads(jobId),
+      ])
+      setJob(fetchedJob)
+      const items = leadsData.items || []
+      setLeads(items)
+      setSelectedLead(items[0] || null)
+      setPhase(SCOUT_PHASE.READY)
     } catch (err) {
-      console.error("Export error:", err)
+      console.warn("Failed to load scout job:", err)
+      setError(err.message || "Failed to load job")
+    } finally {
+      setIsBusy(false)
     }
-  }, [job])
+  }, [])
+
+  const loadLatestJob = useCallback(async () => {
+    try {
+      const res = await scoutService.getLatestJob?.()
+      if (res && res.job) {
+        setJob(res.job)
+        const items = res.leads || []
+        setLeads(items)
+        setSelectedLead(items[0] || null)
+        setPhase(SCOUT_PHASE.READY)
+      }
+    } catch (err) {
+      // Quietly ignore if no previous runs exist
+    }
+  }, [])
 
   return {
     phase,
@@ -108,5 +136,7 @@ export function useScoutSearch() {
     submit,
     retry,
     exportCsv,
+    loadJob,
+    loadLatestJob,
   }
 }

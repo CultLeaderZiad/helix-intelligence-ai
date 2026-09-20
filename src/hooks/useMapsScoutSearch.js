@@ -94,14 +94,42 @@ export function useMapsScoutSearch() {
     }
   }, [submit])
 
-  const exportCsv = useCallback(async () => {
-    if (!job?.job_id) return
+  const loadJob = useCallback(async (jobId) => {
+    if (!jobId) return
+    setIsBusy(true)
+    setError(null)
     try {
-      await mapsScoutService.exportCsv(job.job_id)
+      const [fetchedJob, leadsData] = await Promise.all([
+        mapsScoutService.getJob(jobId),
+        mapsScoutService.getLeads(jobId),
+      ])
+      setJob(fetchedJob)
+      const items = leadsData.items || []
+      setLeads(items)
+      setSelectedLead(items[0] || null)
+      setPhase(MAPS_SCOUT_PHASE.READY)
     } catch (err) {
-      console.error("Maps Export error:", err)
+      console.warn("Failed to load maps scout job:", err)
+      setError(err.message || "Failed to load maps job")
+    } finally {
+      setIsBusy(false)
     }
-  }, [job])
+  }, [])
+
+  const loadLatestJob = useCallback(async () => {
+    try {
+      const res = await mapsScoutService.getLatestJob?.()
+      if (res && res.job) {
+        setJob(res.job)
+        const items = res.leads || []
+        setLeads(items)
+        setSelectedLead(items[0] || null)
+        setPhase(MAPS_SCOUT_PHASE.READY)
+      }
+    } catch (err) {
+      // Quietly ignore if no previous runs exist
+    }
+  }, [])
 
   return {
     phase,
@@ -114,5 +142,7 @@ export function useMapsScoutSearch() {
     submit,
     retry,
     exportCsv,
+    loadJob,
+    loadLatestJob,
   }
 }
