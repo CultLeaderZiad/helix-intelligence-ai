@@ -132,19 +132,35 @@ export function ScoutSettingsDrawer({ open, onClose }) {
           </form>
         </div>
 
-        {/* MIT Attribution Footer */}
-        <div className="border-t border-border pt-4 text-center">
-          <p className="text-[10.5px] text-text-faint leading-relaxed">
-            Helix Scout · Scrapers adapted from{" "}
-            <a
-              href="https://github.com/kiryano/Scout"
-              target="_blank"
-              rel="noreferrer"
-              className="text-text-muted hover:text-accent underline"
-            >
-              kiryano/Scout (MIT)
-            </a>
+        {/* MIT Attribution & Legal Notice Footer */}
+        <div className="border-t border-border pt-4 text-center space-y-2">
+          <p className="text-[10px] text-text-faint leading-relaxed">
+            <span className="text-amber-400/90 font-semibold">Notice:</span> Maps scraping may conflict with Google ToS; use responsibly. Applicable personal data and privacy regulations apply.
           </p>
+          <div className="text-[10px] text-text-faint leading-relaxed border-t border-border/40 pt-2 flex flex-col gap-0.5">
+            <span>
+              Social Scrapers: adapted from{" "}
+              <a
+                href="https://github.com/kiryano/Scout"
+                target="_blank"
+                rel="noreferrer"
+                className="text-text-muted hover:text-accent underline"
+              >
+                kiryano/Scout (MIT)
+              </a>
+            </span>
+            <span>
+              Maps Scraper: adapted from{" "}
+              <a
+                href="https://github.com/Mahanaicoach/google-maps-scraper-kit"
+                target="_blank"
+                rel="noreferrer"
+                className="text-text-muted hover:text-accent underline"
+              >
+                google-maps-scraper-kit / gosom (MIT)
+              </a>
+            </span>
+          </div>
         </div>
       </div>
     </div>

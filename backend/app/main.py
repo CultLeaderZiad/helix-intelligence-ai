@@ -77,6 +77,7 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE creatives ADD COLUMN IF NOT EXISTS media_url VARCHAR;",
                 "ALTER TABLE creatives ADD COLUMN IF NOT EXISTS thumbnail_url VARCHAR;",
                 "ALTER TABLE scrape_jobs ADD COLUMN IF NOT EXISTS entity_profile JSONB;",
+                "ALTER TABLE scout_leads ADD COLUMN IF NOT EXISTS profile_url VARCHAR;",
             ]
             for query in migrations:
                 try:
@@ -222,6 +223,7 @@ app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation"
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", tags=["monitors"])
 app.include_router(scout.router, prefix=f"{settings.API_V1_STR}/scout", tags=["scout"])
+app.include_router(scout.router, prefix="/api/v1/scout", tags=["scout"])
 app.include_router(higgsfield.router, prefix=f"{settings.API_V1_STR}/higgsfield", tags=["higgsfield"])
 app.include_router(higgsfield.router, prefix="/higgsfield", tags=["higgsfield"])
 

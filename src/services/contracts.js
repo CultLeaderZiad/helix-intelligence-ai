@@ -261,10 +261,45 @@
  */
 
 /**
- * @typedef {Object} ScoutJobParams
- * @property {string[]} platforms
- * @property {string[]} handles
- * @property {boolean} enrich_emails
+ * @typedef {Object} ScoutMapsLead
+ * @property {string} id
+ * @property {string} job_id
+ * @property {string} title
+ * @property {string|null} phone
+ * @property {string|null} email
+ * @property {string[]} emails_found
+ * @property {string|null} website
+ * @property {string|null} category
+ * @property {string|null} address
+ * @property {string|null} city
+ * @property {number|null} rating
+ * @property {number} reviews_count
+ * @property {string|null} instagram
+ * @property {string|null} facebook
+ * @property {string|null} linkedin
+ * @property {string|null} twitter
+ * @property {Record<string, any>} socials
+ * @property {string} created_at
+ */
+
+/**
+ * @typedef {Object} ScoutMapsJob
+ * @property {string} job_id
+ * @property {string} keyword
+ * @property {string} city
+ * @property {number} depth
+ * @property {'queued'|'running'|'succeeded'|'failed'} status
+ * @property {string} stage
+ * @property {string} stage_label
+ * @property {number} stage_index
+ * @property {number} stages_total
+ * @property {string[]} logs
+ * @property {number} results_count
+ * @property {number} elapsed_ms
+ * @property {number} credits_used
+ * @property {string|null} error_msg
+ * @property {string} created_at
+ * @property {string|null} completed_at
  */
 
 export {}

@@ -46,19 +46,19 @@ export function HandleInput({
       {/* Handles Textarea */}
       <div className="lg:col-span-9 space-y-1.5">
         <label className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted font-semibold">
-          HANDLES
+          HANDLES OR PROFILE URLS
         </label>
         <textarea
           rows={3}
           disabled={disabled}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={`helixagency\ncultleaderziad\nacme_clinic_sa`}
-          className="w-full rounded-[4px] border border-border bg-surface px-3 py-2 font-mono text-[12.5px] leading-relaxed text-text placeholder:text-text-faint focus:border-accent focus:outline-none transition-colors resize-y min-h-[88px]"
+          placeholder={`cultleaderziad\nhttps://instagram.com/helixintelligence\nhttps://github.com/cultleaderziad\nhttps://linktr.ee/acme_clinic`}
+          className="w-full rounded-[4px] border border-border bg-[#09090b] px-3 py-2 font-mono text-[12px] leading-relaxed text-text placeholder:text-text-faint focus:border-accent focus:outline-none transition-colors resize-y min-h-[88px]"
         />
         <div className="flex items-center justify-between text-[11px] font-mono text-text-faint">
-          <span>One per line · or upload CSV/TXT · max 25 / job</span>
-          <span className="tnum text-text-muted">{handleLines.length}/25 handles</span>
+          <span>Handles or profile URLs (one per line) · max 25</span>
+          <span className="tnum text-text-muted">{handleLines.length}/25 targets</span>
         </div>
       </div>
 
@@ -69,7 +69,7 @@ export function HandleInput({
           onClick={() => !disabled && onToggleEnrich(!enrichEmails)}
           className="flex items-center justify-between p-2 rounded-[4px] border border-border bg-surface cursor-pointer select-none transition-colors hover:border-border-strong"
         >
-          <span className="font-mono text-[11px] text-text font-medium">Enrich emails</span>
+          <span className="font-mono text-[11px] text-text font-medium">Enrich from websites (real)</span>
           <div
             className={cn(
               "w-9 h-5 rounded-full p-0.5 transition-colors duration-200 ease-in-out flex items-center",
