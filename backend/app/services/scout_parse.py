@@ -43,7 +43,7 @@ def parse_line(raw: str, default_platform: str = "instagram") -> Dict[str, Any]:
     if (" " in raw or "\t" in raw) and "://" not in raw:
         raise ValueError(f"invalid_handle_spaces: '{raw}' cannot contain spaces")
 
-    # 1. Test against known URL patterns
+    # 1. Test against known social URL patterns
     for pattern, platform in URL_MAP:
         match = re.search(pattern, raw, re.IGNORECASE)
         if match:
@@ -54,15 +54,47 @@ def parse_line(raw: str, default_platform: str = "instagram") -> Dict[str, Any]:
                 "handle": handle,
                 "profile_url": clean_url,
                 "is_url": True,
+                "is_website": False,
             }
 
-    # 2. Bare handle
+    # 2. General website URL or domain (e.g. https://softcodedevelop.com/, www.domain.com, domain.com)
+    is_web_url = bool(re.match(r"^(?:https?://|www\.)", raw, re.IGNORECASE)) or bool(re.search(r"\.[a-zA-Z]{2,}(?:/|$)", raw))
+    if is_web_url:
+        clean_url = raw.strip()
+        if not clean_url.startswith("http://") and not clean_url.startswith("https://"):
+            clean_url = "https://" + clean_url
+        try:
+            from urllib.parse import urlparse
+            parsed_u = urlparse(clean_url)
+            netloc = parsed_u.netloc.lower()
+            if netloc.startswith("www."):
+                netloc = netloc[4:]
+            domain_parts = netloc.split(":")[0].split(".")
+            brand_slug = domain_parts[0] if len(domain_parts) >= 2 else netloc
+            brand_slug = re.sub(r"[^A-Za-z0-9._-]", "", brand_slug)
+            if not brand_slug:
+                brand_slug = "company"
+
+            clean_website = f"{parsed_u.scheme}://{parsed_u.netloc}"
+            plat = default_platform if default_platform in ("linkedin", "instagram", "github", "tiktok", "youtube") else "website"
+            return {
+                "platform": plat,
+                "handle": brand_slug,
+                "profile_url": clean_website,
+                "website_url": clean_website,
+                "is_url": True,
+                "is_website": True,
+            }
+        except Exception:
+            pass
+
+    # 3. Bare handle
     handle = raw.lstrip("@").strip()
-    # Strip URL fragments if any
+    # Strip URL fragments or trailing slashes if any
     handle = re.sub(r"^https?://[^/]+/", "", handle).split("?")[0].split("#")[0].strip("/")
 
     if not handle:
-        raise ValueError("empty_handle")
+        raise ValueError(f"empty_handle: '{raw}' is not a valid handle or website URL")
 
     # Reject if spaces remain
     if " " in handle or "\t" in handle:
@@ -78,6 +110,7 @@ def parse_line(raw: str, default_platform: str = "instagram") -> Dict[str, Any]:
         "handle": handle,
         "profile_url": clean_url,
         "is_url": False,
+        "is_website": False,
     }
 
 

@@ -64,14 +64,14 @@ export function HandleInput({
         {/* Handles Textarea */}
         <div className="lg:col-span-9 space-y-1.5">
           <label className="block font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted font-semibold">
-            HANDLES OR PROFILE URLS
+            HANDLES, PROFILE URLS OR WEBSITES
           </label>
           <textarea
             rows={3}
             disabled={disabled}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            placeholder={`cultleaderziad\nhttps://instagram.com/helixintelligence\nhttps://github.com/cultleaderziad\nhttps://linktr.ee/acme_clinic`}
+            placeholder={`https://softcodedevelop.com/\ncultleaderziad\nhttps://instagram.com/helixintelligence\nhttps://linkedin.com/company/softcode`}
             className={cn(
               "w-full rounded-[4px] border bg-[#09090b] px-3 py-2 font-mono text-[12px] leading-relaxed text-text placeholder:text-text-faint focus:outline-none transition-colors resize-y min-h-[88px]",
               invalidLines.length > 0 ? "border-danger focus:border-danger" : "border-border focus:border-accent"
@@ -80,10 +80,10 @@ export function HandleInput({
           <div className="flex items-center justify-between text-[11px] font-mono text-text-faint">
             {invalidLines.length > 0 ? (
               <span className="text-danger font-bold">
-                ⚠️ {invalidLines.length} handle(s) contain invalid spaces — remove spaces before running.
+                ⚠️ {invalidLines.length} line(s) contain invalid spaces — remove spaces before running.
               </span>
             ) : (
-              <span>Handles or profile URLs (one per line) · max 25</span>
+              <span>Handles, social profile URLs, or websites (one per line) · max 25</span>
             )}
             <span className="tnum text-text-muted">{rawLines.length}/25 targets</span>
           </div>

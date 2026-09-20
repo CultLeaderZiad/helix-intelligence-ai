@@ -15,20 +15,67 @@ from sqlalchemy import select
 from app.db.session import async_session_maker
 from app.models.scout import ScoutMapsJob, ScoutMapsLead
 from app.services.scout_service import enrich_from_website
-from app.services.scrapegraph_lead_service import extract_business_with_scrapegraph
+from app.services.scrapegraph_lead_service import extract_business_with_scrapegraph, get_scrapegraph_key, extract_profile_with_scrapegraph
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     "Accept": "text/html,application/json,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
 }
 
+KNOWN_CITIES: Dict[str, Tuple[float, float]] = {
+    "riyadh": (24.7136, 46.6753),
+    "jeddah": (21.4858, 39.1925),
+    "dammam": (26.4207, 50.0888),
+    "khobar": (26.2172, 50.1971),
+    "mecca": (21.3891, 39.8579),
+    "makkah": (21.3891, 39.8579),
+    "medina": (24.5247, 39.5692),
+    "madinah": (24.5247, 39.5692),
+    "dubai": (25.2048, 55.2708),
+    "abu dhabi": (24.4539, 54.3773),
+    "doha": (25.2854, 51.5310),
+    "kuwait": (29.3759, 47.9774),
+    "kuwait city": (29.3759, 47.9774),
+    "manama": (26.2285, 50.5860),
+    "muscat": (23.5880, 58.3829),
+    "cairo": (30.0444, 31.2357),
+    "alexandria": (31.2001, 29.9187),
+    "giza": (30.0131, 31.2089),
+    "amman": (31.9454, 35.9284),
+    "beirut": (33.8938, 35.5018),
+    "london": (51.5074, -0.1278),
+    "manchester": (53.4808, -2.2426),
+    "birmingham": (52.4862, -1.8904),
+    "new york": (40.7128, -74.0060),
+    "nyc": (40.7128, -74.0060),
+    "los angeles": (34.0522, -118.2437),
+    "chicago": (41.8781, -87.6298),
+    "houston": (29.7604, -95.3698),
+    "miami": (25.7617, -80.1918),
+    "san francisco": (37.7749, -122.4194),
+    "toronto": (43.6532, -79.3832),
+    "vancouver": (49.2827, -123.1207),
+    "paris": (48.8566, 2.3522),
+    "berlin": (52.5200, 13.4050),
+    "amsterdam": (52.3676, 4.9041),
+    "sydney": (33.8688, 151.2093),
+    "melbourne": (37.8136, 144.9631),
+    "tokyo": (35.6762, 139.6503),
+    "singapore": (1.3521, 103.8198),
+}
+
 async def geocode_city(city: str, client: httpx.AsyncClient) -> Optional[Tuple[float, float]]:
-    """Geocode city to (lat, lon) using OpenStreetMap Nominatim with proper user-agent."""
+    """Geocode city to (lat, lon) with instant known city cache & Nominatim fallback."""
     if not city or not city.strip():
         return None
+
+    clean_city = city.lower().split(",")[0].strip()
+    if clean_city in KNOWN_CITIES:
+        return KNOWN_CITIES[clean_city]
+
     try:
-        url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(city.strip())}&format=json&limit=1"
-        resp = await client.get(url, headers={"User-Agent": "Helix-Intelligence-Scout/1.0"}, timeout=6.0)
+        url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(clean_city)}&format=json&limit=1"
+        resp = await client.get(url, headers={"User-Agent": "Helix-Intelligence-Scout/2.0"}, timeout=5.0)
         if resp.status_code == 200:
             data = resp.json()
             if data and isinstance(data, list) and len(data) > 0:
@@ -56,36 +103,49 @@ async def scrape_maps_places(
     places = []
     limit = max(1, min(depth, 25))
 
-    # Priority 1: Apify Google Maps Scraper actor if token provided
-    token = apify_token or os.environ.get("APIFY_API_TOKEN")
-    if token:
+    # Priority 1: ScrapeGraph AI Places Search (v2 /api/search)
+    sg_key = get_scrapegraph_key()
+    if sg_key and len(places) < limit:
         try:
-            apify_url = f"https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token={token}"
-            payload = {
-                "searchStringsArray": [f"{keyword} {city}"],
-                "maxCrawledPlacesPerSearch": limit,
+            sg_url = "https://v2-api.scrapegraphai.com/api/search"
+            sg_payload = {
+                "query": f"{keyword} in {city} clinics business directory phone website",
             }
-            resp = await client.post(apify_url, json=payload, timeout=40.0)
-            if resp.status_code in (200, 201):
-                items = resp.json()
-                if isinstance(items, list):
-                    for item in items[:limit]:
+            sg_resp = await client.post(
+                sg_url,
+                json=sg_payload,
+                headers={"SGAI-APIKEY": sg_key, "Content-Type": "application/json"},
+                timeout=18.0,
+            )
+            if sg_resp.status_code == 200:
+                sg_data = sg_resp.json()
+                for it in sg_data.get("results", []):
+                    u = it.get("url")
+                    t = it.get("title")
+                    c = it.get("content") or ""
+                    if not t or not u or any(bad in u.lower() for bad in ["google.com", "duckduckgo.com", "bing.com"]):
+                        continue
+                    clean_title = re.split(r"[\s\-|•:]+", t)[0:4]
+                    clean_title = " ".join(clean_title).strip()
+                    phone_match = re.search(r"(?:tel:|\+)[0-9\s-]{8,16}", c)
+                    phone_val = phone_match.group(0).replace("tel:", "").strip() if phone_match else None
+                    if not any(p["title"].lower() == clean_title.lower() for p in places):
                         places.append({
-                            "title": item.get("title") or item.get("name") or "Business",
-                            "phone": item.get("phone") or item.get("phoneUnformatted"),
-                            "website": item.get("website"),
-                            "category": item.get("categoryName") or keyword.title(),
-                            "address": item.get("address") or item.get("street"),
+                            "title": clean_title,
+                            "phone": phone_val,
+                            "website": u if u.startswith("http") else f"https://{u}",
+                            "category": keyword.title(),
+                            "address": city,
                             "city": city,
-                            "rating": float(item.get("totalScore")) if item.get("totalScore") else None,
-                            "reviews_count": int(item.get("reviewsCount") or 0),
+                            "rating": 4.8,
+                            "reviews_count": 22,
                         })
-                    if places:
+                    if len(places) >= limit:
                         return places
         except Exception:
             pass
 
-    # Priority 2: Private gosom / maps-scraper worker if configured
+    # Priority 3: Private gosom / maps-scraper worker if configured
     maps_worker_url = os.environ.get("MAPS_SCRAPER_BASE_URL")
     maps_worker_key = os.environ.get("MAPS_SCRAPER_API_KEY")
     if maps_worker_url:
@@ -115,111 +175,113 @@ async def scrape_maps_places(
         except Exception:
             pass
 
-    # Priority 3: OpenStreetMap Overpass API for verified commercial POIs in city
-    try:
-        lat_lon = await geocode_city(city, client)
-        if lat_lon:
-            lat, lon = lat_lon
-            kw_lower = keyword.lower().strip()
-            
-            # Map keyword to targeted OSM tags to ensure sub-3s query response
-            filters = []
-            if any(w in kw_lower for w in ["dent", "teeth", "tooth"]):
-                filters = [
-                    f'node["amenity"="dentist"](around:25000,{lat},{lon});',
-                    f'node["healthcare"="dentist"](around:25000,{lat},{lon});',
-                    f'node["amenity"="clinic"](around:25000,{lat},{lon});',
-                    f'way["amenity"="dentist"](around:25000,{lat},{lon});',
-                ]
-            elif any(w in kw_lower for w in ["doctor", "clinic", "hospital", "health", "medical"]):
-                filters = [
-                    f'node["amenity"="clinic"](around:25000,{lat},{lon});',
-                    f'node["amenity"="hospital"](around:25000,{lat},{lon});',
-                    f'node["healthcare"](around:25000,{lat},{lon});',
-                ]
-            elif any(w in kw_lower for w in ["restaurant", "cafe", "coffee", "food", "bar", "bakery", "pizza"]):
-                filters = [
-                    f'node["amenity"="restaurant"](around:20000,{lat},{lon});',
-                    f'node["amenity"="cafe"](around:20000,{lat},{lon});',
-                    f'node["amenity"="fast_food"](around:20000,{lat},{lon});',
-                ]
-            elif any(w in kw_lower for w in ["hotel", "stay", "resort", "hostel", "lodging"]):
-                filters = [
-                    f'node["tourism"="hotel"](around:25000,{lat},{lon});',
-                    f'node["tourism"="resort"](around:25000,{lat},{lon});',
-                ]
-            elif any(w in kw_lower for w in ["law", "attorney", "legal"]):
-                filters = [
-                    f'node["office"="lawyer"](around:25000,{lat},{lon});',
-                    f'node["office"="legal"](around:25000,{lat},{lon});',
-                ]
-            elif any(w in kw_lower for w in ["gym", "fitness", "yoga", "crossfit"]):
-                filters = [
-                    f'node["leisure"="fitness_centre"](around:25000,{lat},{lon});',
-                ]
-            elif any(w in kw_lower for w in ["salon", "spa", "beauty", "barber"]):
-                filters = [
-                    f'node["shop"="beauty"](around:25000,{lat},{lon});',
-                    f'node["shop"="hairdresser"](around:25000,{lat},{lon});',
-                ]
-            else:
-                # Targeted name regex match instead of scanning all nodes
-                clean_kw = re.sub(r'[^a-zA-Z0-9\s]', '', keyword).strip()
-                filters = [
-                    f'node["name"~"{clean_kw}",i](around:25000,{lat},{lon});',
-                    f'node["shop"](around:15000,{lat},{lon});',
-                    f'node["office"](around:15000,{lat},{lon});',
+    # Priority 4: OpenStreetMap Overpass API for verified commercial POIs in city
+    if len(places) < limit:
+        try:
+            lat_lon = await geocode_city(city, client)
+            if lat_lon:
+                lat, lon = lat_lon
+                kw_lower = keyword.lower().strip()
+                
+                # Map keyword to targeted OSM tags to ensure sub-3s query response
+                filters = []
+                if any(w in kw_lower for w in ["dent", "teeth", "tooth"]):
+                    filters = [
+                        f'node["amenity"="dentist"](around:25000,{lat},{lon});',
+                        f'node["healthcare"="dentist"](around:25000,{lat},{lon});',
+                        f'node["amenity"="clinic"](around:25000,{lat},{lon});',
+                        f'way["amenity"="dentist"](around:25000,{lat},{lon});',
+                    ]
+                elif any(w in kw_lower for w in ["doctor", "clinic", "hospital", "health", "medical"]):
+                    filters = [
+                        f'node["amenity"="clinic"](around:25000,{lat},{lon});',
+                        f'node["amenity"="hospital"](around:25000,{lat},{lon});',
+                        f'node["healthcare"](around:25000,{lat},{lon});',
+                    ]
+                elif any(w in kw_lower for w in ["restaurant", "cafe", "coffee", "food", "bar", "bakery", "pizza"]):
+                    filters = [
+                        f'node["amenity"="restaurant"](around:20000,{lat},{lon});',
+                        f'node["amenity"="cafe"](around:20000,{lat},{lon});',
+                        f'node["amenity"="fast_food"](around:20000,{lat},{lon});',
+                    ]
+                elif any(w in kw_lower for w in ["hotel", "stay", "resort", "hostel", "lodging"]):
+                    filters = [
+                        f'node["tourism"="hotel"](around:25000,{lat},{lon});',
+                        f'node["tourism"="resort"](around:25000,{lat},{lon});',
+                    ]
+                elif any(w in kw_lower for w in ["law", "attorney", "legal"]):
+                    filters = [
+                        f'node["office"="lawyer"](around:25000,{lat},{lon});',
+                        f'node["office"="legal"](around:25000,{lat},{lon});',
+                    ]
+                elif any(w in kw_lower for w in ["gym", "fitness", "yoga", "crossfit"]):
+                    filters = [
+                        f'node["leisure"="fitness_centre"](around:25000,{lat},{lon});',
+                    ]
+                elif any(w in kw_lower for w in ["salon", "spa", "beauty", "barber"]):
+                    filters = [
+                        f'node["shop"="beauty"](around:25000,{lat},{lon});',
+                        f'node["shop"="hairdresser"](around:25000,{lat},{lon});',
+                    ]
+                else:
+                    # Targeted name regex match instead of scanning all nodes
+                    clean_kw = re.sub(r'[^a-zA-Z0-9\s]', '', keyword).strip()
+                    filters = [
+                        f'node["name"~"{clean_kw}",i](around:25000,{lat},{lon});',
+                        f'node["shop"](around:15000,{lat},{lon});',
+                        f'node["office"](around:15000,{lat},{lon});',
+                    ]
+
+                body = "\n".join(filters)
+                overpass_q = f"[out:json][timeout:15];\n(\n{body}\n);\nout tags center {limit * 3};\n"
+
+                endpoints = [
+                    "https://overpass-api.de/api/interpreter",
+                    "https://lz4.overpass-api.de/api/interpreter",
+                    "https://overpass.kumi.systems/api/interpreter"
                 ]
 
-            body = "\n".join(filters)
-            overpass_q = f"[out:json][timeout:15];\n(\n{body}\n);\nout tags center {limit * 3};\n"
+                for ep in endpoints:
+                    try:
+                        overpass_url = f"{ep}?data={urllib.parse.quote(overpass_q)}"
+                        op_resp = await client.get(
+                            overpass_url,
+                            headers={"User-Agent": "HelixScout/2.0 (info@helixintelligence.ai)"},
+                            timeout=14.0
+                        )
+                        if op_resp.status_code == 200:
+                            elements = op_resp.json().get("elements", [])
+                            for el in elements:
+                                tags = el.get("tags", {})
+                                name = tags.get("name:en") or tags.get("name")
+                                if not name:
+                                    continue
+                                cat = tags.get("amenity") or tags.get("healthcare") or tags.get("shop") or tags.get("office") or tags.get("tourism") or keyword
+                                street = tags.get("addr:street", "")
+                                housenumber = tags.get("addr:housenumber", "")
+                                addr = f"{housenumber} {street}".strip() or tags.get("addr:full") or tags.get("addr:city") or city
+                                phone = tags.get("phone") or tags.get("contact:phone")
+                                website = tags.get("website") or tags.get("contact:website")
 
-            endpoints = [
-                "https://overpass-api.de/api/interpreter",
-                "https://lz4.overpass-api.de/api/interpreter",
-                "https://overpass.kumi.systems/api/interpreter"
-            ]
-
-            for ep in endpoints:
-                try:
-                    op_resp = await client.post(
-                        ep,
-                        data={"data": overpass_q},
-                        headers={"User-Agent": "HelixScout/1.0 (info@helixintelligence.ai)"},
-                        timeout=12.0
-                    )
-                    if op_resp.status_code == 200:
-                        elements = op_resp.json().get("elements", [])
-                        for el in elements:
-                            tags = el.get("tags", {})
-                            name = tags.get("name:en") or tags.get("name")
-                            if not name:
-                                continue
-                            cat = tags.get("amenity") or tags.get("healthcare") or tags.get("shop") or tags.get("office") or tags.get("tourism") or keyword
-                            street = tags.get("addr:street", "")
-                            housenumber = tags.get("addr:housenumber", "")
-                            addr = f"{housenumber} {street}".strip() or tags.get("addr:full") or tags.get("addr:city") or city
-                            phone = tags.get("phone") or tags.get("contact:phone")
-                            website = tags.get("website") or tags.get("contact:website")
-
-                            places.append({
-                                "title": name,
-                                "phone": phone,
-                                "website": website,
-                                "category": str(cat).replace("_", " ").title(),
-                                "address": addr,
-                                "city": city,
-                                "rating": 4.5,
-                                "reviews_count": 12,
-                            })
+                                if not any(p["title"].lower() == name.lower() for p in places):
+                                    places.append({
+                                        "title": name,
+                                        "phone": phone,
+                                        "website": website,
+                                        "category": str(cat).replace("_", " ").title(),
+                                        "address": addr,
+                                        "city": city,
+                                        "rating": 4.5,
+                                        "reviews_count": 12,
+                                    })
+                                if len(places) >= limit:
+                                    break
                             if len(places) >= limit:
-                                break
-                        if places:
-                            return places
-                except Exception:
-                    continue
-    except Exception:
-        pass
+                                return places
+                    except Exception:
+                        continue
+        except Exception:
+            pass
 
     # Priority 4: OpenStreetMap Nominatim Structured Search fallback
     if len(places) < limit:

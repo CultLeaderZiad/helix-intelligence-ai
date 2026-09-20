@@ -182,16 +182,37 @@ async def run_scout_job_worker(job_id: str):
                 plat = target["platform"]
                 handle = target["handle"]
 
-                # 2. Scrape stage via scrape_one adapter
-                lead_data = await scrape_one(plat, handle, client, cookie=linkedin_cookie)
-                status_code = lead_data.get("scrape_status", "ok")
+                # 2. Scrape stage via scrape_one adapter or website target
+                if target.get("is_website") or target.get("website_url"):
+                    website = target.get("website_url") or target.get("profile_url")
+                    brand_name = target["handle"].replace("-", " ").replace("_", " ").title()
+                    lead_data = {
+                        "name": brand_name,
+                        "handle": target["handle"],
+                        "platform": plat,
+                        "profile_url": target.get("profile_url") or website,
+                        "website": website,
+                        "scrape_status": "website_target",
+                        "bio": f"Official website: {website}",
+                        "followers": None,
+                        "email": None,
+                        "email_source": None,
+                        "phone": None,
+                        "phone_source": None,
+                        "socials": {},
+                    }
+                    status_code = "website_target"
+                else:
+                    lead_data = await scrape_one(plat, handle, client, cookie=linkedin_cookie)
+                    status_code = lead_data.get("scrape_status", "ok")
+
                 logs.append(f"> {plat}:@{handle} · {status_code}")
 
-                # 3. Enrich stage (Real LeadEnricher crawl on discovered website)
-                website = lead_data.get("website")
+                # 3. Enrich stage (Real LeadEnricher crawl on discovered or input website)
+                website = lead_data.get("website") or target.get("website_url")
                 email_src = lead_data.get("email_source")
 
-                if job.enrich_emails and website and not lead_data.get("email"):
+                if website and (job.enrich_emails or target.get("is_website")):
                     enrich_res = await enricher.enrich_from_website(website, client)
                     if enrich_res.get("emails"):
                         lead_data["email"] = enrich_res["emails"][0]
@@ -200,20 +221,44 @@ async def run_scout_job_worker(job_id: str):
                     if enrich_res.get("phones") and not lead_data.get("phone"):
                         lead_data["phone"] = enrich_res["phones"][0]
                         lead_data["phone_source"] = "website"
+                    if enrich_res.get("socials"):
+                        lead_data["socials"] = {**(lead_data.get("socials") or {}), **enrich_res["socials"]}
+                        if plat in enrich_res["socials"]:
+                            lead_data["profile_url"] = enrich_res["socials"][plat]
 
-                # Optional ScrapeGraph AI deep contact pass if email still absent
-                if job.enrich_emails and not lead_data.get("email"):
+                # ScrapeGraph AI pass for business entity and contact extraction
+                if not lead_data.get("email") or target.get("is_website"):
                     target_enrich_url = website or target.get("profile_url")
                     if target_enrich_url and ("http://" in target_enrich_url or "https://" in target_enrich_url):
                         try:
-                            sg_res = await extract_profile_with_scrapegraph(target_enrich_url, client)
-                            if sg_res and sg_res.get("email"):
-                                lead_data["email"] = sg_res["email"]
-                                lead_data["email_source"] = "scrapegraph_ai"
-                                email_src = "scrapegraph_ai"
-                            if sg_res and sg_res.get("phone") and not lead_data.get("phone"):
-                                lead_data["phone"] = sg_res["phone"]
-                                lead_data["phone_source"] = "scrapegraph_ai"
+                            sg_res = await extract_business_with_scrapegraph(
+                                target_enrich_url,
+                                business_name=lead_data.get("name"),
+                                client=client
+                            )
+                            if not sg_res:
+                                sg_res = await extract_profile_with_scrapegraph(target_enrich_url, client)
+                            if sg_res:
+                                if sg_res.get("emails") and not lead_data.get("email"):
+                                    lead_data["email"] = sg_res["emails"][0]
+                                    lead_data["email_source"] = "scrapegraph_ai"
+                                    email_src = "scrapegraph_ai"
+                                elif sg_res.get("email") and not lead_data.get("email"):
+                                    lead_data["email"] = sg_res["email"]
+                                    lead_data["email_source"] = "scrapegraph_ai"
+                                    email_src = "scrapegraph_ai"
+                                if sg_res.get("phones") and not lead_data.get("phone"):
+                                    lead_data["phone"] = sg_res["phones"][0]
+                                    lead_data["phone_source"] = "scrapegraph_ai"
+                                elif sg_res.get("phone") and not lead_data.get("phone"):
+                                    lead_data["phone"] = sg_res["phone"]
+                                    lead_data["phone_source"] = "scrapegraph_ai"
+                                if sg_res.get("socials"):
+                                    lead_data["socials"] = {**(lead_data.get("socials") or {}), **sg_res["socials"]}
+                                    if plat in sg_res["socials"]:
+                                        lead_data["profile_url"] = sg_res["socials"][plat]
+                                if sg_res.get("name") and lead_data.get("name") == target["handle"].title():
+                                    lead_data["name"] = sg_res["name"]
                         except Exception:
                             pass
 
