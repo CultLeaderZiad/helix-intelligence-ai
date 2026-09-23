@@ -34,13 +34,39 @@ export const AUTH_STATUS = {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [status, setStatus] = useState(AUTH_STATUS.LOADING)
+  const [user, setUser] = useState(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("helix_cached_user")
+        return raw ? JSON.parse(raw) : null
+      } catch {
+        return null
+      }
+    }
+    return null
+  })
 
-  /* Resolve the persisted session once on mount. "Not signed in" is a
-     normal resolution, never an error to surface. */
+  const [status, setStatus] = useState(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
+      const cached = localStorage.getItem("helix_cached_user")
+      if (token && cached) return AUTH_STATUS.AUTHENTICATED
+      if (token) return AUTH_STATUS.LOADING
+    }
+    return AUTH_STATUS.UNAUTHENTICATED
+  })
+
+  /* Resolve the persisted session once on mount. Uses SWR to absorb cold starts. */
   useEffect(() => {
     let active = true
+    const token = authService.getStoredToken()
+
+    if (!token) {
+      setUser(null)
+      setStatus(AUTH_STATUS.UNAUTHENTICATED)
+      return
+    }
+
     authService
       .getSession()
       .then((session) => {
@@ -49,18 +75,23 @@ export function AuthProvider({ children }) {
           setUser(session.user)
           setStatus(AUTH_STATUS.AUTHENTICATED)
         } else {
-          setUser(null)
-          setStatus(AUTH_STATUS.UNAUTHENTICATED)
+          // If token was wiped by 401/403, drop to unauthenticated
+          if (!authService.getStoredToken()) {
+            setUser(null)
+            setStatus(AUTH_STATUS.UNAUTHENTICATED)
+          }
         }
       })
       .catch(() => {
         if (!active) return
-        setUser(null)
-        setStatus(AUTH_STATUS.UNAUTHENTICATED)
+        if (!authService.getStoredToken()) {
+          setUser(null)
+          setStatus(AUTH_STATUS.UNAUTHENTICATED)
+        }
       })
 
     const handleUnauthorized = () => {
-      authService.signOut() // ensure token is cleared
+      authService.signOut() // ensure token and cache are cleared
       setUser(null)
       setStatus(AUTH_STATUS.UNAUTHENTICATED)
     }
@@ -71,6 +102,7 @@ export function AuthProvider({ children }) {
       window.removeEventListener("helix:unauthorized", handleUnauthorized)
     }
   }, [])
+
 
   /* The mutations below intentionally do NOT own submitting/validation
      state — that is page-local UI intent. They throw ServiceError on

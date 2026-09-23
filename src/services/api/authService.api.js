@@ -11,12 +11,32 @@ import { request, ServiceError } from "../http"
  */
 
 const TOKEN_KEY = "helix_access_token"
+const CACHED_USER_KEY = "helix_cached_user"
 
 export function getStoredToken() {
-  return localStorage.getItem(TOKEN_KEY)
+  if (typeof window === "undefined") return null
+  return localStorage.getItem(TOKEN_KEY) || localStorage.getItem("helix_auth_token")
+}
+
+export function getCachedUser() {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = localStorage.getItem(CACHED_USER_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function storeUser(user) {
+  if (typeof window === "undefined" || !user) return
+  try {
+    localStorage.setItem(CACHED_USER_KEY, JSON.stringify(user))
+  } catch {}
 }
 
 function storeToken(token) {
+  if (typeof window === "undefined") return
   if (token) {
     localStorage.setItem(TOKEN_KEY, token)
     localStorage.setItem("helix_auth_token", token)
@@ -24,29 +44,25 @@ function storeToken(token) {
 }
 
 function clearToken() {
+  if (typeof window === "undefined") return
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem("helix_auth_token")
+  localStorage.removeItem(CACHED_USER_KEY)
 }
 
 /**
  * Map a FastAPI SessionResponse into the AuthContext user shape.
- *
- * SessionResponse fields from backend:
- *   user_id, email, role, access_token, feature_flags,
- *   credit_balance, trial_days_remaining, daily_credit_limit,
- *   daily_credits_used, daily_credits_remaining,
- *   daily_credits_resets_at_utc, plan_id, has_completed_onboarding
- *
- * AuthContext expects user.id (not user.user_id).
  */
 function sessionToUser(session, fallbackName) {
   if (!session) return null
   const emailLocal = session.email?.split("@")[0] ?? "user"
+  const displayName = session.full_name || session.name || fallbackName || emailLocal
   return {
     id: session.user_id,
     email: session.email,
     role: session.role ?? "customer",
-    name: fallbackName ?? emailLocal,
+    name: displayName,
+    full_name: session.full_name ?? null,
     credit_balance: session.credit_balance ?? 0,
     trial_days_remaining: session.trial_days_remaining ?? null,
     daily_credit_limit: session.daily_credit_limit ?? null,
@@ -60,20 +76,39 @@ function sessionToUser(session, fallbackName) {
 }
 
 const authService = {
+  getStoredToken,
+  getCachedUser,
+
   /**
    * Resolve the persisted session from the stored Bearer token.
-   * Returns null (not throws) when unauthenticated — that is normal.
+   * Uses Stale-While-Revalidate pattern so Render waking up never drops valid sessions.
    */
   async getSession() {
     const token = getStoredToken()
-    if (!token) return null
+    if (!token) {
+      clearToken()
+      return null
+    }
 
     try {
       const session = await request("/auth/session")
-      return { user: sessionToUser(session) }
+      const user = sessionToUser(session)
+      if (user) {
+        storeUser(user)
+        return { user }
+      }
+      return null
     } catch (err) {
+      // Only wipe session if credentials were actively rejected by the backend authority
       if (err?.status === 401 || err?.status === 403) {
         clearToken()
+        return null
+      }
+
+      // If backend is sleeping (502/503/504) or network glitched, preserve cached user
+      const cached = getCachedUser()
+      if (cached) {
+        return { user: cached }
       }
       return null
     }
@@ -96,7 +131,9 @@ const authService = {
     }
 
     storeToken(session.access_token)
-    return { user: sessionToUser(session) }
+    const user = sessionToUser(session)
+    storeUser(user)
+    return { user }
   },
 
   /**
@@ -104,11 +141,14 @@ const authService = {
    * Stores the returned JWT and returns the user shape.
    */
   async signUp({ name, email, password } = {}) {
+    const cleanName = name ? String(name).trim() : undefined
+    const cleanEmail = String(email ?? "").trim().toLowerCase()
+
     const session = await request("/auth/sign-up", {
       method: "POST",
       body: {
-        name: name ? String(name).trim() : undefined,
-        email: String(email ?? "").trim().toLowerCase(),
+        name: cleanName,
+        email: cleanEmail,
         password,
       },
     })
@@ -120,11 +160,13 @@ const authService = {
     }
 
     storeToken(session.access_token)
-    return { user: sessionToUser(session, name) }
+    const user = sessionToUser(session, cleanName)
+    storeUser(user)
+    return { user }
   },
 
   /**
-   * Sign out — always clears the local token regardless of server response.
+   * Sign out — always clears local token and cached profile.
    */
   async signOut() {
     try {
@@ -136,6 +178,7 @@ const authService = {
     }
     return null
   },
+
 
   /**
    * Start a password reset. Always resolves with the same generic shape

@@ -15,15 +15,29 @@ from app.core.config import settings
 router = APIRouter()
 
 async def build_session_response(db: AsyncSession, user: User, access_token: str = None) -> SessionResponse:
-    org = await billing_service.get_or_create_default_org(db, user)
-    plan = None
-    if org.plan_id:
-        plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
-    if not plan:
-        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
+    import logging
+    logger = logging.getLogger(__name__)
 
-    effective_flags = dict(plan.feature_flags or {}) if plan else {}
-    if org.custom_feature_flags:
+    org = None
+    try:
+        org = await billing_service.get_or_create_default_org(db, user)
+    except Exception as org_err:
+        logger.warning(f"Default org retrieval failed for user {user.id}: {org_err}")
+
+    plan = None
+    if org and org.plan_id:
+        try:
+            plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
+        except Exception:
+            pass
+    if not plan:
+        try:
+            plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
+        except Exception:
+            pass
+
+    effective_flags = dict(plan.feature_flags or {}) if plan and plan.feature_flags else {}
+    if org and org.custom_feature_flags:
         effective_flags.update(org.custom_feature_flags)
 
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -34,20 +48,30 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
             trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
         trial_days_remaining = max(0, (trial_exp - now).days) if trial_exp > now else 0
 
-    # Daily usage info
-    from app.services.billing_service import _ensure_daily_reset, _utc_midnight, get_trial_usage_summary
-    await _ensure_daily_reset(db, org)
     daily_limit = getattr(plan, "daily_credit_limit", None) if plan else None
-    daily_used = round(float(org.daily_credits_used_today or 0.0), 2)
+    daily_used = round(float(getattr(org, "daily_credits_used_today", 0.0) or 0.0), 2) if org else 0.0
     daily_remaining = round(max(0.0, (daily_limit or 0.0) - daily_used), 2) if daily_limit is not None else None
     daily_resets_at = None
-    if daily_limit:
-        daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
 
-    trial_summary = await get_trial_usage_summary(db, user, org)
+    try:
+        if org:
+            from app.services.billing_service import _ensure_daily_reset, _utc_midnight
+            await _ensure_daily_reset(db, org)
+            if daily_limit:
+                daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
+    except Exception as reset_err:
+        logger.warning(f"Daily reset check error for user {user.id}: {reset_err}")
+
+    trial_summary = {}
+    try:
+        if org:
+            from app.services.billing_service import get_trial_usage_summary
+            trial_summary = await get_trial_usage_summary(db, user, org)
+    except Exception as trial_err:
+        logger.warning(f"Trial usage summary error for user {user.id}: {trial_err}")
 
     # Administrator Full Privilege Override
-    credit_balance = round(float(org.credit_balance or 0.0), 2)
+    credit_balance = round(float(getattr(org, "credit_balance", 25.0) or 0.0), 2) if org else 25.0
     if user.role == "admin":
         effective_flags = {
             "discover": True,
@@ -68,10 +92,14 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         daily_remaining = 999999.0
         credit_balance = max(credit_balance, 999999.0)
 
+    display_name = getattr(user, "full_name", None) or (user.email.split("@")[0] if user.email else "user")
+
     return SessionResponse(
         user_id=user.id,
         email=user.email,
         role=user.role,
+        name=display_name,
+        full_name=getattr(user, "full_name", None),
         access_token=access_token,
         feature_flags=effective_flags,
         credit_balance=credit_balance,
@@ -87,7 +115,7 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         images_trial_total=trial_summary.get("images_trial_total", 0),
         trial_ends_at=trial_summary.get("trial_ends_at"),
         requires_plan=trial_summary.get("requires_plan", False),
-        plan_id=org.plan_id or "plan_trial_default",
+        plan_id=(org.plan_id if org else None) or "plan_trial_default",
         has_completed_onboarding=getattr(user, "has_completed_onboarding", False)
     )
 
@@ -99,11 +127,11 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
         user = await auth_service.register_user(db, user_in)
         from app.core.security import create_access_token
         token = create_access_token(subject=user.id, role=user.role)
-        # Fire-and-forget welcome email — never block or fail sign-up on email.
+        # Fire-and-forget welcome email — completely decoupled from SQLAlchemy session
         try:
             import asyncio
             from app.services import lifecycle_email_service
-            asyncio.create_task(lifecycle_email_service.send_welcome_email(user))
+            asyncio.create_task(lifecycle_email_service.send_welcome_email(user.email, user.full_name or ""))
         except Exception as mail_err:
             logger.warning(f"Welcome email scheduling failed for {user.email}: {mail_err}")
         return await build_session_response(db, user, access_token=token)
@@ -111,9 +139,15 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
         raise
     except Exception as e:
         logger.exception(f"Sign-up failed for {user_in.email}: {e}")
+        err_msg = str(e).lower()
+        if "unique" in err_msg or "integrity" in err_msg or "already exists" in err_msg:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="An account with this email already exists."
+            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Sign-up error: {type(e).__name__}: {e}"
+            detail="Account registration is temporarily unavailable. Please try again in a few moments."
         )
 
 @router.post("/sign-in", response_model=SessionResponse)
@@ -126,7 +160,7 @@ async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
         result = await db.execute(select(UserModel).where(func.lower(UserModel.email) == user_in.email.lower().strip()))
         user = result.scalar_one_or_none()
         if not user:
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="User found during auth but not on second query")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
         return await build_session_response(db, user, access_token=token)
     except HTTPException:
         raise
@@ -134,10 +168,11 @@ async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
         logger.exception(f"Sign-in failed for {user_in.email}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Sign-in could not be completed. Try again.",
+            detail="Sign-in temporarily unavailable. Please try again shortly.",
         )
 
 @router.post("/sign-out")
+
 async def signout():
     return {"message": "Successfully signed out"}
 

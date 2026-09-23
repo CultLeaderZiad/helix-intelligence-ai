@@ -56,28 +56,40 @@ async def authenticate_user(db: AsyncSession, user_in: UserLogin) -> str:
     return create_access_token(subject=user.id, role=user.role)
 
 async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
+    raw_name = (user_in.name or "").strip()
+    full_name = raw_name if raw_name else None
+
     if settings.USE_MOCKS:
-        return User(id=str(uuid.uuid4()), email=_normalize_email(user_in.email), password_hash="mock", role="customer")
+        return User(id=str(uuid.uuid4()), email=_normalize_email(user_in.email), password_hash="mock", role="customer", full_name=full_name)
 
     email = _normalize_email(user_in.email)
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
 
     now = datetime.datetime.now(datetime.timezone.utc)
     user = User(
         email=email,
         password_hash=get_password_hash(user_in.password),
+        full_name=full_name,
         role="customer",
         trial_started_at=now,
         trial_expires_at=now + datetime.timedelta(days=7)
     )
     db.add(user)
-    await db.flush()  # write user, get its id, don't commit yet
+    try:
+        await db.flush()  # write user, get its id, don't commit yet
+    except Exception as e:
+        await db.rollback()
+        err_msg = str(e).lower()
+        if "unique" in err_msg or "integrity" in err_msg or "already exists" in err_msg:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
+        logger.exception("Failed to flush new user record: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not create user account. Please try again.")
 
     # Auto-create a personal org for every new user with 25 trial credits and default trial plan
     from app.models.organization import Organization
-    org_name = getattr(user_in, "name", None) or user_in.email.split("@")[0]
+    org_name = full_name or user_in.email.split("@")[0]
     org = Organization(
         owner_id=user.id,
         name=f"{org_name}'s Workspace",
@@ -85,12 +97,25 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         plan="trial",
         credit_balance=25.0,
         credits_used=0.0,
+        daily_credits_used_today=0.0,
+        images_generated_today=0.0,
+        images_trial_total=0.0,
+        videos_generated_today=0.0,
         status="active"
     )
     db.add(org)
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        err_msg = str(e).lower()
+        if "unique" in err_msg or "integrity" in err_msg or "already exists" in err_msg:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
+        logger.exception("Failed to commit new user organization: %s", e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not initialize user workspace. Please try again.")
     await db.refresh(user)   # reload all columns — caller must not access expired attrs in async context
     return user
+
 
 async def request_password_reset(db: AsyncSession, email: str) -> User:
     """Mint a single-use reset token for the user. Callers must only call

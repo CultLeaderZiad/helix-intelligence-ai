@@ -47,19 +47,29 @@ def _wrap(title: str, body_html: str, cta_label: str, cta_path: str) -> str:
     """
 
 
-async def send_welcome_email(user: User) -> None:
+async def send_welcome_email(email_or_user: User | str, name: str = "") -> None:
     if not email_enabled():
         return
-    name = (user.full_name or user.email.split("@")[0]).strip() or "there"
+    if isinstance(email_or_user, str):
+        target_email = email_or_user.strip()
+        clean_name = (name or target_email.split("@")[0]).strip() or "there"
+    else:
+        target_email = getattr(email_or_user, "email", "")
+        clean_name = (getattr(email_or_user, "full_name", None) or target_email.split("@")[0]).strip() or "there"
+
+    if not target_email:
+        return
+
     html = _wrap(
-        f"Welcome to Helix, {name}",
+        f"Welcome to Helix, {clean_name}",
         "Your workspace is live with <strong>25 free credits</strong> and a 7-day trial. "
         "Run your first competitor discovery to see the ads winning in your market right now.",
         "Run your first discovery",
         "/discover",
     )
-    result = await send_email(to=user.email, subject="Welcome to Helix Intelligence — your trial is live", html=html)
-    logger.info("Welcome email to %s: %s", user.email, "sent" if result else result.error)
+    result = await send_email(to=target_email, subject="Welcome to Helix Intelligence — your trial is live", html=html)
+    logger.info("Welcome email to %s: %s", target_email, "sent" if result else getattr(result, "error", "failed"))
+
 
 
 def _days_remaining(user: User) -> int | None:

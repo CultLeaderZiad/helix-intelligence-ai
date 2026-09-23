@@ -89,21 +89,23 @@ export async function request(path, options = {}, retryCount = 0) {
       },
       ...(body && typeof body !== "string" ? { body: JSON.stringify(body) } : body ? { body } : {}),
     })
+  // Transparent retry on network disconnect / Render waking up (up to 6 retries)
   } catch (err) {
     if (err?.name === "AbortError") throw err
 
-    // Transparent retry on network disconnect / Render waking up (up to 5 retries)
-    if (retryCount < 5) {
-      await new Promise((resolve) => setTimeout(resolve, 1200 * Math.pow(1.3, retryCount)))
+    if (retryCount < 6) {
+      const delay = Math.min(3500, 1000 * Math.pow(1.3, retryCount))
+      await new Promise((resolve) => setTimeout(resolve, delay))
       return request(path, options, retryCount + 1)
     }
 
-    throw new ServiceError("Network connection interrupted. Please try again.", { code: "network_error" })
+    throw new ServiceError("Network connection interrupted. The server may be waking up.", { code: "network_error" })
   }
 
   // If server returns 502, 503, or 504 gateway error (Render cold-start boot), retry transparently
-  if ([502, 503, 504].includes(res.status) && retryCount < 6) {
-    await new Promise((resolve) => setTimeout(resolve, 1500 * Math.pow(1.3, retryCount)))
+  if ([502, 503, 504].includes(res.status) && retryCount < 8) {
+    const delay = Math.min(4000, 1200 * Math.pow(1.3, retryCount))
+    await new Promise((resolve) => setTimeout(resolve, delay))
     return request(path, options, retryCount + 1)
   }
 
@@ -114,7 +116,7 @@ export async function request(path, options = {}, retryCount = 0) {
       const payload = await res.json()
       detail = payload?.detail ?? payload?.message ?? detail
       if (Array.isArray(detail) && detail.length > 0) {
-        detail = detail[0].msg || "Validation error"
+        detail = detail[0].msg || detail[0].message || "Validation error"
       } else if (typeof detail === "object" && detail !== null) {
         if (detail.code) errorCode = detail.code
         if (detail.message) detail = detail.message
@@ -123,7 +125,22 @@ export async function request(path, options = {}, retryCount = 0) {
       /* non-JSON error body */
     }
 
-    if (res.status === 401) {
+    if (typeof detail === "string") {
+      detail = detail.replace(/^(Value error,?\s*|String should have at least\s*)/i, "")
+      if (detail.toLowerCase().includes("password must be at least 8 characters")) {
+        detail = "Password must be at least 8 characters long."
+      }
+    }
+
+    if ([502, 503, 504].includes(res.status)) {
+      detail = "The backend server is waking up. Please click retry in a moment."
+      errorCode = "server_waking"
+    }
+
+    // Only dispatch unauthorized event for non-auth endpoints!
+    // Never trigger sign-out while the user is actively on sign-in, sign-up, or session checks!
+    const isAuthRoute = path.startsWith("/auth/") || path === "/auth"
+    if (res.status === 401 && !isAuthRoute) {
       window.dispatchEvent(new CustomEvent("helix:unauthorized"))
     }
 
@@ -136,6 +153,7 @@ export async function request(path, options = {}, retryCount = 0) {
   if (res.status === 204) return null
   return res.json()
 }
+
 
 export async function uploadFile(path, formData, options = {}) {
   const url = `${API_BASE_URL}${path}`

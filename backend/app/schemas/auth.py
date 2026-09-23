@@ -5,20 +5,37 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     name: Optional[str] = None
-    
+
+    @field_validator('email')
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return str(v or "").strip().lower()
+
     @field_validator('password')
     @classmethod
     def validate_password(cls, v: str) -> str:
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
+        if len(v) > 128:
+            raise ValueError('Password cannot exceed 128 characters')
         return v
-    
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+    @field_validator('email')
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return str(v or "").strip().lower()
+
 class PasswordResetRequest(BaseModel):
     email: EmailStr
+
+    @field_validator('email')
+    @classmethod
+    def normalize_email(cls, v: str) -> str:
+        return str(v or "").strip().lower()
 
 class PasswordResetConfirm(BaseModel):
     token: str
@@ -29,12 +46,16 @@ class PasswordResetConfirm(BaseModel):
     def validate_new_password(cls, v: str) -> str:
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
+        if len(v) > 128:
+            raise ValueError('Password cannot exceed 128 characters')
         return v
 
 class SessionResponse(BaseModel):
     user_id: str
     email: str
     role: str
+    name: Optional[str] = None
+    full_name: Optional[str] = None
     access_token: Optional[str] = None
     token_type: str = "bearer"
     feature_flags: Optional[Dict[str, bool]] = None
@@ -53,5 +74,6 @@ class SessionResponse(BaseModel):
     requires_plan: Optional[bool] = False
     plan_id: Optional[str] = None
     has_completed_onboarding: bool = False
+
 
 

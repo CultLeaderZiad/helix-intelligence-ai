@@ -48,6 +48,8 @@ export function SignUpPage() {
 
   async function onSubmit(event) {
     if (event?.preventDefault) event.preventDefault()
+    if (submitting) return
+
     setAuthError(null)
     const nextErrors = validateSignUp(values)
     setErrors(nextErrors)
@@ -62,12 +64,36 @@ export function SignUpPage() {
       })
       navigate(APP_HOME, { replace: true })
     } catch (err) {
-      setAuthError({
-        status: "signup failed",
-        tone: "danger",
-        message: err instanceof ServiceError ? err.message : (err?.message || "Sign up failed. Please try again."),
-        isColdStart: false,
-      })
+      const isCold = err?.code === "network_error" || err?.code === "server_waking" || (err?.status >= 502 && err?.status <= 504)
+      const errLower = (err?.message || "").toLowerCase()
+      const isDuplicate = err?.status === 400 && (
+        errLower.includes("already registered") ||
+        errLower.includes("already exists")
+      )
+
+      if (isDuplicate) {
+        setErrors((prev) => ({ ...prev, email: "already registered" }))
+        setAuthError({
+          status: "account exists",
+          tone: "info",
+          message: "An account with this email already exists.",
+          isDuplicate: true,
+        })
+      } else if (isCold) {
+        setAuthError({
+          status: "server waking",
+          tone: "warning",
+          message: "The backend server is waking up. Click retry below to complete your registration.",
+          isColdStart: true,
+        })
+      } else {
+        setAuthError({
+          status: "signup failed",
+          tone: "danger",
+          message: err instanceof ServiceError ? err.message : (err?.message || "Sign up failed. Please try again."),
+          isColdStart: false,
+        })
+      }
       setSubmitting(false)
     }
   }
@@ -95,7 +121,16 @@ export function SignUpPage() {
             status={authError.status}
             tone={authError.tone}
             action={
-              authError.isColdStart ? (
+              authError.isDuplicate ? (
+                <Button
+                  type="button"
+                  size="xs"
+                  variant="outline"
+                  onClick={() => navigate("/sign-in", { state: { email: values.email.trim() } })}
+                >
+                  Sign in
+                </Button>
+              ) : authError.isColdStart ? (
                 <Button
                   type="button"
                   size="xs"
@@ -169,7 +204,7 @@ export function SignUpPage() {
           {submitting ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              Creating account…
+              {isSlow ? "Waking server (connecting)…" : "Creating account…"}
             </>
           ) : (
             <>
@@ -182,5 +217,6 @@ export function SignUpPage() {
     </AuthLayout>
   )
 }
+
 
 export default SignUpPage

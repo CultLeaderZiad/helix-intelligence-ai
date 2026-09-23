@@ -19,12 +19,15 @@ import { DATA_SOURCE } from "@/services/config"
  * that sent them here (via `location.state.from`) or APP_HOME.
  */
 export function SignInPage() {
-  const { signIn, isAuthenticated } = useAuth()
+  const { signIn, isAuthenticated, isResolving } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const redirectTo = location.state?.from?.pathname ?? APP_HOME
 
-  const [values, setValues] = useState({ email: "", password: "" })
+  const [values, setValues] = useState({
+    email: location.state?.email ?? "",
+    password: "",
+  })
   const [errors, setErrors] = useState({})
   const [authError, setAuthError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -51,6 +54,8 @@ export function SignInPage() {
 
   async function onSubmit(event) {
     if (event?.preventDefault) event.preventDefault()
+    if (submitting) return
+
     setAuthError(null)
     const nextErrors = validateSignIn(values)
     setErrors(nextErrors)
@@ -68,7 +73,7 @@ export function SignInPage() {
       
       navigate(finalRedirect, { replace: true })
     } catch (err) {
-      const isCold = err?.code === "network_error" || (err?.status >= 502 && err?.status <= 504)
+      const isCold = err?.code === "network_error" || err?.code === "server_waking" || (err?.status >= 502 && err?.status <= 504)
       setAuthError({
         status: isCold ? "server waking" : "auth failed",
         tone: isCold ? "warning" : "danger",
@@ -80,6 +85,7 @@ export function SignInPage() {
       setSubmitting(false)
     }
   }
+
 
   return (
     <AuthLayout

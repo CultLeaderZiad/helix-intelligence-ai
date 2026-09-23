@@ -73,10 +73,11 @@ class Settings(BaseSettings):
     # for local load testing.
     RATE_LIMIT_ENABLED: bool = os.getenv("RATE_LIMIT_ENABLED", "True").lower() in ("true", "1", "yes")
     # path-prefix -> (max_requests, window_seconds)
-    AUTH_RATE_LIMIT: int = int(os.getenv("AUTH_RATE_LIMIT", "10"))            # per IP per window
+    AUTH_RATE_LIMIT: int = int(os.getenv("AUTH_RATE_LIMIT", "30"))            # per IP per window
     AUTH_RATE_LIMIT_WINDOW_S: int = int(os.getenv("AUTH_RATE_LIMIT_WINDOW_S", "60"))
     EXPENSIVE_RATE_LIMIT: int = int(os.getenv("EXPENSIVE_RATE_LIMIT", "20"))  # per IP per window
     EXPENSIVE_RATE_LIMIT_WINDOW_S: int = int(os.getenv("EXPENSIVE_RATE_LIMIT_WINDOW_S", "60"))
+
 
     def __init__(self, **values):
         super().__init__(**values)
