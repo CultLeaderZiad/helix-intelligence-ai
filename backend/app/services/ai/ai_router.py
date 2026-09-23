@@ -20,17 +20,20 @@ class MultiTierAIProvider(AIProvider):
         self.groq = GroqProvider()
         self.openrouter = OpenRouterProvider(trial_mode=True)
         self.gemini = GeminiProvider()
+        aihubmix_key = getattr(settings, "AIHUBMIX_API_KEY", None) or os.getenv("AIHUBMIX_API_KEY")
+        tokenharbor_key = getattr(settings, "TOKENHARBOR_API_KEY", None) or os.getenv("TOKENHARBOR_API_KEY")
         self.aihubmix = OpenAICompatibleProvider(
             base_url="https://aihubmix.com/v1",
-            api_key=settings.AIHUBMIX_API_KEY,
+            api_key=aihubmix_key,
             default_model="glm-4.7-flash-free"
-        ) if settings.AIHUBMIX_API_KEY else None
+        ) if aihubmix_key else None
         self.tokenharbor = OpenAICompatibleProvider(
             base_url="https://tokenharbor.ai/v1",
-            api_key=settings.TOKENHARBOR_API_KEY,
+            api_key=tokenharbor_key,
             default_model="qwen3.8-27b:free"
-        ) if settings.TOKENHARBOR_API_KEY else None
+        ) if tokenharbor_key else None
         self.model = "groq/openai/gpt-oss-120b"
+
         
     async def _call_api(self, messages: List[dict]) -> str:
         errors = {}

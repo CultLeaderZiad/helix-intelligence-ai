@@ -107,14 +107,23 @@ export function useScoutSearch() {
       const items = leadsData.items || []
       setLeads(items)
       setSelectedLead(items[0] || null)
-      setPhase(SCOUT_PHASE.READY)
+      if (fetchedJob.status === "running" || fetchedJob.status === "queued") {
+        setPhase(SCOUT_PHASE.RUNNING)
+        setIsBusy(true)
+        pollJob(jobId)
+      } else if (fetchedJob.status === "failed") {
+        setPhase(SCOUT_PHASE.ERROR)
+        setError(fetchedJob.error_msg || "Scout job failed")
+      } else {
+        setPhase(SCOUT_PHASE.READY)
+      }
     } catch (err) {
       console.warn("Failed to load scout job:", err)
       setError(err.message || "Failed to load job")
     } finally {
       setIsBusy(false)
     }
-  }, [])
+  }, [pollJob])
 
   const loadLatestJob = useCallback(async () => {
     try {
@@ -124,12 +133,21 @@ export function useScoutSearch() {
         const items = res.leads || []
         setLeads(items)
         setSelectedLead(items[0] || null)
-        setPhase(SCOUT_PHASE.READY)
+        if (res.job.status === "running" || res.job.status === "queued") {
+          setPhase(SCOUT_PHASE.RUNNING)
+          setIsBusy(true)
+          pollJob(res.job.job_id)
+        } else if (res.job.status === "failed") {
+          setPhase(SCOUT_PHASE.ERROR)
+          setError(res.job.error_msg || "Scout job failed")
+        } else {
+          setPhase(SCOUT_PHASE.READY)
+        }
       }
     } catch (err) {
       // Quietly ignore if no previous runs exist
     }
-  }, [])
+  }, [pollJob])
 
   const exportCsv = useCallback(async () => {
     if (!job?.job_id) return

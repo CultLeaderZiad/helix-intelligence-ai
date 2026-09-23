@@ -11,6 +11,7 @@ export function HandleInput({
   onChangeTargetCategory,
   generateOutreach = true,
   onToggleGenerateOutreach,
+  onToggleOutreach,
   enrichEmails,
   onToggleEnrich,
   onSubmit,
@@ -112,9 +113,12 @@ export function HandleInput({
           </div>
         </div>
 
-        {/* AI Outreach drafts toggle */}
         <div
-          onClick={() => !disabled && onToggleGenerateOutreach?.(!generateOutreach)}
+          onClick={() => {
+            if (disabled) return
+            const toggleFn = onToggleOutreach || onToggleGenerateOutreach
+            toggleFn?.(!generateOutreach)
+          }}
           className="flex items-center justify-between p-2 rounded-[4px] border border-border bg-surface cursor-pointer select-none transition-colors hover:border-border-strong"
         >
           <span className="font-mono text-[11px] text-text font-medium">Atlas AI Outreach</span>
