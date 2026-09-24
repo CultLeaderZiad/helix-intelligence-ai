@@ -98,6 +98,14 @@ export const DOCS_REGISTRY = [
             file: 'user-guide/concept-audience-simulation.md',
             readTime: '4 min',
           },
+          {
+            slug: 'lead-generation',
+            title: 'Scout Lead Generation (Scrapling)',
+            description: 'Public-web lead generation: ICP brief, seeds, engines, recipes, provenance, and export.',
+            file: 'user-guide/lead-generation.md',
+            readTime: '7 min',
+          },
+
         ],
       },
       {

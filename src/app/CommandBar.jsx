@@ -16,13 +16,18 @@ export function CommandBar({ open, onClose }) {
   const [cursor, setCursor] = useState(0)
 
   const commands = useMemo(
-    () =>
-      NAV_SECTIONS.map((s) => ({
+    () => [
+      ...NAV_SECTIONS.map((s) => ({
         id: s.key,
         label: `Go to ${s.label}`,
         hint: s.status === "pending" ? "no source" : "live",
         run: () => navigate(s.path),
       })),
+      // Scout sub-surfaces (sidebar keeps one Scout entry; sub-nav lives inside Scout)
+      { id: "scout-social", label: "Go to Scout · Social / Atlas", hint: "live", run: () => navigate("/scout/social") },
+      { id: "scout-leadgen", label: "Go to Scout · Lead Generation", hint: "scrapling_engine", run: () => navigate("/scout/lead-generation") },
+      { id: "scout-maps", label: "Go to Scout · Maps", hint: "live", run: () => navigate("/scout/maps") },
+    ],
     [navigate],
   )
 

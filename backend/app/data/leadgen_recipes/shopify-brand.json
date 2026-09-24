@@ -1,0 +1,23 @@
+{
+  "id": "shopify-brand",
+  "label": "Shopify brand · products + contact",
+  "description": "Use ShopifySpider-style products.json discovery, then fetch /pages/contact and /pages/about for public emails.",
+  "mode": "shopify",
+  "engine_default": "http",
+  "adaptive": true,
+  "max_pages": 40,
+  "allow": [".*/(pages/(contact|about)|policies/contact|products/).*"],
+  "deny": [".*/(checkouts/|account|cart).*"],
+  "shopify": { "include_variants": true, "max_products": 50 },
+  "selectors": {
+    "company_name": { "css": "meta[property='og:site_name'], .header__heading", "adaptive": true },
+    "emails": { "css": "a[href^='mailto:']", "attr": "href", "adaptive": true },
+    "phones": { "css": "a[href^='tel:']", "attr": "href", "adaptive": true }
+  },
+  "extract": {
+    "company_name": "string", "emails": "string[]", "phones": "string[]",
+    "socials": "object", "products_sample": "object[]", "markdown_excerpt": "string"
+  },
+  "ad_block": true,
+  "robots_obey": true
+}

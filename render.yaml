@@ -94,3 +94,21 @@ services:
     #                                     yet. See the reset link in Render
     #                                     logs regardless. Set "false" once
     #                                     email delivery exists.
+    # ────────────────────────────────────────────────────────
+    # Scout · Lead Generation (Scrapling worker)
+    # ────────────────────────────────────────────────────────
+    # Lead Generation needs a SEPARATE worker process (browsers must not run
+    # inside the web service). Deploy backend/workers/scrapling/Dockerfile as a
+    # Background Worker on Render, or run it anywhere that can reach this DB.
+    #
+    #   SCRAPLING_WORKER_ENABLED=true   enables enqueue + worker heartbeat
+    #   SCRAPLING_DEFAULT_ENGINE=stealth
+    #   SCRAPLING_ROBOTS_OBEY=true      default ON (audited when off)
+    #   SCRAPLING_PROXY_LIST=           optional proxies (newline/comma)
+    #   SCRAPLING_CHECKPOINT_DIR=/tmp/helix-leadgen-checkpoints  (use a disk!)
+    #   SCRAPLING_WORKER_URL=           optional health ping target
+    #
+    # While SCRAPLING_WORKER_ENABLED is false, POST /api/scout/leadgen/jobs
+    # answers 503 worker_offline and the UI shows an honest empty state —
+    # nothing is queued and no leads are ever fabricated.
+    # ────────────────────────────────────────────────────────

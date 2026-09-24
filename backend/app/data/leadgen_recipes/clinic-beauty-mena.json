@@ -1,0 +1,23 @@
+{
+  "id": "clinic-beauty-mena",
+  "label": "Clinic / Beauty MENA · Contact pages",
+  "description": "Crawl clinic, salon, and aesthetic-center sites for public booking/contact details across the Gulf + Levant + Egypt.",
+  "mode": "crawl",
+  "engine_default": "stealth",
+  "adaptive": true,
+  "max_pages": 60,
+  "allow": [".*/(contact|about|booking|حجز|اتصل|من-نحن).*"],
+  "deny": [".*/(login|cart|wp-admin|cdn-cgi|appointment-cart|account).*"],
+  "selectors": {
+    "company_name": { "css": "h1, .site-title, meta[property='og:site_name']", "adaptive": true },
+    "emails": { "css": "a[href^='mailto:']", "attr": "href", "adaptive": true },
+    "phones": { "css": "a[href^='tel:']", "attr": "href", "adaptive": true },
+    "address": { "css": "address, .address, .clinic-address, .location", "adaptive": true }
+  },
+  "extract": {
+    "company_name": "string", "emails": "string[]", "phones": "string[]",
+    "socials": "object", "address": "string", "markdown_excerpt": "string"
+  },
+  "ad_block": true,
+  "robots_obey": true
+}
