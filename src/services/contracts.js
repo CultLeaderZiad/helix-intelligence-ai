@@ -303,3 +303,95 @@
  */
 
 export {}
+
+/**
+ * ============================================================
+ * SCOUT · LEAD GENERATION CONTRACTS (engine: scrapling_engine)
+ * ============================================================
+ * JSDoc typedefs only. Social/Atlas has its own contracts — these tables are
+ * deliberately separate (LeadGenJob / LeadGenLead on the backend too).
+ * Honesty rule: logs and counters are real worker output; leads are never
+ * fabricated — empty fields stay empty with provenance.
+ * ============================================================
+ */
+
+/**
+ * @typedef {Object} LeadGenBrief
+ * @property {string} icp                      Required ideal-customer profile
+ * @property {string[]} [geos]                 Default ["SA","AE","JO","EG"]
+ * @property {string[]} [languages]
+ * @property {string[]} [exclude_domains]
+ * @property {number} [max_pages]              >= 1
+ * @property {number} [max_leads]              >= 1
+ * @property {number} [credit_budget]
+ * @property {number} [outreach_min_score]     0..100, default 50
+ */
+
+/**
+ * @typedef {Object} LeadGenSeeds
+ * @property {string[]} [urls]                 Absolute http(s) URLs (validated/rejected server-side)
+ * @property {string|null} [sitemap_url]
+ * @property {string|null} [shopify_url]
+ * @property {string|null} [domains_csv]       Raw CSV/JSONL text of domains or URLs
+ */
+
+/**
+ * @typedef {Object} LeadGenJob
+ * @property {string} job_id
+ * @property {'queued'|'running'|'paused'|'succeeded'|'failed'} status
+ * @property {'brief'|'seed'|'discover'|'fetch'|'extract'|'enrich'|'score'|'outreach'|'export'} stage
+ * @property {string} stage_label
+ * @property {number} stage_index
+ * @property {number} stages_total             Always 9
+ * @property {string[]} logs                   Canonical "> stage · detail" lines (tail persisted)
+ * @property {number} leads_count
+ * @property {number} pages_fetched
+ * @property {number} pages_blocked
+ * @property {number} elapsed_ms
+ * @property {number} credits_used
+ * @property {boolean} robots_obey             Default true; false writes an audit log line
+ * @property {string} engine_default           http | stealth | dynamic
+ * @property {string} mode                     crawl | sitemap | shopify | csv_feed | digest
+ * @property {string|null} [recipe_id]
+ * @property {string|null} [error_msg]
+ * @property {string|null} [created_at]
+ */
+
+/**
+ * @typedef {Object} LeadGenLead
+ * @property {string} id
+ * @property {string} job_id
+ * @property {string|null} company_name
+ * @property {string|null} website
+ * @property {string|null} domain
+ * @property {string[]} emails                 Empty stays empty — never fabricated
+ * @property {string[]} phones
+ * @property {Record<string,string>} socials
+ * @property {string|null} address
+ * @property {any[]} decision_makers
+ * @property {string|null} markdown_excerpt
+ * @property {string|null} markdown_artifact_path
+ * @property {'empty'|'partial'|'ok'|'failed'} extract_status
+ * @property {'ok'|'blocked'|'rate_limited'|'error'} fetch_status
+ * @property {string} engine_used
+ * @property {'website'|'hunter'|'bio'|'none'} email_source
+ * @property {'website'|'bio'|'none'} phone_source
+ * @property {number} lead_score               0..100, deterministic formula
+ * @property {string|null} priority            high | med | low
+ * @property {{subject:string,body:string,dm:string,personalization_points:string[],reason?:string}|null} outreach
+ *                                                                                   Draft only — never auto-sent
+ * @property {Record<string,any>} sources      Provenance: urls, selector hits, score breakdown
+ * @property {string|null} [created_at]
+ */
+
+/**
+ * @typedef {Object} LeadGenWorkerHealth
+ * @property {'online'|'offline'} worker       Truthful: fresh heartbeat or URL ping required for online
+ * @property {string|null} scrapling_version
+ * @property {string[]} engines
+ * @property {boolean} browsers_ready
+ * @property {'configured'|'off'} proxy
+ * @property {boolean} robots_default          robots_txt_obey default (true)
+ * @property {string} [engine_default]
+ * @property {number} queue_depth
+ */

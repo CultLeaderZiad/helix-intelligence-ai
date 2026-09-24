@@ -22,3 +22,4 @@ from .playbook import Playbook
 from .simulation_report import SimulationReport
 from .monitor import Monitor, MonitorRun, MonitorCreative, MonitorEvent
 from .scout import ScoutJob, ScoutLead, ScoutMapsJob, ScoutMapsLead
+from .leadgen import LeadGenJob, LeadGenLead, LeadGenWorkerHeartbeat

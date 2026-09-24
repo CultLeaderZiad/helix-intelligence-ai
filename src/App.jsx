@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect } from "react"
-import { Outlet, Route, Routes, useLocation } from "react-router-dom"
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
 import { AppShell } from "@/app/AppShell"
 import { AdminShell } from "@/app/admin/AdminShell"
 import { ProtectedRoute } from "@/app/ProtectedRoute"
@@ -72,6 +72,7 @@ const DocsHomePage = safeLazy(() => import("@/pages/docs/DocsHomePage").then(m =
 const DocsDetailPage = safeLazy(() => import("@/pages/docs/DocsDetailPage").then(m => ({ default: m.DocsDetailPage })))
 const ScoutPage = safeLazy(() => import("@/pages/ScoutPage").then(m => ({ default: m.default || m.ScoutPage })))
 const ScoutCliDocsPage = safeLazy(() => import("@/pages/docs/ScoutCliDocsPage").then(m => ({ default: m.default || m.ScoutCliDocsPage })))
+const ScoutLeadGenerationPage = safeLazy(() => import("@/pages/ScoutLeadGenerationPage").then(m => ({ default: m.default || m.ScoutLeadGenerationPage })))
 
 const PUBLIC_TITLES = {
   "/docs": "Documentation & API Reference",
@@ -81,6 +82,7 @@ const PUBLIC_TITLES = {
   "/reset-password": "Set a new password",
   "/swipe-files": "Swipe Files",
   "/guide": "Playbook & Guide",
+  "/scout/lead-generation": "Lead Generation",
   "/intelligence": "Intelligence & Patterns",
   "/performance": "Performance & Fatigue",
   "/billing": "Billing & Usage",
@@ -205,7 +207,9 @@ export default function App() {
                       <Route path="/intelligence" element={<IntelligencePage />} />
                       <Route path="/create" element={<CreatePage />} />
                       <Route path="/monitors" element={<MonitorsPage />} />
-                      <Route path="/scout" element={<ScoutPage />} />
+                      <Route path="/scout" element={<Navigate to="/scout/social" replace />} />
+                      <Route path="/scout/lead-generation" element={<ScoutLeadGenerationPage />} />
+                      <Route path="/scout/:mode" element={<ScoutPage />} />
                       <Route path="performance" element={<PerformancePage />} />
                       <Route path="dashboard" element={<DashboardPage />} />
                       <Route path="/swipe-files" element={<SwipeFilesPage />} />

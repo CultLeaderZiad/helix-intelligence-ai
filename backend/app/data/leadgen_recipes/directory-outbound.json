@@ -1,0 +1,24 @@
+{
+  "id": "directory-outbound",
+  "label": "Directory listings · Outbound company links",
+  "description": "Crawl directory/listing pages and follow outbound company links to reach real company contact pages.",
+  "mode": "crawl",
+  "engine_default": "stealth",
+  "adaptive": true,
+  "max_pages": 100,
+  "allow": [".*/(listing|directory|companies|members|profile|item).*"],
+  "deny": [".*/(login|cart|wp-admin|cdn-cgi|account|advertise).*"],
+  "link_extractor": { "allow_domains": [], "unique": true },
+  "selectors": {
+    "company_name": { "css": "h1, h2, .company-name, .listing-title", "adaptive": true },
+    "emails": { "css": "a[href^='mailto:']", "attr": "href", "adaptive": true },
+    "phones": { "css": "a[href^='tel:']", "attr": "href", "adaptive": true },
+    "address": { "css": "address, .address, .listing-address", "adaptive": true }
+  },
+  "extract": {
+    "company_name": "string", "emails": "string[]", "phones": "string[]",
+    "socials": "object", "address": "string", "markdown_excerpt": "string"
+  },
+  "ad_block": true,
+  "robots_obey": true
+}

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import React, { useState, useEffect, useCallback } from "react"
+import { Link, useParams, useNavigate } from "react-router-dom"
 import { Settings, Download, Terminal, RefreshCw, Crosshair, AlertCircle, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { PlatformPicker } from "@/features/scout/PlatformPicker"
@@ -8,7 +8,7 @@ import { ScoutJobProgress } from "@/features/scout/ScoutJobProgress"
 import { LeadsTable } from "@/features/scout/LeadsTable"
 import { LeadDetailPanel } from "@/features/scout/LeadDetailPanel"
 import { ScoutSettingsDrawer } from "@/features/scout/ScoutSettingsDrawer"
-import { ScoutModeTabs } from "@/features/scout/ScoutModeTabs"
+import { ScoutLeadGenSubNav } from "@/features/scout-leadgen/ScoutLeadGenSubNav"
 import { MapsQueryForm } from "@/features/scout/MapsQueryForm"
 import { MapsLeadsTable } from "@/features/scout/MapsLeadsTable"
 import { MapsLeadDetailPanel } from "@/features/scout/MapsLeadDetailPanel"
@@ -23,7 +23,21 @@ export function ScoutPage() {
   const isAdmin = user?.role === "admin" || user?.is_superuser === true || user?.is_admin === true
 
   // Mode: "social" | "maps"
-  const [mode, setMode] = useState("social")
+  // Mode is route-driven: /scout/social and /scout/maps. The Scout sub-nav
+  // navigates between them (single Scout sidebar entry, sub-nav inside Scout).
+  const { mode: routeMode } = useParams()
+  const navigate = useNavigate()
+  const [mode, setMode] = useState(routeMode === "maps" ? "maps" : "social")
+  useEffect(() => {
+    if (routeMode === "maps" || routeMode === "social") setMode(routeMode)
+  }, [routeMode])
+  const changeMode = useCallback(
+    (next) => {
+      setMode(next)
+      navigate(next === "maps" ? "/scout/maps" : "/scout/social")
+    },
+    [navigate]
+  )
 
   // Social Mode State
   const [selectedPlatforms, setSelectedPlatforms] = useState(["instagram", "github", "linktree"])
@@ -138,7 +152,7 @@ export function ScoutPage() {
     const currentHandles = handlesText.split("\n").filter(Boolean)
     const combined = Array.from(new Set([...currentHandles, ...socialUrls])).slice(0, 25)
     setHandlesText(combined.join("\n"))
-    setMode("social")
+    changeMode("social")
   }
 
   const currentLeadsCount = mode === "social" ? socialLeads.length : mapsLeads.length
@@ -198,11 +212,40 @@ export function ScoutPage() {
       </div>
 
       {/* Scout Dual Mode Tabs & Live Status Strip */}
-      <ScoutModeTabs
-        mode={mode}
-        onSelectMode={setMode}
-        settings={settingsData}
-        credits={user?.credit_balance ?? 25.0}
+      {/* Scout sub-nav: Social / Atlas . Lead Generation . Maps (single sidebar entry) */}
+      <ScoutLeadGenSubNav
+        right={
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-text-muted">
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+              </span>
+              <span className="font-bold text-white uppercase tracking-wider">SCOUT LIVE</span>
+            </div>
+            <span className="text-text-faint">|</span>
+            <div className="flex items-center gap-1">
+              <span className="text-white font-bold">
+                {user?.credit_balance?.toFixed ? user.credit_balance.toFixed(1) : (user?.credit_balance ?? 25)}
+              </span>
+              <span className="text-text-faint">credits</span>
+            </div>
+            <span className="hidden md:inline text-text-faint">|</span>
+            <div className="hidden md:flex items-center gap-1">
+              <span>LinkedIn:</span>
+              <span className={settingsData?.linkedin_configured ? "text-accent font-bold" : "text-text-faint"}>
+                {settingsData?.linkedin_configured ? "BYOK active" : "not configured"}
+              </span>
+            </div>
+            <span className="hidden md:inline text-text-faint">|</span>
+            <div className="hidden md:flex items-center gap-1">
+              <span>Hunter.io:</span>
+              <span className={settingsData?.hunter_configured ? "text-accent font-bold" : "text-text-faint"}>
+                {settingsData?.hunter_configured ? "active" : "off"}
+              </span>
+            </div>
+          </div>
+        }
       />
 
       {/* Main Workspace Area */}
@@ -261,7 +304,7 @@ export function ScoutPage() {
                   key={j.job_id}
                   onClick={() => {
                     loadSocialJob(j.job_id)
-                    setMode("social")
+                    changeMode("social")
                     setAdminTab("current")
                   }}
                   className="py-3 px-2 rounded flex items-center justify-between hover:bg-surface-hover/70 cursor-pointer transition-colors group"
@@ -304,7 +347,7 @@ export function ScoutPage() {
                   key={j.job_id}
                   onClick={() => {
                     loadMapsJob(j.job_id)
-                    setMode("maps")
+                    changeMode("maps")
                     setAdminTab("current")
                   }}
                   className="py-3 px-2 rounded flex items-center justify-between hover:bg-surface-hover/70 cursor-pointer transition-colors group"

@@ -34,6 +34,7 @@ from app.api.routers import (
     uploads,
     monitors,
     scout,
+    leadgen,
 )
 
 @asynccontextmanager
@@ -245,6 +246,8 @@ app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=[
 app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", tags=["monitors"])
 app.include_router(scout.router, prefix=f"{settings.API_V1_STR}/scout", tags=["scout"])
 app.include_router(scout.router, prefix="/api/v1/scout", tags=["scout"])
+# Scout · Lead Generation (scrapling_engine worker) — separate router so Social/Atlas stays untouched
+app.include_router(leadgen.router, prefix=f"{settings.API_V1_STR}/scout/leadgen", tags=["leadgen"])
 app.include_router(higgsfield.router, prefix=f"{settings.API_V1_STR}/higgsfield", tags=["higgsfield"])
 app.include_router(higgsfield.router, prefix="/higgsfield", tags=["higgsfield"])
 
