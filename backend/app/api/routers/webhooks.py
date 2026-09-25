@@ -150,4 +150,13 @@ async def higgsfield_webhook(request: Request, db: AsyncSession = Depends(get_db
         )
 
     await db.commit()
+    if job.status == "completed":
+        # Meter paid generations (daily quota + UsageLog), exactly once.
+        # The Higgsfield path used to complete jobs without ever calling the
+        # billing layer, so paid media never counted against quotas.
+        try:
+            from app.services.media_service import meter_media_success
+            await meter_media_success(job.id)
+        except Exception as meter_err:
+            logger.warning("Media metering failed for job %s: %s", job.id, meter_err)
     return {"status": "ok"}

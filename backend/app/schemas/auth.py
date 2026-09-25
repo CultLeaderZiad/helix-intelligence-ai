@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator
-from typing import Optional, Dict
+from typing import Any, Optional, Dict
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -58,7 +58,7 @@ class SessionResponse(BaseModel):
     full_name: Optional[str] = None
     access_token: Optional[str] = None
     token_type: str = "bearer"
-    feature_flags: Optional[Dict[str, bool]] = None
+    feature_flags: Optional[Dict[str, Any]] = None
     credit_balance: Optional[float] = None
     trial_days_remaining: Optional[int] = None
     daily_credit_limit: Optional[float] = None

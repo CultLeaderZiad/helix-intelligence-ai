@@ -90,8 +90,8 @@ class AdminOrganizationRow(BaseModel):
     plan_type: str
     credit_balance: float
     credits_used: float
-    custom_feature_flags: Dict[str, bool]
-    effective_feature_flags: Dict[str, bool]
+    custom_feature_flags: Dict[str, Any]
+    effective_feature_flags: Dict[str, Any]
     status: str
     trial_expires_at: Optional[str] = None
     total_jobs: int = 0

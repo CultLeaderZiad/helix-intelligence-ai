@@ -16,7 +16,9 @@ async def get_creative_insights(
     db: AsyncSession = Depends(get_db), 
     current_user: User = Depends(get_current_user)
 ):
-    return await analysis_service.get_creative_insight(db, creative_id)
+    from app.core.tenancy import get_user_org_ids
+    scope = await get_user_org_ids(db, current_user)
+    return await analysis_service.get_creative_insight(db, creative_id, user_org_ids=scope)
 
 @creatives_insights_router.post("/{creative_id}/generate-insights", response_model=Insight)
 async def generate_creative_insights(
@@ -38,5 +40,7 @@ async def list_insights(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return await analysis_service.list_insights(db, page, page_size)
+    from app.core.tenancy import get_user_org_ids
+    scope = await get_user_org_ids(db, current_user)
+    return await analysis_service.list_insights(db, page, page_size, user_org_ids=scope)
 

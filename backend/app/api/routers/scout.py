@@ -13,7 +13,7 @@ from app.core.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.scout import ScoutJob, ScoutLead, ScoutMapsJob, ScoutMapsLead
-from app.services.billing_service import get_or_create_default_org
+from app.services.billing_service import get_or_create_default_org, assert_can_spend, charge
 from app.services.scout_service import run_scout_job_worker
 from app.services.scout_parse import parse_input_targets
 from app.services.maps_scout_service import run_maps_scout_worker
@@ -69,17 +69,18 @@ async def create_scout_job(
     target_count = len(targets)
     credit_cost = 1.0 + (0.5 * target_count) + (0.5 * target_count if req.enrich_emails else 0.0)
 
-    org = await get_or_create_default_org(db, current_user)
-    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False) or "cultleader" in (current_user.email or "").lower()
-    if not is_admin:
-        if not org or (org.credit_balance or 0.0) < credit_cost:
-            raise HTTPException(
-                status_code=402,
-                detail=f"Insufficient credits. Required: {credit_cost:.1f}, Available: {org.credit_balance if org else 0:.1f}"
-            )
-        org.credit_balance = max(0.0, (org.credit_balance or 0.0) - credit_cost)
-    elif org and (org.credit_balance or 0.0) < 50.0:
-        org.credit_balance = 250.0
+    # SECURITY: admins bypass by ROLE ONLY. The previous email-substring check
+    # ("cultleader" in email) let any self-registered address run free work and
+    # auto-refill the balance to 250 credits. Removed.
+    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False)
+    if is_admin:
+        org = await get_or_create_default_org(db, current_user)
+    else:
+        # Central, row-locked gatekeeper: trial expiry, feature flags, daily
+        # caps, and credit balance - no direct balance writes.
+        org, _plan = await assert_can_spend(
+            db, current_user, required_credits=credit_cost, feature_name="scout", lock_row=True
+        )
 
     job = ScoutJob(
         org_id=org.id,
@@ -102,6 +103,13 @@ async def create_scout_job(
     await db.refresh(job)
 
     # Launch in background
+    if not is_admin:
+        await charge(
+            db=db, org=org, user_id=current_user.id, amount=credit_cost,
+            provider="scout_social", operation="scout_job_start", units=1.0,
+            cost_usd=0.0, job_id=job.id, metadata={"targets": target_count},
+        )
+
     background_tasks.add_task(run_scout_job_worker, job.id)
 
     return {
@@ -355,17 +363,18 @@ async def create_maps_job(
     # Credits: 3.0 base + 0.2*depth + (1.0 if extract_emails) + (1.0 if pull_socials)
     credit_cost = 3.0 + (0.2 * depth) + (1.0 if req.extract_emails else 0.0) + (1.0 if req.pull_socials else 0.0)
 
-    org = await get_or_create_default_org(db, current_user)
-    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False) or "cultleader" in (current_user.email or "").lower()
-    if not is_admin:
-        if not org or (org.credit_balance or 0.0) < credit_cost:
-            raise HTTPException(
-                status_code=402,
-                detail=f"Insufficient credits. Required: {credit_cost:.1f}, Available: {org.credit_balance if org else 0:.1f}"
-            )
-        org.credit_balance = max(0.0, (org.credit_balance or 0.0) - credit_cost)
-    elif org and (org.credit_balance or 0.0) < 50.0:
-        org.credit_balance = 250.0
+    # SECURITY: admins bypass by ROLE ONLY. The previous email-substring check
+    # ("cultleader" in email) let any self-registered address run free work and
+    # auto-refill the balance to 250 credits. Removed.
+    is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False)
+    if is_admin:
+        org = await get_or_create_default_org(db, current_user)
+    else:
+        # Central, row-locked gatekeeper: trial expiry, feature flags, daily
+        # caps, and credit balance - no direct balance writes.
+        org, _plan = await assert_can_spend(
+            db, current_user, required_credits=credit_cost, feature_name="scout", lock_row=True
+        )
 
     job = ScoutMapsJob(
         org_id=org.id,
@@ -388,6 +397,14 @@ async def create_maps_job(
     await db.refresh(job)
 
     # Launch background worker
+    if not is_admin:
+        await charge(
+            db=db, org=org, user_id=current_user.id, amount=credit_cost,
+            provider="scout_maps", operation="scout_maps_job_start", units=1.0,
+            cost_usd=0.0, job_id=job.id,
+            metadata={"keyword": req.keyword, "city": req.city, "depth": depth},
+        )
+
     background_tasks.add_task(run_maps_scout_worker, job.id)
 
     return {
