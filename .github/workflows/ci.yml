@@ -34,6 +34,8 @@ jobs:
       - run: pip install -r requirements.txt
       - name: Compile check (syntax)
         run: python -m compileall -q app
+      - name: Security regression tests
+        run: python tests/test_security_regressions.py
       - name: Import smoke test (app boots)
         env:
           SECRET_KEY: ci_test_secret_key_not_real_0123456789abcdef

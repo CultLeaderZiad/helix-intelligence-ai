@@ -327,7 +327,7 @@ async def trigger_search(
         created_at=new_job.created_at.isoformat() + "Z" if new_job.created_at else ""
     )
 
-async def get_job_status(db: AsyncSession, job_id: str) -> Job:
+async def get_job_status(db: AsyncSession, job_id: str, user_org_ids: Optional[List[str]] = None) -> Job:
     if settings.USE_MOCKS:
         return Job(
             job_id=job_id,
@@ -346,6 +346,11 @@ async def get_job_status(db: AsyncSession, job_id: str) -> Job:
     job = result.scalar_one_or_none()
     
     if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Tenant isolation: a cross-tenant job must be indistinguishable from a
+    # missing one (404, never 403) so job ids cannot be enumerated.
+    if user_org_ids is not None and job.org_id not in user_org_ids:
         raise HTTPException(status_code=404, detail="Job not found")
 
     return _job_response(job)
