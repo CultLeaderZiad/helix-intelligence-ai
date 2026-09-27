@@ -3,10 +3,12 @@ from sqlalchemy import select, func
 from fastapi import HTTPException
 import datetime
 import logging
+from typing import List, Optional
 
 from app.schemas.analysis import Insight
 from app.models.ai_insight import AIInsight
 from app.models.creative import Creative
+from app.models.scrape_job import ScrapeJob
 from app.core.config import settings
 from app.schemas.common import Paginated
 from app.services.ai.ai_router import AIRouter
@@ -172,7 +174,18 @@ async def generate_insight_for_creative(
 
     return fallback_schema
         
-async def get_creative_insight(db: AsyncSession, creative_id: str) -> Paginated[Insight]:
+async def scoped_creative_ids(db: AsyncSession, user_org_ids: List[str]) -> List[str]:
+    """Creative ids belonging to the caller's org(s) - the join path for insight
+    isolation, because AIInsight only stores creative_id."""
+    rows = await db.execute(
+        select(Creative.id)
+        .join(ScrapeJob, Creative.job_id == ScrapeJob.id)
+        .where(ScrapeJob.org_id.in_(user_org_ids))
+    )
+    return list(rows.scalars().all())
+
+
+async def get_creative_insight(db: AsyncSession, creative_id: str, user_org_ids: Optional[List[str]] = None) -> Paginated[Insight]:
     if settings.USE_MOCKS:
         mock_insight = Insight(
             id="mock-insight-1",
@@ -193,6 +206,10 @@ async def get_creative_insight(db: AsyncSession, creative_id: str) -> Paginated[
             has_more=False
         )
         
+    # Tenant isolation: insights hang off creatives, which hang off jobs.
+    if user_org_ids is not None:
+        if creative_id not in await scoped_creative_ids(db, user_org_ids):
+            return Paginated(items=[], total=0, page=1, page_size=20, has_more=False)
     result = await db.execute(select(AIInsight).where(AIInsight.creative_id == creative_id))
     insights = result.scalars().all()
     
@@ -219,7 +236,7 @@ async def get_creative_insight(db: AsyncSession, creative_id: str) -> Paginated[
         has_more=False
     )
 
-async def list_insights(db: AsyncSession, page: int = 1, page_size: int = 20) -> Paginated[Insight]:
+async def list_insights(db: AsyncSession, page: int = 1, page_size: int = 20, user_org_ids: Optional[List[str]] = None) -> Paginated[Insight]:
     if settings.USE_MOCKS:
         mock_insight = Insight(
             id="mock-insight-1",
@@ -241,10 +258,16 @@ async def list_insights(db: AsyncSession, page: int = 1, page_size: int = 20) ->
         )
 
     count_query = select(func.count(AIInsight.id))
-    total = await db.scalar(count_query) or 0
-
     offset = (page - 1) * page_size
     query = select(AIInsight).offset(offset).limit(page_size)
+
+    # Tenant isolation: only insights whose creative belongs to the caller's org(s).
+    if user_org_ids is not None:
+        allowed = await scoped_creative_ids(db, user_org_ids)
+        count_query = count_query.where(AIInsight.creative_id.in_(allowed))
+        query = query.where(AIInsight.creative_id.in_(allowed))
+
+    total = await db.scalar(count_query) or 0
     result = await db.execute(query)
     insights = result.scalars().all()
 

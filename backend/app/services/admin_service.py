@@ -22,6 +22,19 @@ from app.models.notification import Notification
 from app.core.config import settings
 from app.core.security import create_access_token
 
+# Credential-bearing keys live in organizations.custom_feature_flags (Hunter
+# keys, LinkedIn cookies) and must never leave the server.
+_CREDENTIAL_FLAG_MARKERS = ("api_key", "apikey", "cookie", "secret", "token", "password")
+
+
+def _redact_flags(flags) -> dict:
+    """Strip credential-bearing entries from a feature-flag mapping."""
+    return {
+        k: v
+        for k, v in dict(flags or {}).items()
+        if not any(marker in str(k).lower() for marker in _CREDENTIAL_FLAG_MARKERS)
+    }
+
 async def get_overview(db: AsyncSession) -> AdminOverviewStats:
     if settings.USE_MOCKS:
         return AdminOverviewStats(
@@ -328,8 +341,8 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
             plan_type=plan.type if plan else "custom",
             credit_balance=round(float(org.credit_balance or 0.0), 2),
             credits_used=round(float(org.credits_used or 0.0), 2),
-            custom_feature_flags=org.custom_feature_flags or {},
-            effective_feature_flags=effective_flags,
+            custom_feature_flags=_redact_flags(org.custom_feature_flags),
+            effective_feature_flags=_redact_flags(effective_flags),
             status=org.status or "active",
             trial_expires_at=owner.trial_expires_at.isoformat() + "Z" if owner and owner.trial_expires_at else None,
             total_jobs=job_counts.get(org.id, 0)
@@ -663,12 +676,42 @@ async def broadcast_announcement(
         "recipients_count": count
     }
 
-async def impersonate_user(db: AsyncSession, target_user_id: str) -> ImpersonateResponse:
+async def impersonate_user(db: AsyncSession, target_user_id: str, actor: Optional[User] = None) -> ImpersonateResponse:
     user = (await db.execute(select(User).where(User.id == target_user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    # SECURITY: never allow privilege escalation through impersonation. An
+    # assistant-admin used to be able to mint a full-admin token by targeting an
+    # admin user; block that at the service layer as well as the route.
+    if user.role == "admin":
+        raise HTTPException(status_code=403, detail="Impersonating an administrator is not permitted")
+
     token = create_access_token(subject=user.id, role=user.role)
+
+    # Audit trail: privileged action must be attributable (surfaces in the
+    # admin Audit Log, which reads UsageLog).
+    target_org = (await db.execute(
+        select(Organization.id).where(Organization.owner_id == user.id)
+    )).scalar_one_or_none()
+    if target_org:
+        db.add(UsageLog(
+            org_id=target_org,
+            user_id=actor.id if actor else None,
+            provider="admin",
+            operation="admin_impersonation",
+            units=1.0,
+            cost_usd=0.0,
+            credits_deducted=0.0,
+            requests_used=0,
+            metadata_json={
+                "actor_id": actor.id if actor else None,
+                "actor_email": actor.email if actor else None,
+                "target_user_id": user.id,
+                "target_email": user.email,
+            },
+        ))
+        await db.commit()
     return ImpersonateResponse(
         access_token=token,
         user_id=user.id,

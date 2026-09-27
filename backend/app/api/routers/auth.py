@@ -39,6 +39,15 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     effective_flags = dict(plan.feature_flags or {}) if plan and plan.feature_flags else {}
     if org and org.custom_feature_flags:
         effective_flags.update(org.custom_feature_flags)
+    # SECURITY: custom_feature_flags also holds workspace credentials
+    # (hunter_api_key, linkedin_cookie). Never echo those to the client, and
+    # never let them into a Dict[str, bool] response contract.
+    _CREDENTIAL_MARKERS = ("api_key", "apikey", "cookie", "secret", "token", "password")
+    effective_flags = {
+        k: v
+        for k, v in effective_flags.items()
+        if not any(marker in str(k).lower() for marker in _CREDENTIAL_MARKERS)
+    }
 
     now = datetime.datetime.now(datetime.timezone.utc)
     trial_days_remaining = None
@@ -240,15 +249,26 @@ import hashlib
 async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     body = await request.body()
     
-    signature = request.headers.get("better-auth-signature")
-    if settings.NEON_WEBHOOK_SECRET and signature:
-        expected_signature = hmac.new(
-            settings.NEON_WEBHOOK_SECRET.encode(),
-            body,
-            hashlib.sha256
-        ).hexdigest()
+    # SECURITY: this endpoint creates users and organizations, so the caller MUST
+    # be authenticated. Fail CLOSED: no secret configured -> refuse (503);
+    # missing/invalid signature -> 401. Previously the expected digest was only
+    # computed and logged, so anyone could forge user.created events.
+    if not settings.NEON_WEBHOOK_SECRET:
+        raise HTTPException(status_code=503, detail="Auth webhook is not configured")
+    supplied = (
+        request.headers.get("better-auth-signature")
+        or request.headers.get("x-signature")
+        or ""
+    ).strip()
+    if supplied.lower().startswith("sha256="):
+        supplied = supplied[7:]
+    expected_signature = hmac.new(
+        settings.NEON_WEBHOOK_SECRET.encode(), body, hashlib.sha256
+    ).hexdigest()
+    if not supplied or not hmac.compare_digest(expected_signature, supplied):
         import logging
-        logging.info(f"Webhook signature check. Received: {signature}, Expected: {expected_signature}")
+        logging.getLogger(__name__).warning("Rejected auth webhook with invalid signature")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
 
     try:
         import json

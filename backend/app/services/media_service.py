@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from fastapi import HTTPException
 
 from app.models.media_job import MediaGenerationJob
@@ -38,7 +38,54 @@ def _with_heartbeat(coro_factory, job_id: str):
 
     return runner()
 
-async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
+async def meter_media_success(job_id: str) -> None:
+    """Increment the daily image/video quota and write a UsageLog for a
+    COMPLETED media job - exactly once.
+
+    The Higgsfield path (task and webhook) used to mark jobs "completed"
+    without calling the billing/usage layer, so paid generations never counted
+    against quotas and never appeared in admin usage analytics. Idempotency:
+    the Gemini path already writes a UsageLog with the job_id, so an existing
+    row means "already metered".
+    """
+    from app.db.session import async_session_maker
+    from app.models.usage_log import UsageLog
+    from app.services.billing_service import (
+        record_image_generated,
+        record_video_generated,
+    )
+
+    try:
+        async with async_session_maker() as db:
+            job = (await db.execute(
+                select(MediaGenerationJob).where(MediaGenerationJob.id == job_id)
+            )).scalar_one_or_none()
+            if not job:
+                return
+            already = (await db.execute(
+                select(func.count(UsageLog.id)).where(
+                    UsageLog.job_id == job_id,
+                    UsageLog.operation.in_(("media_generate_image", "media_generate_video")),
+                )
+            )).scalar() or 0
+            if already:
+                return
+            user = (await db.execute(select(User).where(User.id == job.user_id))).scalar_one_or_none()
+            org = (await db.execute(select(Organization).where(Organization.id == job.org_id))).scalar_one_or_none()
+            if not user or not org:
+                return
+            params = job.parameters or {}
+            mode_spec = resolve_mode_spec(params.get("mode")) if params.get("mode") else {}
+            if mode_spec.get("output_type", "image") == "video":
+                await record_video_generated(db, user, org, job_id=job.id)
+            else:
+                await record_image_generated(db, user, org, job_id=job.id)
+            logger.info("Metered completed media job %s (%s)", job.id, mode_spec.get("output_type", "image"))
+    except Exception as e:
+        logger.error("Media metering failed for job %s: %s", job_id, e)
+
+
+async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, custom_api_key: Optional[str] = None):
     """
     Executes synchronous/async Gemini image generation in background task.
     Resolves Managed vs BYOK provider without leaking credentials.
@@ -72,7 +119,7 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str):
         params = dict(job.parameters or {})
         
         # Override with per-request BYOK if provided in parameters
-        custom_api_key = params.get("custom_api_key")
+        custom_api_key = custom_api_key or params.get("custom_api_key")  # in-memory key wins; legacy rows may still carry one
         custom_model = params.get("custom_model")
         
         if custom_api_key:
@@ -204,6 +251,7 @@ async def higgsfield_generate_media_task(job_id: str):
                     if result_url:
                         job.result_url = result_url
                     await db.commit()
+                    await meter_media_success(job.id)
                     return
                 elif status in ["failed", "nsfw"]:
                     job.status = "failed"
@@ -288,6 +336,10 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
     else:
         provider = requested_provider or "higgsfield"
 
+    # SECURITY: per-request BYOK keys must never be persisted with the job or
+    # echoed in job responses. Keep it in memory and hand it to the task only.
+    request_api_key = parameters.pop("custom_api_key", None)
+
     # 2. Persist MediaGenerationJob
     job = MediaGenerationJob(
         user_id=user.id,
@@ -308,7 +360,7 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
         asyncio.create_task(_with_heartbeat(lambda: mock_generate_media_task(job.id), job.id))
     else:
         asyncio.create_task(
-            _with_heartbeat(lambda: gemini_generate_media_task(job.id, user.id, org.id), job.id)
+            _with_heartbeat(lambda: gemini_generate_media_task(job.id, user.id, org.id, custom_api_key=request_api_key), job.id)
         )
 
     return job

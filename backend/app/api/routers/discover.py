@@ -22,7 +22,9 @@ async def search(
 
 @router.get("/jobs/{job_id}", response_model=Job)
 async def get_job(job_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return await discover_service.get_job_status(db, job_id)
+    from app.core.tenancy import get_user_org_ids
+    scope = await get_user_org_ids(db, current_user)
+    return await discover_service.get_job_status(db, job_id, user_org_ids=scope)
 
 @router.get("/jobs/{job_id}/results", response_model=Paginated[Creative])
 async def get_job_results(
@@ -32,7 +34,11 @@ async def get_job_results(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return await creative_service.list_creatives(db, job_id=job_id, page=page, page_size=page_size)
+    from app.core.tenancy import get_user_org_ids
+    scope = await get_user_org_ids(db, current_user)
+    return await creative_service.list_creatives(
+        db, job_id=job_id, page=page, page_size=page_size, user_org_ids=scope
+    )
 
 @router.get("/jobs", response_model=Paginated[Job])
 async def list_jobs(

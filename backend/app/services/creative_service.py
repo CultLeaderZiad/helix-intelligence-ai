@@ -4,10 +4,11 @@ from app.schemas.creative import Creative as CreativeSchema, Scores, CreativeMet
 from app.schemas.common import Paginated
 from app.models.creative import Creative
 from app.models.creative_score import CreativeScore
+from app.models.scrape_job import ScrapeJob
 from app.core.config import settings
 import datetime
 
-from typing import Optional
+from typing import List, Optional
 from app.schemas.creative import Brand as BrandSchema
 from app.schemas.analysis import Pattern as PatternSchema
 from app.models.pattern import Pattern
@@ -17,11 +18,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 async def list_creatives(
-    db: AsyncSession, 
-    job_id: Optional[str] = None, 
-    brand_id: Optional[str] = None, 
-    page: int = 1, 
-    page_size: int = 20
+    db: AsyncSession,
+    job_id: Optional[str] = None,
+    brand_id: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
+    user_org_ids: Optional[List[str]] = None
 ) -> Paginated[CreativeSchema]:
     if settings.USE_MOCKS:
         mock_creative = CreativeSchema(
@@ -55,6 +57,10 @@ async def list_creatives(
         filters.append(Creative.job_id == job_id)
     if brand_id:
         filters.append(Creative.brand_id == brand_id)
+    # Tenant isolation: creatives carry no org_id, so scope through their job.
+    if user_org_ids is not None:
+        scoped_job_ids = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
+        filters.append(Creative.job_id.in_(scoped_job_ids))
 
     # Count total
     count_query = select(func.count(Creative.id))
@@ -119,7 +125,9 @@ async def list_creatives(
         has_more=(offset + page_size) < total
     )
 
-async def get_creative_by_id(db: AsyncSession, creative_id: str) -> CreativeSchema:
+async def get_creative_by_id(
+    db: AsyncSession, creative_id: str, user_org_ids: Optional[List[str]] = None
+) -> CreativeSchema:
     if settings.USE_MOCKS:
         return CreativeSchema(
             id=creative_id,
@@ -146,6 +154,14 @@ async def get_creative_by_id(db: AsyncSession, creative_id: str) -> CreativeSche
     row = result.first()
     if not row:
         raise HTTPException(status_code=404, detail="Creative not found")
+
+    # Tenant isolation: resolve the owning job's org; 404 on mismatch.
+    if user_org_ids is not None:
+        job_org = (await db.execute(
+            select(ScrapeJob.org_id).where(ScrapeJob.id == row[0].job_id)
+        )).scalar_one_or_none()
+        if job_org not in user_org_ids:
+            raise HTTPException(status_code=404, detail="Creative not found")
         
     c, score = row
     return CreativeSchema(

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
@@ -155,9 +156,20 @@ async def switch_user_plan(
 async def impersonate_user(
     user_id: str,
     db: AsyncSession = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_admin: User = Depends(get_current_full_admin)
 ):
-    return await admin_service.impersonate_user(db, user_id)
+    """Full-admin only. An assistant-admin used to reach this route and mint a
+    token carrying the TARGET user's role - including full admin. The service
+    layer refuses admin targets too, and every call is written to the audit log.
+    """
+    if user_id == current_admin.id:
+        raise HTTPException(status_code=400, detail="Cannot impersonate yourself")
+    target = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.role == "admin":
+        raise HTTPException(status_code=403, detail="Impersonating an administrator is not permitted")
+    return await admin_service.impersonate_user(db, user_id, actor=current_admin)
 
 # --- Admin Broadcast Announcements ---
 @router.post("/broadcast")
