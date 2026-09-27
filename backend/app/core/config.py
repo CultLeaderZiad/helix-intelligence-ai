@@ -198,6 +198,29 @@ class Settings(BaseSettings):
     TRIAL_IMAGES_TOTAL: int = int(os.getenv("TRIAL_IMAGES_TOTAL", "25"))
     PAID_IMAGES_PER_DAY: int = int(os.getenv("PAID_IMAGES_PER_DAY", "50"))
 
+    # SCRAPLING LEAD GENERATION (Scout · Lead Generation sub-product)
+    # Worker-gated: when disabled, POST /scout/leadgen/jobs refuses with an
+    # honest worker_offline error instead of queueing work nothing will claim.
+    SCRAPLING_WORKER_ENABLED: bool = os.getenv("SCRAPLING_WORKER_ENABLED", "False").lower() in ("true", "1", "yes")
+    # Dev-only single-process fallback: runs the pipeline as an in-API
+    # background task (Scrapling is lazily imported, so uvicorn still boots
+    # without browsers). Prefer the Docker worker in production.
+    SCRAPLING_INLINE_WORKER: bool = os.getenv("SCRAPLING_INLINE_WORKER", "False").lower() in ("true", "1", "yes")
+    SCRAPLING_DEFAULT_ENGINE: str = os.getenv("SCRAPLING_DEFAULT_ENGINE", "stealth")   # http | stealth | dynamic
+    SCRAPLING_ROBOTS_OBEY: bool = os.getenv("SCRAPLING_ROBOTS_OBEY", "True").lower() in ("true", "1", "yes")
+    SCRAPLING_MAX_CONCURRENCY: int = int(os.getenv("SCRAPLING_MAX_CONCURRENCY", "4"))
+    SCRAPLING_PROXY_LIST: str = os.getenv("SCRAPLING_PROXY_LIST", "")   # newline or comma separated proxy URLs
+    SCRAPLING_CHECKPOINT_DIR: str = os.getenv("SCRAPLING_CHECKPOINT_DIR", "/tmp/helix-leadgen-checkpoints")
+    SCRAPLING_CREDIT_PER_PAGE: float = float(os.getenv("SCRAPLING_CREDIT_PER_PAGE", "0.15"))
+    SCRAPLING_CREDIT_BASE: float = float(os.getenv("SCRAPLING_CREDIT_BASE", "1.0"))
+    SCRAPLING_DOCKER_IMAGE: str = os.getenv("SCRAPLING_DOCKER_IMAGE", "ghcr.io/d4vinci/scrapling:latest")
+    SCRAPLING_WORKER_URL: str = os.getenv("SCRAPLING_WORKER_URL", "")   # optional health ping
+    # How recently the worker must have heartbeat before /worker/health says online.
+    SCRAPLING_HEARTBEAT_FRESH_S: int = int(os.getenv("SCRAPLING_HEARTBEAT_FRESH_S", "90"))
+    # Max log lines persisted on the job (FIFO); UI renders the tail.
+    SCRAPLING_MAX_LOG_LINES: int = int(os.getenv("SCRAPLING_MAX_LOG_LINES", "400"))
+
+
     model_config = SettingsConfigDict(
         case_sensitive=True,
         env_file=("../.env", "../.env.local", ".env", ".env.local"),

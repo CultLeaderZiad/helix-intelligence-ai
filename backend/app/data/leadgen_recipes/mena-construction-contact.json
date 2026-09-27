@@ -1,0 +1,24 @@
+{
+  "id": "mena-construction-contact",
+  "label": "MENA Construction · Contact pages",
+  "description": "Crawl contractor/company sites for public contact pages across Gulf + Jordan + Egypt.",
+  "mode": "crawl",
+  "engine_default": "stealth",
+  "adaptive": true,
+  "max_pages": 80,
+  "allow": [".*/(contact|about|اتصل|من-نحن|en/contact|contact-us).*"],
+  "deny": [".*/(login|cart|wp-admin|cdn-cgi|checkout|account).*"],
+  "link_extractor": { "allow_domains": [], "unique": true },
+  "selectors": {
+    "company_name": { "css": "h1, .site-title, meta[property='og:site_name']", "adaptive": true },
+    "emails": { "css": "a[href^='mailto:']", "attr": "href", "adaptive": true },
+    "phones": { "css": "a[href^='tel:']", "attr": "href", "adaptive": true },
+    "address": { "css": "address, .address, .contact-address", "adaptive": true }
+  },
+  "extract": {
+    "company_name": "string", "emails": "string[]", "phones": "string[]",
+    "socials": "object", "address": "string", "markdown_excerpt": "string"
+  },
+  "ad_block": true,
+  "robots_obey": true
+}

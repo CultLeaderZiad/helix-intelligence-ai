@@ -1,0 +1,23 @@
+{
+  "id": "sitemap-company-crawl",
+  "label": "Sitemap · Bounded company crawl",
+  "description": "Parse sitemap.xml and run a bounded same-domain crawl, extracting public contact fields from every reachable page.",
+  "mode": "sitemap",
+  "engine_default": "http",
+  "adaptive": true,
+  "max_pages": 120,
+  "allow": [],
+  "deny": [".*/(login|cart|wp-admin|cdn-cgi|checkout|account|feed|xml).*"],
+  "selectors": {
+    "company_name": { "css": "h1, .site-title, meta[property='og:site_name']", "adaptive": true },
+    "emails": { "css": "a[href^='mailto:']", "attr": "href", "adaptive": true },
+    "phones": { "css": "a[href^='tel:']", "attr": "href", "adaptive": true },
+    "address": { "css": "address, .address", "adaptive": true }
+  },
+  "extract": {
+    "company_name": "string", "emails": "string[]", "phones": "string[]",
+    "socials": "object", "address": "string", "markdown_excerpt": "string"
+  },
+  "ad_block": true,
+  "robots_obey": true
+}

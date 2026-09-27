@@ -1,0 +1,21 @@
+{
+  "id": "competitor-pricing-digest",
+  "label": "Competitor pricing · Markdown digest",
+  "description": "Fetch pricing pages with the dynamic engine and store a markdown digest artifact per page for competitive review.",
+  "mode": "digest",
+  "engine_default": "dynamic",
+  "adaptive": true,
+  "max_pages": 30,
+  "allow": [".*/(pricing|plans|packages|compare).*"],
+  "deny": [".*/(login|cart|wp-admin|cdn-cgi|account).*"],
+  "selectors": {
+    "company_name": { "css": "meta[property='og:site_name'], h1", "adaptive": true },
+    "emails": { "css": "a[href^='mailto:']", "attr": "href", "adaptive": true }
+  },
+  "extract": {
+    "company_name": "string", "emails": "string[]", "phones": "string[]",
+    "socials": "object", "address": "string", "markdown_excerpt": "string"
+  },
+  "ad_block": true,
+  "robots_obey": true
+}

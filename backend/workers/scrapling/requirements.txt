@@ -1,0 +1,3 @@
+# Pinned for reproducible worker builds. Verify the exact latest pin after the
+# first successful `docker build` and lock it here (spec: pin version).
+scrapling[fetchers]>=0.3.3,<1.0
