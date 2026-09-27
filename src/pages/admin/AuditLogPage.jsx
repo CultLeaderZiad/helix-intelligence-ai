@@ -119,7 +119,7 @@ export function AuditLogPage() {
                 <option value="metapi">Metapi</option>
                 <option value="groq">Groq AI</option>
                 <option value="gemini">Gemini Media</option>
-                <option value="higgsfield">Higgsfield AI</option>
+                <option value="gemini">Gemini</option>
                 <option value="scrapegraph">ScrapeGraph AI</option>
                 <option value="system">System / Internal</option>
               </select>

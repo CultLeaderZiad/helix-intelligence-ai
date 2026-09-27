@@ -23,9 +23,7 @@ from app.api.routers import (
     account,
     notifications,
     media,
-    webhooks,
     updates,
-    higgsfield,
     providers,
     support,
     playbooks,
@@ -234,7 +232,6 @@ app.include_router(creatives.patterns_router, prefix=f"{settings.API_V1_STR}/pat
 app.include_router(analysis.insights_router, prefix=f"{settings.API_V1_STR}/insights", tags=["insights"])
 app.include_router(media.router, prefix=f"{settings.API_V1_STR}/media", tags=["media"])
 app.include_router(providers.router, prefix=f"{settings.API_V1_STR}", tags=["providers"])
-app.include_router(webhooks.router, prefix=f"{settings.API_V1_STR}/webhooks", tags=["webhooks"])
 app.include_router(updates.router, prefix=f"{settings.API_V1_STR}/updates", tags=["updates"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
 app.include_router(support.router, prefix=f"{settings.API_V1_STR}/support", tags=["support"])
@@ -245,8 +242,6 @@ app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=[
 app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", tags=["monitors"])
 app.include_router(scout.router, prefix=f"{settings.API_V1_STR}/scout", tags=["scout"])
 app.include_router(scout.router, prefix="/api/v1/scout", tags=["scout"])
-app.include_router(higgsfield.router, prefix=f"{settings.API_V1_STR}/higgsfield", tags=["higgsfield"])
-app.include_router(higgsfield.router, prefix="/higgsfield", tags=["higgsfield"])
 
 # Locally stored media. This is served by a router rather than a StaticFiles
 # mount so that access is checked: the old mount handed any file to anyone who

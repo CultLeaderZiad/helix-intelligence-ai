@@ -42,7 +42,7 @@ Before generating production media or spending advertising dollars:
 ## 4. Generating Production Media
 
 When satisfied with your script and brief:
-- **Generate Ad Image**: Click *Generate Image* (powered by Higgsfield AI models). Deducts **2.0 credits**.
+- **Generate Ad Image**: Click *Generate Image* (powered by Gemini models). Deducts **2.0 credits**.
 - **Generate Ad Video**: Click *Generate Video Motion*. Deducts **5.0 credits**.
 - Your generated assets appear in the output canvas and are saved to your workspace library.
 

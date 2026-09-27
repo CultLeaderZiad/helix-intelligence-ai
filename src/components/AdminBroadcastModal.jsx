@@ -91,7 +91,7 @@ export function AdminBroadcastModal({ isOpen, onClose }) {
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. New Model Released: Higgsfield v2.5 Video Generation"
+                placeholder="e.g. New Model Released: Faster Video Generation"
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-indigo-500/60 transition"
               />
             </div>

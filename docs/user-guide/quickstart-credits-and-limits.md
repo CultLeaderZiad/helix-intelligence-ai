@@ -29,8 +29,8 @@ Every operation deducts a fixed number of credits. These values match the live s
 | **Pattern Pack Extraction** | `0.5` | Clustering winning angles across a brand's top 10 ads into a reusable blueprint. |
 | **AI Assistant Query** | `0.25` | Asking questions to the interactive creative advisor in Discover/Intelligence. |
 | **Audience Simulation** | `1.0` | Running multi-persona synthetic audience rehearsal on a creative brief. |
-| **Generate Image Asset** | `2.0` | Higgsfield AI text-to-image or remix visual generation. |
-| **Generate Video Asset** | `5.0` | Higgsfield AI motion-video render. |
+| **Generate Image Asset** | `2.0` | Gemini text-to-image or remix visual generation. |
+| **Generate Video Asset** | `5.0` | Gemini motion-video render. |
 
 ---
 

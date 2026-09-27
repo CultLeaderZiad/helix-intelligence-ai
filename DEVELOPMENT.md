@@ -63,8 +63,8 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `BACKEND_CORS_ORIGINS` | ✅ | Comma-separated origins, **must include the Vercel URL exactly** (scheme + host, no trailing slash): `https://helix-intelligence-ai-six.vercel.app,http://localhost:5173,http://localhost:3000` |
 | `USE_MOCKS` | ✅ | **Must be `false` in production.** When `true`, sign-in always returns a fake admin token regardless of credentials. |
 | `PUBLIC_API_BASE_URL` | ✅ (prod) | Public API base for webhooks, e.g. `https://helix-intelligence-ai.onrender.com/api` |
-| `HF_API_KEY_ID` | ✅ (for Create) | Higgsfield API Key ID |
-| `HF_API_KEY_SECRET` | ✅ (for Create) | Higgsfield API Key Secret |
+| `HF_API_KEY_ID` | ✅ (for Create) | Gemini API Key ID |
+| `HF_API_KEY_SECRET` | ✅ (for Create) | Gemini API Key Secret |
 | `R2_ACCOUNT_ID` | ✅ (prod) | Cloudflare R2 account id — see "Media storage" below |
 | `R2_ACCESS_KEY_ID` | ✅ (prod) | R2 API token access key id |
 | `R2_SECRET_ACCESS_KEY` | ✅ (prod) | R2 API token secret |
@@ -328,8 +328,8 @@ Helix enforces strict server-side credit caps with database row-level locking (`
 |---|---|---|
 | `discover_job` | 2.0 | Base ad library search & creative scraping |
 | `discover_deep_fallback` | +3.0 | Bright Data deep search surcharge (only if prior sources return 0) |
-| `create_image` | 3.0 | Higgsfield or AI image generation |
-| `create_video` | 8.0 | Higgsfield video/motion generation |
+| `create_image` | 3.0 | Gemini or AI image generation |
+| `create_video` | 8.0 | Gemini video/motion generation |
 | `ai_insight` | 1.0 | Single creative deep LLM insight |
 | `pattern_pack` | 1.0 | Pattern synthesis across scraped ads |
 | `ai_chat` | 0.5 | Interactive creative AI chat query |
@@ -391,22 +391,22 @@ Discover uses an ordered, cost-aware canonical chain to avoid unnecessary API co
 
 ---
 
-## Higgsfield Create Integration
+## Gemini Create Integration
 
 ### Official Authentication Format
-Higgsfield requires API Key credentials formatted with `Key` (never `Bearer`):
+Gemini requires API Key credentials formatted with `Key` (never `Bearer`):
 
 - **Header**: `Authorization: Key {HF_API_KEY_ID}:{HF_API_KEY_SECRET}`
-- **Base URL**: `https://api.higgsfield.ai`
-- **Default Image Endpoint**: `https://api.higgsfield.ai/higgsfield-ai/soul/v2/standard`
-- **Webhook Param**: `?hf_webhook={URL_ENCODED_PUBLIC_API_URL}/webhooks/higgsfield`
+- **Base URL**: `https://api.gemini.ai`
+- **Default Image Endpoint**: `https://api.gemini.ai/gemini-ai/soul/v2/standard`
+- **Webhook Param**: `?hf_webhook={URL_ENCODED_PUBLIC_API_URL}/webhooks/gemini`
 
 ### Operator Proof Curl
 ```bash
 export HF_API_KEY_ID="your_key_id"
 export HF_API_KEY_SECRET="your_key_secret"
 curl -s -w "\nHTTP %{http_code}\n" -X POST \
-  "https://api.higgsfield.ai/higgsfield-ai/soul/v2/standard" \
+  "https://api.gemini.ai/gemini-ai/soul/v2/standard" \
   -H "Authorization: Key ${HF_API_KEY_ID}:${HF_API_KEY_SECRET}" \
   -H "Content-Type: application/json" \
   -d '{"prompt":"A quiet alpine lake at sunrise, editorial photography"}'
@@ -445,8 +445,8 @@ ENABLE_GEMINI_LIVE_TEST=true python backend/scripts/test_gemini_image_live.py
 # Run Gemini Trial & Entitlement suite
 python backend/tests/test_gemini_trial_suite.py
 
-# Run Higgsfield Diagnostic suite
-python backend/tests/test_higgsfield_suite.py
+# Run Gemini Diagnostic suite
+python backend/tests/test_gemini_suite.py
 ```
 
 

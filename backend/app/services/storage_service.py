@@ -10,7 +10,7 @@ configured we fall back to the local disk so local development still works --
 that fallback is explicitly not durable and says so in the logs.
 
 The public interface (``store_media_bytes`` / ``store_media_from_url``) is
-unchanged, so callers such as ``media_service`` and the Higgsfield webhook do
+unchanged, so callers such as ``media_service`` do
 not need to know which backend is active.
 """
 

@@ -47,7 +47,7 @@ async def test_tiered_routing_and_caps():
         req_admin = MediaGenerationRequest(prompt="A luxury sports watch ad", mode="premium_ad", provider="")
         job_admin = await media_service.create_media_job(db, admin, req_admin)
         print(f"[2. Admin User Routing] Created Job ID={job_admin.id}, Assigned Provider={job_admin.provider}")
-        assert job_admin.provider == "higgsfield", f"Expected higgsfield for admin, got {job_admin.provider}"
+        assert job_admin.provider == "gemini", f"Expected gemini (single-provider routing), got {job_admin.provider}"
 
         # 3. Test Admin Bypass with Expired Trial Date
         orig_admin_exp = admin.trial_expires_at

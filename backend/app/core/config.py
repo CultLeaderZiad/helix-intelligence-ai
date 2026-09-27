@@ -53,18 +53,6 @@ class Settings(BaseSettings):
     )
     NEON_WEBHOOK_SECRET: str = os.getenv("NEON_WEBHOOK_SECRET", "")
 
-    # HIGGSFIELD WEBHOOK AUTHENTICATION
-    # Shared secret used to verify HMAC-SHA256 signatures on inbound Higgsfield
-    # callbacks (POST /api/webhooks/higgsfield). Higgsfield signs each webhook
-    # with the project secret; set this to that value.
-    # SECURITY: when UNSET the endpoint refuses every callback (503) rather
-    # than accept unsigned forgeries. A closed webhook beats an open one —
-    # generation jobs simply stay "running" until this is configured.
-    HF_WEBHOOK_SECRET: str = os.getenv(
-        "HF_WEBHOOK_SECRET",
-        os.getenv("HIGGSFIELD_WEBHOOK_SECRET", ""),
-    )
-
     # RATE LIMITING (in-memory, per-process token buckets)
     # Protects credential endpoints (brute force / account enumeration) and
     # expensive AI/scrape endpoints (credit burn) from bursts. On a single
@@ -134,9 +122,6 @@ class Settings(BaseSettings):
     ).strip().strip('"\'').strip()
     ADYNTEL_API_KEY: str = os.getenv("ADYNTEL_API_KEY", "")
     ADYNTEL_EMAIL: str = os.getenv("ADYNTEL_EMAIL", "")
-    HF_API_KEY_ID: str = os.getenv("HF_API_KEY_ID", "") or os.getenv("HIGGSFIELD_API_KEY_ID", "") or os.getenv("HIGGSFIELD_API_KEY", "")
-    HF_API_KEY_SECRET: str = os.getenv("HF_API_KEY_SECRET", "") or os.getenv("HIGGSFIELD_API_KEY_SECRET", "") or os.getenv("HIGGSFIELD_API_SECRET", "") or os.getenv("HIGGSFIELD_SECRET", "")
-    HIGGSFIELD_BASE_URL: str = os.getenv("HIGGSFIELD_BASE_URL", "https://platform.higgsfield.ai").rstrip("/")
     # Public API origin used to build webhook URLs
     PUBLIC_API_BASE_URL: str = os.getenv(
         "PUBLIC_API_BASE_URL",
