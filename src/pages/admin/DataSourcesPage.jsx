@@ -88,8 +88,8 @@ const PROVIDERS_METADATA = [
     type: "database",
   },
   {
-    id: "higgsfield",
-    name: "Higgsfield & Media CDN",
+    id: "gemini-media",
+    name: "Gemini & Media Storage",
     category: "Creative Media Engine",
     priority: "Generative & CDN",
     description: "AI video generation, upscale models, and reliable global asset delivery.",

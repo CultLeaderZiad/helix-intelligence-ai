@@ -252,7 +252,7 @@ export function DocsHomePage() {
                     <li>
                       <Link to="/docs/api-reference/endpoint-media-generate" className="hover:text-accent flex items-center gap-1.5">
                         <ArrowRight className="h-3 w-3 text-accent" />
-                        Media Generation: Higgsfield AI image &amp; video rendering
+                        Media Generation: AI image &amp; video rendering (Gemini)
                       </Link>
                     </li>
                     <li>

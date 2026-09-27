@@ -37,7 +37,7 @@ from app.services.billing_service import DISCOVER_SEARCH_CREDIT_COST, refund
 logger = logging.getLogger(__name__)
 
 DISCOVER_ACTIVE = ("queued", "running")
-# 'in_progress' is set by the Higgsfield path while it waits for the webhook.
+# 'in_progress' is set by a generation task while it waits for completion.
 # It was missing from the original sweep, so a media job interrupted during
 # that wait stayed active forever.
 MEDIA_ACTIVE = ("pending", "running", "processing", "in_progress")

@@ -38,8 +38,6 @@ ESTIMATED_PROVIDER_COSTS = {
     "apify_ad": 0.00075,            # ~$0.75 per 1,000 ads
     "adyntel_query": 0.002,         # ~$0.002 per ad query
     "metapi_query": 0.001,          # Metapi free tier (est.)
-    "higgsfield_image": 0.02,       # ~$0.02 per image generation
-    "higgsfield_video": 0.08,       # ~$0.08 per video generation
 }
 
 

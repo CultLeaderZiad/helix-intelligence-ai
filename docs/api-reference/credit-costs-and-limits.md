@@ -16,7 +16,7 @@ The values below match the live `CREDIT_COSTS` dictionary in `backend/app/servic
 | `pattern_pack` | Creative Clustering Engine | `0.5` credit | Extracts high-leverage creative patterns across multiple ads. |
 | `ai_chat` | Interactive Creative Assistant | `0.25` credit | LLM query answering questions on creative performance or trends. |
 | `audience_simulation` | `POST /api/simulation/run` | `1.0` credit | Multi-persona qualitative rehearsal across target buyer segments. |
-| `create_image` | `POST /api/media/jobs` (image) | `2.0` credits | Generates an AI visual asset via Higgsfield AI pipelines. |
+| `create_image` | `POST /api/media/jobs` (image) | `2.0` credits | Generates an AI visual asset via Gemini pipelines. |
 | `create_video` | `POST /api/media/jobs` (video) | `5.0` credits | Renders an AI motion video variant. |
 
 ---

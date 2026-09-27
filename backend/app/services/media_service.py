@@ -18,8 +18,8 @@ from app.services.billing_service import (
 from app.services.provider_resolver import resolve_image_provider
 from app.services.ai.gemini_provider import GeminiProvider
 from app.services.storage_service import store_media_bytes
-from app.services.media.higgsfield_provider import HiggsfieldProvider
-from app.services.media.higgsfield_registry import resolve_mode_spec
+# (Higgsfield provider removed from the app - Gemini serves all generations)
+from app.services.media.modes import resolve_mode_spec
 from app.services.job_heartbeat import heartbeat
 from app.core.config import settings
 
@@ -42,7 +42,7 @@ async def meter_media_success(job_id: str) -> None:
     """Increment the daily image/video quota and write a UsageLog for a
     COMPLETED media job - exactly once.
 
-    The Higgsfield path (task and webhook) used to mark jobs "completed"
+    A removed provider path used to mark jobs "completed"
     without calling the billing/usage layer, so paid generations never counted
     against quotas and never appeared in admin usage analytics. Idempotency:
     the Gemini path already writes a UsageLog with the job_id, so an existing
@@ -210,81 +210,6 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             await db.commit()
 
 
-async def higgsfield_generate_media_task(job_id: str):
-    from app.db.session import async_session_maker
-    provider = HiggsfieldProvider()
-
-    async with async_session_maker() as db:
-        result = await db.execute(select(MediaGenerationJob).where(MediaGenerationJob.id == job_id))
-        job = result.scalar_one_or_none()
-        if not job:
-            return
-
-        try:
-            logger.info("Starting Higgsfield generation for job %s", job_id)
-            webhook_url = f"{settings.PUBLIC_API_BASE_URL}/webhooks/higgsfield"
-            params = job.parameters or {}
-
-            request_id = await provider.generate_media(
-                job.prompt,
-                params,
-                webhook_url=webhook_url
-            )
-
-            job.provider_job_id = request_id
-            job.status = "in_progress"
-            await db.commit()
-
-            # Polling fallback
-            for _ in range(60):
-                await asyncio.sleep(2.0)
-                await db.refresh(job)
-                if job.status in ["completed", "failed", "nsfw"]:
-                    return
-
-                status_info = await provider.check_status(request_id)
-                status = status_info.get("status")
-
-                if status == "completed":
-                    job.status = "completed"
-                    result_url = status_info.get("url")
-                    if result_url:
-                        job.result_url = result_url
-                    await db.commit()
-                    await meter_media_success(job.id)
-                    return
-                elif status in ["failed", "nsfw"]:
-                    job.status = "failed"
-                    job.failure_kind = "error"
-                    job.error_message = f"Higgsfield status: {status}"
-                    await db.commit()
-                    return
-
-            job.status = "failed"
-            job.failure_kind = "error"
-            job.error_message = "Polling timed out"
-            await db.commit()
-
-        except Exception as e:
-            logger.error("Error in Higgsfield generation task: %s", e)
-            job.status = "failed"
-            job.failure_kind = "error"
-            err_text = str(e)
-            if "401" in err_text or "Unauthorized" in err_text:
-                job.error_message = (
-                    "Higgsfield rejected the API credentials (401). "
-                    "This has been logged for the team — please retry later."
-                )
-            elif "403" in err_text or "Forbidden" in err_text:
-                job.error_message = (
-                    "Higgsfield denied this request (403). "
-                    "This has been logged for the team — please retry later."
-                )
-            else:
-                job.error_message = err_text[:200]
-            await db.commit()
-
-
 async def mock_generate_media_task(job_id: str):
     await asyncio.sleep(2)
     from app.db.session import async_session_maker
@@ -319,22 +244,15 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
     )
 
     requested_provider = (request.provider or "").lower()
-    is_admin = getattr(user, "role", None) == "admin"
-    is_trial = not is_admin and ((plan.type == "trial") or (getattr(org, "plan", "") == "trial") or bool(getattr(org, "plan_id", "").startswith("plan_trial")))
 
-    # Tiered Routing:
-    # - Trial Users -> Gemini
-    # - Paid Users / Admins -> Higgsfield (or requested BYOK/custom provider)
-    if is_trial:
-        provider = "gemini"
-    elif requested_provider == "gemini":
-        provider = "gemini"
-    elif requested_provider in ("higgsfield", "default", ""):
-        provider = "higgsfield"
-    elif requested_provider == "mock" and not settings.USE_MOCKS:
-        provider = "higgsfield"
+    # Provider routing. The Higgsfield provider was removed from the app:
+    # every generation runs through Gemini (managed key or BYOK), with the
+    # in-task Pollinations fallback for video. Legacy "higgsfield" requests
+    # are accepted and served by Gemini so existing clients keep working.
+    if requested_provider == "mock" and settings.USE_MOCKS:
+        provider = "mock"
     else:
-        provider = requested_provider or "higgsfield"
+        provider = "gemini"
 
     # SECURITY: per-request BYOK keys must never be persisted with the job or
     # echoed in job responses. Keep it in memory and hand it to the task only.
@@ -354,9 +272,7 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
     await db.refresh(job)
 
     # 3. Dispatch Provider Task
-    if provider == "higgsfield":
-        asyncio.create_task(_with_heartbeat(lambda: higgsfield_generate_media_task(job.id), job.id))
-    elif provider == "mock":
+    if provider == "mock":
         asyncio.create_task(_with_heartbeat(lambda: mock_generate_media_task(job.id), job.id))
     else:
         asyncio.create_task(

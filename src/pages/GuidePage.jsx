@@ -39,7 +39,7 @@ const GUIDE_STEPS = [
         bulletPoints: [
           "1. Discover — Enqueue ad library scrapes across Meta, Instagram, TikTok, and web sources.",
           "2. Intelligence — Mine winning hooks, emotional triggers, script structures, and angle packs.",
-          "3. Create — Remix winning competitor patterns into net-new image & video assets using Higgsfield AI.",
+          "3. Create — Remix winning competitor patterns into net-new image & video assets in Create Studio.",
           "4. Performance — Track creative longevity, fatigue curves, and feed survivor signals back into the scoring model."
         ]
       },
@@ -119,10 +119,10 @@ const GUIDE_STEPS = [
   {
     id: "create",
     number: "03",
-    title: "Create Studio — Higgsfield Generation",
+    title: "Create Studio — AI Generation",
     icon: PenLine,
     badge: "Media Studio",
-    summary: "Generate photorealistic commercial stills and motion ads with Higgsfield Soul v2 and DoP.",
+    summary: "Generate photorealistic commercial stills and motion ads with Gemini.",
     sections: [
       {
         heading: "Supported Generation Modes & Costs",
@@ -215,7 +215,7 @@ export function GuidePage() {
                 System Workflow, Loops & Credit Economics
               </h2>
               <p className="text-xs text-text-muted mt-1 max-w-2xl leading-relaxed">
-                A complete sequence-by-sequence guide on how to search competitor ad libraries, extract AI intelligence, remix media with Higgsfield, and monitor creative longevity.
+                A complete sequence-by-sequence guide on how to search competitor ad libraries, extract AI intelligence, remix media in Create Studio, and monitor creative longevity.
               </p>
             </div>
 

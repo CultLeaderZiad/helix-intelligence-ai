@@ -1,6 +1,6 @@
 # API Reference: Media Generation Endpoints
 
-The Media Generation API interfaces directly with Helix's media rendering pipeline (powered by Higgsfield AI) to generate advertising images and motion video variants.
+The Media Generation API interfaces directly with Helix's media rendering pipeline (powered by Gemini) to generate advertising images and motion video variants.
 
 ---
 
@@ -19,7 +19,7 @@ X-API-Key: hlx_live_xxxxxxxxxxxxxxxxxxxxxxxx
 | Parameter | Type | Required | Default | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `prompt` | `string` | **Yes** | — | Detailed creative prompt describing the visual, subject, lighting, and style. |
-| `provider` | `string` | No | `"higgsfield"` | Target generation engine. |
+| `provider` | `string` | No | `"gemini"` | Target generation engine. |
 | `mode` | `string` | No | `"premium_ad"` | Generation profile: `"premium_ad"`, `"fast_preview"`, or `"cinematic_video"`. |
 | `parameters` | `object` | No | `{}` | Optional generation parameters (e.g. `aspect_ratio`, `motion_strength`, `negative_prompt`). |
 
@@ -31,7 +31,7 @@ X-API-Key: hlx_live_xxxxxxxxxxxxxxxxxxxxxxxx
 ```json
 {
   "prompt": "Cinematic product hero shot of a minimalist amber glass serum bottle on dark granite stone, soft water droplets, sharp morning sidelight, premium luxury cosmetic commercial aesthetic",
-  "provider": "higgsfield",
+  "provider": "gemini",
   "mode": "premium_ad",
   "parameters": {
     "aspect_ratio": "9:16",
@@ -48,7 +48,7 @@ X-API-Key: hlx_live_xxxxxxxxxxxxxxxxxxxxxxxx
   "job_id": "med_01j7b9k2x4p0m",
   "status": "pending",
   "prompt": "Cinematic product hero shot of a minimalist amber glass serum bottle on dark granite stone...",
-  "provider": "higgsfield",
+  "provider": "gemini",
   "provider_job_id": "hg_req_7829104",
   "created_at": "2026-09-14T12:20:00.000Z",
   "updated_at": "2026-09-14T12:20:00.000Z",
@@ -81,7 +81,7 @@ X-API-Key: hlx_live_xxxxxxxxxxxxxxxxxxxxxxxx
   "job_id": "med_01j7b9k2x4p0m",
   "status": "completed",
   "prompt": "Cinematic product hero shot of a minimalist amber glass serum bottle...",
-  "provider": "higgsfield",
+  "provider": "gemini",
   "provider_job_id": "hg_req_7829104",
   "created_at": "2026-09-14T12:20:00.000Z",
   "updated_at": "2026-09-14T12:20:12.450Z",
@@ -110,8 +110,8 @@ X-API-Key: hlx_live_xxxxxxxxxxxxxxxxxxxxxxxx
 ```json
 [
   {
-    "id": "higgsfield",
-    "name": "Higgsfield AI",
+    "id": "gemini",
+    "name": "Gemini",
     "capabilities": [
       "IMAGE_FAST",
       "IMAGE_PREMIUM",

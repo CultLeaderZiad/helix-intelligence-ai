@@ -170,7 +170,7 @@ export const DOCS_REGISTRY = [
           {
             slug: 'endpoint-media-generate',
             title: 'Media Generation Endpoints',
-            description: 'Generate AI images and motion videos via Higgsfield pipelines.',
+            description: 'Generate AI images and motion videos via Create Studio pipelines.',
             file: 'api-reference/endpoint-media-generate.md',
             readTime: '4 min',
           },

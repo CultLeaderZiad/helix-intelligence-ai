@@ -145,15 +145,25 @@ def main() -> int:
 
     # 7. Paid completions are metered on every path.
     check(
-        "async def meter_media_success(" in media
-        and media.count("await meter_media_success(job.id)") >= 1,
-        "media: metering helper exists and runs on polling completion",
+        "async def meter_media_success(" in media,
+        "media: metering helper exists for completed generations",
         failures,
     )
-    webhooks = read("app/api/routers/webhooks.py")
+    # Higgsfield provider was removed from the app - guard the removal.
     check(
-        "meter_media_success" in webhooks,
-        "webhooks: completed Higgsfield jobs are metered",
+        not (ROOT / "app/api/routers/higgsfield.py").exists()
+        and not (ROOT / "app/api/routers/webhooks.py").exists(),
+        "higgsfield: provider router and webhook fully removed",
+        failures,
+    )
+    check(
+        "higgsfield" not in read("app/main.py").lower(),
+        "higgsfield: not mounted in main.py",
+        failures,
+    )
+    check(
+        (ROOT / "app/services/media/modes.py").exists(),
+        "media: neutral mode catalogue replaces the provider registry",
         failures,
     )
 

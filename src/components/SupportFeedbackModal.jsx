@@ -168,7 +168,7 @@ export function SupportFeedbackModal({ isOpen, onClose, initialContext = {} }) {
               >
                 <option value="discover">Discover / Scraper</option>
                 <option value="intelligence">Intelligence & Teardowns</option>
-                <option value="create">Create Studio & Higgsfield</option>
+                <option value="create">Create Studio</option>
                 <option value="performance">Performance & Scoring</option>
                 <option value="billing">Billing & Credits</option>
                 <option value="general">General / Other</option>
