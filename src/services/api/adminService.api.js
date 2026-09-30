@@ -44,6 +44,12 @@ const adminService = {
     })
   },
 
+  deletePlan(planId) {
+    return request(`/admin/plans/${planId}`, {
+      method: "DELETE",
+    })
+  },
+
   // --- Organizations & Credits ---
   listOrganizations() {
     return request("/admin/organizations")

@@ -9,20 +9,27 @@ import {
   RefreshCw, 
   CheckCircle2, 
   ShieldCheck, 
-  Copy 
+  Copy,
+  AlertCircle,
 } from "lucide-react"
+import { BreadcrumbBar } from "@/app/BreadcrumbBar"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 export function TeamPage() {
   const { user } = useAuth()
   const [team, setTeam] = useState(null)
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
+  const [cancelInviteTarget, setCancelInviteTarget] = useState(null)
+  const [removeMemberTarget, setRemoveMemberTarget] = useState(null)
+  const [isActionBusy, setIsActionBusy] = useState(false)
 
   // Invite modal
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [email, setEmail] = useState("")
   const [role, setRole] = useState("member")
   const [submitting, setSubmitting] = useState(false)
+  const [inviteError, setInviteError] = useState(null)
 
   const isFeatureEnabled = user?.feature_flags?.team_accounts === true
 
@@ -53,6 +60,7 @@ export function TeamPage() {
 
   const handleInvite = async (e) => {
     e.preventDefault()
+    setInviteError(null)
     setSubmitting(true)
     try {
       const res = await accountService.inviteTeamMember(email, role)
@@ -61,19 +69,42 @@ export function TeamPage() {
       setEmail("")
       fetchTeam()
     } catch (err) {
-      alert(err.message || "Failed to send invitation")
+      const detail = err?.response?.data?.detail || err.message || "Failed to send invitation"
+      setInviteError(typeof detail === "string" ? detail : "Failed to send invitation")
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleCancelInvite = async (inviteId) => {
+  const confirmCancelInvite = async () => {
+    if (!cancelInviteTarget) return
+    setIsActionBusy(true)
     try {
-      await accountService.cancelTeamInvite(inviteId)
-      showToast("Invitation canceled")
+      await accountService.cancelTeamInvite(cancelInviteTarget.id)
+      showToast(`Invitation for ${cancelInviteTarget.email} canceled`)
+      setCancelInviteTarget(null)
       fetchTeam()
     } catch (err) {
-      alert(err.message || "Failed to cancel invitation")
+      const detail = err?.response?.data?.detail || err.message || "Failed to cancel invitation"
+      showToast(typeof detail === "string" ? detail : "Failed to cancel invitation")
+    } finally {
+      setIsActionBusy(false)
+    }
+  }
+
+  const confirmRemoveMember = async () => {
+    if (!removeMemberTarget) return
+    setIsActionBusy(true)
+    try {
+      await accountService.removeTeamMember(removeMemberTarget.id)
+      showToast(`Member ${removeMemberTarget.email} removed from team`)
+      setRemoveMemberTarget(null)
+      fetchTeam()
+    } catch (err) {
+      const detail = err?.response?.data?.detail || err.message || "Failed to remove team member"
+      showToast(typeof detail === "string" ? detail : "Failed to remove team member")
+    } finally {
+      setIsActionBusy(false)
     }
   }
 
@@ -96,7 +127,9 @@ export function TeamPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-8 font-sans">
+    <div className="flex flex-col flex-1 min-h-0 font-sans">
+      <BreadcrumbBar trail={["Helix", "Settings", "Team Members"]} />
+      <div className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-8 font-sans">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -119,7 +152,7 @@ export function TeamPage() {
           </button>
           <button
             onClick={() => setShowInviteModal(true)}
-            className="flex items-center gap-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded shadow-lg shadow-indigo-600/20 transition"
+            className="flex items-center gap-2 px-3.5 py-1.5 bg-accent hover:bg-accent-dim text-black text-xs font-semibold rounded border border-accent hover:border-accent-dim transition"
           >
             <UserPlus className="w-4 h-4" />
             Invite Teammate
@@ -147,12 +180,13 @@ export function TeamPage() {
                 <th className="py-3.5 px-4">Member Email</th>
                 <th className="py-3.5 px-4">Role</th>
                 <th className="py-3.5 px-4">Joined At</th>
+                <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan="3" className="py-8 text-center text-slate-500">
+                  <td colSpan="4" className="py-8 text-center text-slate-500">
                     Loading team...
                   </td>
                 </tr>
@@ -170,6 +204,17 @@ export function TeamPage() {
                   </td>
                   <td className="py-3.5 px-4 text-slate-400">
                     {m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Founding Member"}
+                  </td>
+                  <td className="py-3.5 px-4 text-right">
+                    {m.role !== "owner" && (
+                      <button
+                        onClick={() => setRemoveMemberTarget(m)}
+                        title="Remove team member"
+                        className="text-slate-500 hover:text-rose-400 p-1 transition"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -209,8 +254,9 @@ export function TeamPage() {
                         Copy Link
                       </button>
                       <button
-                        onClick={() => handleCancelInvite(inv.id)}
+                        onClick={() => setCancelInviteTarget(inv)}
                         className="text-rose-400 hover:text-rose-300 p-1 transition"
+                        title="Cancel invitation"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -231,6 +277,12 @@ export function TeamPage() {
               <UserPlus className="w-5 h-5 text-indigo-400" />
               Invite Team Member
             </h3>
+            {inviteError && (
+              <div className="p-2.5 rounded bg-rose-500/10 border border-rose-500/30 text-xs text-rose-400 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {inviteError}
+              </div>
+            )}
             <form onSubmit={handleInvite} className="space-y-3">
               <div>
                 <label className="text-xs font-mono text-slate-400">Email Address</label>
@@ -265,7 +317,7 @@ export function TeamPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded transition"
+                  className="px-4 py-1.5 bg-accent hover:bg-accent-dim text-black font-semibold text-xs rounded border border-accent hover:border-accent-dim transition"
                 >
                   {submitting ? "Sending..." : "Send Invitation"}
                 </button>
@@ -274,6 +326,32 @@ export function TeamPage() {
           </div>
         </div>
       )}
+
+      {/* Confirmation modal for cancelling invitation */}
+      <ConfirmDialog
+        isOpen={Boolean(cancelInviteTarget)}
+        title="Cancel Team Invitation"
+        description={`Are you sure you want to cancel the pending invite for ${cancelInviteTarget?.email}? The invitation link will immediately expire.`}
+        confirmText="Cancel Invitation"
+        variant="danger"
+        isBusy={isActionBusy}
+        onConfirm={confirmCancelInvite}
+        onCancel={() => setCancelInviteTarget(null)}
+      />
+
+      {/* Confirmation modal for removing team member */}
+      <ConfirmDialog
+        isOpen={Boolean(removeMemberTarget)}
+        title="Remove Team Member"
+        description={`Are you sure you want to remove ${removeMemberTarget?.email} from the workspace team? They will immediately lose access to team workspaces, monitors, swipe files, and shared credit pools.`}
+        confirmText="Remove Member"
+        variant="danger"
+        isBusy={isActionBusy}
+        onConfirm={confirmRemoveMember}
+        onCancel={() => setRemoveMemberTarget(null)}
+      />
+
+      </div>
     </div>
   )
 }

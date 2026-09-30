@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { 
   BookOpen, 
@@ -11,29 +11,70 @@ import {
   Terminal, 
   Zap,
   HelpCircle,
-  ExternalLink
+  ExternalLink,
+  ChevronDown
 } from 'lucide-react'
 import { PublicHeader } from '@/app/PublicHeader'
 import { MarketingFooter } from '@/features/marketing/MarketingFooter'
-import { DOCS_REGISTRY, searchDocs } from '@/features/docs/docsData'
+import { DOCS_REGISTRY } from '@/features/docs/docsData'
+import { DocSearchModal } from '@/features/docs/DocSearchModal'
+import { ScrollToTopButton } from '@/components/ui/ScrollToTopButton'
+import { SkipToContent } from '@/components/ui/SkipToContent'
+
+const CORE_FAQ_ITEMS = [
+  {
+    question: 'Why did my search return no results?',
+    answer: 'Ad transparency libraries only catalog creatives actively running in recent weeks. If a competitor paused their campaigns, or if their ads run under a parent corporate entity or agency rather than their personal alias, queries may return empty. In transient upstream rate limit events, your search credits are automatically refunded.'
+  },
+  {
+    question: 'What is the difference between estimated and reported data?',
+    answer: 'Reported data is 100% factual public record: verbatim headlines, ad body text, video MP4s, thumbnail images, and first-seen timestamps. Estimated metrics (like reach brackets and spend estimates) are clearly demarcated with amber "(est)" badges so you always know what is directly reported versus modeled.'
+  },
+  {
+    question: 'What happens when my 7-day trial ends?',
+    answer: 'During your 7-day trial, you receive 100 credits and 20 daily searches. When 7 days elapse, your account enters Read-Only Mode. All previously discovered creatives and saved swipe files remain accessible. You are never automatically billed without explicitly choosing a plan.'
+  },
+  {
+    question: 'Are credits refunded if a scrape job fails?',
+    answer: 'Yes, 100%. If an ad-network timeout or transient provider disconnect occurs while processing your scrape or media generation, the billing engine immediately restores the deducted credits to your workspace balance. Helix never charges for incomplete jobs.'
+  },
+  {
+    question: 'How do I translate foreign language ads into English?',
+    answer: 'Helix automatically detects non-English copy across 40+ languages. When inspecting a creative in the Intelligence drawer or Intelligence page, use the language selector to instantly view an English translation of the headline, body copy, and call to action.'
+  },
+  {
+    question: 'How does Helix prevent CMS documentation drift?',
+    answer: 'Our documentation is stored as static markdown files committed to the repository alongside code. Each page’s "Last Updated" timestamp is dynamically extracted from actual git commit history during build time, ensuring 100% schema fidelity with backend Pydantic models.'
+  }
+]
 
 export function DocsHomePage() {
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchModalOpen, setSearchModalOpen] = useState(false)
+  const [openFaqIndex, setOpenFaqIndex] = useState(0)
   const navigate = useNavigate()
-  const searchResults = searchDocs(searchQuery)
 
-  const handleSearchSubmit = (e) => {
-    e.preventDefault()
-    if (searchResults.length > 0) {
-      navigate(`/docs/${searchResults[0].section}/${searchResults[0].slug}`)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchModalOpen((v) => !v)
+      } else if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        e.preventDefault()
+        setSearchModalOpen(true)
+      }
     }
-  }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col selection:bg-accent selection:text-black">
+      {/* Skip to Content for keyboard accessibility */}
+      <SkipToContent targetId="main-content" />
+
       <PublicHeader />
 
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         {/* 1. HERO SEARCH BANNER (GitLab Docs Style) */}
         <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-surface-2 via-surface to-bg py-20 px-4 sm:px-6">
           {/* Subtle background grid & glow */}
@@ -51,53 +92,30 @@ export function DocsHomePage() {
               Complete guides, core scoring concepts, and exact API references for competitive ad intelligence.
             </p>
 
-            {/* Central Search Box */}
-            <form onSubmit={handleSearchSubmit} className="mt-8 relative max-w-xl mx-auto">
-              <div className="relative flex items-center">
-                <Search className="absolute left-4 h-4 w-4 text-text-faint" />
-                <input
-                  type="text"
-                  placeholder="Search topics, score formulas, API endpoints..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-12 pl-11 pr-24 rounded-lg bg-surface border border-border text-sm text-text placeholder:text-text-faint shadow-lg focus:outline-none focus:border-accent transition-colors font-sans"
-                />
-                <button
-                  type="submit"
-                  className="absolute right-2 px-3 py-1.5 rounded-md bg-accent text-black text-xs font-mono font-bold hover:bg-accent-bright transition-colors"
-                >
-                  Search
-                </button>
-              </div>
-
-              {/* Instant Results Popup */}
-              {searchQuery && (
-                <div className="absolute top-14 left-0 right-0 bg-surface border border-border rounded-lg shadow-2xl overflow-hidden z-50 text-left divide-y divide-border/60 max-h-80 overflow-y-auto">
-                  {searchResults.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-text-muted">
-                      No matching documents found for "{searchQuery}".
-                    </div>
-                  ) : (
-                    searchResults.map((r) => (
-                      <Link
-                        key={`${r.section}-${r.slug}`}
-                        to={`/docs/${r.section}/${r.slug}`}
-                        className="block p-3.5 hover:bg-surface-2 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] uppercase tracking-wider text-accent">
-                            {r.sectionLabel}
-                          </span>
-                          <span className="text-[10px] text-text-faint">· {r.groupTitle}</span>
-                        </div>
-                        <div className="text-sm font-medium text-text mt-0.5">{r.title}</div>
-                        <div className="text-xs text-text-muted truncate mt-0.5">{r.description}</div>
-                      </Link>
-                    ))
-                  )}
+            {/* Central Search Box Trigger */}
+            <div className="mt-8 relative max-w-xl mx-auto">
+              <button
+                type="button"
+                onClick={() => setSearchModalOpen(true)}
+                className="w-full h-13 pl-4 pr-3 rounded-lg bg-surface border border-border hover:border-accent/50 text-left text-sm text-text-muted shadow-xl hover:shadow-accent/5 transition-all flex items-center justify-between group cursor-pointer"
+                aria-label="Open documentation search"
+              >
+                <div className="flex items-center gap-3">
+                  <Search className="h-4 w-4 text-text-faint group-hover:text-accent transition-colors" />
+                  <span className="text-text-faint group-hover:text-text-muted transition-colors">
+                    Search topics, score formulas, API endpoints...
+                  </span>
                 </div>
-              )}
-            </form>
+                <div className="flex items-center gap-2">
+                  <kbd className="hidden sm:inline-flex items-center gap-0.5 px-2 py-1 text-xs font-mono text-text-faint bg-surface-2 border border-border rounded shadow-2xs">
+                    <span className="text-xs">⌘</span>K
+                  </kbd>
+                  <span className="px-3 py-1.5 rounded-md bg-accent text-black text-xs font-mono font-bold group-hover:bg-accent-bright transition-colors">
+                    Search
+                  </span>
+                </div>
+              </button>
+            </div>
 
             {/* Quick Access Topic Pills */}
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs">
@@ -149,40 +167,40 @@ export function DocsHomePage() {
                   <p className="font-mono text-[11px] font-semibold text-text uppercase tracking-wider">
                     Core Topics:
                   </p>
-                  <ul className="space-y-1.5 text-xs text-text-muted">
+                  <ul className="space-y-1 text-xs text-text-muted">
                     <li>
-                      <Link to="/docs/user-guide/quickstart-account-and-trial" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/user-guide/quickstart-account-and-trial" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Quick Start: Signup to first insight in &lt;5 minutes
                       </Link>
                     </li>
                     <li>
-                      <Link to="/docs/user-guide/concept-how-discover-works" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/user-guide/concept-how-discover-works" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         How Discover Works &amp; Real Data Limits
                       </Link>
                     </li>
                     <li>
-                      <Link to="/docs/user-guide/concept-scoring-system" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/user-guide/concept-scoring-system" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Hook, Clarity, Retention &amp; Composite Scores
                       </Link>
                     </li>
                     <li>
-                      <Link to="/docs/user-guide/concept-estimated-vs-real-data" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/user-guide/concept-estimated-vs-real-data" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Estimated vs. Real Data (Transparency Pledge)
                       </Link>
                     </li>
                     <li>
-                      <Link to="/docs/user-guide/concept-audience-simulation" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/user-guide/concept-audience-simulation" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Audience Simulation Rehearsal (Not a Predictor)
                       </Link>
                     </li>
                     <li>
-                      <Link to="/docs/user-guide/faq" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/user-guide/faq" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Frequently Asked Questions (FAQ)
                       </Link>
                     </li>
@@ -196,7 +214,7 @@ export function DocsHomePage() {
                   className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-surface-2 hover:bg-surface-3 border border-border text-xs font-mono font-medium text-text hover:text-accent transition-colors w-full justify-center"
                 >
                   <span>Explore User Guide</span>
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               </div>
             </div>
@@ -206,7 +224,7 @@ export function DocsHomePage() {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="h-10 w-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
-                    <Code2 className="h-5 w-5" />
+                    <Code2 className="h-5 w-5" aria-hidden="true" />
                   </div>
                   <span className="font-mono text-[10px] uppercase tracking-wider text-text-faint px-2.5 py-1 rounded bg-surface-2 border border-border">
                     Section B
@@ -224,40 +242,40 @@ export function DocsHomePage() {
                   <p className="font-mono text-[11px] font-semibold text-text uppercase tracking-wider">
                     Core Endpoints:
                   </p>
-                  <ul className="space-y-1.5 text-xs text-text-muted">
+                  <ul className="space-y-1 text-xs text-text-muted">
                     <li>
-                      <Link to="/docs/api-reference/authentication" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/api-reference/authentication" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Authentication: Key generation &amp; X-API-Key pattern
                       </Link>
                     </li>
                     <li>
-                      <Link to="/docs/api-reference/credit-costs-and-limits" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/api-reference/credit-costs-and-limits" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Credit Costs &amp; Limits (Synced with billing_service.py)
                       </Link>
                     </li>
                     <li>
-                      <Link to="/docs/api-reference/endpoint-discover" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/api-reference/endpoint-discover" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Discover Jobs: Scrape dispatch &amp; status polling
                       </Link>
                     </li>
                     <li>
-                      <Link to="/docs/api-reference/endpoint-creatives" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/api-reference/endpoint-creatives" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Creatives: Catalog queries, swipe files &amp; insights
                       </Link>
                     </li>
                     <li>
-                      <Link to="/docs/api-reference/endpoint-media-generate" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/api-reference/endpoint-media-generate" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Media Generation: AI image &amp; video rendering (Gemini)
                       </Link>
                     </li>
                     <li>
-                      <Link to="/docs/api-reference/endpoint-monitors" className="hover:text-accent flex items-center gap-1.5">
-                        <ArrowRight className="h-3 w-3 text-accent" />
+                      <Link to="/docs/api-reference/endpoint-monitors" className="hover:text-accent inline-flex items-center gap-1.5 py-1 min-h-[28px]">
+                        <ArrowRight className="h-3 w-3 text-accent shrink-0" aria-hidden="true" />
                         Monitors: Scheduled loops &amp; event webhooks
                       </Link>
                     </li>
@@ -279,7 +297,63 @@ export function DocsHomePage() {
           </div>
         </section>
 
-        {/* 3. TRUST & REPO INTEGRITY STRIP */}
+        {/* 3. EXPANDABLE FAQ ACCORDION SECTION */}
+        <section className="py-16 px-4 sm:px-6 max-w-4xl mx-auto border-t border-border/70">
+          <div className="text-center mb-10">
+            <span className="px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-accent/10 text-accent border border-accent/20">
+              Clear &amp; Transparent
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-text mt-3">
+              Frequently Asked Questions
+            </h2>
+            <p className="text-sm text-text-muted mt-2 max-w-xl mx-auto">
+              Straight answers on data freshness, credit refunds, trial limits, and scoring formulas.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {CORE_FAQ_ITEMS.map((item, idx) => {
+              const isOpen = openFaqIndex === idx
+              return (
+                <div
+                  key={idx}
+                  className="rounded-lg border border-border bg-surface overflow-hidden transition-all duration-200 hover:border-border-strong"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                    aria-expanded={isOpen}
+                    className="w-full text-left px-5 py-4 flex items-center justify-between gap-3 text-sm font-semibold text-text hover:text-accent transition-colors cursor-pointer select-none"
+                  >
+                    <span>{item.question}</span>
+                    <ChevronDown
+                      className={`h-4 w-4 shrink-0 text-text-muted transition-transform duration-200 ${
+                        isOpen ? 'rotate-180 text-accent' : ''
+                      }`}
+                    />
+                  </button>
+                  {isOpen && (
+                    <div className="px-5 pb-4 pt-1 border-t border-border/60 text-xs sm:text-[13px] text-text-muted leading-relaxed">
+                      <p>{item.answer}</p>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="mt-8 text-center">
+            <Link
+              to="/docs/user-guide/faq"
+              className="inline-flex items-center gap-1.5 text-xs font-mono text-accent hover:text-accent-bright transition-colors"
+            >
+              <span>Explore complete FAQ article in User Guide</span>
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        </section>
+
+        {/* 4. TRUST & REPO INTEGRITY STRIP */}
         <section className="border-t border-border bg-surface-2/40 py-12 px-4 sm:px-6">
           <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-text-muted">
             <div className="flex items-center gap-3">
@@ -305,6 +379,15 @@ export function DocsHomePage() {
       </main>
 
       <MarketingFooter />
+
+      {/* Floating Scroll to Top */}
+      <ScrollToTopButton />
+
+      {/* Real Docs & API Reference Site Search Modal */}
+      <DocSearchModal
+        open={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+      />
     </div>
   )
 }

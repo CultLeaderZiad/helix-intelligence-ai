@@ -32,19 +32,19 @@ async def health_check(
         db_status = "disconnected"
         db_error = str(e)
 
-    response = {
-        "status": "ok",
-        "service": "helix-backend",
-        "db": db_status,
-    }
-    if db_error:
-        response["db_detail"] = db_error
-
     # Strictly protect internal API presence diagnostics: only return when authenticated with admin secret
     is_admin_req = bool(
         settings.SECRET_KEY
         and (secret == settings.SECRET_KEY or x_admin_secret == settings.SECRET_KEY)
     )
+
+    response = {
+        "status": "ok",
+        "service": "helix-backend",
+        "db": db_status,
+    }
+    if db_error and is_admin_req:
+        response["db_detail"] = db_error
     if is_admin_req:
         response["env_vars"] = {
             "DATABASE_URL": bool(settings.DATABASE_URL or os.getenv("DATABASE_URL")),

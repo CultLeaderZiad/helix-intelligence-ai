@@ -71,8 +71,7 @@ export function PricingSection() {
             Priced by the loop, not the seat.
           </h2>
           <p className="text-pretty text-sm leading-relaxed text-text-muted">
-            Every plan runs the full instrument. What scales is how much of the
-            web you point it at.
+            Every plan runs the full instrument. <strong className="text-text font-medium">Pre-revenue Beta:</strong> Full platform access is currently free during preview. Commercial plan pricing is shown for upcoming general availability.
           </p>
         </div>
 

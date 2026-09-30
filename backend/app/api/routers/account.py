@@ -271,3 +271,11 @@ async def accept_team_invite(
     current_user: User = Depends(get_current_user)
 ):
     return await team_service.accept_invite(db, req.token, current_user)
+
+@router.delete("/team/members/{member_id}")
+async def remove_team_member(
+    member_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return await team_service.remove_member(db, current_user, member_id)

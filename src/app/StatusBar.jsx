@@ -1,5 +1,5 @@
-import { Database, Clock, Layers } from "lucide-react"
-import { useLocation } from "react-router-dom"
+import { Database, Clock, Layers, HelpCircle } from "lucide-react"
+import { useLocation, Link } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { DATA_SOURCE } from "@/services"
 import { API_BASE_URL } from "@/services/config"
@@ -124,6 +124,15 @@ export function StatusBar() {
             POWERED BY HELIX
           </span>
         </span>
+
+        <Link
+          to="/support"
+          className="flex items-center gap-1 border-l border-border pl-3 text-text-faint hover:text-accent transition-colors"
+          title="Open Support & Feedback"
+        >
+          <HelpCircle className="h-3 w-3 text-accent" />
+          <span>SUPPORT</span>
+        </Link>
       </span>
     </footer>
   )

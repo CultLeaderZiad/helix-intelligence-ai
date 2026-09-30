@@ -7,7 +7,7 @@ import { AuthLayout } from "@/features/auth/AuthLayout"
 import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
 import { PasswordStrength } from "@/features/auth/PasswordStrength"
-import { Input } from "@/components/ui/Field"
+import { Input, PasswordInput } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
 import { ServiceError } from "@/services"
 
@@ -104,10 +104,9 @@ export function ResetPasswordPage() {
           label="New password"
           error={fieldError}
         >
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="new-password"
             autoFocus
             placeholder="••••••••"
@@ -126,10 +125,9 @@ export function ResetPasswordPage() {
         <PasswordStrength value={password} />
 
         <AuthField id="confirm" label="Confirm password">
-          <Input
+          <PasswordInput
             id="confirm"
             name="confirm"
-            type="password"
             autoComplete="new-password"
             placeholder="••••••••"
             value={confirm}

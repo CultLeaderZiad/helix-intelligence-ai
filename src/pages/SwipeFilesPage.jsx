@@ -23,6 +23,8 @@ import {
   ArrowRight
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
+import { BreadcrumbBar } from "@/app/BreadcrumbBar"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 export function SwipeFilesPage() {
   const { user } = useAuth()
@@ -34,6 +36,8 @@ export function SwipeFilesPage() {
   const [error, setError] = useState(null)
   const [activeCollection, setActiveCollection] = useState("all")
   const [toast, setToast] = useState(null)
+  const [deleteTargetCreative, setDeleteTargetCreative] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   
   // Custom Reference State
   const [showAddModal, setShowAddModal] = useState(false)
@@ -78,13 +82,19 @@ export function SwipeFilesPage() {
     setTimeout(() => setToast(null), 3500)
   }
 
-  const handleUnsave = async (creativeId) => {
+  const confirmUnsave = async () => {
+    if (!deleteTargetCreative) return
+    setIsDeleting(true)
     try {
-      await creativeService.unsaveCreative(creativeId)
+      await creativeService.unsaveCreative(deleteTargetCreative.id)
       showToast(t("removedFromSwipe", "Creative removed from swipe file"))
-      setCreatives((prev) => prev.filter((c) => c.id !== creativeId))
+      setCreatives((prev) => prev.filter((c) => c.id !== deleteTargetCreative.id))
+      setDeleteTargetCreative(null)
     } catch (err) {
-      alert(err.message || "Failed to remove creative")
+      const detail = err?.response?.data?.detail || err.message || "Failed to remove creative"
+      showToast(typeof detail === "string" ? detail : "Failed to remove creative")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -187,7 +197,9 @@ export function SwipeFilesPage() {
   const discoveredCount = latestSearch?.items?.length || 0
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6 font-sans">
+    <div className="flex flex-col flex-1 min-h-0 font-sans">
+      <BreadcrumbBar trail={["Helix", "Workspace", "Swipe Files"]} />
+      <div className="p-6 max-w-7xl mx-auto space-y-6 w-full">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
@@ -425,7 +437,7 @@ export function SwipeFilesPage() {
                     {c.platform || "Ad"} · {c.format || "Media"}
                   </span>
                   <button
-                    onClick={() => handleUnsave(c.id)}
+                    onClick={() => setDeleteTargetCreative(c)}
                     title={t("removeSwipe", "Remove from swipe file")}
                     className="text-text-faint hover:text-danger p-1 transition"
                   >
@@ -462,6 +474,18 @@ export function SwipeFilesPage() {
         </div>
       )}
 
+      <ConfirmDialog
+        isOpen={Boolean(deleteTargetCreative)}
+        title="Remove Saved Creative"
+        description={`Are you sure you want to remove "${deleteTargetCreative?.headline || "this creative"}" from your swipe files?`}
+        confirmText="Remove Creative"
+        variant="danger"
+        isBusy={isDeleting}
+        onConfirm={confirmUnsave}
+        onCancel={() => setDeleteTargetCreative(null)}
+      />
+
+      </div>
     </div>
   )
 }

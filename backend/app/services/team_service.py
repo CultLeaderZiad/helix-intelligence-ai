@@ -156,3 +156,25 @@ async def accept_invite(db: AsyncSession, token: str, user: User) -> Dict[str, A
     await db.commit()
 
     return {"success": True, "message": "Successfully joined organization", "org_id": invite.org_id}
+
+async def remove_member(db: AsyncSession, user: User, member_id: str) -> Dict[str, Any]:
+    org = await get_or_create_default_org(db, user)
+
+    # Check caller is org owner
+    if org.owner_id != user.id:
+        raise HTTPException(status_code=403, detail="Only the organization owner can remove team members")
+
+    member = (await db.execute(
+        select(OrganizationMember).where(OrganizationMember.id == member_id, OrganizationMember.org_id == org.id)
+    )).scalar_one_or_none()
+
+    if not member:
+        raise HTTPException(status_code=404, detail="Team member not found")
+
+    if member.user_id == user.id or member.user_id == org.owner_id:
+        raise HTTPException(status_code=400, detail="Cannot remove the organization owner")
+
+    await db.delete(member)
+    await db.commit()
+    return {"success": True, "message": "Team member removed successfully"}
+

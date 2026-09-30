@@ -3,6 +3,7 @@ import { MessageSquare, Plus, CheckCircle2, Clock, AlertCircle, Send, ChevronRig
 import { supportService } from "../services"
 import { useAuth } from "../context/AuthContext"
 import { SupportFeedbackModal } from "../components/SupportFeedbackModal"
+import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 
 export function SupportPage() {
   const { user } = useAuth()
@@ -14,6 +15,12 @@ export function SupportPage() {
   const [isSendingReply, setIsSendingReply] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [error, setError] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  const showToast = (msg) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 4000)
+  }
 
   const loadTickets = async () => {
     setIsLoading(true)
@@ -24,7 +31,8 @@ export function SupportPage() {
         loadTicketDetails(data[0].id)
       }
     } catch (err) {
-      setError(err?.message || "Failed to load support tickets")
+      const detail = err?.response?.data?.detail || err?.message || "Failed to load support tickets"
+      setError(typeof detail === "string" ? detail : "Failed to load support tickets")
     } finally {
       setIsLoading(false)
     }
@@ -46,9 +54,14 @@ export function SupportPage() {
 
   const handleSendReply = async (e) => {
     e.preventDefault()
-    if (!replyMessage.trim() || !selectedTicket) return
+    if (!replyMessage.trim()) {
+      setError("Please type a message before sending.")
+      return
+    }
+    if (!selectedTicket) return
 
     setIsSendingReply(true)
+    setError(null)
     try {
       const newReply = await supportService.replyTicket(selectedTicket, replyMessage.trim())
       setTicketDetails((prev) => ({
@@ -56,15 +69,19 @@ export function SupportPage() {
         replies: [...(prev.replies || []), newReply]
       }))
       setReplyMessage("")
+      showToast("Reply sent successfully!")
     } catch (err) {
-      alert(err?.message || "Failed to send reply")
+      const detail = err?.response?.data?.detail || err?.message || "Failed to send reply"
+      setError(typeof detail === "string" ? detail : "Failed to send reply")
     } finally {
       setIsSendingReply(false)
     }
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 space-y-6 font-sans">
+    <div className="flex flex-col flex-1 min-h-0 font-sans">
+      <BreadcrumbBar trail={["Helix", "Help", "Support & Feedback"]} />
+      <div className="w-full max-w-7xl mx-auto p-4 md:p-8 space-y-6 font-sans">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -80,6 +97,20 @@ export function SupportPage() {
           <Plus className="w-4 h-4" /> New Ticket
         </button>
       </div>
+
+      {toast && (
+        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-400 text-sm flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          {toast}
+        </div>
+      )}
+
+      {error && (
+        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-rose-400 text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
+      )}
 
       {/* Main Grid: Ticket List + Conversation Thread */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -258,8 +289,13 @@ export function SupportPage() {
           setIsModalOpen(false)
           loadTickets()
         }}
+        onSuccess={(ticket) => {
+          loadTickets()
+          showToast(`Ticket #${ticket.id.slice(0, 8)} created successfully!`)
+        }}
         initialContext={{ page: "Support Dashboard", tag: "general" }}
       />
+      </div>
     </div>
   )
 }

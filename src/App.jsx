@@ -12,6 +12,7 @@ import { LanguageProvider } from "@/context/LanguageContext"
 import { LandingPage } from "@/pages/LandingPage"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { trackPageview } from "@/lib/analytics"
+import { captureAttribution } from "@/lib/utm"
 
 // Safe lazy-loading with automatic auto-reload on stale deployment chunks
 function safeLazy(importFn) {
@@ -107,8 +108,9 @@ function DocumentTitle() {
     document.title = label ? `${label} · Helix Intelligence` : "Helix Intelligence"
   }, [pathname])
 
-  // SPA pageview on every route change (Plausible does not auto-track client routing)
+  // SPA pageview and UTM referral attribution capture on every route change
   useEffect(() => {
+    captureAttribution()
     trackPageview(pathname)
   }, [pathname])
 

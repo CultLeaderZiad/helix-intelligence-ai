@@ -16,6 +16,7 @@ import {
   CreditCard
 } from "lucide-react"
 import { Link } from "react-router-dom"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 export function UsersPage() {
   const [users, setUsers] = useState([])
@@ -25,6 +26,11 @@ export function UsersPage() {
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
   const [impersonatingId, setImpersonatingId] = useState(null)
+
+  // Confirmation modal states
+  const [banTargetUser, setBanTargetUser] = useState(null)
+  const [isBanModalBusy, setIsBanModalBusy] = useState(false)
+  const [impersonateTargetUser, setImpersonateTargetUser] = useState(null)
 
   // Plan switch modal
   const [planSwitchUser, setPlanSwitchUser] = useState(null)
@@ -41,7 +47,7 @@ export function UsersPage() {
       setUsers(Array.isArray(usersData) ? usersData : [])
       setPlans(Array.isArray(plansData) ? plansData : [])
     } catch (err) {
-      setError(err.message || "Failed to load users")
+      setError(err?.response?.data?.detail || err?.message || "Failed to load users")
     } finally {
       setLoading(false)
     }
@@ -63,17 +69,22 @@ export function UsersPage() {
     setTimeout(() => setToast(null), 4000)
   }
 
-  const handleBanToggle = async (user) => {
-    const action = user.is_banned ? "unban" : "ban"
-    if (!confirm(`Are you sure you want to ${action} ${user.email}? ${action === "ban" ? "This will block login completely." : ""}`)) {
-      return
-    }
+  const handleBanToggle = (user) => {
+    setBanTargetUser(user)
+  }
+
+  const confirmBanToggle = async () => {
+    if (!banTargetUser) return
+    setIsBanModalBusy(true)
     try {
-      await adminService.banUser(user.id, !user.is_banned)
-      showToast(`User ${user.email} ${user.is_banned ? "unbanned" : "banned"} successfully.`)
+      await adminService.banUser(banTargetUser.id, !banTargetUser.is_banned)
+      showToast(`User ${banTargetUser.email} ${banTargetUser.is_banned ? "unbanned" : "banned"} successfully.`)
+      setBanTargetUser(null)
       fetchUsers()
     } catch (err) {
-      alert(err.message || "Failed to update ban status")
+      setError(err?.response?.data?.detail || err?.message || "Failed to update ban status")
+    } finally {
+      setIsBanModalBusy(false)
     }
   }
 
@@ -83,7 +94,7 @@ export function UsersPage() {
       showToast(`User ${user.email} role changed to ${newRole}.`)
       fetchUsers()
     } catch (err) {
-      alert(err.message || "Failed to update user role")
+      setError(err?.response?.data?.detail || err?.message || "Failed to update user role")
     }
   }
 
@@ -97,28 +108,31 @@ export function UsersPage() {
       setPlanSwitchUser(null)
       fetchUsers()
     } catch (err) {
-      alert(err.message || "Failed to switch plan")
+      setError(err?.response?.data?.detail || err?.message || "Failed to switch plan")
     }
   }
 
-  const handleImpersonate = async (user) => {
-    if (!confirm(`Are you sure you want to impersonate ${user.email}? You will be logged in as this user.`)) {
-      return
-    }
-    setImpersonatingId(user.id)
+  const handleImpersonate = (user) => {
+    setImpersonateTargetUser(user)
+  }
+
+  const confirmImpersonate = async () => {
+    if (!impersonateTargetUser) return
+    setImpersonatingId(impersonateTargetUser.id)
     try {
-      const res = await adminService.impersonateUser(user.id)
+      const res = await adminService.impersonateUser(impersonateTargetUser.id)
       if (res?.access_token) {
         localStorage.setItem("helix_auth_token", res.access_token)
-        showToast(`Impersonating ${user.email}... Redirecting to Discovery.`)
+        showToast(`Impersonating ${impersonateTargetUser.email}... Redirecting to Discovery.`)
         setTimeout(() => {
           window.location.href = "/discover"
         }, 1200)
       }
     } catch (err) {
-      alert(err.message || "Failed to impersonate user")
+      setError(err?.response?.data?.detail || err?.message || "Failed to impersonate user")
     } finally {
       setImpersonatingId(null)
+      setImpersonateTargetUser(null)
     }
   }
 
@@ -373,6 +387,34 @@ export function UsersPage() {
           </div>
         </div>
       )}
+
+      {/* Ban / Unban Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!banTargetUser}
+        title={banTargetUser?.is_banned ? "Unban User Account" : "Ban User Account"}
+        description={
+          banTargetUser?.is_banned
+            ? `Are you sure you want to unban ${banTargetUser?.email}? Their account access and login capabilities will be immediately restored.`
+            : `Are you sure you want to ban ${banTargetUser?.email}? This will immediately invalidate their sessions and block all login attempts.`
+        }
+        confirmText={banTargetUser?.is_banned ? "Unban Account" : "Ban Account"}
+        variant={banTargetUser?.is_banned ? "primary" : "danger"}
+        isBusy={isBanModalBusy}
+        onConfirm={confirmBanToggle}
+        onCancel={() => setBanTargetUser(null)}
+      />
+
+      {/* Impersonation Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!impersonateTargetUser}
+        title="Confirm User Impersonation"
+        description={`You are about to sign into Helix Intelligence as ${impersonateTargetUser?.email}. You will have full access to their workspace, data, and settings. Proceed with caution.`}
+        confirmText="Impersonate User"
+        variant="warning"
+        isBusy={impersonatingId === impersonateTargetUser?.id}
+        onConfirm={confirmImpersonate}
+        onCancel={() => setImpersonateTargetUser(null)}
+      />
     </div>
   )
 }

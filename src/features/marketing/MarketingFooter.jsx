@@ -21,8 +21,8 @@ const LEGAL_DOCS = {
         body: "Any creative assets generated or remixed within the Create Studio remain 100% the intellectual property of the account holder. Helix does not claim royalties or proprietary rights over user-generated marketing collateral.",
       },
       {
-        heading: "4. Service Level & Termination",
-        body: "We maintain a 99.9% uptime target. Accounts violating fair API consumption or reverse-engineering policies may be terminated upon written notice.",
+        heading: "4. Beta Availability & As-Is Warranty Disclaimer",
+        body: "Helix Intelligence is currently provided as a pre-revenue beta service 'as is' and 'as available', without warranties or uptime guarantees. Accounts violating acceptable usage, individual scraping prohibitions, or reverse-engineering policies may be terminated upon notice.",
       },
     ],
   },
@@ -33,15 +33,15 @@ const LEGAL_DOCS = {
     content: [
       {
         heading: "1. Information We Collect",
-        body: "We collect account profile information (email, team name), authentication credentials, and search history necessary to provide the intelligence workspace. We never access private customer advertising accounts or unreleased assets.",
+        body: "We collect account profile information (email, name), authentication credentials, and search history necessary to provide the intelligence workspace. We never access private customer advertising accounts or unreleased assets.",
       },
       {
         heading: "2. Zero Third-Party Monetization",
         body: "Helix Intelligence never sells, rents, or exchanges user telemetry or competitor search dossiers with third-party ad brokers.",
       },
       {
-        heading: "3. Global Compliance (GDPR & CCPA)",
-        body: "All data storage is encrypted at rest using AES-256. Users retain the right to request a complete audit log export or account purge at any time.",
+        heading: "3. Global Compliance Standards",
+        body: "All user authentication data and provider credentials are encrypted. Users retain the right to request a complete data export or account deletion at any time.",
       },
     ],
   },
@@ -51,16 +51,16 @@ const LEGAL_DOCS = {
     updated: "September 2026",
     content: [
       {
-        heading: "1. SOC2 & TLS 1.3 Standards",
-        body: "All traffic across API endpoints, dashboard sessions, and edge scraping nodes is enforced with TLS 1.3 encryption and strict HTTP response headers.",
+        heading: "1. Encryption Standards",
+        body: "All traffic across API endpoints and dashboard sessions is enforced with TLS 1.3 encryption in transit. Workspace provider API credentials are encrypted at rest using AES-256.",
       },
       {
         heading: "2. Sandboxed AI Generation",
         body: "Generative model pipelines execute in isolated memory sandboxes. Prompt formulas and seed references are never retained in permanent training corpora.",
       },
       {
-        heading: "3. Continuous Vulnerability Audits",
-        body: "Automated penetration testing and daily dependency vulnerability sweeps guarantee platform integrity for enterprise brand portfolios.",
+        heading: "3. Dependency & Code Auditing",
+        body: "Continuous automated dependency vulnerability scans and strict secret scrubbing ensure environment integrity across all runtime environments.",
       },
     ],
   },
@@ -254,7 +254,17 @@ export function MarketingFooter() {
         </div>
       </div>
 
-      {/* Bottom Hairline & Operational Status Bar — matching screenshot */}
+      {/* Business Details & Operator Section */}
+      <div className="border-t border-white/[0.06] bg-[#040407] px-6 py-4 text-center font-mono text-[11px] text-text-faint sm:px-8 lg:px-12">
+        <p className="max-w-4xl mx-auto leading-relaxed">
+          Helix, operated by Ziad Sabry · Cairo, Egypt (Pre-revenue Beta) · Contact &amp; Support:{" "}
+          <a href="mailto:support@helix-intelligence.com" className="text-accent underline underline-offset-2 hover:text-white transition-colors">
+            support@helix-intelligence.com
+          </a>
+        </p>
+      </div>
+
+      {/* Bottom Hairline & Operational Status Bar */}
       <div className="border-t border-white/[0.08] bg-[#050608]/90">
         <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-6 py-5 sm:flex-row sm:px-8 lg:px-12">
           {/* Left copyright notice */}
@@ -264,8 +274,11 @@ export function MarketingFooter() {
 
           {/* Right systems indicator */}
           <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-text-faint">
-            <span className="h-2 w-2 rounded-[1px] bg-[#ccff00] shadow-[0_0_8px_#ccff0088]" />
-            <span>ALL SYSTEMS OPERATIONAL</span>
+            <span
+              className="h-2 w-2 rounded-[1px] bg-accent/80 shadow-[0_0_8px_rgba(215,255,79,0.5)]"
+              aria-hidden="true"
+            />
+            <span>BETA PREVIEW · STATUS CHECKS ACTIVE</span>
           </div>
         </div>
       </div>

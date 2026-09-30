@@ -653,15 +653,53 @@ export function CreatePage() {
               
               <div className="flex-1 min-h-[360px] rounded-lg border border-border bg-surface p-4 flex flex-col items-center justify-center relative overflow-hidden">
                 {isBusy ? (
-                  <div className="flex flex-col items-center gap-3 text-center">
-                    <div className="relative">
-                      <div className="h-12 w-12 rounded-full border-2 border-accent/20 border-t-accent animate-spin" />
-                      <Sparkles className="h-5 w-5 text-accent absolute inset-0 m-auto animate-pulse" />
+                  <div className="w-full max-w-sm rounded-[4px] border border-border bg-[#09090b] p-4 font-mono text-left space-y-3 shadow-lg">
+                    <div className="flex items-center justify-between border-b border-border/80 pb-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-accent animate-pulse shrink-0" />
+                        <span className="text-xs font-semibold text-accent uppercase tracking-wider">
+                          {activeCategory === "video" ? "Rendering Motion Video" : "Generating Ad Asset"}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-text-faint">{aspectRatio}</span>
                     </div>
-                    <span className="text-xs font-semibold text-text">Helix AI Generating Creative</span>
-                    <span className="text-[11px] font-mono text-text-muted">
-                      {job?.status ? `Status: ${job.status}` : "Synthesizing visual concept..."}
-                    </span>
+
+                    <div className="space-y-1.5 text-[11px] leading-relaxed">
+                      <div className="flex items-baseline text-text-muted">
+                        <span className="w-3 shrink-0 text-accent">→</span>
+                        <span className="text-text">analyzing prompt & composition</span>
+                        <span className="mx-2 min-w-4 flex-1 self-center border-b border-dotted border-border-strong" />
+                        <span className="text-success font-medium">ok</span>
+                      </div>
+                      <div className="flex items-baseline text-text-muted">
+                        <span className="w-3 shrink-0 text-accent">→</span>
+                        <span className="text-text">
+                          {activeCategory === "video" ? "synthesizing motion frames" : "invoking generative engine"}
+                        </span>
+                        <span className="mx-2 min-w-4 flex-1 self-center border-b border-dotted border-border-strong" />
+                        <span className="text-accent font-medium">
+                          active
+                          <span className="cursor-blink ml-1 inline-block h-2.5 w-[6px] translate-y-[2px] bg-accent" />
+                        </span>
+                      </div>
+                      <div className="flex items-baseline text-text-faint">
+                        <span className="w-3 shrink-0" />
+                        <span>post-processing & upscaling</span>
+                        <span className="mx-2 min-w-4 flex-1 self-center border-b border-dotted border-border-strong" />
+                        <span>pending</span>
+                      </div>
+                      <div className="flex items-baseline text-text-faint">
+                        <span className="w-3 shrink-0" />
+                        <span>credit metering & signature</span>
+                        <span className="mx-2 min-w-4 flex-1 self-center border-b border-dotted border-border-strong" />
+                        <span>pending</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-border/60 flex items-center justify-between text-[10px] text-text-faint">
+                      <span>job: {job?.job_id ? job.job_id.slice(0, 14) : "queued"}</span>
+                      <span className="text-accent animate-pulse">synthesizing...</span>
+                    </div>
                   </div>
                 ) : displayErrorMessage ? (
                   <div className="flex flex-col items-center gap-3 text-center p-4">

@@ -7,7 +7,7 @@ import { AuthLayout } from "@/features/auth/AuthLayout"
 import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
 import { validateSignIn } from "@/features/auth/validation"
-import { Input } from "@/components/ui/Field"
+import { Input, PasswordInput } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
 import { ServiceError } from "@/services"
 import { DATA_SOURCE } from "@/services/config"
@@ -155,10 +155,9 @@ export function SignInPage() {
             </Link>
           }
         >
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="current-password"
             placeholder="••••••••"
             value={values.password}

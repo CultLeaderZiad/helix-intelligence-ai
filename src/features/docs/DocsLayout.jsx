@@ -14,19 +14,73 @@ import {
   Layers,
   Terminal,
   Clock,
+  Calendar,
   CheckCircle2,
-  FileText
+  FileText,
+  GitCommit
 } from 'lucide-react'
 import { DOCS_REGISTRY, searchDocs, getAdjacentDocs } from './docsData'
 import { slugify } from './MarkdownRenderer'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { DocSearchModal } from './DocSearchModal'
+import { ScrollToTopButton } from '@/components/ui/ScrollToTopButton'
+import { SkipToContent } from '@/components/ui/SkipToContent'
 
 export function DocsLayout({ activeDoc, children }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [activeHeading, setActiveHeading] = useState('')
+  const [scrollProgress, setScrollProgress] = useState(0)
+
+  // Track reading scroll progress on Docs pages
+  useEffect(() => {
+    const handleScrollProgress = () => {
+      const scrollY = window.scrollY
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight
+      if (docHeight > 0) {
+        const progress = Math.min(100, Math.max(0, (scrollY / docHeight) * 100))
+        setScrollProgress(progress)
+      } else {
+        setScrollProgress(0)
+      }
+    }
+    window.addEventListener('scroll', handleScrollProgress, { passive: true })
+    handleScrollProgress()
+    return () => window.removeEventListener('scroll', handleScrollProgress)
+  }, [location.pathname, activeDoc])
+
+  // Global keyboard shortcut for Docs Search (⌘K / Ctrl+K or /)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchModalOpen((v) => !v)
+      } else if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
+        e.preventDefault()
+        setSearchModalOpen(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Auto-close mobile drawer on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
+
+  // Close mobile drawer on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [mobileMenuOpen])
 
   // Determine current active section: 'user-guide' or 'api-reference'
   const activeSectionKey = useMemo(() => {
@@ -85,9 +139,6 @@ export function DocsLayout({ activeDoc, children }) {
     return getAdjacentDocs(activeDoc.section, activeDoc.slug)
   }, [activeDoc])
 
-  // Instant search results
-  const searchResults = useMemo(() => searchDocs(searchQuery), [searchQuery])
-
   // Close mobile drawer on route change
   useEffect(() => {
     setMobileMenuOpen(false)
@@ -95,8 +146,11 @@ export function DocsLayout({ activeDoc, children }) {
 
   return (
     <div className="min-h-screen bg-bg text-text flex flex-col font-sans selection:bg-accent selection:text-black">
+      {/* Skip to Content for keyboard accessibility */}
+      <SkipToContent targetId="main-content" />
+
       {/* 1. TOP HEADER (GitLab Docs Shell Inspired) */}
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md px-4 lg:px-6 h-14 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md px-4 lg:px-6 h-14 flex items-center justify-between gap-4 relative">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -143,54 +197,37 @@ export function DocsLayout({ activeDoc, children }) {
           </div>
         </div>
 
-        {/* Global Live Search Bar */}
+        {/* Global Live Search Bar Modal Trigger */}
         <div className="flex-1 max-w-md relative hidden md:block">
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-text-faint" />
-            <input
-              type="text"
-              placeholder="Search documentation, guides & API..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-8 pl-8 pr-3 text-xs bg-surface-2 border border-border rounded-md text-text placeholder:text-text-faint focus:outline-none focus:border-accent/70 transition-colors"
-            />
-          </div>
-
-          {/* Search Dropdown Modal */}
-          {searchQuery && (
-            <div className="absolute top-10 left-0 right-0 bg-surface border border-border rounded-md shadow-xl overflow-hidden z-50 divide-y divide-border/60 max-h-96 overflow-y-auto">
-              <div className="px-3 py-1.5 bg-surface-2 font-mono text-[10px] text-text-faint uppercase tracking-wider flex justify-between">
-                <span>Search Results ({searchResults.length})</span>
-                <button onClick={() => setSearchQuery('')} className="hover:text-text">Clear</button>
-              </div>
-              {searchResults.length === 0 ? (
-                <div className="p-4 text-center text-xs text-text-muted">
-                  No matching documentation found for "{searchQuery}".
-                </div>
-              ) : (
-                searchResults.map((result) => (
-                  <Link
-                    key={`${result.section}-${result.slug}`}
-                    to={`/docs/${result.section}/${result.slug}`}
-                    onClick={() => setSearchQuery('')}
-                    className="block p-3 hover:bg-surface-2 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-accent">
-                        {result.sectionLabel} · {result.groupTitle}
-                      </span>
-                    </div>
-                    <div className="text-xs font-medium text-text">{result.title}</div>
-                    <div className="text-[11px] text-text-muted truncate mt-0.5">{result.description}</div>
-                  </Link>
-                ))
-              )}
+          <button
+            type="button"
+            onClick={() => setSearchModalOpen(true)}
+            className="w-full h-8 pl-3 pr-2 text-xs bg-surface-2 hover:bg-surface-3 border border-border hover:border-accent/40 rounded-md text-text-muted flex items-center justify-between transition-colors group cursor-pointer shadow-xs"
+            aria-label="Search documentation"
+          >
+            <div className="flex items-center gap-2">
+              <Search className="h-3.5 w-3.5 text-text-faint group-hover:text-accent transition-colors" />
+              <span className="text-text-faint group-hover:text-text-muted transition-colors">Search documentation, guides & API...</span>
             </div>
-          )}
+            <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-text-faint bg-surface border border-border rounded shadow-2xs">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </button>
         </div>
 
         {/* Action links */}
         <div className="flex items-center gap-2">
+          {/* Mobile search icon button */}
+          <button
+            type="button"
+            onClick={() => setSearchModalOpen(true)}
+            className="md:hidden p-1.5 rounded-md hover:bg-surface-2 text-text-muted hover:text-accent transition-colors"
+            aria-label="Search documentation"
+            title="Search (⌘K)"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+
           <LanguageSwitcher />
           <Link
             to="/discover"
@@ -200,6 +237,17 @@ export function DocsLayout({ activeDoc, children }) {
             <ExternalLink className="h-3 w-3 text-text-faint" />
           </Link>
         </div>
+
+        {/* Reading scroll progress indicator (Docs pages only) */}
+        <div
+          className="absolute bottom-0 left-0 h-[2px] bg-accent transition-all duration-75 ease-out pointer-events-none"
+          style={{ width: `${scrollProgress}%` }}
+          role="progressbar"
+          aria-valuenow={Math.round(scrollProgress)}
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-label="Reading progress"
+        />
       </header>
 
       {/* 2. BODY LAYOUT (Left-Nav + Main Content + Right TOC) */}
@@ -248,6 +296,22 @@ export function DocsLayout({ activeDoc, children }) {
             <p className="text-[11px] text-text-faint leading-relaxed mt-1">
               {currentSectionConfig.audience}
             </p>
+          </div>
+
+          {/* Quick search button in sidebar */}
+          <div className="p-3 pb-0">
+            <button
+              type="button"
+              onClick={() => setSearchModalOpen(true)}
+              className="w-full flex items-center justify-between px-3 py-2 rounded-md border border-border bg-surface-2 hover:bg-surface-3 text-xs text-text-muted hover:text-text transition-colors group cursor-pointer"
+              aria-label="Search Docs"
+            >
+              <span className="flex items-center gap-2">
+                <Search className="h-3.5 w-3.5 text-accent" />
+                <span className="font-medium text-text-muted group-hover:text-text">Search docs...</span>
+              </span>
+              <kbd className="text-[10px] font-mono text-text-faint bg-surface px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
+            </button>
           </div>
 
           {/* Navigation Links Tree */}
@@ -302,7 +366,7 @@ export function DocsLayout({ activeDoc, children }) {
         )}
 
         {/* CENTER CONTENT VIEW */}
-        <main className="flex-1 min-w-0 px-4 py-8 lg:px-10 max-w-4xl">
+        <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 px-4 py-8 lg:px-10 max-w-4xl focus:outline-none">
           {/* Breadcrumb row */}
           {activeDoc && (
             <div className="flex items-center gap-1.5 text-xs font-mono text-text-faint mb-6">
@@ -314,9 +378,18 @@ export function DocsLayout({ activeDoc, children }) {
               <ChevronRight className="h-3 w-3" />
               <span className="text-accent truncate">{activeDoc.title}</span>
 
-              <div className="ml-auto flex items-center gap-1.5 text-[11px] text-text-faint">
-                <Clock className="h-3 w-3" />
-                <span>{activeDoc.readTime} read</span>
+              <div className="ml-auto flex items-center gap-3 text-[11px] text-text-faint">
+                {activeDoc.lastUpdated && (
+                  <span className="hidden sm:flex items-center gap-1.5" title={`Git commit: ${activeDoc.commitHash || 'recent'}`}>
+                    <Calendar className="h-3 w-3 text-accent" />
+                    <span>Updated {activeDoc.lastUpdated}</span>
+                  </span>
+                )}
+                <span className="hidden sm:inline-block text-border/80">•</span>
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3 w-3" />
+                  <span>{activeDoc.readTime} read</span>
+                </div>
               </div>
             </div>
           )}
@@ -324,9 +397,30 @@ export function DocsLayout({ activeDoc, children }) {
           {/* Render article children */}
           <article className="min-w-0">{children}</article>
 
+          {/* Article Footer Git Provenance Metadata */}
+          {activeDoc && (
+            <div className="mt-10 pt-4 border-t border-border/70 flex flex-wrap items-center justify-between gap-4 text-xs text-text-muted">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-3.5 w-3.5 text-accent shrink-0" />
+                <span>
+                  Last updated from git on <strong className="font-mono text-[11.5px] text-text font-semibold">{activeDoc.lastUpdated || 'recent'}</strong>
+                </span>
+                {activeDoc.commitHash && (
+                  <span className="font-mono text-[10px] text-text-faint bg-surface-2 px-1.5 py-0.5 rounded border border-border flex items-center gap-1">
+                    <GitCommit className="h-2.5 w-2.5" />
+                    {activeDoc.commitHash}
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] text-text-faint font-mono">
+                Static Git Docs • Auto-synced
+              </span>
+            </div>
+          )}
+
           {/* Bottom Previous / Next Article Pagination */}
           {activeDoc && (
-            <div className="mt-12 pt-6 border-t border-border flex items-center justify-between gap-4">
+            <div className="mt-6 pt-6 border-t border-border flex items-center justify-between gap-4">
               {adjacent.prev ? (
                 <Link
                   to={`/docs/${adjacent.prev.section}/${adjacent.prev.slug}`}
@@ -404,6 +498,16 @@ export function DocsLayout({ activeDoc, children }) {
           </aside>
         )}
       </div>
+
+      {/* Floating Scroll to Top Button for long doc pages */}
+      <ScrollToTopButton />
+
+      {/* Interactive Docs Search Modal */}
+      <DocSearchModal
+        open={searchModalOpen}
+        onClose={() => setSearchModalOpen(false)}
+        initialSection={activeSectionKey}
+      />
     </div>
   )
 }

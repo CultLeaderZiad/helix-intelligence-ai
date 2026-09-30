@@ -229,9 +229,8 @@ export const PillNav = ({
         <Link
           className="pill-logo"
           to="/"
-          aria-label="Home"
+          aria-label="Helix Home"
           onMouseEnter={handleLogoEnter}
-          role="menuitem"
           ref={logoRef}
         >
           <img src={logo} alt={logoAlt} ref={logoImgRef} />

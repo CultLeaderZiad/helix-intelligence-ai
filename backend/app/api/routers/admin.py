@@ -53,6 +53,14 @@ async def update_plan(
 ):
     return await admin_service.update_plan(db, plan_id, plan_in)
 
+@router.delete("/plans/{plan_id}")
+async def delete_plan(
+    plan_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin)
+):
+    return await admin_service.delete_plan(db, plan_id)
+
 # --- Organizations & Quota Controls ---
 @router.get("/organizations", response_model=List[AdminOrganizationRow])
 async def list_organizations(db: AsyncSession = Depends(get_db), current_admin: User = Depends(get_current_admin)):

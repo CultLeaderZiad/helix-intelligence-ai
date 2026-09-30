@@ -61,6 +61,11 @@ const accountService = {
     return { success: true, message: "Invite canceled" }
   },
 
+  async removeTeamMember(memberId) {
+    await delay(100)
+    return { success: true, message: "Team member removed" }
+  },
+
   async acceptTeamInvite(token) {
     await delay(100)
     return { success: true, message: "Joined organization" }

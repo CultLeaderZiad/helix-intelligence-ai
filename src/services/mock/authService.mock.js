@@ -131,7 +131,7 @@ const authService = {
    * @param {import('../contracts').SignUpParams} params
    * @returns {Promise<{ user: import('../contracts').AuthUser }>}
    */
-  async signUp({ name, email, password } = {}) {
+  async signUp({ name, email, password, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer } = {}) {
     await delay(360)
     maybeFail("Authentication service unavailable")
 
@@ -149,6 +149,14 @@ const authService = {
       email: key,
       password,
       role: "customer",
+      signup_metadata: {
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        utm_term,
+        utm_content,
+        referrer,
+      },
     }
     users.set(key, rec)
     persistSession(rec)

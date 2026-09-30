@@ -205,7 +205,11 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             elif "API key" in err_msg:
                 job.error_message = "Gemini API key is invalid or unauthorized."
             else:
-                job.error_message = err_msg[:200]
+                import re
+                clean_msg = re.sub(r'([?&]key=)[^&\s]+', r'\1[REDACTED]', err_msg)
+                if custom_api_key:
+                    clean_msg = clean_msg.replace(custom_api_key, "[REDACTED]")
+                job.error_message = clean_msg[:200]
                 
             await db.commit()
 

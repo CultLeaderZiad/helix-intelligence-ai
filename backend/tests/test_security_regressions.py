@@ -167,6 +167,38 @@ def main() -> int:
         failures,
     )
 
+    # 8. Unauthenticated health check never leaks db_detail / connection strings.
+    health_src = read("app/api/routers/health.py")
+    check(
+        "if db_error and is_admin_req:" in health_src,
+        "health: db_detail error details restricted to authenticated admin requests",
+        failures,
+    )
+
+    # 9. Admin flag updates always return redacted flags.
+    check(
+        '"custom_feature_flags": _redact_flags(org.custom_feature_flags)' in admin_service,
+        "admin service: update_organization_feature_flags returns redacted flags",
+        failures,
+    )
+
+    # 10. Gemini provider uses header auth instead of URL query keys.
+    gemini_src = read("app/services/ai/gemini_provider.py")
+    check(
+        "x-goog-api-key" in gemini_src and "?key=" not in gemini_src,
+        "gemini provider: uses x-goog-api-key header and no ?key= query string",
+        failures,
+    )
+
+    # 11. Signup UTM parameter tracking.
+    auth_schema = read("app/schemas/auth.py")
+    auth_service = read("app/services/auth_service.py")
+    check(
+        "utm_source" in auth_schema and "signup_metadata" in auth_service,
+        "auth: signup captures and stores UTM attribution metadata",
+        failures,
+    )
+
     print(f"\n{len(failures)} failure(s)" if failures else "\nAll security regressions passed")
     return 1 if failures else 0
 

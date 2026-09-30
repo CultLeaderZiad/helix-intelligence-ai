@@ -1,4 +1,5 @@
 import os
+import re
 import httpx
 import base64
 import logging
@@ -14,7 +15,7 @@ class GeminiProvider(AIProvider):
         self.api_key = raw_key.strip().strip('"\'') if raw_key else ""
         self.model = "gemini-flash-latest"
         self.image_model = getattr(settings, "GEMINI_IMAGE_MODEL", "gemini-2.0-flash-lite-preview-02-05")
-        self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent?key={self.api_key}"
+        self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
         
     @property
     def is_configured(self) -> bool:
@@ -29,9 +30,10 @@ class GeminiProvider(AIProvider):
         if not self.is_configured:
             raise ValueError("No Gemini API key provided")
             
-        test_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={self.api_key}"
+        test_url = "https://generativelanguage.googleapis.com/v1beta/models"
+        headers = {"x-goog-api-key": self.api_key}
         async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(test_url)
+            resp = await client.get(test_url, headers=headers)
             if resp.status_code == 200:
                 return {
                     "status": "connected",
@@ -61,7 +63,10 @@ class GeminiProvider(AIProvider):
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 self.base_url,
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": self.api_key
+                },
                 json={
                     "contents": gemini_messages,
                     "generationConfig": {
@@ -153,10 +158,10 @@ class GeminiProvider(AIProvider):
                 is_imagen = "imagen" in model_name.lower()
                 
                 if is_imagen:
-                    generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:predict?key={self.api_key}"
+                    generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:predict"
                     generate_payload_data = predict_payload
                 else:
-                    generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
+                    generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
                     generate_payload_data = {
                         "contents": [{"parts": parts}]
                     }
@@ -164,7 +169,10 @@ class GeminiProvider(AIProvider):
                 try:
                     resp = await client.post(
                         generate_url,
-                        headers={"Content-Type": "application/json"},
+                        headers={
+                            "Content-Type": "application/json",
+                            "x-goog-api-key": self.api_key
+                        },
                         json=generate_payload_data
                     )
                     if resp.status_code == 200:
@@ -221,12 +229,18 @@ class GeminiProvider(AIProvider):
                     else:
                         last_error = f"Gemini API returned HTTP {resp.status_code}"
                 except Exception as e:
-                    if "unauthorized" in str(e).lower() or "invalid" in str(e).lower():
-                        raise
-                    last_error = str(e)
-                    logger.warning("Error with model %s: %s", model_name, e)
+                    clean_err = re.sub(r'([?&]key=)[^&\s]+', r'\1[REDACTED]', str(e))
+                    if self.api_key:
+                        clean_err = clean_err.replace(self.api_key, "[REDACTED]")
+                    if "unauthorized" in clean_err.lower() or "invalid" in clean_err.lower():
+                        raise ValueError("Gemini API key is invalid or unauthorized")
+                    last_error = clean_err
+                    logger.warning("Error with model %s: %s", model_name, clean_err)
 
             if last_error:
-                raise ValueError(last_error)
+                clean_last = re.sub(r'([?&]key=)[^&\s]+', r'\1[REDACTED]', str(last_error))
+                if self.api_key:
+                    clean_last = clean_last.replace(self.api_key, "[REDACTED]")
+                raise ValueError(clean_last)
 
         raise ValueError("Gemini image generation did not return image data")

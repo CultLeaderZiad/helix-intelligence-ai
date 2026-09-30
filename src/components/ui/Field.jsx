@@ -1,3 +1,5 @@
+import { useState } from "react"
+import { Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function Label({ className, children, ...props }) {
@@ -20,6 +22,34 @@ export function Input({ className, ...props }) {
       )}
       {...props}
     />
+  )
+}
+
+export function PasswordInput({ className, disabled, ...props }) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="relative w-full">
+      <Input
+        type={visible ? "text" : "password"}
+        className={cn("pr-9", className)}
+        disabled={disabled}
+        {...props}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        disabled={disabled}
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Hide password" : "Show password"}
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-muted hover:text-text transition-colors disabled:opacity-40 focus:outline-none focus:text-accent"
+      >
+        {visible ? (
+          <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />
+        ) : (
+          <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+        )}
+      </button>
+    </div>
   )
 }
 

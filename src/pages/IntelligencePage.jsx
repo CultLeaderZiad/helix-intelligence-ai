@@ -480,6 +480,7 @@ export function IntelligencePage() {
             {searchHistory.length > 1 && (
               <select
                 value={latestSearch.query}
+                aria-label="Switch active corpus search session"
                 onChange={(e) => {
                   const target = searchHistory.find((s) => s.query === e.target.value)
                   if (target) selectSearchSession(target)
@@ -547,7 +548,29 @@ export function IntelligencePage() {
                 </span>
               </div>
 
-              {patterns.length > 0 ? (
+              {generatingPatterns ? (
+                <div className="rounded-[4px] border border-border bg-[#09090b] p-3 font-mono text-[11px] space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-accent animate-pulse shrink-0" />
+                    <span className="font-semibold text-accent uppercase tracking-wider text-[10px]">clustering corpus patterns</span>
+                  </div>
+                  <div className="space-y-1 text-text-muted">
+                    <div className="flex items-baseline">
+                      <span className="text-text">scanning hook openings</span>
+                      <span className="mx-2 min-w-4 flex-1 self-center border-b border-dotted border-border-strong" />
+                      <span className="text-success font-medium">ok</span>
+                    </div>
+                    <div className="flex items-baseline">
+                      <span className="text-text">calculating lift index</span>
+                      <span className="mx-2 min-w-4 flex-1 self-center border-b border-dotted border-border-strong" />
+                      <span className="text-accent font-medium">
+                        active
+                        <span className="cursor-blink ml-1 inline-block h-2.5 w-[5px] translate-y-[2px] bg-accent" />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : patterns.length > 0 ? (
                 <div className="grid grid-cols-1 gap-1.5">
                   {patterns.slice(0, 4).map((p, idx) => (
                     <div
@@ -949,7 +972,41 @@ export function IntelligencePage() {
                     )}
                   </div>
 
-                  {currentInsight ? (
+                  {generatingInsight ? (
+                    <div className="rounded-[4px] border border-border bg-[#09090b] p-4 font-mono text-xs space-y-2.5 shadow-md">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full bg-accent animate-pulse shrink-0" />
+                        <span className="font-semibold text-accent uppercase tracking-wider text-[11px]">
+                          Synthesizing Ad Teardown
+                        </span>
+                        <span className="text-text-faint">·</span>
+                        <span className="text-text-muted text-[11px]">deep creative reasoning</span>
+                      </div>
+                      <div className="space-y-1.5 text-[11px] leading-relaxed text-text-muted">
+                        <div className="flex items-baseline">
+                          <span className="w-3 shrink-0 text-accent">→</span>
+                          <span className="text-text">parsing copy anatomy & hook velocity</span>
+                          <span className="mx-2 min-w-4 flex-1 self-center border-b border-dotted border-border-strong" />
+                          <span className="text-success font-medium">ok</span>
+                        </div>
+                        <div className="flex items-baseline">
+                          <span className="w-3 shrink-0 text-accent">→</span>
+                          <span className="text-text">extracting psychological angles & mechanism</span>
+                          <span className="mx-2 min-w-4 flex-1 self-center border-b border-dotted border-border-strong" />
+                          <span className="text-accent font-medium">
+                            active
+                            <span className="cursor-blink ml-1 inline-block h-2.5 w-[5px] translate-y-[2px] bg-accent" />
+                          </span>
+                        </div>
+                        <div className="flex items-baseline text-text-faint">
+                          <span className="w-3 shrink-0" />
+                          <span>forecasting fatigue & lifespan</span>
+                          <span className="mx-2 min-w-4 flex-1 self-center border-b border-dotted border-border-strong" />
+                          <span>pending</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : currentInsight ? (
                     <div className="space-y-3 text-xs">
                       {currentInsight.emotional_resonance && (
                         <div className="rounded bg-surface-2 p-3 border border-border/50">

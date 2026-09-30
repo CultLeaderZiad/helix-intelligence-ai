@@ -227,6 +227,16 @@ const adminService = {
     return { id: `plan_${Date.now()}`, ...planData }
   },
 
+  async updatePlan(planId, planData) {
+    await delay(150)
+    return { id: planId, ...planData }
+  },
+
+  async deletePlan(planId) {
+    await delay(150)
+    return { status: "success", message: `Plan ${planId} deleted successfully.` }
+  },
+
   async listOrganizations() {
     await delay(150)
     return [

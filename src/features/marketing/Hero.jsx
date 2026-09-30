@@ -154,7 +154,6 @@ export function Hero() {
   const [streamStage, setStreamStage] = useState(5) // 1..5 for steps
   const [displayedCreatives, setDisplayedCreatives] = useState(142)
   const [displayedWinners, setDisplayedWinners] = useState(18)
-  const [indexedCounter, setIndexedCounter] = useState(14249180)
   const currentScenario = COMPETITOR_SCENARIOS[scenarioIdx]
 
   // Scenario auto-cycling & stage animation
@@ -188,14 +187,6 @@ export function Hero() {
 
     return () => clearTimeout(stageTimer)
   }, [scenarioIdx])
-
-  // Live ticking micro-counter for indexed corpus
-  useEffect(() => {
-    const counterInterval = setInterval(() => {
-      setIndexedCounter((prev) => prev + Math.floor(Math.random() * 4) + 1)
-    }, 2400)
-    return () => clearInterval(counterInterval)
-  }, [])
 
   return (
     <section className="grid-backdrop relative border-b border-border bg-bg overflow-hidden min-h-[600px]">
@@ -286,31 +277,31 @@ export function Hero() {
               ))}
             </div>
 
-            {/* Micro Readout Bar with LIVE Ticking Counters */}
+            {/* Micro Readout Bar with Honest Metrics */}
             <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[4px] border border-border bg-border">
               <div className="flex flex-col gap-1 bg-surface px-3.5 py-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="label-mono">INDEXED</span>
-                  <span className="h-1 w-1 rounded-full bg-accent animate-ping" />
+                  <span className="label-mono">CATALOG</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent" />
                 </div>
-                <span className="tnum font-mono text-sm font-medium text-text transition-all">
-                  {(indexedCounter / 1000000).toFixed(2)}M+
+                <span className="font-mono text-sm font-medium text-text">
+                  On-Demand
                 </span>
               </div>
               <div className="flex flex-col gap-1 bg-surface px-3.5 py-2.5">
-                <span className="label-mono">P95 SPEED</span>
+                <span className="label-mono">LATENCY</span>
                 <span className="tnum font-mono text-sm font-medium text-accent">
-                  {currentScenario.elapsed}
+                  ~1.5s query
                 </span>
               </div>
               <div className="flex flex-col gap-1 bg-surface px-3.5 py-2.5">
-                <span className="label-mono">PLATFORMS</span>
-                <span className="tnum font-mono text-sm font-medium text-text">Meta · TikTok</span>
+                <span className="label-mono">SOURCES</span>
+                <span className="font-mono text-sm font-medium text-text">Meta · TikTok</span>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Live Streaming Terminal + Moving Dashboard Numbers */}
+          {/* Right Column: Live Streaming Terminal Simulation */}
           <div className="lg:col-span-7 flex flex-col gap-5">
             
             {/* Terminal Live-Status Card */}
@@ -324,16 +315,15 @@ export function Hero() {
                     <span className="h-2 w-2 rounded-full bg-[#2a2a2a]" />
                   </div>
                   <span className="ml-2 font-mono text-[11px] text-text-muted">
-                    helix-cli / live-discovery
+                    helix-cli / interactive-preview <span className="text-text-faint">(simulation)</span>
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 font-mono text-[10.5px]">
                   <span
-                    className="h-1.5 w-1.5 rounded-full bg-accent shrink-0 animate-pulse"
-                    style={{ boxShadow: "0 0 5px rgba(215, 255, 79, 0.7)" }}
+                    className="h-1.5 w-1.5 rounded-full bg-accent/80 shrink-0"
                     aria-hidden="true"
                   />
-                  <span className="text-text-muted">live</span>
+                  <span className="text-text-muted uppercase text-[9.5px] tracking-wider font-semibold">Demo Stream</span>
                   <span className="text-accent ml-2 tnum font-semibold">{currentScenario.elapsed}</span>
                 </div>
               </div>

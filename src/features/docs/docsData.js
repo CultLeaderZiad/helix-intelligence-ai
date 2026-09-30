@@ -187,16 +187,23 @@ export const DOCS_REGISTRY = [
   },
 ]
 
-// Flattened list of all documents with full content
+import docsGitMeta from './docsGitMeta.json'
+
+// Flattened list of all documents with full content and real git commit metadata
 export const ALL_DOCS = DOCS_REGISTRY.flatMap((sec) =>
   sec.groups.flatMap((grp) =>
-    grp.items.map((item) => ({
-      ...item,
-      section: sec.section,
-      sectionLabel: sec.sectionLabel,
-      groupTitle: grp.groupTitle,
-      content: getRawContent(item.file),
-    }))
+    grp.items.map((item) => {
+      const gitMeta = docsGitMeta[item.file] || { lastUpdated: '2026-09-27', commitHash: 'head' }
+      return {
+        ...item,
+        section: sec.section,
+        sectionLabel: sec.sectionLabel,
+        groupTitle: grp.groupTitle,
+        lastUpdated: gitMeta.lastUpdated,
+        commitHash: gitMeta.commitHash,
+        content: getRawContent(item.file),
+      }
+    })
   )
 )
 

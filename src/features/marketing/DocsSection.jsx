@@ -1,5 +1,6 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 
 /**
@@ -23,6 +24,7 @@ const SNIPPET = `$ curl -X POST https://api.helix.io/api/discovery/jobs \\
 } `
 
 export function DocsSection() {
+  const [copied, setCopied] = useState(false)
   return (
     <section id="docs" className="scroll-mt-16 border-b border-border bg-bg relative overflow-hidden">
       <div className="relative z-10 mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-4 py-20 md:grid-cols-2 md:px-6">
@@ -53,6 +55,28 @@ export function DocsSection() {
           <div className="flex items-center gap-2 border-b border-border bg-surface-2 px-3 py-2">
             <span className="label-mono">POST /api/discovery/jobs</span>
             <span className="ml-auto label-mono text-accent-dim">200 ok</span>
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(SNIPPET)
+                setCopied(true)
+                setTimeout(() => setCopied(false), 2000)
+              }}
+              type="button"
+              aria-label="Copy API code example"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-border/60 bg-surface/50 hover:bg-surface hover:border-accent/40 text-[11px] text-text-muted hover:text-accent transition-all cursor-pointer ml-2"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3 w-3 text-accent" />
+                  <span className="text-accent font-medium">Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3 w-3" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
           </div>
           <pre className="overflow-x-auto px-4 py-4">
             <code className="font-mono text-[12px] leading-relaxed text-text-muted">

@@ -160,93 +160,95 @@ export function ScoutPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-bg font-sans select-text">
-      {/* Topbar: Loops / Scout · Lead Gen */}
-      <div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6 font-mono text-xs">
-        <div className="flex items-center gap-2">
-          <span className="text-text-faint">LOOPS /</span>
-          <span className="font-bold text-white uppercase tracking-wider">SCOUT</span>
-          <span className="hidden sm:inline text-text-faint">·</span>
-          <span className="hidden sm:inline text-accent uppercase text-[11px] font-bold tracking-wider">
-            LEAD GEN
-          </span>
-        </div>
+      {/* Sticky Scout Command Header & SubNav */}
+      <div className="sticky top-0 z-20 shadow-xs">
+        {/* Topbar: Loops / Scout · Lead Gen */}
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-surface/95 backdrop-blur-md px-4 sm:px-6 font-mono text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-text-faint">LOOPS /</span>
+            <span className="font-bold text-white uppercase tracking-wider">SCOUT</span>
+            <span className="hidden sm:inline text-text-faint">·</span>
+            <span className="hidden sm:inline text-accent uppercase text-[11px] font-bold tracking-wider">
+              LEAD GEN
+            </span>
+          </div>
 
-        {/* Topbar Actions */}
-        <div className="flex items-center gap-2">
-          <Button
-            size="xs"
-            variant="outline"
-            onClick={() => setSettingsOpen(true)}
-            className="border-border text-text-muted hover:text-white"
-          >
-            <Settings className="h-3.5 w-3.5 mr-1" />
-            SETTINGS
-          </Button>
-
-          <Link to="/docs/scout-cli">
+          {/* Topbar Actions */}
+          <div className="flex items-center gap-2">
             <Button
               size="xs"
               variant="outline"
-              className="border-border text-text-muted hover:text-accent"
+              onClick={() => setSettingsOpen(true)}
+              className="border-border text-text-muted hover:text-white"
             >
-              <Terminal className="h-3.5 w-3.5 mr-1" />
-              INSTALL CLI
+              <Settings className="h-3.5 w-3.5 mr-1" />
+              SETTINGS
             </Button>
-          </Link>
 
-          <button
-            type="button"
-            onClick={handleExport}
-            disabled={currentLeadsCount === 0}
-            className={cn(
-              "rounded-[4px] bg-accent px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider text-black shadow-sm shadow-accent/20 transition-all flex items-center gap-1.5",
-              currentLeadsCount === 0
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-[#e4ff75] active:scale-95"
-            )}
-          >
-            <Download className="h-3 w-3 text-black" />
-            EXPORT CSV
-          </button>
-        </div>
-      </div>
+            <Link to="/docs/scout-cli">
+              <Button
+                size="xs"
+                variant="outline"
+                className="border-border text-text-muted hover:text-accent"
+              >
+                <Terminal className="h-3.5 w-3.5 mr-1" />
+                INSTALL CLI
+              </Button>
+            </Link>
 
-      {/* Scout Dual Mode Tabs & Live Status Strip */}
-      {/* Scout sub-nav: Social / Atlas . Lead Generation . Maps (single sidebar entry) */}
-      <ScoutLeadGenSubNav
-        right={
-          <div className="flex flex-wrap items-center gap-3 text-[11px] text-text-muted">
-            <div className="flex items-center gap-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
-              </span>
-              <span className="font-bold text-white uppercase tracking-wider">SCOUT LIVE</span>
-            </div>
-            <span className="text-text-faint">|</span>
-            <div className="flex items-center gap-1">
-              <span className="text-white font-bold">
-                {user?.credit_balance?.toFixed ? user.credit_balance.toFixed(1) : (user?.credit_balance ?? 25)}
-              </span>
-              <span className="text-text-faint">credits</span>
-            </div>
-            <span className="hidden md:inline text-text-faint">|</span>
-            <div className="hidden md:flex items-center gap-1">
-              <span>LinkedIn:</span>
-              <span className={settingsData?.linkedin_configured ? "text-accent font-bold" : "text-text-faint"}>
-                {settingsData?.linkedin_configured ? "BYOK active" : "not configured"}
-              </span>
-            </div>
-            <span className="hidden md:inline text-text-faint">|</span>
-            <div className="hidden md:flex items-center gap-1">
-              <span>Hunter.io:</span>
-              <span className={settingsData?.hunter_configured ? "text-accent font-bold" : "text-text-faint"}>
-                {settingsData?.hunter_configured ? "active" : "off"}
-              </span>
-            </div>
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={currentLeadsCount === 0}
+              className={cn(
+                "rounded-[4px] bg-accent px-3 py-1 font-mono text-[11px] font-bold uppercase tracking-wider text-black shadow-sm shadow-accent/20 transition-all flex items-center gap-1.5",
+                currentLeadsCount === 0
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-[#e4ff75] active:scale-95"
+              )}
+            >
+              <Download className="h-3 w-3 text-black" />
+              EXPORT CSV
+            </button>
           </div>
-        }
-      />
+        </div>
+
+        {/* Scout Dual Mode Tabs & Live Status Strip */}
+        <ScoutLeadGenSubNav
+          right={
+            <div className="flex flex-wrap items-center gap-3 text-[11px] text-text-muted">
+              <div className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+                </span>
+                <span className="font-bold text-white uppercase tracking-wider">SCOUT LIVE</span>
+              </div>
+              <span className="text-text-faint">|</span>
+              <div className="flex items-center gap-1">
+                <span className="text-white font-bold">
+                  {user?.credit_balance?.toFixed ? user.credit_balance.toFixed(1) : (user?.credit_balance ?? 25)}
+                </span>
+                <span className="text-text-faint">credits</span>
+              </div>
+              <span className="hidden md:inline text-text-faint">|</span>
+              <div className="hidden md:flex items-center gap-1">
+                <span>LinkedIn:</span>
+                <span className={settingsData?.linkedin_configured ? "text-accent font-bold" : "text-text-faint"}>
+                  {settingsData?.linkedin_configured ? "BYOK active" : "not configured"}
+                </span>
+              </div>
+              <span className="hidden md:inline text-text-faint">|</span>
+              <div className="hidden md:flex items-center gap-1">
+                <span>Hunter.io:</span>
+                <span className={settingsData?.hunter_configured ? "text-accent font-bold" : "text-text-faint"}>
+                  {settingsData?.hunter_configured ? "active" : "off"}
+                </span>
+              </div>
+            </div>
+          }
+        />
+      </div>
 
       {/* Main Workspace Area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 space-y-4 max-w-7xl w-full mx-auto">

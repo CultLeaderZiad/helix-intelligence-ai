@@ -1,0 +1,74 @@
+[
+  {
+    "route": "Landing Page (/)",
+    "path": "/",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Sign In (/sign-in)",
+    "path": "/sign-in",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Sign Up (/sign-up)",
+    "path": "/sign-up",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Docs Overview (/docs)",
+    "path": "/docs",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Docs Detail (/docs/user-guide/quickstart-account-and-trial)",
+    "path": "/docs/user-guide/quickstart-account-and-trial",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Public Playbook (/public-playbook)",
+    "path": "/public-playbook",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Discover (/discover)",
+    "path": "/discover",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Intelligence (/intelligence)",
+    "path": "/intelligence",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Create Studio (/create)",
+    "path": "/create",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Monitors (/monitors)",
+    "path": "/monitors",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Performance (/performance)",
+    "path": "/performance",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Scout (/scout)",
+    "path": "/scout",
+    "violationsCount": 0,
+    "violations": []
+  }
+]

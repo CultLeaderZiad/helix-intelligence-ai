@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { Play, RotateCcw, AlertTriangle, Zap } from "lucide-react"
 import { ScoutLeadGenSubNav } from "@/features/scout-leadgen/ScoutLeadGenSubNav"
 import { SettingsStrip } from "@/features/scout-leadgen/SettingsStrip"
@@ -89,6 +89,7 @@ export function ScoutLeadGenerationPage() {
   return (
     <div className="min-h-full bg-bg">
       <ScoutLeadGenSubNav
+        className="sticky top-0 z-20 shadow-xs"
         right={
           <span className="text-[11px] font-mono text-text-muted">
             engine <span className="text-accent font-bold">scrapling_engine</span>

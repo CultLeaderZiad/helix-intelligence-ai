@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react"
-import { User, Mail, Lock, Camera, CheckCircle2, AlertCircle, Save, Shield } from "lucide-react"
+import { User, Mail, Lock, Camera, CheckCircle2, AlertCircle, Save, Shield, Eye, EyeOff } from "lucide-react"
 import { accountService } from "../services"
 import { useAuth } from "../context/AuthContext"
+import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 
 export function ProfileSettingsPage() {
   const { user, refreshSession } = useAuth()
@@ -16,6 +17,9 @@ export function ProfileSettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
@@ -65,9 +69,19 @@ export function ProfileSettingsPage() {
     setErrorMessage("")
     setSuccessMessage("")
 
-    if (newPassword && newPassword !== confirmPassword) {
-      setErrorMessage("New passwords do not match")
-      return
+    if (newPassword) {
+      if (!currentPassword) {
+        setErrorMessage("Please enter your current password to set a new password.")
+        return
+      }
+      if (newPassword.length < 8) {
+        setErrorMessage("New password must be at least 8 characters long.")
+        return
+      }
+      if (newPassword !== confirmPassword) {
+        setErrorMessage("New passwords do not match.")
+        return
+      }
     }
 
     setIsSaving(true)
@@ -88,14 +102,17 @@ export function ProfileSettingsPage() {
       setConfirmPassword("")
       if (refreshSession) refreshSession()
     } catch (err) {
-      setErrorMessage(err?.message || "Failed to update profile")
+      const detail = err?.response?.data?.detail || err?.message || "Failed to update profile."
+      setErrorMessage(typeof detail === "string" ? detail : "Failed to update profile.")
     } finally {
       setIsSaving(false)
     }
   }
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 md:p-8 space-y-8 font-sans">
+    <div className="flex flex-col flex-1 min-h-0 font-sans">
+      <BreadcrumbBar trail={["Helix", "Settings", "Account & Profile"]} />
+      <div className="w-full max-w-4xl mx-auto p-4 md:p-8 space-y-8 font-sans">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white tracking-tight">Account & Profile Settings</h1>
@@ -212,35 +229,68 @@ export function ProfileSettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">Current Password</label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-indigo-500/60 transition"
-              />
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 pr-9 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-indigo-500/60 transition"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  aria-label={showCurrentPassword ? "Hide current password" : "Show current password"}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-300 transition"
+                >
+                  {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">New Password</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-indigo-500/60 transition"
-              />
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 pr-9 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-indigo-500/60 transition"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  aria-label={showNewPassword ? "Hide new password" : "Show new password"}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-300 transition"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">Confirm New Password</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-indigo-500/60 transition"
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 pr-9 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-indigo-500/60 transition"
+                />
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-300 transition"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -256,6 +306,7 @@ export function ProfileSettingsPage() {
           </button>
         </div>
       </form>
+      </div>
     </div>
   )
 }

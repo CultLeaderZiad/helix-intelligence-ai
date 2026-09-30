@@ -66,6 +66,12 @@ const accountService = {
     })
   },
 
+  removeTeamMember(memberId) {
+    return request(`/account/team/members/${memberId}`, {
+      method: "DELETE",
+    })
+  },
+
   acceptTeamInvite(token) {
     return request("/account/team/invites/accept", {
       method: "POST",

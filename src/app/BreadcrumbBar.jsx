@@ -11,7 +11,7 @@ export function BreadcrumbBar({ trail = [], meta, actions, className }) {
   return (
     <div
       className={cn(
-        "sticky top-0 z-20 flex h-11 shrink-0 items-center gap-3 border-b border-border bg-surface/95 backdrop-blur-md px-4 shadow-xs select-none",
+        "sticky top-11 md:top-0 z-20 flex h-11 shrink-0 items-center gap-3 border-b border-border bg-surface/95 backdrop-blur-md px-3 sm:px-4 shadow-xs select-none",
         className,
       )}
     >

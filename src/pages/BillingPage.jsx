@@ -15,6 +15,7 @@ import {
   MessageSquarePlus
 } from "lucide-react"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
+import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 
 export function BillingPage() {
   const [billing, setBilling] = useState(null)
@@ -69,7 +70,9 @@ export function BillingPage() {
   }, [])
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-8 font-sans">
+    <div className="flex flex-col flex-1 min-h-0 font-sans">
+      <BreadcrumbBar trail={["Helix", "Settings", "Billing & Usage"]} />
+      <div className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-8 font-sans">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -269,6 +272,7 @@ export function BillingPage() {
         onClose={() => setIsSupportOpen(false)}
         initialContext={{ page: "Billing & Meter", plan: billing?.plan_name || "Trial", tag: "billing" }}
       />
+      </div>
     </div>
   )
 }

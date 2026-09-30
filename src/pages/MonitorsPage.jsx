@@ -11,6 +11,7 @@ import {
   PenLine,
   CircleSlash,
   Bookmark,
+  CheckCircle2,
 } from "lucide-react"
 
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/Button"
 import { Panel, PanelBody, PanelHeader, PanelTitle } from "@/components/ui/Panel"
 import { Tag } from "@/components/ui/Tag"
 import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { useMonitors } from "@/hooks/useMonitors"
 import { useSearchContext } from "@/context/SearchContext"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
@@ -128,6 +130,7 @@ function CreateMonitorForm({ onCreate, busy, initialQuery = "" }) {
       />
       <select
         value={cadence}
+        aria-label="Monitoring check cadence"
         onChange={(e) => setCadence(e.target.value)}
         className="h-8 rounded-sm border border-border bg-surface-2 px-2 text-xs text-text focus:outline-none"
       >
@@ -147,7 +150,7 @@ function CreateMonitorForm({ onCreate, busy, initialQuery = "" }) {
         Email me
       </label>
       <Button type="submit" size="sm" variant="primary" disabled={busy || !query.trim()}>
-        <Plus className="h-3.5 w-3.5" />
+        <Plus className="h-3.5 w-3.5" aria-hidden="true" />
         Add monitor
       </Button>
     </form>
@@ -177,21 +180,29 @@ function MonitorRow({ monitor, onRun, onToggle, onDelete, focused }) {
             size="icon-sm"
             variant="ghost"
             title="Run now"
+            aria-label={`Run monitor for ${monitor.name} now`}
             disabled={running}
             onClick={() => onRun(monitor.id)}
           >
-            <RefreshCw className={running ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+            <RefreshCw className={running ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} aria-hidden="true" />
           </Button>
           <Button
             size="icon-sm"
             variant="ghost"
             title={paused ? "Resume" : "Pause"}
+            aria-label={paused ? `Resume monitor for ${monitor.name}` : `Pause monitor for ${monitor.name}`}
             onClick={() => onToggle(monitor)}
           >
-            {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+            {paused ? <Play className="h-3.5 w-3.5" aria-hidden="true" /> : <Pause className="h-3.5 w-3.5" aria-hidden="true" />}
           </Button>
-          <Button size="icon-sm" variant="ghost" title="Delete" onClick={() => onDelete(monitor)}>
-            <Trash2 className="h-3.5 w-3.5" />
+          <Button
+            size="icon-sm"
+            variant="ghost"
+            title="Delete"
+            aria-label={`Delete monitor for ${monitor.name}`}
+            onClick={() => onDelete(monitor)}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         </div>
       </div>
@@ -263,6 +274,13 @@ export function MonitorsPage() {
   const [busy, setBusy] = useState(false)
   const [showDraftsModal, setShowDraftsModal] = useState(false)
   const [selectedQuery, setSelectedQuery] = useState(latestSearch?.query || "")
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  const showToast = (msg) => {
+    setToast(msg)
+    setTimeout(() => setToast(null), 4000)
+  }
 
   const activeCount = useMemo(
     () => monitors.filter((m) => m.status === "active").length,
@@ -278,17 +296,28 @@ export function MonitorsPage() {
     }
   }
 
-  function handleToggle(monitor) {
-    return guard(() =>
-      updateMonitor(monitor.id, { status: monitor.status === "paused" ? "active" : "paused" }),
+  async function handleToggle(monitor) {
+    const nextStatus = monitor.status === "paused" ? "active" : "paused"
+    const ok = await guard(() =>
+      updateMonitor(monitor.id, { status: nextStatus }),
     )
+    if (ok) {
+      showToast(`Monitor ${nextStatus === "paused" ? "paused" : "resumed"}`)
+    }
   }
 
   function handleDelete(monitor) {
-    if (!window.confirm(`Delete the monitor for "${monitor.query}"? Its change history goes too.`)) {
-      return undefined
+    setDeleteTarget(monitor)
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    const targetQuery = deleteTarget.query
+    const ok = await guard(() => deleteMonitor(deleteTarget.id))
+    if (ok) {
+      showToast(`Monitor for "${targetQuery}" deleted successfully`)
+      setDeleteTarget(null)
     }
-    return guard(() => deleteMonitor(monitor.id))
   }
 
   return (
@@ -326,8 +355,8 @@ export function MonitorsPage() {
             <Button
               size="xs"
               variant="primary"
-              onClick={() => {
-                guard(() =>
+              onClick={async () => {
+                const ok = await guard(() =>
                   createMonitor({
                     query: latestSearch.query,
                     name: latestSearch.query,
@@ -336,6 +365,7 @@ export function MonitorsPage() {
                     notify_email: false,
                   })
                 )
+                if (ok) showToast(`Monitor for "${latestSearch.query}" created successfully`)
               }}
               disabled={busy}
               className="text-xs font-mono"
@@ -344,6 +374,13 @@ export function MonitorsPage() {
             </Button>
           </div>
         ) : null}
+
+        {toast && (
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded text-emerald-400 text-sm flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            {toast}
+          </div>
+        )}
 
         <Panel>
           <PanelHeader>
@@ -355,13 +392,17 @@ export function MonitorsPage() {
           <PanelBody>
             <CreateMonitorForm
               initialQuery={selectedQuery}
-              onCreate={(p) => guard(() => createMonitor(p))}
+              onCreate={async (p) => {
+                const ok = await guard(() => createMonitor(p))
+                if (ok) showToast(`Monitor for "${p.query}" created successfully`)
+                return ok
+              }}
               busy={busy}
             />
             {actionError ? (
-              <p className="mt-2 text-xs text-danger">
-                {actionError.message || "That action could not be completed."}
-              </p>
+              <div className="mt-3 p-2.5 rounded bg-rose-500/10 border border-rose-500/30 text-xs text-rose-400">
+                {actionError?.response?.data?.detail || actionError.message || "That action could not be completed."}
+              </div>
             ) : null}
           </PanelBody>
         </Panel>
@@ -395,7 +436,10 @@ export function MonitorsPage() {
                       key={m.id}
                       monitor={m}
                       focused={m.id === focusId}
-                      onRun={(id) => guard(() => runNow(id))}
+                      onRun={async (id) => {
+                        const ok = await guard(() => runNow(id))
+                        if (ok) showToast(`Run scheduled for "${m.query}"`)
+                      }}
                       onToggle={handleToggle}
                       onDelete={handleDelete}
                     />
@@ -427,6 +471,17 @@ export function MonitorsPage() {
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteTarget)}
+        title="Delete Monitor"
+        description={`Are you sure you want to delete the competitor monitor for "${deleteTarget?.query}"? All change history and baseline snapshots will be permanently removed.`}
+        confirmText="Delete Monitor"
+        variant="danger"
+        isBusy={busy}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       <SavedDraftsModal
         isOpen={showDraftsModal}

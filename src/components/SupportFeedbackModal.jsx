@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react"
 import { MessageSquarePlus, Bug, Sparkles, Send, X, CheckCircle2, AlertCircle } from "lucide-react"
 import { supportService } from "../services"
 
-export function SupportFeedbackModal({ isOpen, onClose, initialContext = {} }) {
+export function SupportFeedbackModal({ isOpen, onClose, initialContext = {}, onSuccess }) {
   const [ticketType, setTicketType] = useState("feedback") // 'feedback' | 'bug' | 'other'
   const [subject, setSubject] = useState("")
   const [message, setMessage] = useState("")
@@ -26,7 +26,14 @@ export function SupportFeedbackModal({ isOpen, onClose, initialContext = {} }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!subject.trim() || !message.trim()) return
+    if (!subject.trim()) {
+      setError("Please provide a subject for your ticket.")
+      return
+    }
+    if (!message.trim()) {
+      setError("Please provide details for your ticket.")
+      return
+    }
 
     setIsSubmitting(true)
     setError(null)
@@ -45,8 +52,10 @@ export function SupportFeedbackModal({ isOpen, onClose, initialContext = {} }) {
         }
       })
       setSubmittedTicket(res)
+      onSuccess?.(res)
     } catch (err) {
-      setError(err?.message || "Failed to submit request. Please try again.")
+      const detail = err?.response?.data?.detail || err?.message || "Failed to submit request. Please try again."
+      setError(typeof detail === "string" ? detail : "Failed to submit request. Please try again.")
     } finally {
       setIsSubmitting(false)
     }

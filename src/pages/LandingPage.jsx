@@ -4,6 +4,8 @@ import { LoopsSection } from "@/features/marketing/LoopsSection"
 import { PricingSection } from "@/features/marketing/PricingSection"
 import { DocsSection } from "@/features/marketing/DocsSection"
 import { MarketingFooter } from "@/features/marketing/MarketingFooter"
+import { ScrollToTopButton } from "@/components/ui/ScrollToTopButton"
+import { SkipToContent } from "@/components/ui/SkipToContent"
 
 /**
  * ============================================================
@@ -19,14 +21,20 @@ import { MarketingFooter } from "@/features/marketing/MarketingFooter"
 export function LandingPage() {
   return (
     <div className="flex min-h-dvh flex-col bg-bg">
+      {/* Skip to Content for keyboard accessibility */}
+      <SkipToContent targetId="main-content" />
+
       <PublicHeader />
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         <Hero />
         <LoopsSection />
         <PricingSection />
         <DocsSection />
       </main>
       <MarketingFooter />
+
+      {/* Floating Scroll to Top button */}
+      <ScrollToTopButton />
     </div>
   )
 }

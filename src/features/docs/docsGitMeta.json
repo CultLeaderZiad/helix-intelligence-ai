@@ -1,0 +1,78 @@
+{
+  "api-reference/authentication.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "api-reference/credit-costs-and-limits.md": {
+    "lastUpdated": "2026-09-27",
+    "commitHash": "97f5234"
+  },
+  "api-reference/endpoint-creatives.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "api-reference/endpoint-discover.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "api-reference/endpoint-media-generate.md": {
+    "lastUpdated": "2026-09-27",
+    "commitHash": "97f5234"
+  },
+  "api-reference/endpoint-monitors.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "compliance/AUDIT.md": {
+    "lastUpdated": "2026-09-30",
+    "commitHash": "local"
+  },
+  "user-guide/concept-audience-simulation.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "user-guide/concept-competitor-monitors.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "user-guide/concept-estimated-vs-real-data.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "user-guide/concept-how-discover-works.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "user-guide/concept-scoring-system.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "user-guide/faq.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "user-guide/lead-generation.md": {
+    "lastUpdated": "2026-09-24",
+    "commitHash": "0714b08"
+  },
+  "user-guide/quickstart-account-and-trial.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "user-guide/quickstart-credits-and-limits.md": {
+    "lastUpdated": "2026-09-27",
+    "commitHash": "97f5234"
+  },
+  "user-guide/quickstart-first-search.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "user-guide/quickstart-reading-intelligence.md": {
+    "lastUpdated": "2026-09-14",
+    "commitHash": "7854e30"
+  },
+  "user-guide/quickstart-remix-studio.md": {
+    "lastUpdated": "2026-09-27",
+    "commitHash": "97f5234"
+  }
+}

@@ -145,7 +145,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-background">
+      <div className="flex min-h-0 flex-1 flex-col bg-background">
         <BreadcrumbBar trail={["Helix", "Workspace", "Cross-Brand Dashboard"]} />
         <div className="p-6">
           <SkeletonRows rows={8} />
@@ -156,7 +156,7 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-background">
+      <div className="flex min-h-0 flex-1 flex-col bg-background">
         <BreadcrumbBar trail={["Helix", "Workspace", "Cross-Brand Dashboard"]} />
         <div className="flex h-[60vh] flex-col items-center justify-center p-8 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10 border border-red-500/20 text-red-400 mb-4">
@@ -199,7 +199,7 @@ export default function DashboardPage() {
   )
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-background">
+    <div className="flex min-h-0 flex-1 flex-col bg-background">
       <BreadcrumbBar
         trail={["Helix", "Workspace", "Dashboard"]}
         meta={data?.narrative_summary?.status === "ready" ? "Live Intelligence" : null}

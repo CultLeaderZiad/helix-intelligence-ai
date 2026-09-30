@@ -6,7 +6,7 @@
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "dev": "vite",
-    "build": "node --max-old-space-size=4096 ./node_modules/vite/bin/vite.js build",
+    "build": "node scripts/generate_docs_git_meta.js && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

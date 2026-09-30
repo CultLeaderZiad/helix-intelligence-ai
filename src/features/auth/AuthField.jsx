@@ -12,21 +12,27 @@ import { Label } from "@/components/ui/Field"
  */
 export function AuthField({ id, label, error, action, children, className }) {
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
-      <div className="flex items-baseline justify-between gap-2">
-        <Label htmlFor={id}>{label}</Label>
-        {error ? (
-          <span
-            id={`${id}-error`}
-            className="font-mono text-[10px] uppercase leading-none tracking-[0.08em] text-danger"
-          >
-            {error}
-          </span>
-        ) : action ? (
-          action
-        ) : null}
+    <div className={cn("grid grid-cols-[1fr_auto] items-baseline gap-y-1.5", className)}>
+      <Label htmlFor={id} className="col-start-1 row-start-1">
+        {label}
+      </Label>
+      {error ? (
+        <span
+          id={`${id}-error`}
+          className="col-start-2 row-start-1 font-mono text-[10px] uppercase leading-none tracking-[0.08em] text-danger"
+        >
+          {error}
+        </span>
+      ) : null}
+      <div className="col-span-2 row-start-2">
+        {children}
       </div>
-      {children}
+      {action && !error ? (
+        <div className="col-start-2 row-start-1 text-right">
+          {action}
+        </div>
+      ) : null}
     </div>
   )
 }
+

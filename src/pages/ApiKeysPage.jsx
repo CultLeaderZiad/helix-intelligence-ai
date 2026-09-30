@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { accountService } from "@/services"
+import { API_BASE_URL } from "@/services/config"
 import { useAuth } from "@/context/AuthContext"
 import { 
   Key, 
@@ -16,6 +17,12 @@ import {
   Lock,
   ArrowRight
 } from "lucide-react"
+import { BreadcrumbBar } from "@/app/BreadcrumbBar"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
+
+function getAuthToken() {
+  return localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token") || localStorage.getItem("token") || ""
+}
 
 export function ApiKeysPage() {
   const { user } = useAuth()
@@ -23,6 +30,9 @@ export function ApiKeysPage() {
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
   const [newKeyData, setNewKeyData] = useState(null)
+  const [revokeKeyTarget, setRevokeKeyTarget] = useState(null)
+  const [showRemoveByokModal, setShowRemoveByokModal] = useState(false)
+  const [isDestructiveBusy, setIsDestructiveBusy] = useState(false)
 
   // BYOK Provider state
   const [providerData, setProviderData] = useState(null)
@@ -41,8 +51,8 @@ export function ApiKeysPage() {
 
   const fetchProviders = async () => {
     try {
-      const token = localStorage.getItem("token")
-      const res = await fetch("/api/workspaces/providers", {
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE_URL}/workspaces/providers`, {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (res.ok) {
@@ -86,8 +96,8 @@ export function ApiKeysPage() {
     setByokSaving(true)
     setByokStatusMsg(null)
     try {
-      const token = localStorage.getItem("token")
-      const res = await fetch("/api/workspaces/provider-credentials/google-gemini", {
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE_URL}/workspaces/provider-credentials/google-gemini`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -116,8 +126,8 @@ export function ApiKeysPage() {
     setByokTesting(true)
     setByokStatusMsg(null)
     try {
-      const token = localStorage.getItem("token")
-      const res = await fetch("/api/workspaces/provider-credentials/google-gemini/test", {
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE_URL}/workspaces/provider-credentials/google-gemini/test`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -140,30 +150,34 @@ export function ApiKeysPage() {
     }
   }
 
-  const handleRemoveByok = async () => {
-    if (!confirm("Are you sure you want to remove your workspace BYOK Gemini key? Generation will switch back to HELIX Managed.")) {
-      return
-    }
+  const confirmRemoveByok = async () => {
+    setIsDestructiveBusy(true)
     try {
-      const token = localStorage.getItem("token")
-      const res = await fetch("/api/workspaces/provider-credentials/google-gemini", {
+      const token = getAuthToken()
+      const res = await fetch(`${API_BASE_URL}/workspaces/provider-credentials/google-gemini`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       })
       if (res.ok) {
         showToast("Gemini BYOK key removed. Workspace restored to HELIX Managed.")
+        setShowRemoveByokModal(false)
         fetchProviders()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        showToast(data?.detail || "Failed to remove key")
       }
     } catch (err) {
-      alert("Failed to remove key: " + err.message)
+      showToast("Failed to remove key: " + err.message)
+    } finally {
+      setIsDestructiveBusy(false)
     }
   }
 
   const handleModeChange = async (newMode) => {
     setProviderMode(newMode)
     try {
-      const token = localStorage.getItem("token")
-      await fetch("/api/workspaces/provider-mode", {
+      const token = getAuthToken()
+      await fetch(`${API_BASE_URL}/workspaces/provider-mode`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -187,22 +201,25 @@ export function ApiKeysPage() {
       setName("")
       fetchKeys()
     } catch (err) {
-      alert(err.message || "Failed to generate API Key")
+      showToast(err?.response?.data?.detail || err.message || "Failed to generate API Key")
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleRevokeKey = async (keyId) => {
-    if (!confirm("Are you sure you want to revoke this API key? Applications using it will be disconnected.")) {
-      return
-    }
+  const confirmRevokeKey = async () => {
+    if (!revokeKeyTarget) return
+    setIsDestructiveBusy(true)
     try {
-      await accountService.revokeApiKey(keyId)
-      showToast("API key revoked successfully")
-      setKeys((prev) => prev.filter((k) => k.id !== keyId))
+      await accountService.revokeApiKey(revokeKeyTarget.id)
+      showToast(`API key "${revokeKeyTarget.name}" revoked successfully`)
+      setKeys((prev) => prev.filter((k) => k.id !== revokeKeyTarget.id))
+      setRevokeKeyTarget(null)
     } catch (err) {
-      alert(err.message || "Failed to revoke key")
+      const detail = err?.response?.data?.detail || err.message || "Failed to revoke key"
+      showToast(typeof detail === "string" ? detail : "Failed to revoke key")
+    } finally {
+      setIsDestructiveBusy(false)
     }
   }
 
@@ -212,7 +229,9 @@ export function ApiKeysPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-8 font-sans">
+    <div className="flex flex-col flex-1 min-h-0 font-sans">
+      <BreadcrumbBar trail={["Helix", "Settings", "API & BYOK Keys"]} />
+      <div className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-8 font-sans">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -334,7 +353,7 @@ export function ApiKeysPage() {
                     {byokTesting ? "Testing..." : "Test Connection"}
                   </button>
                   <button
-                    onClick={handleRemoveByok}
+                    onClick={() => setShowRemoveByokModal(true)}
                     className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold rounded border border-rose-500/30 transition"
                   >
                     Remove Key
@@ -366,7 +385,7 @@ export function ApiKeysPage() {
                   <button
                     type="submit"
                     disabled={byokSaving || !byokInputKey.trim()}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded transition"
+                    className="px-4 py-2 bg-accent hover:bg-accent-dim text-black font-semibold text-xs rounded border border-accent hover:border-accent-dim transition"
                   >
                     {byokSaving ? "Connecting..." : "Save & Connect"}
                   </button>
@@ -400,7 +419,7 @@ export function ApiKeysPage() {
           </h2>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded shadow-lg shadow-indigo-600/20 transition"
+            className="flex items-center gap-2 px-3.5 py-1.5 bg-accent hover:bg-accent-dim text-black text-xs font-semibold rounded border border-accent hover:border-accent-dim transition"
           >
             <PlusCircle className="w-4 h-4" />
             Generate New Key
@@ -471,7 +490,7 @@ export function ApiKeysPage() {
                     </td>
                     <td className="py-3.5 px-4 text-right">
                       <button
-                        onClick={() => handleRevokeKey(k.id)}
+                        onClick={() => setRevokeKeyTarget(k)}
                         className="text-rose-400 hover:text-rose-300 p-1 transition"
                         title="Revoke API key"
                       >
@@ -517,7 +536,7 @@ export function ApiKeysPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded transition"
+                  className="px-4 py-1.5 bg-accent hover:bg-accent-dim text-black font-semibold text-xs rounded border border-accent hover:border-accent-dim transition"
                 >
                   {submitting ? "Generating..." : "Generate Key"}
                 </button>
@@ -526,6 +545,32 @@ export function ApiKeysPage() {
           </div>
         </div>
       )}
+
+      {/* Confirm Revoke Key Dialog */}
+      <ConfirmDialog
+        isOpen={Boolean(revokeKeyTarget)}
+        title="Revoke Developer API Key"
+        description={`Are you sure you want to revoke key "${revokeKeyTarget?.name}"? Any active backend services, cron jobs, or workers using this key will immediately lose access.`}
+        confirmText="Revoke API Key"
+        variant="danger"
+        isBusy={isDestructiveBusy}
+        onConfirm={confirmRevokeKey}
+        onCancel={() => setRevokeKeyTarget(null)}
+      />
+
+      {/* Confirm Remove BYOK Dialog */}
+      <ConfirmDialog
+        isOpen={showRemoveByokModal}
+        title="Remove Workspace BYOK Key"
+        description="Are you sure you want to remove your workspace BYOK Google Gemini key? AI operations and generation will immediately switch back to HELIX Managed credits."
+        confirmText="Remove Key"
+        variant="danger"
+        isBusy={isDestructiveBusy}
+        onConfirm={confirmRemoveByok}
+        onCancel={() => setShowRemoveByokModal(false)}
+      />
+
+      </div>
     </div>
   )
 }

@@ -140,7 +140,7 @@ const authService = {
    * Register a new account.
    * Stores the returned JWT and returns the user shape.
    */
-  async signUp({ name, email, password } = {}) {
+  async signUp({ name, email, password, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer } = {}) {
     const cleanName = name ? String(name).trim() : undefined
     const cleanEmail = String(email ?? "").trim().toLowerCase()
 
@@ -150,6 +150,12 @@ const authService = {
         name: cleanName,
         email: cleanEmail,
         password,
+        utm_source,
+        utm_medium,
+        utm_campaign,
+        utm_term,
+        utm_content,
+        referrer,
       },
     })
 

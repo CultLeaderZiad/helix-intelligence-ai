@@ -8,9 +8,11 @@ import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
 import { PasswordStrength } from "@/features/auth/PasswordStrength"
 import { validateSignUp } from "@/features/auth/validation"
-import { Input } from "@/components/ui/Field"
+import { Input, PasswordInput } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
 import { ServiceError } from "@/services"
+import { getAttribution, clearAttribution } from "@/lib/utm"
+import { track } from "@/lib/analytics"
 
 /**
  * Sign up. New accounts are always created as 'customer' server-side —
@@ -23,6 +25,8 @@ export function SignUpPage() {
   const navigate = useNavigate()
 
   const [values, setValues] = useState({ name: "", email: "", password: "" })
+  const [consentAgreed, setConsentAgreed] = useState(false)
+  const [marketingOptIn, setMarketingOptIn] = useState(false)
   const [errors, setErrors] = useState({})
   const [authError, setAuthError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -52,16 +56,50 @@ export function SignUpPage() {
 
     setAuthError(null)
     const nextErrors = validateSignUp(values)
+    if (!consentAgreed) {
+      nextErrors.consent = "You must accept the Terms and Privacy Policy to create an account."
+    }
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    if (Object.keys(nextErrors).length > 0) {
+      const firstMsg = nextErrors.name
+        ? "Please enter your full name."
+        : nextErrors.email === "invalid email"
+        ? "Please enter a valid email address."
+        : nextErrors.email
+        ? "Email address is required."
+        : nextErrors.password === "min 8 chars"
+        ? "Password must be at least 8 characters long."
+        : nextErrors.password
+        ? "Password is required."
+        : "Please accept the Terms of Service and Privacy Policy to proceed."
+      setAuthError({
+        status: "validation error",
+        tone: "danger",
+        message: firstMsg,
+      })
+      return
+    }
 
     setSubmitting(true)
     try {
+      const attribution = getAttribution()
       await signUp({
         name: values.name.trim(),
         email: values.email.trim(),
         password: values.password,
+        utm_source: attribution.utm_source,
+        utm_medium: attribution.utm_medium,
+        utm_campaign: attribution.utm_campaign,
+        utm_term: attribution.utm_term,
+        utm_content: attribution.utm_content,
+        referrer: attribution.referrer || attribution.ref,
       })
+      track("signup", {
+        source: attribution.utm_source || "direct",
+        medium: attribution.utm_medium || "none",
+        campaign: attribution.utm_campaign || "none",
+      })
+      clearAttribution()
       navigate(APP_HOME, { replace: true })
     } catch (err) {
       const isCold = err?.code === "network_error" || err?.code === "server_waking" || (err?.status >= 502 && err?.status <= 504)
@@ -87,10 +125,11 @@ export function SignUpPage() {
           isColdStart: true,
         })
       } else {
+        const errorDetail = err?.response?.data?.detail || err?.message || "Sign up failed. Please check your credentials and try again."
         setAuthError({
           status: "signup failed",
           tone: "danger",
-          message: err instanceof ServiceError ? err.message : (err?.message || "Sign up failed. Please try again."),
+          message: typeof errorDetail === "string" ? errorDetail : "Sign up failed. Please try again.",
           isColdStart: false,
         })
       }
@@ -178,10 +217,9 @@ export function SignUpPage() {
         </AuthField>
 
         <AuthField id="password" label="Password" error={errors.password}>
-          <Input
+          <PasswordInput
             id="password"
             name="password"
-            type="password"
             autoComplete="new-password"
             placeholder="At least 8 characters"
             value={values.password}
@@ -194,12 +232,53 @@ export function SignUpPage() {
 
         {values.password ? <PasswordStrength value={values.password} /> : null}
 
+        <div className="space-y-2.5 pt-1 text-xs">
+          <label htmlFor="terms-consent" className="flex items-start gap-2.5 cursor-pointer text-text-muted select-none">
+            <input
+              type="checkbox"
+              id="terms-consent"
+              checked={consentAgreed}
+              onChange={(e) => {
+                setConsentAgreed(e.target.checked)
+                if (errors.consent) setErrors((prev) => ({ ...prev, consent: undefined }))
+              }}
+              className="mt-0.5 h-4 w-4 rounded-xs border-border bg-surface-2 accent-accent focus:ring-1 focus:ring-accent"
+              required
+            />
+            <span className="leading-relaxed">
+              I agree to the{" "}
+              <a href="/terms" target="_blank" rel="noreferrer" className="text-accent hover:underline">
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a href="/privacy" target="_blank" rel="noreferrer" className="text-accent hover:underline">
+                Privacy Policy
+              </a>
+              .
+            </span>
+          </label>
+          {errors.consent && (
+            <p className="text-[11px] text-danger font-mono" role="alert">{errors.consent}</p>
+          )}
+
+          <label htmlFor="marketing-optin" className="flex items-start gap-2.5 cursor-pointer text-text-faint select-none">
+            <input
+              type="checkbox"
+              id="marketing-optin"
+              checked={marketingOptIn}
+              onChange={(e) => setMarketingOptIn(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded-xs border-border bg-surface-2 accent-accent focus:ring-1 focus:ring-accent"
+            />
+            <span className="leading-relaxed">Send me product updates and major release announcements (optional).</span>
+          </label>
+        </div>
+
         <Button
           type="submit"
           variant="primary"
           size="lg"
           disabled={submitting}
-          className="mt-1 w-full"
+          className="mt-2 w-full font-bold uppercase tracking-wider"
         >
           {submitting ? (
             <>

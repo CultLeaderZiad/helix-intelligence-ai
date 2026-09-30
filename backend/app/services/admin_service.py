@@ -309,6 +309,27 @@ async def update_plan(db: AsyncSession, plan_id: str, plan_update: PlanUpdate) -
         created_at=plan.created_at.isoformat() + "Z" if plan.created_at else None
     )
 
+async def delete_plan(db: AsyncSession, plan_id: str) -> dict:
+    # 1. Protect default system plans
+    if plan_id in ("plan_trial_default", "plan_payg_default"):
+        raise HTTPException(status_code=400, detail="Cannot delete default system plans")
+
+    plan = (await db.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    # 2. Check if any organization currently uses this plan
+    org_count = (await db.execute(select(func.count(Organization.id)).where(Organization.plan_id == plan_id))).scalar() or 0
+    if org_count > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot delete plan '{plan.name}' because {org_count} organization(s) are actively assigned to it. Switch their plan before deleting."
+        )
+
+    await db.delete(plan)
+    await db.commit()
+    return {"status": "success", "message": f"Plan '{plan.name}' deleted successfully."}
+
 # --- Organization & Quota Controls ---
 async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
     query = (
@@ -419,7 +440,7 @@ async def update_organization_feature_flags(db: AsyncSession, org_id: str, flags
     return {
         "success": True,
         "org_id": org.id,
-        "custom_feature_flags": org.custom_feature_flags
+        "custom_feature_flags": _redact_flags(org.custom_feature_flags)
     }
 
 # --- Usage & Metering Analytics ---

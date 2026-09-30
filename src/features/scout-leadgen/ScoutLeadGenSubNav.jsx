@@ -16,11 +16,11 @@ const TABS = [
   { to: "/scout/maps", label: "Maps", icon: MapPin },
 ]
 
-export function ScoutLeadGenSubNav({ right = null }) {
+export function ScoutLeadGenSubNav({ right = null, className = "" }) {
   const { pathname } = useLocation()
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border bg-[#101015] px-4 sm:px-6 py-2.5 font-mono text-xs">
-      <nav aria-label="Scout sections" className="flex items-center gap-1.5 bg-[#09090b] p-1 rounded border border-border">
+    <div className={cn("sticky top-11 md:top-0 z-20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border bg-[#101015]/95 backdrop-blur-md px-3 sm:px-6 py-2 font-mono text-xs", className)}>
+      <nav aria-label="Scout sections" className="flex items-center gap-1.5 bg-[#09090b] p-1 rounded border border-border overflow-x-auto max-w-full">
         {TABS.map(({ to, label, icon: Icon }) => {
           const active = pathname === to
           return (

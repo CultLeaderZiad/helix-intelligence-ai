@@ -86,11 +86,14 @@ async def save_gemini_credential(
     try:
         test_res = await test_provider.test_connection()
     except Exception as e:
+        import re
+        clean_err = str(e).replace(raw_key, "[REDACTED]")
+        clean_err = re.sub(r'([?&]key=)[^&\s]+', r'\1[REDACTED]', clean_err)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "code": "invalid_gemini_key",
-                "message": f"Connection test failed: {str(e)}"
+                "message": f"Connection test failed: {clean_err}"
             }
         )
 
@@ -172,11 +175,16 @@ async def test_gemini_credential(
         res = await test_provider.test_connection()
         return res
     except Exception as e:
+        import re
+        clean_err = str(e)
+        if api_key_to_test:
+            clean_err = clean_err.replace(api_key_to_test, "[REDACTED]")
+        clean_err = re.sub(r'([?&]key=)[^&\s]+', r'\1[REDACTED]', clean_err)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "code": "test_failed",
-                "message": str(e)
+                "message": clean_err
             }
         )
 

@@ -9,8 +9,10 @@ import {
   RefreshCw, 
   CheckCircle2, 
   ShieldCheck,
-  Edit2
+  Edit2,
+  Trash2
 } from "lucide-react"
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 export function SubscriptionsPlansPage() {
   const [plans, setPlans] = useState([])
@@ -43,6 +45,10 @@ export function SubscriptionsPlansPage() {
   const [editDailyVideos, setEditDailyVideos] = useState(3)
   const [editFlags, setEditFlags] = useState({})
   const [isUpdating, setIsUpdating] = useState(false)
+
+  // Delete plan modal
+  const [deleteTargetPlan, setDeleteTargetPlan] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchPlans = async () => {
     setLoading(true)
@@ -83,7 +89,9 @@ export function SubscriptionsPlansPage() {
       setCreditAllowance(100)
       fetchPlans()
     } catch (err) {
-      alert(err.message || "Failed to create plan")
+      const msg = err?.response?.data?.detail || err?.message || "Failed to create plan"
+      setError(msg)
+      showToast(msg)
     } finally {
       setSubmitting(false)
     }
@@ -117,9 +125,28 @@ export function SubscriptionsPlansPage() {
       setEditingPlan(null)
       fetchPlans()
     } catch (err) {
-      alert(err.message || "Failed to update plan")
+      const msg = err?.response?.data?.detail || err?.message || "Failed to update plan"
+      setError(msg)
+      showToast(msg)
     } finally {
       setIsUpdating(false)
+    }
+  }
+
+  const confirmDeletePlan = async () => {
+    if (!deleteTargetPlan) return
+    setIsDeleting(true)
+    try {
+      await adminService.deletePlan(deleteTargetPlan.id)
+      showToast(`Plan "${deleteTargetPlan.name}" was successfully deleted.`)
+      setDeleteTargetPlan(null)
+      fetchPlans()
+    } catch (err) {
+      const msg = err?.response?.data?.detail || err?.message || "Failed to delete plan"
+      setError(msg)
+      showToast(msg)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -157,7 +184,7 @@ export function SubscriptionsPlansPage() {
           </button>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded shadow-lg shadow-indigo-600/20 transition"
+            className="flex items-center gap-2 px-3.5 py-1.5 bg-accent hover:bg-accent-dim text-black text-xs font-semibold rounded border border-accent hover:border-accent-dim transition"
           >
             <PlusCircle className="w-4 h-4" />
             Create Custom Plan
@@ -201,12 +228,23 @@ export function SubscriptionsPlansPage() {
                   }`}>
                     {p.type}
                   </span>
-                  <button
-                    onClick={() => handleOpenEdit(p)}
-                    className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition"
-                  >
-                    <Edit2 className="w-3 h-3 text-indigo-400" /> Edit
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleOpenEdit(p)}
+                      className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition"
+                    >
+                      <Edit2 className="w-3 h-3 text-indigo-400" /> Edit
+                    </button>
+                    {p.id !== "plan_trial_default" && p.id !== "plan_payg_default" && (
+                      <button
+                        onClick={() => setDeleteTargetPlan(p)}
+                        className="flex items-center gap-1 px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs transition"
+                        title="Delete plan"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -354,7 +392,7 @@ export function SubscriptionsPlansPage() {
                 <button
                   type="submit"
                   disabled={isUpdating}
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent-dim text-black font-semibold text-xs border border-accent hover:border-accent-dim transition"
                 >
                   {isUpdating ? "Saving..." : "Save Changes"}
                 </button>
@@ -438,7 +476,7 @@ export function SubscriptionsPlansPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition"
+                  className="px-5 py-2 rounded-xl bg-accent hover:bg-accent-dim text-black font-semibold text-xs border border-accent hover:border-accent-dim transition"
                 >
                   {submitting ? "Creating..." : "Create Plan"}
                 </button>
@@ -447,6 +485,18 @@ export function SubscriptionsPlansPage() {
           </div>
         </div>
       )}
+
+      {/* Delete Plan Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={!!deleteTargetPlan}
+        title={`Delete Plan: ${deleteTargetPlan?.name}`}
+        description={`Are you sure you want to permanently delete "${deleteTargetPlan?.name}" (${deleteTargetPlan?.id})? Any organization currently assigned to this plan must be switched first. This destructive action cannot be undone.`}
+        confirmText="Delete Plan"
+        variant="danger"
+        isBusy={isDeleting}
+        onConfirm={confirmDeletePlan}
+        onCancel={() => setDeleteTargetPlan(null)}
+      />
     </div>
   )
 }

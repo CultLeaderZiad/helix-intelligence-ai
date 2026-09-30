@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Check, Copy, Info, AlertTriangle, AlertCircle, Lightbulb, ShieldAlert } from 'lucide-react'
+import { Check, Copy, Info, AlertTriangle, AlertCircle, Lightbulb, ShieldAlert, ChevronDown } from 'lucide-react'
 
 // Helper to convert header text into anchor id
 export function slugify(text) {
@@ -11,13 +11,72 @@ export function slugify(text) {
     .replace(/^-+|-+$/g, '')
 }
 
+function FaqAccordionItem({ question, id, defaultOpen = false, children }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+
+  // Expand if hash anchor matches
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash === `#${id}`) {
+      setIsOpen(true)
+    }
+  }, [id])
+
+  return (
+    <div id={id} className="scroll-mt-24 my-3 rounded-lg border border-border bg-surface overflow-hidden transition-all duration-200 hover:border-border-strong">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        aria-expanded={isOpen}
+        className="w-full text-left px-4 py-3.5 flex items-center justify-between gap-3 text-[14px] font-semibold text-text hover:text-accent transition-colors cursor-pointer select-none"
+      >
+        <span className="leading-snug">{question}</span>
+        <ChevronDown
+          className={`h-4 w-4 shrink-0 text-text-muted transition-transform duration-200 ${
+            isOpen ? 'rotate-180 text-accent' : ''
+          }`}
+        />
+      </button>
+      {isOpen && (
+        <div className="px-4 pb-4 pt-1 border-t border-border/60 text-[13.5px] text-text-muted leading-relaxed space-y-2">
+          {children}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function CodeBlock({ code, language }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(code)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    const textToCopy = typeof code === 'string' ? code : String(code || '')
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      }).catch(() => {
+        fallbackCopy(textToCopy)
+      })
+    } else {
+      fallbackCopy(textToCopy)
+    }
+  }
+
+  const fallbackCopy = (text) => {
+    try {
+      const textArea = document.createElement("textarea")
+      textArea.value = text
+      textArea.style.position = "fixed"
+      textArea.style.opacity = "0"
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand("copy")
+      document.body.removeChild(textArea)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (e) {
+      console.error("Failed to copy code snippet", e)
+    }
   }
 
   return (
@@ -27,7 +86,8 @@ function CodeBlock({ code, language }) {
         <button
           onClick={handleCopy}
           type="button"
-          className="flex items-center gap-1 text-[11px] text-text-muted hover:text-accent transition-colors"
+          aria-label="Copy code to clipboard"
+          className="flex items-center gap-1.5 px-2 py-0.5 rounded border border-border/60 bg-surface/50 hover:bg-surface hover:border-accent/40 text-[11px] text-text-muted hover:text-accent transition-all cursor-pointer"
         >
           {copied ? (
             <>
@@ -188,15 +248,58 @@ function parseFormatting(text, keyPrefix) {
   })
 }
 
-export function MarkdownRenderer({ content }) {
+export function MarkdownRenderer({ content, isFaq = false }) {
   if (!content) return null
+
+  const isFaqDoc = Boolean(
+    isFaq ||
+    (typeof content === 'string' && (
+      content.includes('Frequently Asked Questions (FAQ)') ||
+      content.includes('Frequently Asked Questions') ||
+      content.startsWith('# User Guide: Frequently Asked Questions')
+    ))
+  )
 
   const lines = content.split('\n')
   const elements = []
+  let faqCount = 0
   let i = 0
 
   while (i < lines.length) {
     const line = lines[i]
+
+    // 0. Interactive FAQ Accordion items on FAQ pages
+    if (isFaqDoc && line.startsWith('### ')) {
+      const question = line.replace(/^###\s+/, '').trim()
+      i++
+      const answerLines = []
+      while (
+        i < lines.length &&
+        !lines[i].startsWith('### ') &&
+        !lines[i].startsWith('## ') &&
+        !lines[i].startsWith('# ') &&
+        lines[i].trim() !== '---'
+      ) {
+        answerLines.push(lines[i])
+        i++
+      }
+      if (i < lines.length && lines[i].trim() === '---') {
+        i++
+      }
+
+      faqCount++
+      elements.push(
+        <FaqAccordionItem
+          key={`faq-${faqCount}`}
+          question={question}
+          id={slugify(question)}
+          defaultOpen={faqCount === 1}
+        >
+          <MarkdownRenderer content={answerLines.join('\n')} isFaq={false} />
+        </FaqAccordionItem>
+      )
+      continue
+    }
 
     // 1. Code blocks ```lang ... ```
     if (line.trim().startsWith('```')) {

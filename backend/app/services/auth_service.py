@@ -67,12 +67,23 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     if result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
 
+    # Collect UTM and referral source attribution if present
+    signup_metadata = {}
+    for field in ("utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "referrer"):
+        val = getattr(user_in, field, None)
+        if val:
+            signup_metadata[field] = str(val).strip()
+
+    if signup_metadata:
+        logger.info("Attribution captured for signup email=%s: %s", email, signup_metadata)
+
     now = datetime.datetime.now(datetime.timezone.utc)
     user = User(
         email=email,
         password_hash=get_password_hash(user_in.password),
         full_name=full_name,
         role="customer",
+        signup_metadata=signup_metadata,
         trial_started_at=now,
         trial_expires_at=now + datetime.timedelta(days=7)
     )
