@@ -37,125 +37,60 @@ from app.api.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Ensure all database tables and missing columns exist on startup
-    stuck_discover_jobs = []  # populated by the reconciliation sweep below
+    # Startup reconciliation. Jobs still marked active from a dead process lifetime
+    # are reconciled. We check heartbeat_at < cutoff (or created_at < cutoff if no heartbeat
+    # was recorded) to avoid terminating live jobs on other active workers.
+    stuck_discover_jobs = []
     try:
         async with engine.begin() as conn:
-            # 1. Create all missing tables (e.g. support_tickets, support_ticket_replies, playbooks)
-            await conn.run_sync(Base.metadata.create_all)
-
-            # 2. Run non-destructive column migrations on existing PostgreSQL tables
-            migrations = [
-                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS images_generated_today FLOAT DEFAULT 0.0;",
-                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS videos_generated_today FLOAT DEFAULT 0.0;",
-                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS images_today_date VARCHAR(32) DEFAULT '';",
-                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS images_trial_total FLOAT DEFAULT 0.0;",
-                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS custom_feature_flags JSON DEFAULT '{}'::json;",
-                "ALTER TABLE organizations ADD COLUMN IF NOT EXISTS status VARCHAR(64) DEFAULT 'active';",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name VARCHAR;",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url VARCHAR;",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE;",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_permissions JSON DEFAULT '{}'::json;",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMPTZ;",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_expires_at TIMESTAMPTZ;",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS has_completed_onboarding BOOLEAN DEFAULT FALSE;",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token_hash VARCHAR;",
-                "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMPTZ;",
-                "ALTER TABLE plans ADD COLUMN IF NOT EXISTS daily_image_limit INTEGER DEFAULT 5;",
-                "ALTER TABLE plans ADD COLUMN IF NOT EXISTS daily_video_limit INTEGER DEFAULT 3;",
-                "ALTER TABLE plans ADD COLUMN IF NOT EXISTS price_monthly FLOAT DEFAULT 0.0;",
-                # Job ownership + liveness, used by job_reconciliation to tell a
-                # dead job apart from a slow one.
-                "ALTER TABLE scrape_jobs ADD COLUMN IF NOT EXISTS failure_kind VARCHAR;",
-                "ALTER TABLE scrape_jobs ADD COLUMN IF NOT EXISTS owner_boot_id VARCHAR;",
-                "ALTER TABLE scrape_jobs ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMPTZ;",
-                "ALTER TABLE media_jobs ADD COLUMN IF NOT EXISTS failure_kind VARCHAR;",
-                "ALTER TABLE media_jobs ADD COLUMN IF NOT EXISTS owner_boot_id VARCHAR;",
-                "ALTER TABLE media_jobs ADD COLUMN IF NOT EXISTS heartbeat_at TIMESTAMPTZ;",
-                "ALTER TABLE creatives ADD COLUMN IF NOT EXISTS brand_name VARCHAR;",
-                "ALTER TABLE creatives ADD COLUMN IF NOT EXISTS media_url VARCHAR;",
-                "ALTER TABLE creatives ADD COLUMN IF NOT EXISTS thumbnail_url VARCHAR;",
-                "ALTER TABLE scrape_jobs ADD COLUMN IF NOT EXISTS entity_profile JSONB;",
-                "ALTER TABLE scout_leads ADD COLUMN IF NOT EXISTS profile_url VARCHAR;",
-                "ALTER TABLE scout_jobs ADD COLUMN IF NOT EXISTS target_category VARCHAR;",
-                "ALTER TABLE scout_jobs ADD COLUMN IF NOT EXISTS generate_outreach BOOLEAN DEFAULT TRUE;",
-                "ALTER TABLE scout_leads ADD COLUMN IF NOT EXISTS atlas JSON DEFAULT '{}'::json;",
-                "ALTER TABLE scout_leads ADD COLUMN IF NOT EXISTS scrape_status VARCHAR DEFAULT 'ok';",
-                "ALTER TABLE scout_leads ADD COLUMN IF NOT EXISTS account_type VARCHAR;",
-                "ALTER TABLE scout_leads ADD COLUMN IF NOT EXISTS priority_level VARCHAR;",
-            ]
-            for query in migrations:
-                try:
-                    await conn.execute(text(query))
-                except Exception as col_err:
-                    pass
-
-            # Structural duplicate-search guard. The service-level check
-            # above is advisory; this makes a second active job for the same
-            # (org, normalized query) impossible at the database level.
-            # Failures here are reported, not swallowed — a silently missing
-            # unique index would resurrect the double-charge race.
-            try:
-                await conn.execute(text("""
-                    UPDATE scrape_jobs AS newer
-                    SET status = 'failed',
-                        error_msg = 'Duplicate of a concurrent search for the same query (collapsed by dedup guard migration)'
-                    WHERE newer.status IN ('queued', 'running')
-                      AND EXISTS (
-                        SELECT 1 FROM scrape_jobs AS older
-                        WHERE older.status IN ('queued', 'running')
-                          AND older.org_id = newer.org_id
-                          AND lower(older.query) = lower(newer.query)
-                          AND (older.created_at, older.id) < (newer.created_at, newer.id)
-                      )
-                """))
-                await conn.execute(text("""
-                    CREATE UNIQUE INDEX IF NOT EXISTS uq_scrape_jobs_active_query
-                    ON scrape_jobs (org_id, lower(query))
-                    WHERE status IN ('queued', 'running')
-                """))
-            except Exception as dup_guard_err:
-                print("Duplicate-search guard migration error:", dup_guard_err)
-
-            # Startup reconciliation. Jobs still marked active from a previous
-            # process lifetime are dead — this process cannot resume them.
-            # Mark them failed with an honest reason so clients stop polling a
-            # corpse; discover jobs additionally get their upfront charge
-            # refunded (the user paid for a result they will never receive).
             try:
                 reconcile_cutoff = datetime.datetime.utcnow() - datetime.timedelta(minutes=10)
                 stuck_discover_jobs = (await conn.execute(text("""
                     SELECT id, org_id FROM scrape_jobs
                     WHERE status IN ('queued', 'running')
-                      AND created_at < :cutoff
+                      AND (
+                          (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
+                          OR (heartbeat_at IS NULL AND created_at < :cutoff)
+                      )
                 """), {"cutoff": reconcile_cutoff})).mappings().all()
                 if stuck_discover_jobs:
                     await conn.execute(text("""
                         UPDATE scrape_jobs
                         SET status = 'failed',
+                            failure_kind = 'interrupted',
                             error_msg = 'Interrupted by a service restart — the credits for this search were refunded. Please run it again.'
                         WHERE status IN ('queued', 'running')
-                          AND created_at < :cutoff
+                          AND (
+                              (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
+                              OR (heartbeat_at IS NULL AND created_at < :cutoff)
+                          )
                     """), {"cutoff": reconcile_cutoff})
                     print(f"Startup reconciliation: {len(stuck_discover_jobs)} stuck discover job(s) marked failed and refunded.")
                 stuck_media_jobs = (await conn.execute(text("""
                     SELECT id FROM media_jobs
                     WHERE status IN ('pending', 'running', 'in_progress', 'processing')
-                      AND created_at < :cutoff
+                      AND (
+                          (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
+                          OR (heartbeat_at IS NULL AND created_at < :cutoff)
+                      )
                 """), {"cutoff": reconcile_cutoff})).all()
                 if stuck_media_jobs:
                     await conn.execute(text("""
                         UPDATE media_jobs
                         SET status = 'failed',
+                            failure_kind = 'interrupted',
                             error_message = 'Interrupted by a service restart. Please try generating again.'
                         WHERE status IN ('pending', 'running', 'in_progress', 'processing')
-                          AND created_at < :cutoff
+                          AND (
+                              (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
+                              OR (heartbeat_at IS NULL AND created_at < :cutoff)
+                          )
                     """), {"cutoff": reconcile_cutoff})
                     print(f"Startup reconciliation: {len(stuck_media_jobs)} stuck media job(s) marked failed.")
             except Exception as reconcile_err:
                 print("Startup reconciliation error:", reconcile_err)
     except Exception as e:
-        print("Database startup sync error:", e)
+        print("Database startup reconciliation error:", e)
 
     # Refunds run after the migration transaction commits, each in its own
     # locked session (the same primitive the discover pipeline uses).

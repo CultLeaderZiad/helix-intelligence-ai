@@ -85,8 +85,8 @@ export default function DashboardPage() {
         name: `${b.name} (${b.dominant_format.toUpperCase()}) Angle`,
         category: b.dominant_format,
         description: `Active campaign volume: ${b.active_ads} verified ads. Average composite score: ${b.avg_score != null ? b.avg_score.toFixed(1) : "N/A"}.`,
-        confidence_score: 0.92,
-        estimated_lift_percent: b.avg_score ? Math.max(Math.round((b.avg_score - 50) * 0.5), 5) : null
+        confidence_score: b.confidence_score ?? null,
+        estimated_lift_percent: b.estimated_lift_percent ?? null
       }))
 
       const insights = []
@@ -96,7 +96,7 @@ export default function DashboardPage() {
           title: "Executive Teardown & Movement",
           summary: data.narrative_summary.summary,
           kind: "summary",
-          confidence: 0.95
+          confidence: data.narrative_summary.confidence ?? null
         })
       }
       if (data?.monitor_changes && data.monitor_changes.length > 0) {
@@ -106,7 +106,7 @@ export default function DashboardPage() {
           title: `Recent Competitor Action (${(topDiff.type || 'diff').replace('_', ' ').toUpperCase()})`,
           summary: `Detected on ${topDiff.monitor_name}: "${topDiff.headline || topDiff.body || 'Creative update'}"`,
           kind: "diff",
-          confidence: 0.90
+          confidence: topDiff.confidence ?? null
         })
       }
 

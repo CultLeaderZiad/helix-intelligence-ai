@@ -23,6 +23,8 @@ async def simulate_creative(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from app.core.tenancy import get_user_org_ids
+    scope = await get_user_org_ids(db, current_user)
     return await simulation_service.simulate_creative_for_audiences(
         db,
         creative_id,
@@ -30,4 +32,5 @@ async def simulate_creative(
         current_user,
         request.byok_key,
         request.byok_provider,
+        user_org_ids=scope,
     )

@@ -1,0 +1,1133 @@
+[
+  {
+    "table": "app_updates",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "title",
+      "body",
+      "level",
+      "category",
+      "is_published",
+      "show_as_banner",
+      "banner_dismissible",
+      "show_on_public",
+      "link_url",
+      "starts_at",
+      "ends_at",
+      "created_by",
+      "created_at",
+      "updated_at"
+    ],
+    "source": {
+      "path": "backend/app/models/app_update.py",
+      "line": 6
+    }
+  },
+  {
+    "table": "creatives",
+    "column": "brand_name",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/creative.py",
+      "line": 16
+    }
+  },
+  {
+    "table": "creatives",
+    "column": "media_url",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/creative.py",
+      "line": 25
+    }
+  },
+  {
+    "table": "creatives",
+    "column": "thumbnail_url",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/creative.py",
+      "line": 26
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "status",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'queued'::character varying",
+    "python_default": "queued",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 28
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "stage",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'brief'::character varying",
+    "python_default": "brief",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 29
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "stage_index",
+    "kind": "server_default",
+    "model": null,
+    "migration": "0",
+    "python_default": "0",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 31
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "stages_total",
+    "kind": "server_default",
+    "model": null,
+    "migration": "9",
+    "python_default": "9",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 32
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "engine_default",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'stealth'::character varying",
+    "python_default": "stealth",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 37
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "mode",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'crawl'::character varying",
+    "python_default": "crawl",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 38
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "robots_obey",
+    "kind": "server_default",
+    "model": null,
+    "migration": "true",
+    "python_default": "True",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 40
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "adaptive",
+    "kind": "server_default",
+    "model": null,
+    "migration": "true",
+    "python_default": "True",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 41
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "enrich_emails",
+    "kind": "server_default",
+    "model": null,
+    "migration": "true",
+    "python_default": "True",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 43
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "generate_outreach",
+    "kind": "server_default",
+    "model": null,
+    "migration": "true",
+    "python_default": "True",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 44
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "proxy_mode",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'off'::character varying",
+    "python_default": "off",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 45
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "leads_count",
+    "kind": "server_default",
+    "model": null,
+    "migration": "0",
+    "python_default": "0",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 50
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "pages_fetched",
+    "kind": "server_default",
+    "model": null,
+    "migration": "0",
+    "python_default": "0",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 51
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "pages_blocked",
+    "kind": "server_default",
+    "model": null,
+    "migration": "0",
+    "python_default": "0",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 52
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "elapsed_ms",
+    "kind": "server_default",
+    "model": null,
+    "migration": "0",
+    "python_default": "0",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 53
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "credits_used",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'0'::double precision",
+    "python_default": "0.0",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 54
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "credit_budget",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'0'::double precision",
+    "python_default": "0.0",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 55
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "created_at",
+    "kind": "nullability",
+    "model": false,
+    "migration": true,
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 58
+    }
+  },
+  {
+    "table": "leadgen_jobs",
+    "column": "created_at",
+    "kind": "server_default",
+    "model": null,
+    "migration": "now()",
+    "python_default": "callable",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 58
+    }
+  },
+  {
+    "table": "leadgen_leads",
+    "column": "extract_status",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'empty'::character varying",
+    "python_default": "empty",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 87
+    }
+  },
+  {
+    "table": "leadgen_leads",
+    "column": "fetch_status",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'ok'::character varying",
+    "python_default": "ok",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 88
+    }
+  },
+  {
+    "table": "leadgen_leads",
+    "column": "engine_used",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'stealth'::character varying",
+    "python_default": "stealth",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 89
+    }
+  },
+  {
+    "table": "leadgen_leads",
+    "column": "email_source",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'none'::character varying",
+    "python_default": "none",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 91
+    }
+  },
+  {
+    "table": "leadgen_leads",
+    "column": "phone_source",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'none'::character varying",
+    "python_default": "none",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 92
+    }
+  },
+  {
+    "table": "leadgen_leads",
+    "column": "lead_score",
+    "kind": "server_default",
+    "model": null,
+    "migration": "0",
+    "python_default": "0",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 94
+    }
+  },
+  {
+    "table": "leadgen_leads",
+    "column": "created_at",
+    "kind": "nullability",
+    "model": false,
+    "migration": true,
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 99
+    }
+  },
+  {
+    "table": "leadgen_leads",
+    "column": "created_at",
+    "kind": "server_default",
+    "model": null,
+    "migration": "now()",
+    "python_default": "callable",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 99
+    }
+  },
+  {
+    "table": "leadgen_worker_heartbeat",
+    "column": "browsers_ready",
+    "kind": "server_default",
+    "model": null,
+    "migration": "false",
+    "python_default": "False",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 113
+    }
+  },
+  {
+    "table": "leadgen_worker_heartbeat",
+    "column": "proxy_mode",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'off'::character varying",
+    "python_default": "off",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 114
+    }
+  },
+  {
+    "table": "leadgen_worker_heartbeat",
+    "column": "updated_at",
+    "kind": "nullability",
+    "model": false,
+    "migration": true,
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 116
+    }
+  },
+  {
+    "table": "leadgen_worker_heartbeat",
+    "column": "updated_at",
+    "kind": "server_default",
+    "model": null,
+    "migration": "now()",
+    "python_default": "callable",
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 116
+    }
+  },
+  {
+    "table": "media_jobs",
+    "column": "failure_kind",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/media_job.py",
+      "line": 34
+    }
+  },
+  {
+    "table": "media_jobs",
+    "column": "owner_boot_id",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/media_job.py",
+      "line": 35
+    }
+  },
+  {
+    "table": "media_jobs",
+    "column": "heartbeat_at",
+    "kind": "missing_column",
+    "type": "TIMESTAMP WITH TIME ZONE",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/media_job.py",
+      "line": 36
+    }
+  },
+  {
+    "table": "monitor_creatives",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "monitor_id",
+      "identity_hash",
+      "content_hash",
+      "status",
+      "missed_runs",
+      "first_seen_at",
+      "last_seen_at",
+      "creative_id",
+      "platform",
+      "format",
+      "headline",
+      "body",
+      "cta",
+      "landing_domain"
+    ],
+    "source": {
+      "path": "backend/app/models/monitor.py",
+      "line": 74
+    }
+  },
+  {
+    "table": "monitor_events",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "monitor_id",
+      "run_id",
+      "type",
+      "identity_hash",
+      "creative_id",
+      "headline",
+      "body",
+      "cta",
+      "platform",
+      "landing_domain",
+      "previous",
+      "created_at"
+    ],
+    "source": {
+      "path": "backend/app/models/monitor.py",
+      "line": 113
+    }
+  },
+  {
+    "table": "monitor_runs",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "monitor_id",
+      "job_id",
+      "status",
+      "started_at",
+      "finished_at",
+      "creatives_seen",
+      "new_count",
+      "killed_count",
+      "changed_count",
+      "is_baseline",
+      "skipped_reason",
+      "error",
+      "credits_charged"
+    ],
+    "source": {
+      "path": "backend/app/models/monitor.py",
+      "line": 47
+    }
+  },
+  {
+    "table": "monitors",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "org_id",
+      "user_id",
+      "name",
+      "query",
+      "filters",
+      "cadence",
+      "status",
+      "paused_reason",
+      "notify_in_app",
+      "notify_email",
+      "next_run_at",
+      "last_run_at",
+      "last_job_id",
+      "consecutive_failures",
+      "baseline_at",
+      "created_at",
+      "updated_at"
+    ],
+    "source": {
+      "path": "backend/app/models/monitor.py",
+      "line": 10
+    }
+  },
+  {
+    "table": "organizations",
+    "column": "plan_id",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'plan_trial_default'::character varying",
+    "python_default": "plan_trial_default",
+    "source": {
+      "path": "backend/app/models/organization.py",
+      "line": 15
+    }
+  },
+  {
+    "table": "organizations",
+    "column": "credit_balance",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'25'::double precision",
+    "python_default": "25.0",
+    "source": {
+      "path": "backend/app/models/organization.py",
+      "line": 17
+    }
+  },
+  {
+    "table": "organizations",
+    "column": "credits_used",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'0'::double precision",
+    "python_default": "0.0",
+    "source": {
+      "path": "backend/app/models/organization.py",
+      "line": 18
+    }
+  },
+  {
+    "table": "organizations",
+    "column": "daily_credits_used_today",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'0'::double precision",
+    "python_default": "0.0",
+    "source": {
+      "path": "backend/app/models/organization.py",
+      "line": 19
+    }
+  },
+  {
+    "table": "organizations",
+    "column": "images_generated_today",
+    "kind": "missing_column",
+    "type": "FLOAT",
+    "nullable": false,
+    "server_default": null,
+    "python_default": "0.0",
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/organization.py",
+      "line": 21
+    }
+  },
+  {
+    "table": "organizations",
+    "column": "videos_generated_today",
+    "kind": "missing_column",
+    "type": "FLOAT",
+    "nullable": false,
+    "server_default": null,
+    "python_default": "0.0",
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/organization.py",
+      "line": 22
+    }
+  },
+  {
+    "table": "organizations",
+    "column": "images_today_date",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/organization.py",
+      "line": 23
+    }
+  },
+  {
+    "table": "organizations",
+    "column": "images_trial_total",
+    "kind": "missing_column",
+    "type": "FLOAT",
+    "nullable": false,
+    "server_default": null,
+    "python_default": "0.0",
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/organization.py",
+      "line": 24
+    }
+  },
+  {
+    "table": "organizations",
+    "column": "status",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'active'::character varying",
+    "python_default": "active",
+    "source": {
+      "path": "backend/app/models/organization.py",
+      "line": 26
+    }
+  },
+  {
+    "table": "plans",
+    "column": "daily_image_limit",
+    "kind": "missing_column",
+    "type": "INTEGER",
+    "nullable": true,
+    "server_default": null,
+    "python_default": "5",
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/plan.py",
+      "line": 16
+    }
+  },
+  {
+    "table": "plans",
+    "column": "daily_video_limit",
+    "kind": "missing_column",
+    "type": "INTEGER",
+    "nullable": true,
+    "server_default": null,
+    "python_default": "3",
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/plan.py",
+      "line": 17
+    }
+  },
+  {
+    "table": "plans",
+    "column": "price_monthly",
+    "kind": "missing_column",
+    "type": "FLOAT",
+    "nullable": true,
+    "server_default": null,
+    "python_default": "0.0",
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/plan.py",
+      "line": 18
+    }
+  },
+  {
+    "table": "playbooks",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "public_id",
+      "user_id",
+      "org_id",
+      "brand_name",
+      "query",
+      "title",
+      "summary",
+      "patterns",
+      "creatives",
+      "insights",
+      "created_at",
+      "updated_at"
+    ],
+    "source": {
+      "path": "backend/app/models/playbook.py",
+      "line": 12
+    }
+  },
+  {
+    "table": "scout_jobs",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "org_id",
+      "user_id",
+      "status",
+      "platforms",
+      "handles",
+      "enrich_emails",
+      "target_category",
+      "generate_outreach",
+      "stage",
+      "stage_label",
+      "stage_index",
+      "stages_total",
+      "logs",
+      "leads_count",
+      "elapsed_ms",
+      "credits_used",
+      "error_msg",
+      "created_at",
+      "completed_at",
+      "heartbeat_at",
+      "owner_boot_id"
+    ],
+    "source": {
+      "path": "backend/app/models/scout.py",
+      "line": 10
+    }
+  },
+  {
+    "table": "scout_leads",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "job_id",
+      "org_id",
+      "platform",
+      "handle",
+      "name",
+      "email",
+      "phone",
+      "website",
+      "bio",
+      "followers",
+      "lead_score",
+      "profile_url",
+      "scrape_status",
+      "account_type",
+      "priority_level",
+      "atlas",
+      "sources",
+      "created_at"
+    ],
+    "source": {
+      "path": "backend/app/models/scout.py",
+      "line": 42
+    }
+  },
+  {
+    "table": "scout_maps_jobs",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "org_id",
+      "user_id",
+      "status",
+      "keyword",
+      "city",
+      "lat",
+      "lon",
+      "depth",
+      "extract_emails",
+      "pull_socials",
+      "stage",
+      "stage_label",
+      "stage_index",
+      "stages_total",
+      "logs",
+      "results_count",
+      "elapsed_ms",
+      "credits_used",
+      "error_msg",
+      "created_at",
+      "completed_at",
+      "heartbeat_at",
+      "owner_boot_id"
+    ],
+    "source": {
+      "path": "backend/app/models/scout.py",
+      "line": 68
+    }
+  },
+  {
+    "table": "scout_maps_leads",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "job_id",
+      "org_id",
+      "title",
+      "phone",
+      "email",
+      "emails_found",
+      "website",
+      "category",
+      "address",
+      "city",
+      "rating",
+      "reviews_count",
+      "instagram",
+      "facebook",
+      "linkedin",
+      "twitter",
+      "socials",
+      "metadata_raw",
+      "created_at"
+    ],
+    "source": {
+      "path": "backend/app/models/scout.py",
+      "line": 102
+    }
+  },
+  {
+    "table": "scrape_jobs",
+    "column": "failure_kind",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/scrape_job.py",
+      "line": 32
+    }
+  },
+  {
+    "table": "scrape_jobs",
+    "column": "owner_boot_id",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/scrape_job.py",
+      "line": 37
+    }
+  },
+  {
+    "table": "scrape_jobs",
+    "column": "heartbeat_at",
+    "kind": "missing_column",
+    "type": "TIMESTAMP WITH TIME ZONE",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/scrape_job.py",
+      "line": 38
+    }
+  },
+  {
+    "table": "scrape_jobs",
+    "column": "entity_profile",
+    "kind": "missing_column",
+    "type": "JSON",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/scrape_job.py",
+      "line": 41
+    }
+  },
+  {
+    "table": "simulation_reports",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "creative_id",
+      "org_id",
+      "user_id",
+      "data_source",
+      "is_estimated",
+      "model_version",
+      "assumptions",
+      "evidence_creative_ids",
+      "segment_reactions",
+      "recommended_angles",
+      "generated_at"
+    ],
+    "source": {
+      "path": "backend/app/models/simulation_report.py",
+      "line": 11
+    }
+  },
+  {
+    "table": "support_ticket_replies",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "ticket_id",
+      "user_id",
+      "message",
+      "is_admin",
+      "created_at"
+    ],
+    "source": {
+      "path": "backend/app/models/support_ticket.py",
+      "line": 23
+    }
+  },
+  {
+    "table": "support_tickets",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "user_id",
+      "org_id",
+      "type",
+      "subject",
+      "message",
+      "status",
+      "tag",
+      "context_data",
+      "created_at",
+      "updated_at"
+    ],
+    "source": {
+      "path": "backend/app/models/support_ticket.py",
+      "line": 8
+    }
+  },
+  {
+    "table": "usage_logs",
+    "column": "operation",
+    "kind": "server_default",
+    "model": null,
+    "migration": "'discover_search'::character varying",
+    "python_default": "discover_search",
+    "source": {
+      "path": "backend/app/models/usage_log.py",
+      "line": 16
+    }
+  },
+  {
+    "table": "users",
+    "column": "full_name",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/user.py",
+      "line": 14
+    }
+  },
+  {
+    "table": "users",
+    "column": "avatar_url",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/user.py",
+      "line": 15
+    }
+  },
+  {
+    "table": "users",
+    "column": "admin_permissions",
+    "kind": "missing_column",
+    "type": "JSON",
+    "nullable": true,
+    "server_default": null,
+    "python_default": "callable",
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/user.py",
+      "line": 17
+    }
+  },
+  {
+    "table": "users",
+    "column": "is_banned",
+    "kind": "missing_column",
+    "type": "BOOLEAN",
+    "nullable": true,
+    "server_default": null,
+    "python_default": "False",
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/user.py",
+      "line": 21
+    }
+  },
+  {
+    "table": "users",
+    "column": "signup_metadata",
+    "kind": "missing_column",
+    "type": "JSON",
+    "nullable": true,
+    "server_default": null,
+    "python_default": "callable",
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/user.py",
+      "line": 23
+    }
+  },
+  {
+    "table": "users",
+    "column": "password_reset_token_hash",
+    "kind": "missing_column",
+    "type": "VARCHAR",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/user.py",
+      "line": 24
+    }
+  },
+  {
+    "table": "users",
+    "column": "password_reset_expires_at",
+    "kind": "missing_column",
+    "type": "TIMESTAMP WITH TIME ZONE",
+    "nullable": true,
+    "server_default": null,
+    "python_default": null,
+    "foreign_keys": [],
+    "source": {
+      "path": "backend/app/models/user.py",
+      "line": 25
+    }
+  },
+  {
+    "table": "workspace_provider_credentials",
+    "kind": "missing_table",
+    "columns": [
+      "id",
+      "org_id",
+      "provider",
+      "encrypted_secret",
+      "key_suffix",
+      "status",
+      "credential_mode",
+      "model",
+      "last_tested_at",
+      "last_used_at",
+      "created_at",
+      "updated_at"
+    ],
+    "source": {
+      "path": "backend/app/models/workspace_credential.py",
+      "line": 12
+    }
+  }
+]

@@ -35,7 +35,7 @@ import httpx
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.db.session import async_session_maker
+from app.db.session import worker_session_maker
 from app.models.leadgen import LeadGenJob, LeadGenLead
 
 logger = logging.getLogger(__name__)
@@ -120,14 +120,10 @@ def _load_checkpoint(job: LeadGenJob) -> Optional[dict]:
 
 
 def _is_private_host(host: str) -> bool:
-    host = (host or "").lower()
-    if not host or host == "localhost" or re.match(r"^.*\.(local|internal)$", host):
+    from app.services.security_service import is_safe_public_url
+    if not host:
         return True
-    try:
-        ip = ipaddress.ip_address(host)
-        return ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
-    except ValueError:
-        return False
+    return not is_safe_public_url(f"http://{host}")
 
 
 def _same_domain(a: str, b: str) -> bool:
@@ -161,25 +157,43 @@ def extract_links(html: str, base_url: str) -> List[str]:
     return links
 
 
-def parse_sitemap(sitemap_url: str, limit: int) -> List[str]:
-    """Parse a sitemap.xml (or sitemap index, one level) into page URLs."""
+def parse_sitemap(
+    sitemap_url: str,
+    limit: int,
+    visited: Optional[set] = None,
+    max_depth: int = 2,
+) -> List[str]:
+    """Parse a sitemap.xml (or sitemap index, up to max_depth) into page URLs safely."""
+    from app.services.security_service import is_safe_public_url, safe_http_get
+    if visited is None:
+        visited = set()
+    if sitemap_url in visited or max_depth <= 0 or limit <= 0:
+        return []
+    visited.add(sitemap_url)
+
     urls: List[str] = []
+    if not is_safe_public_url(sitemap_url):
+        logger.warning("SSRF blocked unsafe sitemap URL: %s", sitemap_url)
+        return []
     try:
-        resp = httpx.get(sitemap_url, timeout=20.0, follow_redirects=True)
+        resp = safe_http_get(sitemap_url, timeout=20.0)
         if resp.status_code != 200:
             return []
         root = ET.fromstring(resp.text)
         ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
         entries = root.findall(".//sm:loc", ns) or root.findall(".//loc")
         locs = [e.text.strip() for e in entries if e.text]
-        # sitemap index: fetch child sitemaps (one level)
+        # sitemap index: fetch child sitemaps (bounded recursion)
         if root.tag.endswith("sitemapindex"):
             for child in locs[:3]:
-                urls.extend(parse_sitemap(child, limit - len(urls)))
-                if len(urls) >= limit:
-                    break
+                if is_safe_public_url(child) and child not in visited:
+                    urls.extend(parse_sitemap(child, limit - len(urls), visited=visited, max_depth=max_depth - 1))
+                    if len(urls) >= limit:
+                        break
+                elif not is_safe_public_url(child):
+                    logger.warning("SSRF blocked unsafe child sitemap: %s", child)
         else:
-            urls = [u for u in locs if u.startswith(("http://", "https://"))][:limit]
+            urls = [u for u in locs if u.startswith(("http://", "https://")) and is_safe_public_url(u)][:limit]
     except Exception as e:
         logger.warning("sitemap parse failed %s: %s", sitemap_url, e)
     return urls
@@ -244,7 +258,7 @@ async def run_leadgen_job(job_id: str) -> None:
     boot_id = uuid.uuid4().hex[:12]
     started_ts = time.monotonic()
 
-    async with async_session_maker() as db:
+    async with worker_session_maker() as db:
         job = (await db.execute(select(LeadGenJob).where(LeadGenJob.id == job_id))).scalar_one_or_none()
         if not job or job.status in ("succeeded", "failed"):
             return
@@ -253,7 +267,7 @@ async def run_leadgen_job(job_id: str) -> None:
         if job.status == "running" and job.owner_boot_id and not str(job.owner_boot_id).startswith("claimed:"):
             return  # another active run owns it
 
-        resume_checkpoint = job.status == "paused"
+        resume_checkpoint = job.status == "paused" or bool(job.checkpoint_path)
         job.status = "running"
         job.owner_boot_id = boot_id
         job.started_at = job.started_at or _now()
@@ -286,7 +300,7 @@ async def run_leadgen_job(job_id: str) -> None:
 
 
 async def _fail_job(job_id: str, message: str) -> None:
-    async with async_session_maker() as db:
+    async with worker_session_maker() as db:
         job = (await db.execute(select(LeadGenJob).where(LeadGenJob.id == job_id))).scalar_one_or_none()
         if not job:
             return
@@ -297,13 +311,16 @@ async def _fail_job(job_id: str, message: str) -> None:
         sa = job.started_at.replace(tzinfo=timezone.utc) if job.started_at and job.started_at.tzinfo is None else job.started_at
         job.elapsed_ms = int((_now() - sa).total_seconds() * 1000) if sa else (job.elapsed_ms or 0)
         _append_log(job, f"> failed · {message[:200]}")
+        if job.credits_used and job.credits_used > 0:
+            from app.services.billing_service import refund
+            await refund(db, job.org_id, job.credits_used, f"leadgen_failed: {message[:100]}", job.id)
         await db.commit()
 
 
 async def _run_stages(job_id: str, boot_id: str, started_ts: float, resume_checkpoint: bool) -> None:
     from app.services import scrapling_engine as engine
 
-    async with async_session_maker() as db:
+    async with worker_session_maker() as db:
         job = (await db.execute(select(LeadGenJob).where(LeadGenJob.id == job_id))).scalar_one_or_none()
         if not job or job.owner_boot_id != boot_id:
             return
@@ -328,15 +345,21 @@ async def _run_stages(job_id: str, boot_id: str, started_ts: float, resume_check
 
         # ===== Stage 2: seed (defensive re-validation) =====
         _set_stage(job, "seed")
+        from app.services.security_service import is_safe_public_url
         queue: List[str] = []
         for u in seeds.get("urls", []):
-            host = (urlparse(u).hostname or "").lower()
-            if u.startswith(("http://", "https://")) and host and not _is_private_host(host):
+            if is_safe_public_url(u):
                 queue.append(u)
             else:
-                _append_log(job, f"> seed · rejected · {u}")
+                _append_log(job, f"> seed · rejected (SSRF/private URL) · {u}")
         sitemap = seeds.get("sitemap")
+        if sitemap and not is_safe_public_url(sitemap):
+            _append_log(job, f"> seed · rejected sitemap (SSRF/private URL) · {sitemap}")
+            sitemap = None
         shopify = seeds.get("shopify")
+        if shopify and not is_safe_public_url(shopify):
+            _append_log(job, f"> seed · rejected shopify (SSRF/private URL) · {shopify}")
+            shopify = None
         _append_log(job, f"> seed · urls={len(queue)} · sitemap={'yes' if sitemap else 'no'} · shopify={'yes' if shopify else 'no'}")
         if not queue and not sitemap and not shopify:
             await db.commit()
@@ -397,10 +420,12 @@ async def _run_stages(job_id: str, boot_id: str, started_ts: float, resume_check
         allow_url = job.mode in ("crawl", "digest")  # contact-signal uses recipe allow patterns
 
         while queue:
-            # Heartbeat / ownership / pause checks between URLs
-            fresh = (await db.execute(select(LeadGenJob).where(LeadGenJob.id == job_id))).scalar_one_or_none()
+            # Heartbeat / ownership / pause checks between URLs (F30)
+            fresh_stmt = select(LeadGenJob).execution_options(populate_existing=True).where(LeadGenJob.id == job_id)
+            fresh = (await db.execute(fresh_stmt)).scalar_one_or_none()
             if not fresh or fresh.owner_boot_id != boot_id:
                 return
+            await db.refresh(fresh)
             if fresh.status == "paused":
                 _save_checkpoint(fresh, queue, processed)
                 _append_log(fresh, f"> pause · checkpoint saved · {len(queue)} urls pending")
@@ -423,6 +448,9 @@ async def _run_stages(job_id: str, boot_id: str, started_ts: float, resume_check
                 return
 
             url = queue.pop(0)
+            if not is_safe_public_url(url):
+                _append_log(fresh, f"> fetch · rejected (unsafe/SSRF URL) · {url}")
+                continue
             _set_stage(fresh, "fetch")
             fresh.stage_label = f"Fetching {processed + 1}/{processed + len(queue) + 1}"
             await db.commit()
@@ -562,8 +590,7 @@ async def _run_stages(job_id: str, boot_id: str, started_ts: float, resume_check
                         break
                     if link in queued_now:
                         continue
-                    host_l = (urlparse(link).hostname or "").lower()
-                    if not host_l or _is_private_host(host_l):
+                    if not is_safe_public_url(link):
                         continue
                     if not _same_domain(link, url):
                         continue
@@ -588,16 +615,25 @@ def engine_sitemap_wrapper(sitemap_url: str, limit: int) -> List[str]:
 def shopify_discover(shopify_url: str) -> List[str]:
     """Shopify discovery: products.json index + contact/about pages.
     Recipe shopify-brand drives extraction selectors."""
+    from app.services.security_service import is_safe_public_url, safe_http_get
+    if not is_safe_public_url(shopify_url):
+        logger.warning("SSRF blocked unsafe shopify URL: %s", shopify_url)
+        return []
     base = shopify_url.rstrip("/")
     urls = [f"{base}/pages/contact", f"{base}/pages/about", f"{base}/policies/contact"]
+    urls = [u for u in urls if is_safe_public_url(u)]
     try:
-        r = httpx.get(f"{base}/products.json?limit=50", timeout=20.0, follow_redirects=True)
-        if r.status_code == 200:
-            data = r.json()
-            for p in (data.get("products") or [])[:50]:
-                handle = p.get("handle")
-                if handle:
-                    urls.append(f"{base}/products/{handle}")
+        products_url = f"{base}/products.json?limit=50"
+        if is_safe_public_url(products_url):
+            r = safe_http_get(products_url, timeout=20.0)
+            if r.status_code == 200:
+                data = r.json()
+                for p in (data.get("products") or [])[:50]:
+                    handle = p.get("handle")
+                    if handle:
+                        cand = f"{base}/products/{handle}"
+                        if is_safe_public_url(cand):
+                            urls.append(cand)
     except Exception as e:
         logger.warning("shopify discover failed %s: %s", base, e)
     return urls
@@ -608,7 +644,7 @@ def shopify_discover(shopify_url: str) -> List[str]:
 # ---------------------------------------------------------------------------
 
 async def _final_stages(job_id: str, started_ts: float) -> None:
-    async with async_session_maker() as db:
+    async with worker_session_maker() as db:
         job = (await db.execute(select(LeadGenJob).where(LeadGenJob.id == job_id))).scalar_one_or_none()
         if not job:
             return
@@ -625,7 +661,8 @@ async def _final_stages(job_id: str, started_ts: float) -> None:
                 from app.models.organization import Organization
                 org = (await db.execute(select(Organization).where(Organization.id == job.org_id))).scalar_one_or_none()
                 flags = (org.custom_feature_flags or {}) if org else {}
-                hunter_key = flags.get("hunter_api_key") or os.environ.get("HUNTER_API_KEY")
+                from app.services.security_service import safe_decrypt_secret
+                hunter_key = safe_decrypt_secret(flags.get("hunter_api_key")) or os.environ.get("HUNTER_API_KEY")
             except Exception:
                 hunter_key = None
 
@@ -775,7 +812,7 @@ async def _final_stages(job_id: str, started_ts: float) -> None:
 
 
 async def _finish(job_id: str, started_ts: float, message: str, failed: bool = False) -> None:
-    async with async_session_maker() as db:
+    async with worker_session_maker() as db:
         job = (await db.execute(select(LeadGenJob).where(LeadGenJob.id == job_id))).scalar_one_or_none()
         if not job:
             return
@@ -785,4 +822,7 @@ async def _finish(job_id: str, started_ts: float, message: str, failed: bool = F
         job.completed_at = _now()
         job.elapsed_ms = int((time.monotonic() - started_ts) * 1000)
         _append_log(job, f"> {'failed' if failed else 'done'} · {message[:300]}")
+        if failed and job.credits_used and job.credits_used > 0:
+            from app.services.billing_service import refund
+            await refund(db, job.org_id, job.credits_used, f"leadgen_failed: {message[:100]}", job.id)
         await db.commit()

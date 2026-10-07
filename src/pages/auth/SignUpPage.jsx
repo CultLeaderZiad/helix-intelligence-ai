@@ -94,10 +94,15 @@ export function SignUpPage() {
         utm_content: attribution.utm_content,
         referrer: attribution.referrer || attribution.ref,
       })
+      const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i
+      const cleanParam = (val, fallback) => {
+        if (!val || typeof val !== "string" || EMAIL_REGEX.test(val)) return fallback
+        return val
+      }
       track("signup", {
-        source: attribution.utm_source || "direct",
-        medium: attribution.utm_medium || "none",
-        campaign: attribution.utm_campaign || "none",
+        source: cleanParam(attribution.utm_source, "direct"),
+        medium: cleanParam(attribution.utm_medium, "none"),
+        campaign: cleanParam(attribution.utm_campaign, "none"),
       })
       clearAttribution()
       navigate(APP_HOME, { replace: true })

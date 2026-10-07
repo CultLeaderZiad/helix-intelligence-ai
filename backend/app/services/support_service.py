@@ -1,7 +1,7 @@
 import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, update
+from sqlalchemy import select, desc, update, func
 from fastapi import HTTPException, status
 
 from app.models.support_ticket import SupportTicket, SupportTicketReply
@@ -56,20 +56,34 @@ async def create_ticket(
     await db.commit()
     return ticket
 
-async def list_user_tickets(db: AsyncSession, user_id: str) -> List[Dict[str, Any]]:
+async def list_user_tickets(
+    db: AsyncSession,
+    user_id: str,
+    limit: int = 50,
+    offset: int = 0
+) -> List[Dict[str, Any]]:
     result = await db.execute(
         select(SupportTicket)
         .where(SupportTicket.user_id == user_id)
         .order_by(desc(SupportTicket.created_at))
+        .limit(limit)
+        .offset(offset)
     )
     tickets = result.scalars().all()
     
+    # Batch count replies to eliminate N+1 queries (F37)
+    replies_count_map = {}
+    if tickets:
+        ticket_ids = [t.id for t in tickets]
+        reply_counts = await db.execute(
+            select(SupportTicketReply.ticket_id, func.count(SupportTicketReply.id))
+            .where(SupportTicketReply.ticket_id.in_(ticket_ids))
+            .group_by(SupportTicketReply.ticket_id)
+        )
+        replies_count_map = {row[0]: row[1] for row in reply_counts.all()}
+
     out = []
     for t in tickets:
-        replies_count = await db.scalar(
-            select(func.count(SupportTicketReply.id)).where(SupportTicketReply.ticket_id == t.id)
-        ) if hasattr(func, "count") else 0
-        
         out.append({
             "id": t.id,
             "type": t.type,
@@ -77,6 +91,7 @@ async def list_user_tickets(db: AsyncSession, user_id: str) -> List[Dict[str, An
             "message": t.message,
             "status": t.status,
             "tag": t.tag,
+            "replies_count": replies_count_map.get(t.id, 0),
             "context_data": t.context_data or {},
             "created_at": t.created_at.isoformat() if t.created_at else "",
             "updated_at": t.updated_at.isoformat() if t.updated_at else ""
@@ -103,14 +118,21 @@ async def get_ticket_details(db: AsyncSession, ticket_id: str, current_user: Use
     )
     replies = replies_res.scalars().all()
 
+    # Batch fetch sender emails to eliminate N+1 queries (F37)
+    users_map = {}
+    sender_ids = list({r.user_id for r in replies if r.user_id})
+    if sender_ids:
+        users_res = await db.execute(select(User).where(User.id.in_(sender_ids)))
+        users_map = {u.id: u.email for u in users_res.scalars().all()}
+
     formatted_replies = []
     for r in replies:
-        sender = (await db.execute(select(User).where(User.id == r.user_id))).scalar_one_or_none()
+        sender_email = users_map.get(r.user_id, "Unknown")
         formatted_replies.append({
             "id": r.id,
             "ticket_id": r.ticket_id,
             "user_id": r.user_id,
-            "user_email": sender.email if sender else "Unknown",
+            "user_email": sender_email,
             "message": r.message,
             "is_admin": r.is_admin,
             "created_at": r.created_at.isoformat() if r.created_at else ""
@@ -218,7 +240,9 @@ async def update_ticket_status(db: AsyncSession, ticket_id: str, new_status: str
 async def list_admin_tickets(
     db: AsyncSession,
     status_filter: Optional[str] = None,
-    type_filter: Optional[str] = None
+    type_filter: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0
 ) -> List[Dict[str, Any]]:
     query = select(SupportTicket).order_by(desc(SupportTicket.created_at))
     if status_filter and status_filter != "all":
@@ -226,16 +250,24 @@ async def list_admin_tickets(
     if type_filter and type_filter != "all":
         query = query.where(SupportTicket.type == type_filter)
 
+    query = query.limit(limit).offset(offset)
     result = await db.execute(query)
     tickets = result.scalars().all()
 
+    # Batch fetch user emails to eliminate N+1 queries (F37)
+    users_map = {}
+    user_ids = list({t.user_id for t in tickets if t.user_id})
+    if user_ids:
+        users_res = await db.execute(select(User).where(User.id.in_(user_ids)))
+        users_map = {u.id: u.email for u in users_res.scalars().all()}
+
     out = []
     for t in tickets:
-        user = (await db.execute(select(User).where(User.id == t.user_id))).scalar_one_or_none()
+        user_email = users_map.get(t.user_id, "Unknown")
         out.append({
             "id": t.id,
             "user_id": t.user_id,
-            "user_email": user.email if user else "Unknown",
+            "user_email": user_email,
             "type": t.type,
             "subject": t.subject,
             "message": t.message,

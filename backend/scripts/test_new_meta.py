@@ -1,8 +1,11 @@
 import urllib.request
 import urllib.parse
-import json
+import os
 
-token = "EAATtZCPK8xY4BSTWcW8Oqk0v4pYvG03ONkpY7BiqyUfmEAPcb8Vfy0OjEY8yqVGMvA2gjjpsVItjzDiQdtRLjoZCvtxVEKup0DiGhG3lxJEfmvGWMYGDtQbd16ZBUgZBHfhfmOTDnqbISRDZBHr0rqLydnWMNWAtGstXwfPXmzgQK5ES9myxaXMMM5MYERSRIn2GtZA9IU3fry4GZBKL9IsrBYxXakZBrYXSC89PDFi5LRQURbBXXuxpJ3577kqaBU6D97BeHhGVDWJSTV45p4rA"
+token = os.environ.get("META_ACCESS_TOKEN", "")
+if not token:
+    print("Error: META_ACCESS_TOKEN environment variable is not set.")
+    exit(1)
 
 params = urllib.parse.urlencode({
     "access_token": token,

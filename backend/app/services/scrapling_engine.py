@@ -1,4 +1,4 @@
-﻿"""scrapling_engine - thin wrapper around the Scrapling library.
+"""scrapling_engine - thin wrapper around the Scrapling library.
 
 Engine id: scrapling_engine. Helix never imports Scrapling in the Vite app;
 only the worker (or the opt-in inline dev fallback) loads this module, and
@@ -47,18 +47,35 @@ def engine_header(engine: str) -> str:
 
 def robots_allowed(url: str) -> bool:
     """robots.txt gate. Disallow => blocked. If robots.txt is unreachable,
-    fall back to allow (standard crawler behavior)."""
+    fall back to allow (standard crawler behavior). Enforces a 5.0s timeout
+    and 500KB read limit to prevent hangs or memory exhaustion."""
     parsed = urlparse(url)
     origin = f"{parsed.scheme}://{parsed.netloc}"
     if origin in _ROBOTS_CACHE:
         entry = _ROBOTS_CACHE[origin]
         return True if entry is False else bool(entry.can_fetch("*", url))
+
+    robots_url = f"{origin}/robots.txt"
     rp = robotparser.RobotFileParser()
-    rp.set_url(f"{origin}/robots.txt")
+    rp.set_url(robots_url)
     try:
-        rp.read()
-        _ROBOTS_CACHE[origin] = rp
-        return bool(rp.can_fetch("*", url))
+        from app.services.security_service import is_safe_public_url
+        if not is_safe_public_url(robots_url):
+            _ROBOTS_CACHE[origin] = False
+            return True
+
+        import urllib.request
+        req = urllib.request.Request(
+            robots_url,
+            headers={"User-Agent": "HelixBot/1.0 (Mozilla/5.0 Compatible)"}
+        )
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
+            # 500KB read ceiling
+            content_bytes = resp.read(500 * 1024)
+            lines = content_bytes.decode("utf-8", errors="replace").splitlines()
+            rp.parse(lines)
+            _ROBOTS_CACHE[origin] = rp
+            return bool(rp.can_fetch("*", url))
     except Exception:
         _ROBOTS_CACHE[origin] = False
         return True
@@ -130,7 +147,40 @@ def fetch(
     if status >= 500 or status == 0:
         return {"fetch_status": "error", "status_code": status, "html": None, "url": final_url}
 
-    return {"fetch_status": "ok", "status_code": status, "html": html, "url": final_url}
+    captured_xhr = []
+    if capture_xhr_pattern and html:
+        try:
+            pattern = re.compile(capture_xhr_pattern, re.IGNORECASE)
+            raw_cands = re.findall(r"""(?:fetch|\.get|\.post|\.ajax|url)\s*\(\s*["']([^"']+)["']|href=["']([^"']+)["']|["']([^"']*\.json(?:\?[^"']*)?)["']""", html)
+            candidates = set()
+            for group in raw_cands:
+                for item in group:
+                    if item and item.strip():
+                        candidates.add(item.strip())
+            from urllib.parse import urljoin
+            from app.services.security_service import is_safe_public_url, safe_http_get
+            for cand in list(candidates)[:5]:
+                if pattern.search(cand):
+                    full_xhr_url = urljoin(final_url, cand)
+                    if is_safe_public_url(full_xhr_url):
+                        try:
+                            xhr_resp = safe_http_get(full_xhr_url, timeout=5.0, max_bytes=262144)
+                            if xhr_resp and xhr_resp.status_code == 200:
+                                xhr_text = xhr_resp.text
+                                html += f"\n<!-- XHR CAPTURE: {full_xhr_url} -->\n<div>{xhr_text}</div>"
+                                captured_xhr.append(full_xhr_url)
+                        except Exception as xhr_err:
+                            logger.debug("Failed to capture XHR %s: %s", full_xhr_url, xhr_err)
+        except Exception as err:
+            logger.warning("Error processing capture_xhr_pattern '%s': %s", capture_xhr_pattern, err)
+
+    return {
+        "fetch_status": "ok",
+        "status_code": status,
+        "html": html,
+        "url": final_url,
+        "captured_xhr": captured_xhr
+    }
 
 _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 _PHONE_RE = re.compile(r"(?<!\d)(?:\+?\d[\d\s\-()]{7,16}\d)(?!\d)")

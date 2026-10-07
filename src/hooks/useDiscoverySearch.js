@@ -58,13 +58,13 @@ export function useDiscoverySearch() {
     mounted.current = true
     return () => {
       mounted.current = false
-      if (pollRef.current) clearInterval(pollRef.current)
+      if (pollRef.current) clearTimeout(pollRef.current)
     }
   }, [])
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
-      clearInterval(pollRef.current)
+      clearTimeout(pollRef.current)
       pollRef.current = null
     }
   }, [])
@@ -116,10 +116,10 @@ export function useDiscoverySearch() {
       setPhase(PHASE.RUNNING)
       pollDeadlineRef.current = Date.now() + JOB_POLL_TIMEOUT_MS
 
-      // Poll. Every value the progress UI shows originates here.
-      pollRef.current = setInterval(async () => {
+      // Poll sequentially. Every value the progress UI shows originates here.
+      const pollStep = async () => {
         const jobId = activeJobId.current
-        if (!jobId) return
+        if (!jobId || !mounted.current) return
         // Polling ceiling: a job that has not finished within the timeout is
         // treated as stalled. Stop hammering the API and surface an honest
         // "taking longer than expected" state with retry — never poll forever.
@@ -142,14 +142,21 @@ export function useDiscoverySearch() {
             failure.kind = next.failure_kind ?? "error"
             setError(failure)
             setPhase(PHASE.ERROR)
+          } else {
+            // Schedule next hop sequentially once current poll completes
+            if (mounted.current && activeJobId.current === jobId) {
+              pollRef.current = setTimeout(pollStep, JOB_POLL_INTERVAL_MS)
+            }
           }
         } catch (err) {
-          if (!mounted.current) return
+          if (!mounted.current || activeJobId.current !== jobId) return
           stopPolling()
           setError(err)
           setPhase(PHASE.ERROR)
         }
-      }, JOB_POLL_INTERVAL_MS)
+      }
+
+      pollRef.current = setTimeout(pollStep, JOB_POLL_INTERVAL_MS)
     },
     [stopPolling, fetchResults],
   )

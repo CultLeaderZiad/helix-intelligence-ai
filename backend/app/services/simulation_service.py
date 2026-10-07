@@ -1,3 +1,4 @@
+from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException
@@ -7,6 +8,7 @@ import logging
 from app.schemas.simulation import SimulationReport, PRESET_SEGMENTS_BY_ID
 from app.models.simulation_report import SimulationReport as SimulationReportModel
 from app.models.creative import Creative
+from app.models.scrape_job import ScrapeJob
 from app.services.ai.ai_router import AIRouter
 from app.models.user import User
 from app.services.billing_service import (
@@ -27,12 +29,21 @@ async def simulate_creative_for_audiences(
     user: User,
     byok_key: str = None,
     byok_provider: str = None,
+    user_org_ids: Optional[List[str]] = None,
 ) -> SimulationReport:
     # 1. Fetch creative
     result = await db.execute(select(Creative).where(Creative.id == creative_id))
     creative_model = result.scalar_one_or_none()
     if not creative_model:
         raise HTTPException(status_code=404, detail="Creative not found")
+
+    # Tenant isolation: ensure creative belongs to caller's org(s) (F06)
+    if user_org_ids is not None:
+        job_org = (await db.execute(
+            select(ScrapeJob.org_id).where(ScrapeJob.id == creative_model.job_id)
+        )).scalar_one_or_none()
+        if job_org not in user_org_ids:
+            raise HTTPException(status_code=404, detail="Creative not found")
 
     # 2. Resolve preset personas — reject anything not in the fixed catalogue
     # rather than accepting free-text audience descriptions from the client.

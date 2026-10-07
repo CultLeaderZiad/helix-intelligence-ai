@@ -1,24 +1,39 @@
 import io
 import csv
-import asyncio
-from datetime import datetime, timezone
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Response
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Header
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
+from datetime import datetime, timezone
+from app.core.runtime import BOOT_ID
 from app.core.deps import get_db, get_current_user
 from app.models.user import User
-from app.models.organization import Organization
 from app.models.scout import ScoutJob, ScoutLead, ScoutMapsJob, ScoutMapsLead
-from app.services.billing_service import get_or_create_default_org, assert_can_spend, charge
+from app.services.billing_service import (
+    get_or_create_default_org,
+    assert_can_spend,
+    charge,
+    get_idempotent_operation,
+)
 from app.services.scout_service import run_scout_job_worker
 from app.services.scout_parse import parse_input_targets
 from app.services.maps_scout_service import run_maps_scout_worker
 
 router = APIRouter()
+
+
+def sanitize_csv_cell(val: object) -> object:
+    """Neutralize spreadsheet formula injection (OWASP CWE-1236)."""
+    if val is None:
+        return ""
+    if isinstance(val, str):
+        if val and val[0] in ("=", "+", "-", "@", "\t", "\r"):
+            return f"'{val}"
+        return val
+    return val
 
 # --- Request Schemas ---
 
@@ -50,7 +65,28 @@ async def create_scout_job(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
 ):
+    key = idempotency_key or x_idempotency_key
+    if key:
+        org = await get_or_create_default_org(db, current_user, lock_row=False)
+        existing_log = await get_idempotent_operation(db, org.id, key, "scout_job_start")
+        if existing_log and existing_log.job_id:
+            existing_job = (await db.execute(
+                select(ScoutJob).where(ScoutJob.id == existing_log.job_id)
+            )).scalar_one_or_none()
+            if existing_job:
+                return {
+                    "job_id": existing_job.id,
+                    "status": existing_job.status,
+                    "stage": existing_job.stage,
+                    "stage_label": existing_job.stage_label,
+                    "credits_used": existing_job.credits_used,
+                    "created_at": existing_job.created_at.isoformat() if existing_job.created_at else None,
+                    "idempotent_replay": True,
+                }
+
     raw_lines = [h.strip() for h in req.handles if h.strip()]
     if not raw_lines:
         raise HTTPException(status_code=400, detail="At least one handle or profile URL is required")
@@ -96,6 +132,8 @@ async def create_scout_job(
         stage_index=0,
         stages_total=4,
         credits_used=credit_cost if not is_admin else 0.0,
+        owner_boot_id=BOOT_ID,
+        heartbeat_at=datetime.now(timezone.utc),
         logs=[f"> job queued with {len(targets)} targets (category: {req.target_category or 'general'})"],
     )
     db.add(job)
@@ -108,6 +146,7 @@ async def create_scout_job(
             db=db, org=org, user_id=current_user.id, amount=credit_cost,
             provider="scout_social", operation="scout_job_start", units=1.0,
             cost_usd=0.0, job_id=job.id, metadata={"targets": target_count},
+            idempotency_key=key,
         )
 
     background_tasks.add_task(run_scout_job_worker, job.id)
@@ -320,7 +359,7 @@ async def export_scout_leads_csv(
         outreach = atlas.get("outreach", {}) or {}
         analysis = atlas.get("profile_analysis", {}) or {}
         scoring = atlas.get("lead_scoring", {}) or {}
-        writer.writerow([
+        writer.writerow([sanitize_csv_cell(x) for x in [
             l.handle,
             l.platform,
             l.name or "",
@@ -338,7 +377,7 @@ async def export_scout_leads_csv(
             outreach.get("email_body") or "",
             l.profile_url or "",
             l.bio or "",
-        ])
+        ]])
 
     output.seek(0)
     filename = f"helix_scout_atlas_leads_{job_id[:8]}.csv"
@@ -358,7 +397,31 @@ async def create_maps_job(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
 ):
+    key = idempotency_key or x_idempotency_key
+    if key:
+        org = await get_or_create_default_org(db, current_user, lock_row=False)
+        existing_log = await get_idempotent_operation(db, org.id, key, "scout_maps_job_start")
+        if existing_log and existing_log.job_id:
+            existing_job = (await db.execute(
+                select(ScoutMapsJob).where(ScoutMapsJob.id == existing_log.job_id)
+            )).scalar_one_or_none()
+            if existing_job:
+                return {
+                    "job_id": existing_job.id,
+                    "status": existing_job.status,
+                    "keyword": existing_job.keyword,
+                    "city": existing_job.city,
+                    "depth": existing_job.depth,
+                    "stage": existing_job.stage,
+                    "stage_label": existing_job.stage_label,
+                    "credits_used": existing_job.credits_used,
+                    "created_at": existing_job.created_at.isoformat() if existing_job.created_at else None,
+                    "idempotent_replay": True,
+                }
+
     depth = max(1, min(req.depth, 25))
     # Credits: 3.0 base + 0.2*depth + (1.0 if extract_emails) + (1.0 if pull_socials)
     credit_cost = 3.0 + (0.2 * depth) + (1.0 if req.extract_emails else 0.0) + (1.0 if req.pull_socials else 0.0)
@@ -390,6 +453,8 @@ async def create_maps_job(
         stage_index=0,
         stages_total=4,
         credits_used=credit_cost if not is_admin else 0.0,
+        owner_boot_id=BOOT_ID,
+        heartbeat_at=datetime.now(timezone.utc),
         logs=[f"> maps job queued: '{req.keyword}' in '{req.city}' (depth={depth})"],
     )
     db.add(job)
@@ -403,6 +468,7 @@ async def create_maps_job(
             provider="scout_maps", operation="scout_maps_job_start", units=1.0,
             cost_usd=0.0, job_id=job.id,
             metadata={"keyword": req.keyword, "city": req.city, "depth": depth},
+            idempotency_key=key,
         )
 
     background_tasks.add_task(run_maps_scout_worker, job.id)
@@ -621,7 +687,7 @@ async def export_maps_leads_csv(
         "Rating", "Reviews", "Instagram", "Facebook", "LinkedIn", "Twitter"
     ])
     for l in leads:
-        writer.writerow([
+        writer.writerow([sanitize_csv_cell(x) for x in [
             l.title,
             l.phone or "",
             l.email or "",
@@ -635,7 +701,7 @@ async def export_maps_leads_csv(
             l.facebook or "",
             l.linkedin or "",
             l.twitter or "",
-        ])
+        ]])
 
     output.seek(0)
     filename = f"helix_maps_leads_{job_id[:8]}.csv"
@@ -685,13 +751,16 @@ async def update_scout_settings(
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 
+    from app.services.security_service import encrypt_secret
     flags = dict(org.custom_feature_flags or {})
     if req.hunter_api_key is not None:
-        flags["hunter_api_key"] = req.hunter_api_key.strip()
-        flags["hunter_byok_configured"] = bool(req.hunter_api_key.strip())
+        raw_key = req.hunter_api_key.strip()
+        flags["hunter_api_key"] = encrypt_secret(raw_key) if raw_key else ""
+        flags["hunter_byok_configured"] = bool(raw_key)
     if req.linkedin_cookie is not None:
-        flags["linkedin_cookie"] = req.linkedin_cookie.strip()
-        flags["linkedin_byok_configured"] = bool(req.linkedin_cookie.strip())
+        raw_cookie = req.linkedin_cookie.strip()
+        flags["linkedin_cookie"] = encrypt_secret(raw_cookie) if raw_cookie else ""
+        flags["linkedin_byok_configured"] = bool(raw_cookie)
 
     org.custom_feature_flags = flags
     await db.commit()

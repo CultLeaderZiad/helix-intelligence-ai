@@ -14,9 +14,14 @@ from app.core.config import settings
 import uuid
 import datetime
 import hashlib
+import secrets
 import logging
+import re
+from urllib.parse import urlsplit
 
 logger = logging.getLogger(__name__)
+
+_EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
 
 
 def _normalize_email(email: str) -> str:
@@ -53,7 +58,20 @@ async def authenticate_user(db: AsyncSession, user_in: UserLogin) -> str:
             detail={"code": "user_suspended", "message": "This account has been suspended."}
         )
 
-    return create_access_token(subject=user.id, role=user.role)
+    metadata = getattr(user, "signup_metadata", None) or {}
+    token_version = metadata.get("token_version", 1)
+    return create_access_token(subject=user.id, role=user.role, token_version=token_version)
+
+async def revoke_user_sessions(db: AsyncSession, user: User) -> int:
+    """Increment the user's token version to immediately invalidate all existing sessions."""
+    metadata = dict(user.signup_metadata or {})
+    new_version = int(metadata.get("token_version", 1)) + 1
+    metadata["token_version"] = new_version
+    metadata["sessions_revoked_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    user.signup_metadata = metadata
+    await db.commit()
+    await db.refresh(user)
+    return new_version
 
 async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     raw_name = (user_in.name or "").strip()
@@ -67,15 +85,23 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     if result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
 
-    # Collect UTM and referral source attribution if present
-    signup_metadata = {}
+    # Collect UTM and referral source attribution if present, sanitizing PII (F71)
+    signup_metadata = {"token_version": 1}
     for field in ("utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "referrer"):
         val = getattr(user_in, field, None)
         if val:
-            signup_metadata[field] = str(val).strip()
+            s_val = str(val).strip()
+            if field == "referrer" and (s_val.startswith("http://") or s_val.startswith("https://")):
+                parts = urlsplit(s_val)
+                s_val = parts._replace(query="", fragment="").geturl()
+            # F71: Drop parameters containing email addresses to prevent PII leakage
+            if _EMAIL_PATTERN.search(s_val):
+                continue
+            signup_metadata[field] = s_val
 
-    if signup_metadata:
-        logger.info("Attribution captured for signup email=%s: %s", email, signup_metadata)
+    if len(signup_metadata) > 1:
+        # F71: Log anonymized attribution metadata without logging plain email alongside it
+        logger.info("Attribution captured for signup: fields=%s", [k for k in signup_metadata if k != "token_version"])
 
     now = datetime.datetime.now(datetime.timezone.utc)
     user = User(
@@ -150,42 +176,67 @@ async def request_password_reset(db: AsyncSession, email: str) -> User:
 
 async def reset_password(db: AsyncSession, token: str, new_password: str) -> User:
     """Validate a reset token and set a new password. Returns the user, or
-    raises 400 when the token is invalid, expired, or already used."""
+    raises 400 when the token is invalid, expired, or already used.
+    
+    Guarantees:
+    - Atomic validation and consumption with row lock.
+    - Stale or invalid links do NOT destroy newer active reset tokens (F18).
+    - Password reset revokes all prior user sessions (F19).
+    """
     payload = decode_password_reset_token(token)
-    if not payload:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "invalid_reset_token", "message": "This reset link is invalid or has expired. Please request a new one."})
+    if not payload or not payload.get("sub"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "invalid_reset_token", "message": "This reset link is invalid or has expired. Please request a new one."}
+        )
 
-    result = await db.execute(select(User).where(User.id == payload["sub"]))
+    # Row lock user record during validation to prevent concurrent race condition (F18)
+    result = await db.execute(
+        select(User).where(User.id == payload["sub"]).with_for_update()
+    )
     user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "invalid_reset_token", "message": "This reset link is invalid or has expired. Please request a new one."})
+    if not user or not user.password_reset_token_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "invalid_reset_token", "message": "This reset link is invalid or has expired. Please request a new one."}
+        )
 
-    if not user.password_reset_token_hash:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "invalid_reset_token", "message": "This reset link is invalid or has expired. Please request a new one."})
+    token_hash = _hash_reset_token(token)
+    if not secrets.compare_digest(token_hash, user.password_reset_token_hash):
+        # STALE or MISMATCHED token: reject request, but DO NOT clear user.password_reset_token_hash.
+        # This prevents stale links from invalidating newer links (F18).
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "invalid_reset_token", "message": "This reset link is invalid or has expired. Please request a new one."}
+        )
 
-    hash_ok = _hash_reset_token(token) == user.password_reset_token_hash
+    now = datetime.datetime.now(datetime.timezone.utc)
     if user.password_reset_expires_at is not None:
         exp = user.password_reset_expires_at
         if exp.tzinfo is None:
             exp = exp.replace(tzinfo=datetime.timezone.utc)
-        if exp.timestamp() < datetime.datetime.now(datetime.timezone.utc).timestamp():
-            hash_ok = False
+        if exp.timestamp() < now.timestamp():
+            # Current token is expired
+            user.password_reset_token_hash = None
+            user.password_reset_expires_at = None
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"code": "invalid_reset_token", "message": "This reset link is invalid or has expired. Please request a new one."}
+            )
 
-    if not hash_ok:
-        # Burn the stored token either way so a guessed/stale link can't be retried.
-        user.password_reset_token_hash = None
-        user.password_reset_expires_at = None
-        await db.commit()
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-            detail={"code": "invalid_reset_token", "message": "This reset link is invalid or has expired. Please request a new one."})
-
+    # Atomically redeem token and set new password
     user.password_hash = get_password_hash(new_password)
     user.password_reset_token_hash = None
     user.password_reset_expires_at = None
     user.has_completed_onboarding = True
+
+    # Revoke all previous sessions (F19)
+    metadata = dict(user.signup_metadata or {})
+    metadata["token_version"] = int(metadata.get("token_version", 1)) + 1
+    metadata["password_reset_at"] = now.isoformat()
+    user.signup_metadata = metadata
+
     await db.commit()
     await db.refresh(user)
     return user

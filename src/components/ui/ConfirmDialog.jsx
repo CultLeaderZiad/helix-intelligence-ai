@@ -19,19 +19,47 @@ export function ConfirmDialog({
   onCancel,
 }) {
   const confirmBtnRef = useRef(null)
+  const dialogRef = useRef(null)
+  const previouslyFocusedRef = useRef(null)
 
   useEffect(() => {
     if (!isOpen) return
+    previouslyFocusedRef.current = document.activeElement
+
     const handleKeyDown = (e) => {
       if (e.key === "Escape" && !isBusy) {
         onCancel?.()
+      } else if (e.key === "Tab") {
+        if (!dialogRef.current) return
+        const focusableElements = dialogRef.current.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+        if (!focusableElements.length) return
+        const firstElement = focusableElements[0]
+        const lastElement = focusableElements[focusableElements.length - 1]
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault()
+            lastElement.focus()
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault()
+            firstElement.focus()
+          }
+        }
       }
     }
+
     window.addEventListener("keydown", handleKeyDown)
     const timer = setTimeout(() => confirmBtnRef.current?.focus(), 50)
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
       clearTimeout(timer)
+      if (previouslyFocusedRef.current && typeof previouslyFocusedRef.current.focus === "function") {
+        previouslyFocusedRef.current.focus()
+      }
     }
   }, [isOpen, isBusy, onCancel])
 
@@ -51,6 +79,7 @@ export function ConfirmDialog({
       }}
     >
       <div
+        ref={dialogRef}
         className="w-full max-w-md rounded-xl border border-border bg-surface-2 p-5 shadow-2xl space-y-4"
       >
         <div className="flex items-start gap-3.5">

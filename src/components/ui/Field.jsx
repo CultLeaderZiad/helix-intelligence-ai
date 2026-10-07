@@ -37,7 +37,6 @@ export function PasswordInput({ className, disabled, ...props }) {
       />
       <button
         type="button"
-        tabIndex={-1}
         disabled={disabled}
         onClick={() => setVisible((v) => !v)}
         aria-label={visible ? "Hide password" : "Show password"}

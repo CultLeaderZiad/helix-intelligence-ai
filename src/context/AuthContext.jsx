@@ -75,19 +75,26 @@ export function AuthProvider({ children }) {
           setUser(session.user)
           setStatus(AUTH_STATUS.AUTHENTICATED)
         } else {
-          // If token was wiped by 401/403, drop to unauthenticated
-          if (!authService.getStoredToken()) {
-            setUser(null)
-            setStatus(AUTH_STATUS.UNAUTHENTICATED)
-          }
+          // If token was wiped or no user in session, drop to unauthenticated (F45)
+          setUser((curr) => {
+            if (!authService.getStoredToken() || !curr) {
+              setStatus(AUTH_STATUS.UNAUTHENTICATED)
+              return null
+            }
+            return curr
+          })
         }
       })
       .catch(() => {
         if (!active) return
-        if (!authService.getStoredToken()) {
-          setUser(null)
-          setStatus(AUTH_STATUS.UNAUTHENTICATED)
-        }
+        // If token was wiped or no user in state, reach terminal unauthenticated state (F45)
+        setUser((curr) => {
+          if (!authService.getStoredToken() || !curr) {
+            setStatus(AUTH_STATUS.UNAUTHENTICATED)
+            return null
+          }
+          return curr
+        })
       })
 
     const handleUnauthorized = () => {

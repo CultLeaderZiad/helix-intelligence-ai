@@ -28,13 +28,22 @@ async def generate_insight_for_creative(
     creative_id: str,
     user: User,
     byok_key: str = None,
-    byok_provider: str = None
+    byok_provider: str = None,
+    user_org_ids: Optional[List[str]] = None
 ) -> Insight:
     # 1. Fetch creative
     result = await db.execute(select(Creative).where(Creative.id == creative_id))
     creative_model = result.scalar_one_or_none()
     if not creative_model:
         raise HTTPException(status_code=404, detail="Creative not found")
+
+    # Tenant isolation: ensure creative belongs to caller's org(s) (F06)
+    if user_org_ids is not None:
+        job_org = (await db.execute(
+            select(ScrapeJob.org_id).where(ScrapeJob.id == creative_model.job_id)
+        )).scalar_one_or_none()
+        if job_org not in user_org_ids:
+            raise HTTPException(status_code=404, detail="Creative not found")
 
     # 2. Server-side credit & feature gate (if not using BYOK)
     cost = 0.0 if (byok_key and byok_provider) else ANALYSIS_PATTERN_CREDIT_COST
@@ -43,7 +52,7 @@ async def generate_insight_for_creative(
         user=user,
         required_credits=cost,
         feature_name="intelligence",
-        lock_row=True
+        lock_row=False
     )
         
     provider = await AIRouter.get_provider_for_user(db, user, byok_key, byok_provider)
@@ -90,13 +99,22 @@ async def generate_insight_for_creative(
         # 4. Save to DB. If persistence fails after a charge, refund —
         # the user must never pay for an insight they did not receive.
         try:
+            reasons_payload = {
+                "emotional_resonance": getattr(insight_schema, "emotional_resonance", None),
+                "script_teardown": getattr(insight_schema, "script_teardown", None),
+                "fatigue_prediction": getattr(insight_schema, "fatigue_prediction", None),
+                "key_elements": getattr(insight_schema, "key_elements", None),
+                "recommendations": getattr(insight_schema, "recommendations", None),
+            }
             new_insight = AIInsight(
                 id=insight_schema.id,
                 creative_id=creative_id,
                 kind=insight_schema.kind,
                 title=insight_schema.title,
                 summary=insight_schema.summary,
+                reasons=reasons_payload,
                 confidence=insight_schema.confidence,
+                evidence_creative_ids=insight_schema.evidence_creative_ids or [creative_id],
                 model_version=insight_schema.model_version
             )
             db.add(new_insight)
@@ -107,72 +125,17 @@ async def generate_insight_for_creative(
             raise
         
         return insight_schema
-    except HTTPException as he:
-        if he.status_code != 503:
-            raise
-        # If 503 provider failure, fall through to resilient calibrated generation
-        logger.warning(f"Provider 503 in insight generation: {he.detail}. Using semantic fallback.")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(
-            "AI insight generation provider failed (creative=%s user=%s): %s. Building semantic fallback.",
+            "AI insight generation provider failed (creative=%s user=%s): %s",
             creative_id, user.id, e,
         )
-
-    # Resilient Semantic Fallback: Construct calibrated strategic teardown directly from ad copy
-    headline = (creative_model.headline or "").strip()
-    body = (creative_model.body or "").strip()
-    cta = (creative_model.cta or "Shop Now").strip()
-    days = creative_model.days_active or 1
-    sentences = [s.strip() for s in body.replace("\n", ". ").split(".") if len(s.strip()) > 8]
-
-    hook_preview = headline or (sentences[0] if sentences else "Pattern Interrupt")
-    problem_preview = sentences[1] if len(sentences) > 1 else "Core customer frustration or misconception"
-    solution_preview = sentences[2] if len(sentences) > 2 else "Unique mechanism and transformation promise"
-    durability_tier = "High Durability Evergreen" if days >= 14 else "Active Testing Phase"
-
-    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    fallback_schema = Insight(
-        id=f"insight_{int(datetime.datetime.now().timestamp() * 1000)}",
-        creative_id=creative_id,
-        kind="opportunity",
-        title=f"Contrarian Paradigm Shift ({durability_tier})",
-        summary=f"Hooks viewers by attacking conventional wisdom ('{hook_preview[:70]}...'), isolating the root problem before revealing the proprietary transformation.",
-        confidence=0.92,
-        evidence_creative_ids=[creative_id],
-        model_version="helix-analysis-engine",
-        generated_at=now_iso,
-        emotional_resonance=(
-            "Taps into frustration and skepticism reversal. By declaring that the audience's prior failures were not their fault, "
-            "it disarms defensive guards and establishes deep trust and immediate emotional relief."
-        ),
-        script_teardown=(
-            f"• [0-3s Hook / Disruption]: {hook_preview}\n"
-            f"• [3-12s Agitation / Pivot]: Challenges common beliefs: '{problem_preview}'. Validates viewer anxiety.\n"
-            f"• [12-24s Mechanism / Proof]: Introduces the unique mechanism: '{solution_preview}'. Establishes authority credentials.\n"
-            f"• [24s+ Conversion Direct]: Friction-free call to action with risk-reversal guarantee: '{cta}'."
-        ),
-        fatigue_prediction=(
-            f"Active for {days} days on {creative_model.platform}. Sustained runtime demonstrates proven unit economics. "
-            "Recommended iteration: test 3 new 0-3s visual hooks while keeping this proven core offer script intact."
-        ),
-    )
-
-    try:
-        new_insight = AIInsight(
-            id=fallback_schema.id,
-            creative_id=creative_id,
-            kind=fallback_schema.kind,
-            title=fallback_schema.title,
-            summary=fallback_schema.summary,
-            confidence=fallback_schema.confidence,
-            model_version=fallback_schema.model_version
+        raise HTTPException(
+            status_code=503,
+            detail=f"AI insight generation service is temporarily unavailable: {str(e)}"
         )
-        db.add(new_insight)
-        await db.commit()
-    except Exception:
-        pass
-
-    return fallback_schema
         
 async def scoped_creative_ids(db: AsyncSession, user_org_ids: List[str]) -> List[str]:
     """Creative ids belonging to the caller's org(s) - the join path for insight
@@ -213,20 +176,27 @@ async def get_creative_insight(db: AsyncSession, creative_id: str, user_org_ids:
     result = await db.execute(select(AIInsight).where(AIInsight.creative_id == creative_id))
     insights = result.scalars().all()
     
-    items = [
-        Insight(
-            id=insight.id,
-            creative_id=insight.creative_id,
-            kind=insight.kind or "opportunity",
-            title=insight.title or "",
-            summary=insight.summary or "",
-            confidence=insight.confidence or 1.0,
-            evidence_creative_ids=[insight.creative_id],
-            generated_at=insight.created_at.isoformat() + "Z" if insight.created_at else "",
-            model_version=insight.model_version or "v1.0"
+    items = []
+    for insight in insights:
+        reasons = insight.reasons if isinstance(insight.reasons, dict) else {}
+        items.append(
+            Insight(
+                id=insight.id,
+                creative_id=insight.creative_id,
+                kind=insight.kind or "opportunity",
+                title=insight.title or "",
+                summary=insight.summary or "",
+                confidence=insight.confidence or 1.0,
+                evidence_creative_ids=insight.evidence_creative_ids or [insight.creative_id],
+                generated_at=insight.generated_at or (insight.created_at.isoformat() + "Z" if getattr(insight, "created_at", None) else ""),
+                model_version=insight.model_version or "v1.0",
+                emotional_resonance=reasons.get("emotional_resonance"),
+                script_teardown=reasons.get("script_teardown"),
+                fatigue_prediction=reasons.get("fatigue_prediction"),
+                key_elements=reasons.get("key_elements"),
+                recommendations=reasons.get("recommendations"),
+            )
         )
-        for insight in insights
-    ]
     
     return Paginated(
         items=items,
@@ -271,20 +241,27 @@ async def list_insights(db: AsyncSession, page: int = 1, page_size: int = 20, us
     result = await db.execute(query)
     insights = result.scalars().all()
 
-    items = [
-        Insight(
-            id=insight.id,
-            creative_id=insight.creative_id,
-            kind=insight.kind or "opportunity",
-            title=insight.title or "",
-            summary=insight.summary or "",
-            confidence=insight.confidence or 1.0,
-            evidence_creative_ids=[insight.creative_id],
-            generated_at=insight.created_at.isoformat() + "Z" if insight.created_at else "",
-            model_version=insight.model_version or "v1.0"
+    items = []
+    for insight in insights:
+        reasons = insight.reasons if isinstance(insight.reasons, dict) else {}
+        items.append(
+            Insight(
+                id=insight.id,
+                creative_id=insight.creative_id,
+                kind=insight.kind or "opportunity",
+                title=insight.title or "",
+                summary=insight.summary or "",
+                confidence=insight.confidence or 1.0,
+                evidence_creative_ids=insight.evidence_creative_ids or [insight.creative_id],
+                generated_at=insight.generated_at or (insight.created_at.isoformat() + "Z" if getattr(insight, "created_at", None) else ""),
+                model_version=insight.model_version or "v1.0",
+                emotional_resonance=reasons.get("emotional_resonance"),
+                script_teardown=reasons.get("script_teardown"),
+                fatigue_prediction=reasons.get("fatigue_prediction"),
+                key_elements=reasons.get("key_elements"),
+                recommendations=reasons.get("recommendations"),
+            )
         )
-        for insight in insights
-    ]
 
     return Paginated(
         items=items,

@@ -1,6 +1,8 @@
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, JSON, Index
-from app.db.base import Base
 import uuid
+from datetime import datetime, timezone
+import sqlalchemy as sa
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, JSON, Index, Float, func
+from app.db.base import Base
 
 
 def generate_uuid():
@@ -20,28 +22,28 @@ class Monitor(Base):
 
     name = Column(String, nullable=False)
     query = Column(String, nullable=False)
-    filters = Column(JSON, default=dict)
+    filters = Column(JSON, default=dict, server_default="{}", nullable=False)
 
     # 'every_6h' | 'every_12h' | 'daily' | 'weekly'
-    cadence = Column(String, nullable=False, default="daily")
+    cadence = Column(String, nullable=False, default="daily", server_default="daily")
     # 'active' | 'paused'
-    status = Column(String, nullable=False, default="active")
+    status = Column(String, nullable=False, default="active", server_default="active")
     paused_reason = Column(String, nullable=True)
 
-    notify_in_app = Column(Boolean, default=True, nullable=False)
-    notify_email = Column(Boolean, default=False, nullable=False)
+    notify_in_app = Column(Boolean, default=True, server_default=sa.true(), nullable=False)
+    notify_email = Column(Boolean, default=False, server_default=sa.false(), nullable=False)
 
     next_run_at = Column(DateTime(timezone=True), nullable=True)
     last_run_at = Column(DateTime(timezone=True), nullable=True)
     last_job_id = Column(String, nullable=True)
-    consecutive_failures = Column(Integer, default=0, nullable=False)
+    consecutive_failures = Column(Integer, default=0, server_default="0", nullable=False)
 
     # Until the first run completes there is nothing to compare against, so the
     # first run only records a baseline and deliberately emits no events.
     baseline_at = Column(DateTime(timezone=True), nullable=True)
 
-    created_at = Column(DateTime(timezone=True), nullable=False)
-    updated_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), onupdate=func.now(), nullable=False)
 
 
 class MonitorRun(Base):
@@ -54,21 +56,21 @@ class MonitorRun(Base):
     job_id = Column(String, nullable=True)
 
     # 'running' | 'succeeded' | 'failed' | 'skipped'
-    status = Column(String, nullable=False, default="running")
-    started_at = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String, nullable=False, default="running", server_default="running")
+    started_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
     finished_at = Column(DateTime(timezone=True), nullable=True)
 
-    creatives_seen = Column(Integer, default=0, nullable=False)
-    new_count = Column(Integer, default=0, nullable=False)
-    killed_count = Column(Integer, default=0, nullable=False)
-    changed_count = Column(Integer, default=0, nullable=False)
+    creatives_seen = Column(Integer, default=0, server_default="0", nullable=False)
+    new_count = Column(Integer, default=0, server_default="0", nullable=False)
+    killed_count = Column(Integer, default=0, server_default="0", nullable=False)
+    changed_count = Column(Integer, default=0, server_default="0", nullable=False)
 
-    is_baseline = Column(Boolean, default=False, nullable=False)
+    is_baseline = Column(Boolean, default=False, server_default=sa.false(), nullable=False)
     # Set when the run produced no usable comparison — e.g. the scrape returned
     # nothing, so "every ad disappeared" would be a lie rather than a finding.
     skipped_reason = Column(String, nullable=True)
     error = Column(String, nullable=True)
-    credits_charged = Column(String, nullable=True)
+    credits_charged = Column(Float, default=0.0, server_default="0.0", nullable=False)
 
 
 class MonitorCreative(Base):
@@ -88,14 +90,14 @@ class MonitorCreative(Base):
     content_hash = Column(String, nullable=False)
 
     # 'active' | 'gone'
-    status = Column(String, nullable=False, default="active")
+    status = Column(String, nullable=False, default="active", server_default="active")
     # Consecutive runs this identity was absent. A single absence is usually a
     # flaky scrape rather than a paused ad, so killed_ad waits for this to
     # cross a threshold.
-    missed_runs = Column(Integer, default=0, nullable=False)
+    missed_runs = Column(Integer, default=0, server_default="0", nullable=False)
 
-    first_seen_at = Column(DateTime(timezone=True), nullable=False)
-    last_seen_at = Column(DateTime(timezone=True), nullable=False)
+    first_seen_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
+    last_seen_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
 
     creative_id = Column(String, nullable=True)
     platform = Column(String, nullable=True)
@@ -133,7 +135,7 @@ class MonitorEvent(Base):
     # For copy_changed: the previous headline/body/cta, so the UI can show a diff.
     previous = Column(JSON, nullable=True)
 
-    created_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
 
     __table_args__ = (
         Index("ix_monitor_events_monitor_created", "monitor_id", "created_at"),

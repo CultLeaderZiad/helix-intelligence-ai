@@ -10,6 +10,17 @@ from app.models.organization import Organization
 from app.models.user import User
 from app.services.billing_service import check_quota_and_feature, get_or_create_default_org
 
+def _format_utc_iso(dt: Optional[datetime.datetime]) -> Optional[str]:
+    """Properly formats datetime into ISO UTC string without invalid +00:00Z suffix (F69)."""
+    if not dt:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=datetime.timezone.utc)
+    else:
+        dt = dt.astimezone(datetime.timezone.utc)
+    return dt.isoformat().replace("+00:00", "Z")
+
+
 async def list_team(db: AsyncSession, user: User) -> Dict[str, Any]:
     # 1. Check feature flag 'team_accounts'
     await check_quota_and_feature(db, user, feature_name="team_accounts", required_credits=0.0)
@@ -32,7 +43,7 @@ async def list_team(db: AsyncSession, user: User) -> Dict[str, Any]:
             "user_id": u.id,
             "email": u.email,
             "role": m.role,
-            "joined_at": m.created_at.isoformat() + "Z" if m.created_at else ""
+            "joined_at": _format_utc_iso(m.created_at) or ""
         }
         for m, u in member_rows
     ]
@@ -45,7 +56,7 @@ async def list_team(db: AsyncSession, user: User) -> Dict[str, Any]:
             "user_id": owner_user.id,
             "email": owner_user.email,
             "role": "owner",
-            "joined_at": org.created_at.isoformat() + "Z" if hasattr(org, "created_at") and org.created_at else ""
+            "joined_at": _format_utc_iso(org.created_at) or ""
         })
 
     # Fetch pending invites
@@ -67,21 +78,40 @@ async def list_team(db: AsyncSession, user: User) -> Dict[str, Any]:
                 "role": inv.role,
                 "token": inv.token,
                 "status": inv.status,
-                "created_at": inv.created_at.isoformat() + "Z" if inv.created_at else "",
-                "expires_at": inv.expires_at.isoformat() + "Z" if inv.expires_at else ""
+                "created_at": _format_utc_iso(inv.created_at) or "",
+                "expires_at": _format_utc_iso(inv.expires_at) or ""
             }
             for inv in invites
         ]
     }
+
+async def _check_team_management_permission(db: AsyncSession, org: Organization, user: User) -> None:
+    """Verifies that user is either the organization owner or an admin member."""
+    if org.owner_id == user.id:
+        return
+    caller_member = (await db.execute(
+        select(OrganizationMember).where(
+            OrganizationMember.org_id == org.id,
+            OrganizationMember.user_id == user.id,
+            OrganizationMember.role.in_(["owner", "admin"])
+        )
+    )).scalar_one_or_none()
+    if not caller_member:
+        raise HTTPException(
+            status_code=403,
+            detail="Only organization owners and administrators can manage team invitations and members"
+        )
+
 
 async def invite_member(db: AsyncSession, user: User, email: str, role: str = "member") -> Dict[str, Any]:
     # 1. Check feature flag 'team_accounts'
     await check_quota_and_feature(db, user, feature_name="team_accounts", required_credits=0.0)
 
     org = await get_or_create_default_org(db, user)
+    await _check_team_management_permission(db, org, user)
 
     # Check if already member
-    existing_user = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+    existing_user = (await db.execute(select(User).where(User.email == email.strip().lower()))).scalar_one_or_none()
     if existing_user:
         is_member = (await db.execute(
             select(OrganizationMember).where(OrganizationMember.org_id == org.id, OrganizationMember.user_id == existing_user.id)
@@ -95,7 +125,7 @@ async def invite_member(db: AsyncSession, user: User, email: str, role: str = "m
 
     invite = OrganizationInvite(
         org_id=org.id,
-        email=email,
+        email=email.strip().lower(),
         role=role,
         invited_by_user_id=user.id,
         token=token,
@@ -106,6 +136,30 @@ async def invite_member(db: AsyncSession, user: User, email: str, role: str = "m
     await db.commit()
     await db.refresh(invite)
 
+    # Send transactional invitation email (F46)
+    from app.services.email_service import send_email
+    from app.core.config import settings
+    frontend_url = getattr(settings, "FRONTEND_URL", "https://app.helixintelligence.ai")
+    invite_url = f"{frontend_url}/team/accept?token={token}"
+    email_body = f"""Hello,
+
+You have been invited to join the team '{org.name}' on Helix Intelligence.
+
+Click the link below to accept the invitation and access the shared workspace:
+{invite_url}
+
+This invitation will expire in 7 days.
+"""
+    try:
+        await send_email(
+            to_email=email,
+            subject=f"Invitation to join {org.name} on Helix Intelligence",
+            body_text=email_body
+        )
+    except Exception as email_err:
+        import logging
+        logging.getLogger(__name__).warning(f"Failed to dispatch team invite email to {email}: {email_err}")
+
     return {
         "success": True,
         "message": f"Invitation sent to {email}",
@@ -115,6 +169,8 @@ async def invite_member(db: AsyncSession, user: User, email: str, role: str = "m
 
 async def cancel_invite(db: AsyncSession, user: User, invite_id: str) -> Dict[str, Any]:
     org = await get_or_create_default_org(db, user)
+    await _check_team_management_permission(db, org, user)
+
     invite = (await db.execute(
         select(OrganizationInvite).where(OrganizationInvite.id == invite_id, OrganizationInvite.org_id == org.id)
     )).scalar_one_or_none()
@@ -127,12 +183,20 @@ async def cancel_invite(db: AsyncSession, user: User, invite_id: str) -> Dict[st
     return {"success": True, "message": "Invitation canceled"}
 
 async def accept_invite(db: AsyncSession, token: str, user: User) -> Dict[str, Any]:
+    # 1. Row-lock invite with FOR UPDATE to prevent concurrent double-acceptance (F47)
     invite = (await db.execute(
-        select(OrganizationInvite).where(OrganizationInvite.token == token, OrganizationInvite.status == "pending")
+        select(OrganizationInvite).where(OrganizationInvite.token == token, OrganizationInvite.status == "pending").with_for_update()
     )).scalar_one_or_none()
 
     if not invite:
         raise HTTPException(status_code=404, detail="Invalid or expired invitation")
+
+    # 2. Bind strictly to intended recipient email (F47)
+    if invite.email.strip().lower() != user.email.strip().lower():
+        raise HTTPException(
+            status_code=403,
+            detail="This invitation was issued to a different email address. Please sign in with the invited email account."
+        )
 
     now = datetime.datetime.now(datetime.timezone.utc)
     if invite.expires_at.tzinfo is None:
@@ -145,11 +209,33 @@ async def accept_invite(db: AsyncSession, token: str, user: User) -> Dict[str, A
         await db.commit()
         raise HTTPException(status_code=400, detail="Invitation has expired")
 
-    # Add member
+    org = (await db.execute(select(Organization).where(Organization.id == invite.org_id))).scalar_one_or_none()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+
+    # 3. Check if user is owner or already a member
+    if org.owner_id == user.id:
+        invite.status = "accepted"
+        await db.commit()
+        return {"success": True, "message": "You are the owner of this organization", "org_id": invite.org_id}
+
+    existing_member = (await db.execute(
+        select(OrganizationMember).where(
+            OrganizationMember.org_id == invite.org_id,
+            OrganizationMember.user_id == user.id
+        )
+    )).scalar_one_or_none()
+
+    if existing_member:
+        invite.status = "accepted"
+        await db.commit()
+        return {"success": True, "message": "Already a member of this organization", "org_id": invite.org_id}
+
+    # 4. Atomically insert member and mark invite accepted
     new_member = OrganizationMember(
         org_id=invite.org_id,
         user_id=user.id,
-        role=invite.role
+        role=invite.role or "member"
     )
     db.add(new_member)
     invite.status = "accepted"
@@ -159,10 +245,7 @@ async def accept_invite(db: AsyncSession, token: str, user: User) -> Dict[str, A
 
 async def remove_member(db: AsyncSession, user: User, member_id: str) -> Dict[str, Any]:
     org = await get_or_create_default_org(db, user)
-
-    # Check caller is org owner
-    if org.owner_id != user.id:
-        raise HTTPException(status_code=403, detail="Only the organization owner can remove team members")
+    await _check_team_management_permission(db, org, user)
 
     member = (await db.execute(
         select(OrganizationMember).where(OrganizationMember.id == member_id, OrganizationMember.org_id == org.id)

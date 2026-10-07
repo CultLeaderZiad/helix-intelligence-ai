@@ -3,7 +3,10 @@ import urllib.request
 import urllib.parse
 import os
 
-token = "EAATtZCPK8xY4BSSvOOtBEvBvO8akJ50iqrZCjmRBCcGZCGuWdzFEGyHmanv1KS0lQwVuJZBHPQnPFJFjk9oefeongX3hK28u3XPX2VbzJzFlRZAltVZCNRBc2YyqZCXBCVtZAGKbxltwkfZADz2N1UjDbH8cxZB7GRPcY1UUyoWEfUd6ziHSpyHGdCzNN2L7Ng"
+token = os.environ.get("META_ACCESS_TOKEN", "")
+if not token:
+    print("Error: META_ACCESS_TOKEN environment variable is not set.")
+    exit(1)
 
 def call(url):
     req = urllib.request.Request(url, headers={"User-Agent": "Helix/1.0"})

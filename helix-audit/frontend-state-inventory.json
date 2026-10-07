@@ -1,0 +1,455 @@
+[
+  {
+    "file": "src/components/AdminBroadcastModal.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/components/NotificationBell.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [
+      "F36"
+    ],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/components/SupportFeedbackModal.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/components/UpdatesBanner.jsx",
+    "loading_signals": false,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/hooks/useAdminOverview.js",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/hooks/useAsync.js",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/hooks/useDiscoverySearch.js",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [
+      "F68"
+    ],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/hooks/useLeadGenJob.js",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [
+      "F57"
+    ],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/hooks/useMapsScoutSearch.js",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/hooks/useMediaGenerate.js",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/hooks/useMonitors.js",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/hooks/useScoutSearch.js",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/hooks/useSimulation.js",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/ApiKeysPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/BillingPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [
+      "F79"
+    ],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/CreatePage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/DashboardPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [
+      "F56"
+    ],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/DiscoverPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/GuidePage.jsx",
+    "loading_signals": false,
+    "empty_signals": false,
+    "error_signals": false,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/IntelligencePage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [
+      "F41",
+      "F42",
+      "F44"
+    ],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/LandingPage.jsx",
+    "loading_signals": false,
+    "empty_signals": false,
+    "error_signals": false,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/MonitorsPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/NotFoundPage.jsx",
+    "loading_signals": false,
+    "empty_signals": true,
+    "error_signals": false,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/NotificationsPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/PendingLoopPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": false,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/PerformancePage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [
+      "F35",
+      "F57"
+    ],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/ProfileSettingsPage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/PublicPlaybookPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/PublicUpdatesPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/ScoutLeadGenerationPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/ScoutPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/SupportPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/SwipeFilesPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/TeamPage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/AdminPendingPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": false,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/AuditLogPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/DataSourcesPage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/FeatureFlagsPage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/OrganizationsPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/OverviewPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/ScrapeJobsPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/SubscriptionsPlansPage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/SupportAdminPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/SystemHealthPage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/UpdatesPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/UsagePage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/admin/UsersPage.jsx",
+    "loading_signals": true,
+    "empty_signals": true,
+    "error_signals": true,
+    "finding_ids": [
+      "F51"
+    ],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/auth/ForgotPasswordPage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/auth/ResetPasswordPage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/auth/SignInPage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/auth/SignUpPage.jsx",
+    "loading_signals": true,
+    "empty_signals": false,
+    "error_signals": true,
+    "finding_ids": [
+      "F71"
+    ],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/docs/DocsDetailPage.jsx",
+    "loading_signals": false,
+    "empty_signals": false,
+    "error_signals": false,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/docs/DocsHomePage.jsx",
+    "loading_signals": false,
+    "empty_signals": true,
+    "error_signals": false,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  },
+  {
+    "file": "src/pages/docs/ScoutCliDocsPage.jsx",
+    "loading_signals": false,
+    "empty_signals": false,
+    "error_signals": false,
+    "finding_ids": [],
+    "note": "Static signal inventory, not proof that all UI states render correctly."
+  }
+]

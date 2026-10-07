@@ -30,7 +30,12 @@ from app.core.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.leadgen import LeadGenJob, LeadGenLead, LeadGenWorkerHeartbeat
 from app.schemas.leadgen import CreateLeadGenJobRequest, LeadGenJobEnvelope
-from app.services.billing_service import get_or_create_default_org
+from app.services.billing_service import (
+    get_or_create_default_org,
+    assert_can_spend,
+    charge,
+    get_idempotent_operation,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -187,8 +192,41 @@ async def _get_owned_job(db: AsyncSession, job_id: str, user: User) -> LeadGenJo
     return job
 
 
-def _is_worker_available() -> bool:
-    return bool(settings.SCRAPLING_WORKER_ENABLED or settings.SCRAPLING_INLINE_WORKER)
+async def _is_worker_available(db: AsyncSession) -> bool:
+    """Verifies that a live Scrapling worker exists (fresh heartbeat or live ping) before queuing work (F26)."""
+    # 1. Inline dev worker is active in-process
+    if settings.SCRAPLING_INLINE_WORKER:
+        return True
+
+    if not settings.SCRAPLING_WORKER_ENABLED:
+        return False
+
+    # 2. Check direct worker HTTP health endpoint if configured
+    if settings.SCRAPLING_WORKER_URL:
+        try:
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                r = await client.get(settings.SCRAPLING_WORKER_URL.rstrip("/") + "/health")
+                if r.status_code == 200:
+                    return True
+        except Exception:
+            pass  # fall through to DB heartbeat check
+
+    # 3. Check fresh DB heartbeat from Scrapling worker
+    try:
+        hb = (await db.execute(
+            select(LeadGenWorkerHeartbeat).where(LeadGenWorkerHeartbeat.id == "scrapling_worker")
+        )).scalar_one_or_none()
+        if hb and hb.updated_at:
+            updated = hb.updated_at
+            if updated.tzinfo is None:
+                updated = updated.replace(tzinfo=timezone.utc)
+            age_s = (datetime.now(timezone.utc) - updated).total_seconds()
+            if age_s <= settings.SCRAPLING_HEARTBEAT_FRESH_S:
+                return True
+    except Exception as e:
+        logger.warning("Error checking worker heartbeat: %s", e)
+
+    return False
 
 
 def _lead_to_dict(l: LeadGenLead) -> dict:
@@ -225,8 +263,21 @@ async def create_leadgen_job(
     req: CreateLeadGenJobRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    x_idempotency_key: Optional[str] = Header(None, alias="X-Idempotency-Key"),
 ):
     """Stage 4.1 brief + 4.2 seed validation, credit charge, enqueue."""
+    key = idempotency_key or x_idempotency_key
+    if key:
+        org = await get_or_create_default_org(db, current_user, lock_row=False)
+        existing_log = await get_idempotent_operation(db, org.id, key, "leadgen_job_start")
+        if existing_log and existing_log.job_id:
+            existing_job = (await db.execute(
+                select(LeadGenJob).where(LeadGenJob.id == existing_log.job_id)
+            )).scalar_one_or_none()
+            if existing_job:
+                return _job_envelope(existing_job)
+
     # --- 4.1 Brief validation ---
     brief = req.brief
     if not brief.icp or len(brief.icp.strip()) < 3:
@@ -241,13 +292,13 @@ async def create_leadgen_job(
     # --- 4.2 Seed validation (SSRF / scheme guards) ---
     normalized = _normalize_seeds(req.seeds)
 
-    # --- Worker gate: never queue work nothing will claim ---
-    if not _is_worker_available():
+    # --- Worker gate: never queue work nothing will claim (F26) ---
+    if not await _is_worker_available(db):
         raise HTTPException(
             status_code=503,
             detail={
                 "code": "worker_offline",
-                "message": "Lead Generation worker is offline. Start the Scrapling worker (SCRAPLING_WORKER_ENABLED=true) and try again.",
+                "message": "Lead Generation worker is offline. No active worker heartbeat was detected. Start the Scrapling worker and try again.",
             },
         )
 
@@ -256,20 +307,27 @@ async def create_leadgen_job(
         if not any(r["id"] == req.recipe_id for r in _load_recipes()):
             raise HTTPException(status_code=400, detail=f"Unknown recipe: {req.recipe_id}")
 
-    # --- Credits (charged at enqueue; admins bypass) ---
+    # --- Credits (charged at enqueue; admins bypass) (F27) ---
     credit_cost = compute_credit_cost(brief, req.enrich_emails, req.generate_outreach)
     if brief.credit_budget < settings.SCRAPLING_CREDIT_BASE:
-        raise HTTPException(status_code=402, detail="credit_budget below minimum base cost")
-    org = await get_or_create_default_org(db, current_user)
+        raise HTTPException(
+            status_code=400,
+            detail=f"credit_budget ({brief.credit_budget:.2f}) must be at least the base cost ({settings.SCRAPLING_CREDIT_BASE:.2f})"
+        )
+    if brief.credit_budget < credit_cost:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Calculated job credit cost ({credit_cost:.2f}) exceeds specified credit_budget ({brief.credit_budget:.2f}). Increase budget or reduce max pages/leads."
+        )
+
     is_admin = current_user.role == "admin" or getattr(current_user, "is_superuser", False)
-    if not is_admin:
-        available = org.credit_balance if org else 0.0
-        if available < credit_cost:
-            raise HTTPException(
-                status_code=402,
-                detail=f"Insufficient credits. Required: {credit_cost:.2f}, Available: {available:.2f}",
-            )
-        org.credit_balance = max(0.0, available - credit_cost)
+    if is_admin:
+        org = await get_or_create_default_org(db, current_user)
+    else:
+        # Central, row-locked gatekeeper: trial expiry, feature flags, daily caps, and credit balance (F27)
+        org, _plan = await assert_can_spend(
+            db, current_user, required_credits=credit_cost, feature_name="leadgen", lock_row=True
+        )
 
     # --- Audit line when robots_obey=false (9. honesty/legal) ---
     logs = [
@@ -302,11 +360,27 @@ async def create_leadgen_job(
         proxy_mode=req.proxy_mode,
         logs=logs,
         credits_used=credit_cost if not is_admin else 0.0,
-        credit_budget=credit_cost,
+        credit_budget=brief.credit_budget,
     )
     db.add(job)
     await db.commit()
     await db.refresh(job)
+
+    # Atomic credit charge with idempotency recording (F27, F10)
+    if not is_admin:
+        await charge(
+            db=db,
+            org=org,
+            user_id=current_user.id,
+            amount=credit_cost,
+            provider="scrapling",
+            operation="leadgen_job_start",
+            units=1.0,
+            cost_usd=0.0,
+            job_id=job.id,
+            metadata={"brief": brief.model_dump(), "seeds_count": len(normalized["urls"])},
+            idempotency_key=key
+        )
 
     # --- Enqueue: inline fallback (dev) or leave queued for the Docker worker ---
     if settings.SCRAPLING_INLINE_WORKER and not settings.SCRAPLING_WORKER_ENABLED:
@@ -437,6 +511,17 @@ async def _load_job_leads(db: AsyncSession, job_id: str) -> List[LeadGenLead]:
     return list(result.scalars().all())
 
 
+def sanitize_csv_cell(val: object) -> object:
+    """Neutralize spreadsheet formula injection (OWASP CWE-1236)."""
+    if val is None:
+        return ""
+    if isinstance(val, str):
+        if val and val[0] in ("=", "+", "-", "@", "\t", "\r"):
+            return f"'{val}"
+        return val
+    return val
+
+
 @router.get("/jobs/{job_id}/export.csv")
 async def export_leadgen_csv(
     job_id: str,
@@ -449,7 +534,8 @@ async def export_leadgen_csv(
     writer = csv.DictWriter(buf, fieldnames=_EXPORT_COLUMNS)
     writer.writeheader()
     for row in _export_rows(leads):
-        writer.writerow(row)
+        sanitized_row = {k: sanitize_csv_cell(v) for k, v in row.items()}
+        writer.writerow(sanitized_row)
     # Honest log line; empty leads => headers-only (no fake rows)
     job.logs = list(job.logs or []) + [f"> export · csv · rows={len(leads)}"]
     await db.commit()

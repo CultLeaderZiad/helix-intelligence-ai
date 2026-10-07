@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { Bell, Check, ExternalLink, Info, AlertTriangle, Sparkles, CheckCheck, Megaphone } from "lucide-react"
+import { Bell, Check, Clock, ExternalLink, Info, AlertTriangle, Sparkles, CheckCheck, Megaphone } from "lucide-react"
 import { notificationService, updatesService } from "@/services"
 import { cn } from "@/lib/utils"
 

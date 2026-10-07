@@ -23,25 +23,48 @@ jobs:
 
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: helix_test
+          POSTGRES_PASSWORD: helix_password
+          POSTGRES_DB: helix_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
     defaults:
       run:
         working-directory: backend
+    env:
+      SECRET_KEY: ci_test_secret_key_not_real_0123456789abcdef
+      DATABASE_URL: postgresql+asyncpg://helix_test:helix_password@localhost:5432/helix_test_db
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt pyflakes pytest pytest-asyncio
+      - name: Undefined name and syntax lint (pyflakes)
+        run: |
+          python -c "import subprocess, sys; res = subprocess.run(['pyflakes', 'app'], capture_output=True, text=True); errs = [l for l in res.stdout.splitlines() if 'undefined name' in l or 'syntax' in l.lower()]; (print('\n'.join(errs)) or sys.exit(1)) if errs else print('Zero undefined names in app')"
       - name: Compile check (syntax)
         run: python -m compileall -q app
+      - name: Alembic migration upgrade & drift check
+        run: |
+          alembic upgrade head
+          alembic check
       - name: Security regression tests
         run: python tests/test_security_regressions.py
       - name: Import smoke test (app boots)
-        env:
-          SECRET_KEY: ci_test_secret_key_not_real_0123456789abcdef
-          DATABASE_URL: postgresql://user:pass@localhost:5432/db
         run: |
           python -c "import app.main; print('FastAPI app imported OK; routes:', len(app.main.app.routes))"
+      - name: Run pytest test suite
+        run: pytest -v tests
 
   security-smoke:
     runs-on: ubuntu-latest

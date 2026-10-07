@@ -1,4 +1,4 @@
-﻿"""Scrapling worker - claims LeadGenJob rows from the DB and runs the pipeline.
+"""Scrapling worker - claims LeadGenJob rows from the DB and runs the pipeline.
 
 Run standalone (host dev):
     cd backend && SCRAPLING_WORKER_ENABLED=true python workers/scrapling/worker.py
@@ -96,34 +96,36 @@ def _heartbeat_loop(info: dict) -> None:
         _heartbeat_once(info)
         _stop.wait(HEARTBEAT_INTERVAL_S)
 
-def _claim_next_job() -> str | None:
+async def _claim_next_job_async() -> str | None:
     """Atomically claim one queued job: queued -> running + owner_boot_id.
+    Uses worker_session_maker (NullPool) to ensure no connection reuse across destroyed event loops (F24).
     SKIP LOCKED keeps multiple worker replicas from double-claiming."""
-    from sqlalchemy import update
-    from app.db.session import async_session_maker
+    from sqlalchemy import update, select
+    from app.db.session import worker_session_maker
     from app.models.leadgen import LeadGenJob  # noqa: F401 - registers tables
 
-    async def _claim():
-        async with async_session_maker() as db:
-            from sqlalchemy import select
-            job_id = (await db.execute(
-                select(LeadGenJob.id)
-                .where(LeadGenJob.status == "queued")
-                .order_by(LeadGenJob.created_at)
-                .limit(1)
-                .with_for_update(skip_locked=True)
-            )).scalar_one_or_none()
-            if not job_id:
-                return None
-            await db.execute(
-                update(LeadGenJob)
-                .where(LeadGenJob.id == job_id, LeadGenJob.status == "queued")
-                .values(status="running", owner_boot_id=f"claimed:{BOOT_ID}")
-            )
-            await db.commit()
-            return job_id
+    async with worker_session_maker() as db:
+        job_id = (await db.execute(
+            select(LeadGenJob.id)
+            .where(LeadGenJob.status == "queued")
+            .order_by(LeadGenJob.created_at)
+            .limit(1)
+            .with_for_update(skip_locked=True)
+        )).scalar_one_or_none()
+        if not job_id:
+            return None
+        await db.execute(
+            update(LeadGenJob)
+            .where(LeadGenJob.id == job_id, LeadGenJob.status == "queued")
+            .values(status="running", owner_boot_id=f"claimed:{BOOT_ID}")
+        )
+        await db.commit()
+        return job_id
 
-    return asyncio.run(_claim())
+
+def _claim_next_job() -> str | None:
+    """Sync entry point for external callers, tests, and CLI."""
+    return asyncio.run(_claim_next_job_async())
 
 
 def _serve_health(info: dict) -> None:
@@ -180,18 +182,20 @@ def main() -> None:
     signal.signal(signal.SIGTERM, lambda *_: _stop.set())
     signal.signal(signal.SIGINT, lambda *_: _stop.set())
 
-    while not _stop.is_set():
-        try:
-            job_id = _claim_next_job()
-            if job_id:
-                logger.info("claimed job %s", job_id)
-                asyncio.run(run_leadgen_job(job_id))
-            else:
-                _stop.wait(POLL_INTERVAL_S)
-        except Exception as e:
-            logger.exception("worker loop error: %s", e)
-            _stop.wait(POLL_INTERVAL_S)
+    async def _worker_loop():
+        while not _stop.is_set():
+            try:
+                job_id = await _claim_next_job_async()
+                if job_id:
+                    logger.info("claimed job %s", job_id)
+                    await run_leadgen_job(job_id)
+                else:
+                    await asyncio.sleep(POLL_INTERVAL_S)
+            except Exception as e:
+                logger.exception("worker loop error: %s", e)
+                await asyncio.sleep(POLL_INTERVAL_S)
 
+    asyncio.run(_worker_loop())
     logger.info("worker stopped")
 
 

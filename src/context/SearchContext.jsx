@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
+import { useAuth } from "./AuthContext"
 
 const STORAGE_LATEST_KEY = "helix_latest_search"
 const STORAGE_HISTORY_KEY = "helix_search_history"
@@ -19,125 +20,78 @@ const SearchContext = createContext({
   deleteDraft: () => {},
 })
 
-const DEFAULT_SEARCH_HISTORY = [
-  {
-    query: "Sneako",
-    total: 0,
-    items: [],
-    category_label: "Content Creator & Streamer",
-    timestamp: new Date(Date.now() - 5 * 60000).toISOString(),
-    entity_profile: {
-      entity_name: "Sneako (Nicolas Kenn De Balinthazy)",
-      entity_type: "creator_streamer",
-      category_label: "Content Creator & Streamer",
-      primary_platforms: ["Kick", "Rumble", "YouTube", "X (Twitter)"],
-      summary: "High-profile online creator, livestreamer, and commentator known for IRL streams, commentary, ideological debates, and multi-platform broadcasting.",
-      marketing_archetype: "Controversy-Driven Organic Clipping & Multi-Platform Streaming"
-    }
-  },
-  {
-    query: "Naturia",
-    total: 12,
-    items: [
-      {
-        id: "naturia-1",
-        headline: "Naturia-Formula desparasitaria para la salud perruna",
-        body: "EL MASTICABLE PARA LA ALERGIA NO ES EL PROBLEMA Tu perro no tiene alergias Tu perro tiene parásitos multiplicándose detrás de un escudo de biofilm en su intestino...",
-        cta: "Comprar Naturia Gotas Limpiadoras",
-        platform: "meta",
-        format: "image",
-        days_active: 28,
-        scores: { hook: 88, clarity: 92, retention: 84, composite: 88 }
-      }
-    ],
-    category_label: "Holistic Pet Health & DTC",
-    timestamp: new Date(Date.now() - 25 * 60000).toISOString()
-  },
-  {
-    query: "Real Madrid",
-    total: 18,
-    items: [
-      {
-        id: "rm-1",
-        headline: "¿Aún no tienes la App Oficial del Real Madrid? 📱🤍",
-        body: "Vive los partidos estés donde estés. 📻 Radio en directo, resúmenes, calendario y ventajas exclusivas en la tienda. ¡No te pierdas nada y descárgala gratis ya! 👇",
-        cta: "Установити зараз",
-        platform: "meta",
-        format: "video",
-        days_active: 28,
-        scores: { hook: 94, clarity: 96, retention: 91, composite: 94 }
-      }
-    ],
-    category_label: "Sports Club & Mobile Entertainment",
-    timestamp: new Date(Date.now() - 45 * 60000).toISOString()
-  },
-  {
-    query: "Gymshark",
-    total: 24,
-    items: [],
-    category_label: "Fitness DTC & Athletic Wear",
-    timestamp: new Date(Date.now() - 90 * 60000).toISOString()
-  },
-  {
-    query: "Nike",
-    total: 35,
-    items: [],
-    category_label: "Global Athletic Footwear & Apparel",
-    timestamp: new Date(Date.now() - 150 * 60000).toISOString()
-  }
-]
-
 export function SearchProvider({ children }) {
-  const [latestSearch, setLatestSearch] = useState(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_LATEST_KEY)
-      if (!raw) return DEFAULT_SEARCH_HISTORY[0]
-      const parsed = JSON.parse(raw)
-      if (parsed?.query && /softo?cde/i.test(parsed.query)) {
-        localStorage.removeItem(STORAGE_LATEST_KEY)
-        return DEFAULT_SEARCH_HISTORY[0]
-      }
-      return parsed
-    } catch {
-      return DEFAULT_SEARCH_HISTORY[0]
-    }
-  })
+  const { user } = useAuth()
+  const userId = user?.id || null
+  const prevUserIdRef = useRef(userId)
 
-  const [searchHistory, setSearchHistory] = useState(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_HISTORY_KEY)
-      if (!raw) return DEFAULT_SEARCH_HISTORY
-      const parsed = JSON.parse(raw)
-      const cleaned = (Array.isArray(parsed) ? parsed : []).filter(
-        (item) => item?.query && !/softo?cde/i.test(item.query)
-      )
-      if (cleaned.length === 0) return DEFAULT_SEARCH_HISTORY
-      return cleaned
-    } catch {
-      return DEFAULT_SEARCH_HISTORY
-    }
-  })
+  const [latestSearch, setLatestSearch] = useState(null)
+  const [searchHistory, setSearchHistory] = useState([])
+  const [activeCreative, setActiveCreative] = useState(null)
+  const [drafts, setDrafts] = useState([])
 
-  const [activeCreative, setActiveCreative] = useState(() => {
+  // Synchronize state with current user session (F12, F43)
+  useEffect(() => {
+    // Purge any legacy un-namespaced test fixtures
     try {
-      const raw = localStorage.getItem(STORAGE_ACTIVE_CREATIVE_KEY)
-      if (!raw) return null
-      const parsed = JSON.parse(raw)
-      if (parsed?.headline && /softo?cde/i.test(parsed.headline)) {
-        localStorage.removeItem(STORAGE_ACTIVE_CREATIVE_KEY)
-        return null
-      }
-      return parsed
+      localStorage.removeItem(STORAGE_LATEST_KEY)
+      localStorage.removeItem(STORAGE_HISTORY_KEY)
+      localStorage.removeItem(STORAGE_ACTIVE_CREATIVE_KEY)
+      localStorage.removeItem(STORAGE_DRAFTS_KEY)
     } catch {
-      return null
+      // ignore
     }
-  })
+
+    if (!userId) {
+      // User signed out or not authenticated: clear search state completely
+      setLatestSearch(null)
+      setSearchHistory([])
+      setActiveCreative(null)
+      setDrafts([])
+      prevUserIdRef.current = null
+      return
+    }
+
+    // User signed in or switched account: load user-isolated history
+    try {
+      const rawLatest = localStorage.getItem(`${STORAGE_LATEST_KEY}_${userId}`)
+      setLatestSearch(rawLatest ? JSON.parse(rawLatest) : null)
+    } catch {
+      setLatestSearch(null)
+    }
+
+    try {
+      const rawHistory = localStorage.getItem(`${STORAGE_HISTORY_KEY}_${userId}`)
+      const parsedHistory = rawHistory ? JSON.parse(rawHistory) : []
+      setSearchHistory(Array.isArray(parsedHistory) ? parsedHistory : [])
+    } catch {
+      setSearchHistory([])
+    }
+
+    try {
+      const rawCreative = localStorage.getItem(`${STORAGE_ACTIVE_CREATIVE_KEY}_${userId}`)
+      setActiveCreative(rawCreative ? JSON.parse(rawCreative) : null)
+    } catch {
+      setActiveCreative(null)
+    }
+
+    try {
+      const rawDrafts = localStorage.getItem(`${STORAGE_DRAFTS_KEY}_${userId}`)
+      const parsedDrafts = rawDrafts ? JSON.parse(rawDrafts) : []
+      setDrafts(Array.isArray(parsedDrafts) ? parsedDrafts : [])
+    } catch {
+      setDrafts([])
+    }
+
+    prevUserIdRef.current = userId
+  }, [userId])
 
   const saveCompletedSearch = useCallback((searchData) => {
     if (!searchData || !searchData.query) return
     const entry = {
       query: searchData.query,
-      jobId: searchData.jobId || searchData.job_id,
+      jobId: searchData.jobId || searchData.job_id || null,
+      job_id: searchData.job_id || searchData.jobId || null,
       total: searchData.total || searchData.items?.length || 0,
       items: searchData.items || [],
       tookMs: searchData.tookMs || searchData.took_ms || 0,
@@ -146,66 +100,65 @@ export function SearchProvider({ children }) {
       timestamp: new Date().toISOString(),
     }
     setLatestSearch(entry)
-    try {
-      localStorage.setItem(STORAGE_LATEST_KEY, JSON.stringify(entry))
-    } catch (e) {
-      console.warn("Failed to persist latest search to localStorage", e)
+    if (userId) {
+      try {
+        localStorage.setItem(`${STORAGE_LATEST_KEY}_${userId}`, JSON.stringify(entry))
+      } catch (e) {
+        console.warn("Failed to persist latest search to localStorage", e)
+      }
     }
 
     setSearchHistory((prev) => {
       const filtered = prev.filter((p) => p.query.toLowerCase() !== entry.query.toLowerCase())
       const updated = [entry, ...filtered].slice(0, 15) // Keep last 15 searches
-      try {
-        localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(updated))
-      } catch (e) {
-        console.warn("Failed to persist search history", e)
+      if (userId) {
+        try {
+          localStorage.setItem(`${STORAGE_HISTORY_KEY}_${userId}`, JSON.stringify(updated))
+        } catch (e) {
+          console.warn("Failed to persist search history", e)
+        }
       }
       return updated
     })
-  }, [])
+  }, [userId])
 
   const selectActiveCreative = useCallback((creative) => {
     setActiveCreative(creative)
-    try {
-      if (creative) {
-        localStorage.setItem(STORAGE_ACTIVE_CREATIVE_KEY, JSON.stringify(creative))
-      } else {
-        localStorage.removeItem(STORAGE_ACTIVE_CREATIVE_KEY)
+    if (userId) {
+      try {
+        if (creative) {
+          localStorage.setItem(`${STORAGE_ACTIVE_CREATIVE_KEY}_${userId}`, JSON.stringify(creative))
+        } else {
+          localStorage.removeItem(`${STORAGE_ACTIVE_CREATIVE_KEY}_${userId}`)
+        }
+      } catch (e) {
+        console.warn("Failed to update active creative in localStorage", e)
       }
-    } catch (e) {
-      console.warn("Failed to update active creative in localStorage", e)
     }
-  }, [])
+  }, [userId])
 
   const clearActiveCreative = useCallback(() => {
     setActiveCreative(null)
-    try {
-      localStorage.removeItem(STORAGE_ACTIVE_CREATIVE_KEY)
-    } catch (e) {
-      console.warn("Failed to clear active creative in localStorage", e)
+    if (userId) {
+      try {
+        localStorage.removeItem(`${STORAGE_ACTIVE_CREATIVE_KEY}_${userId}`)
+      } catch (e) {
+        console.warn("Failed to clear active creative in localStorage", e)
+      }
     }
-  }, [])
+  }, [userId])
 
   const selectSearchSession = useCallback((searchEntry) => {
     if (!searchEntry) return
     setLatestSearch(searchEntry)
-    try {
-      localStorage.setItem(STORAGE_LATEST_KEY, JSON.stringify(searchEntry))
-    } catch (e) {
-      console.warn("Failed to update latest search session", e)
+    if (userId) {
+      try {
+        localStorage.setItem(`${STORAGE_LATEST_KEY}_${userId}`, JSON.stringify(searchEntry))
+      } catch (e) {
+        console.warn("Failed to update latest search session", e)
+      }
     }
-  }, [])
-
-  const [drafts, setDrafts] = useState(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_DRAFTS_KEY)
-      if (!raw) return []
-      const parsed = JSON.parse(raw)
-      return Array.isArray(parsed) ? parsed : []
-    } catch {
-      return []
-    }
-  })
+  }, [userId])
 
   const saveDraft = useCallback((draft) => {
     if (!draft) return
@@ -223,34 +176,40 @@ export function SearchProvider({ children }) {
     setDrafts((prev) => {
       const filtered = prev.filter((d) => d.id !== id)
       const updated = [entry, ...filtered].slice(0, 30) // Keep up to 30 drafts
-      try {
-        localStorage.setItem(STORAGE_DRAFTS_KEY, JSON.stringify(updated))
-      } catch (e) {
-        console.warn("Failed to persist drafts to localStorage", e)
+      if (userId) {
+        try {
+          localStorage.setItem(`${STORAGE_DRAFTS_KEY}_${userId}`, JSON.stringify(updated))
+        } catch (e) {
+          console.warn("Failed to persist drafts to localStorage", e)
+        }
       }
       return updated
     })
     return entry
-  }, [])
+  }, [userId])
 
   const deleteDraft = useCallback((draftId) => {
     setDrafts((prev) => {
       const updated = prev.filter((d) => d.id !== draftId)
-      try {
-        localStorage.setItem(STORAGE_DRAFTS_KEY, JSON.stringify(updated))
-      } catch (e) {
-        console.warn("Failed to update drafts in localStorage", e)
+      if (userId) {
+        try {
+          localStorage.setItem(`${STORAGE_DRAFTS_KEY}_${userId}`, JSON.stringify(updated))
+        } catch (e) {
+          console.warn("Failed to update drafts in localStorage", e)
+        }
       }
       return updated
     })
-  }, [])
+  }, [userId])
 
   const clearSearchHistory = useCallback(() => {
     setSearchHistory([])
     setLatestSearch(null)
-    localStorage.removeItem(STORAGE_HISTORY_KEY)
-    localStorage.removeItem(STORAGE_LATEST_KEY)
-  }, [])
+    if (userId) {
+      localStorage.removeItem(`${STORAGE_HISTORY_KEY}_${userId}`)
+      localStorage.removeItem(`${STORAGE_LATEST_KEY}_${userId}`)
+    }
+  }, [userId])
 
   return (
     <SearchContext.Provider

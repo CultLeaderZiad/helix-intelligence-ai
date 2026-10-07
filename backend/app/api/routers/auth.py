@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -6,7 +7,7 @@ import datetime
 from app.db.session import async_session_maker
 from app.schemas.auth import UserCreate, UserLogin, SessionResponse, PasswordResetRequest, PasswordResetConfirm
 from app.services import auth_service, billing_service
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, oauth2_scheme
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.plan import Plan
@@ -135,7 +136,8 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     try:
         user = await auth_service.register_user(db, user_in)
         from app.core.security import create_access_token
-        token = create_access_token(subject=user.id, role=user.role)
+        token_ver = (user.signup_metadata or {}).get("token_version", 1)
+        token = create_access_token(subject=user.id, role=user.role, token_version=token_ver)
         # Fire-and-forget welcome email — completely decoupled from SQLAlchemy session
         try:
             import asyncio
@@ -181,16 +183,30 @@ async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
         )
 
 @router.post("/sign-out")
-
-async def signout():
+@router.post("/logout")
+async def signout(
+    db: AsyncSession = Depends(get_db),
+    token: Optional[str] = Depends(oauth2_scheme)
+):
+    """Revoke active user sessions and sign out."""
+    if token:
+        try:
+            from app.core.security import verify_neon_token
+            payload = await verify_neon_token(token)
+            if payload and payload.get("sub"):
+                res = await db.execute(select(User).where(User.id == payload["sub"]))
+                user = res.scalar_one_or_none()
+                if user:
+                    await auth_service.revoke_user_sessions(db, user)
+        except Exception:
+            pass
     return {"message": "Successfully signed out"}
 
 @router.post("/forgot-password")
 async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(get_db)):
     """Start a password reset. The public response is identical whether or
-    not the account exists (no account enumeration). The reset link is still
-    logged server-side; when AUTH_DEV_RESET_RETURN is enabled it is also
-    returned in the response because no mail provider is bundled."""
+    not the account exists (no account enumeration). The reset link is sent via
+    transactional email when email is configured, and never logged in plain text."""
     import logging
     logger = logging.getLogger(__name__)
     try:
@@ -204,10 +220,28 @@ async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(
     if user_and_token:
         user, raw_token = user_and_token
         reset_url = f"{settings.PUBLIC_APP_BASE_URL}/reset-password?token={raw_token}"
-        logger.warning(
-            "PASSWORD RESET link issued for %s: %s (dev delivery — no mail provider configured)",
-            user.email, reset_url,
-        )
+        # F17: Never log plain reset token or URL
+        logger.info("Password reset token generated for user %s", user.email)
+        
+        from app.services.email_service import send_email, email_enabled
+        if email_enabled():
+            subject = "Reset your Helix Intelligence password"
+            html_body = f"""
+            <div style="font-family:Inter,Arial,sans-serif;background:#0A0A0A;color:#EDEDED;padding:32px;">
+              <div style="max-width:560px;margin:0 auto;background:#111;border:1px solid #222;border-radius:12px;padding:32px;">
+                <div style="font-size:13px;letter-spacing:2px;color:#6366F1;font-weight:700;margin-bottom:16px;">HELIX INTELLIGENCE</div>
+                <h1 style="font-size:22px;margin:0 0 16px;color:#fff;">Password Reset Request</h1>
+                <p style="font-size:15px;line-height:1.6;color:#B5B5B5;">We received a request to reset your password. Click the button below to set a new password. This link is valid for {settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES} minutes.</p>
+                <a href="{reset_url}" style="display:inline-block;margin-top:24px;background:#6366F1;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;">Reset Password</a>
+                <p style="margin-top:28px;font-size:12px;color:#666;">If you did not request this, you can safely ignore this email.</p>
+              </div>
+            </div>
+            """
+            try:
+                await send_email(to=user.email, subject=subject, html=html_body)
+            except Exception as mail_err:
+                logger.error("Failed to deliver reset email to %s: %s", user.email, mail_err)
+
         if getattr(settings, "AUTH_DEV_RESET_RETURN", False):
             return {"ok": True, "reset_url": reset_url, "expires_in_minutes": settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES}
         return {"ok": True}
@@ -228,7 +262,8 @@ async def reset_password(req: PasswordResetConfirm, db: AsyncSession = Depends(g
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Password reset failed")
 
     from app.core.security import create_access_token
-    token = create_access_token(subject=user.id, role=user.role)
+    token_ver = (user.signup_metadata or {}).get("token_version", 1)
+    token = create_access_token(subject=user.id, role=user.role, token_version=token_ver)
     return await build_session_response(db, user, access_token=token)
 
 @router.get("/session", response_model=SessionResponse)

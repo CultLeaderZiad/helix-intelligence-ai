@@ -76,6 +76,18 @@ export async function request(path, options = {}, retryCount = 0) {
   const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
 
+  const upperMethod = (method || "GET").toUpperCase()
+  const isIdempotentMethod = upperMethod === "GET" || upperMethod === "HEAD" || upperMethod === "OPTIONS"
+  const hasIdempotencyKey = Boolean(
+    extraHeaders && (
+      extraHeaders["Idempotency-Key"] ||
+      extraHeaders["idempotency-key"] ||
+      extraHeaders["X-Idempotency-Key"] ||
+      extraHeaders["x-idempotency-key"]
+    )
+  )
+  const isSafeToRetry = isIdempotentMethod || hasIdempotencyKey
+
   let res
   try {
     res = await fetch(url, {
@@ -89,21 +101,28 @@ export async function request(path, options = {}, retryCount = 0) {
       },
       ...(body && typeof body !== "string" ? { body: JSON.stringify(body) } : body ? { body } : {}),
     })
-  // Transparent retry on network disconnect / Render waking up (up to 6 retries)
+  // Transparent retry on network disconnect / Render waking up (only for idempotent or key-protected requests)
   } catch (err) {
     if (err?.name === "AbortError") throw err
 
-    if (retryCount < 6) {
+    if (isSafeToRetry && retryCount < 6) {
       const delay = Math.min(3500, 1000 * Math.pow(1.3, retryCount))
       await new Promise((resolve) => setTimeout(resolve, delay))
       return request(path, options, retryCount + 1)
     }
 
-    throw new ServiceError("Network connection interrupted. The server may be waking up.", { code: "network_error" })
+    throw new ServiceError(
+      isSafeToRetry
+        ? "Network connection interrupted. The server may be waking up."
+        : "Network connection interrupted during request. To prevent duplicate charges, this operation was not automatically retried.",
+      { code: "network_error" }
+    )
   }
 
-  // If server returns 502, 503, or 504 gateway error (Render cold-start boot), retry transparently
-  if ([502, 503, 504].includes(res.status) && retryCount < 8) {
+  // If server returns 502, 503, or 504 gateway error (Render cold-start boot), retry transparently only if safe
+  // Do NOT retry structured JSON error responses (e.g. worker_offline 503) (F57)
+  const isJsonError = res.headers?.get("content-type")?.includes("application/json")
+  if (isSafeToRetry && [502, 503, 504].includes(res.status) && !isJsonError && retryCount < 8) {
     const delay = Math.min(4000, 1200 * Math.pow(1.3, retryCount))
     await new Promise((resolve) => setTimeout(resolve, delay))
     return request(path, options, retryCount + 1)
@@ -132,9 +151,12 @@ export async function request(path, options = {}, retryCount = 0) {
       }
     }
 
+    // F57: Only fall back to server_waking if the error was an unstructured gateway error
     if ([502, 503, 504].includes(res.status)) {
-      detail = "The backend server is waking up. Please click retry in a moment."
-      errorCode = "server_waking"
+      if (!isJsonError || (errorCode === `http_${res.status}` && (detail === res.statusText || !detail))) {
+        detail = "The backend server is waking up. Please click retry in a moment."
+        errorCode = "server_waking"
+      }
     }
 
     // Only dispatch unauthorized event for non-auth endpoints!

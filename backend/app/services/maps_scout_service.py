@@ -479,4 +479,7 @@ async def run_maps_scout_worker(job_id: str):
             logs.append(f"> error: {str(exc)}")
             job.logs = logs
             job.completed_at = datetime.now(timezone.utc)
+            if job.credits_used and job.credits_used > 0:
+                from app.services.billing_service import refund
+                await refund(db, job.org_id, job.credits_used, f"maps_scout_worker_fatal: {exc}", job.id)
             await db.commit()

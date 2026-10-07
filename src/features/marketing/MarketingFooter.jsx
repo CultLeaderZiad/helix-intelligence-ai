@@ -214,40 +214,36 @@ export function MarketingFooter() {
             </span>
             <ul className="flex flex-col gap-2.5 text-[13px]">
               <li>
-                <button
-                  type="button"
-                  onClick={() => setActiveLegalModal("terms")}
-                  className="cursor-pointer text-left text-text-muted hover:text-white transition-colors"
+                <Link
+                  to="/terms"
+                  className="text-text-muted hover:text-white transition-colors"
                 >
                   Terms of Service
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  type="button"
-                  onClick={() => setActiveLegalModal("privacy")}
-                  className="cursor-pointer text-left text-text-muted hover:text-white transition-colors"
+                <Link
+                  to="/privacy"
+                  className="text-text-muted hover:text-white transition-colors"
                 >
                   Privacy Policy
-                </button>
+                </Link>
               </li>
               <li>
-                <button
-                  type="button"
-                  onClick={() => setActiveLegalModal("security")}
-                  className="cursor-pointer text-left text-text-muted hover:text-white transition-colors"
+                <Link
+                  to="/legal/subprocessors"
+                  className="text-text-muted hover:text-white transition-colors"
                 >
-                  Security
-                </button>
+                  Sub-processors & Security
+                </Link>
               </li>
               <li>
-                <button
-                  type="button"
-                  onClick={() => setActiveLegalModal("cookie")}
-                  className="cursor-pointer text-left text-text-muted hover:text-white transition-colors"
+                <Link
+                  to="/cookies"
+                  className="text-text-muted hover:text-white transition-colors"
                 >
                   Cookie Policy
-                </button>
+                </Link>
               </li>
             </ul>
           </div>
@@ -258,8 +254,8 @@ export function MarketingFooter() {
       <div className="border-t border-white/[0.06] bg-[#040407] px-6 py-4 text-center font-mono text-[11px] text-text-faint sm:px-8 lg:px-12">
         <p className="max-w-4xl mx-auto leading-relaxed">
           Helix, operated by Ziad Sabry · Cairo, Egypt (Pre-revenue Beta) · Contact &amp; Support:{" "}
-          <a href="mailto:support@helix-intelligence.com" className="text-accent underline underline-offset-2 hover:text-white transition-colors">
-            support@helix-intelligence.com
+          <a href="mailto:cultleaderzoz.dev@gmail.com" className="text-accent underline underline-offset-2 hover:text-white transition-colors">
+            cultleaderzoz.dev@gmail.com
           </a>
         </p>
       </div>

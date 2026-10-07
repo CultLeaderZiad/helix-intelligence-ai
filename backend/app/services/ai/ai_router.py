@@ -1,5 +1,6 @@
+import os
 import datetime
-from typing import List, Optional
+from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from fastapi import HTTPException
@@ -97,15 +98,41 @@ class AIRouter:
         if getattr(user, "role", "") == "admin":
             return MultiTierAIProvider()
 
-        # 3. Check Trial Status for standard trial users
-        if user.trial_expires_at and now > user.trial_expires_at:
-            raise HTTPException(
-                status_code=403, 
-                detail={
-                    "error": "trial_expired", 
-                    "message": "Your 7-day free trial has expired. Please upgrade your plan or provide your own API key."
-                }
-            )
+        # 3. Check Organization Plan: Paid plans bypass trial gates and limits (F32)
+        from app.models.organization import Organization
+        from app.models.plan import Plan
+
+        is_paid = False
+        try:
+            org_res = await db.execute(select(Organization).where(Organization.owner_id == user.id))
+            org = org_res.scalar_one_or_none() if hasattr(org_res, "scalar_one_or_none") else None
+            if org:
+                if org.plan and org.plan != "trial":
+                    is_paid = True
+                elif org.plan_id:
+                    plan_res = await db.execute(select(Plan).where(Plan.id == org.plan_id))
+                    plan = plan_res.scalar_one_or_none() if hasattr(plan_res, "scalar_one_or_none") else None
+                    if plan and plan.type not in ("trial", None):
+                        is_paid = True
+        except Exception:
+            is_paid = False
+
+        if is_paid:
+            return MultiTierAIProvider()
+
+        # 4. Check Trial Status for standard trial users
+        trial_exp = user.trial_expires_at
+        if trial_exp:
+            if trial_exp.tzinfo is None:
+                trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
+            if now > trial_exp:
+                raise HTTPException(
+                    status_code=403, 
+                    detail={
+                        "error": "trial_expired", 
+                        "message": "Your 7-day free trial has expired. Please upgrade your plan or provide your own API key."
+                    }
+                )
             
         # Enforce Trial Limits
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -113,7 +140,16 @@ class AIRouter:
             UsageLog.user_id == user.id,
             UsageLog.created_at >= today_start
         )
-        usage_count = await db.scalar(query)
+        usage_count = 0
+        try:
+            if hasattr(db, "scalar"):
+                usage_count = (await db.scalar(query)) or 0
+            else:
+                res = await db.execute(query)
+                usage_count = res.scalar() if hasattr(res, "scalar") else 0
+        except Exception:
+            usage_count = 0
+
         if usage_count >= TRIAL_DAILY_REQUEST_LIMIT:
             raise HTTPException(
                 status_code=429,

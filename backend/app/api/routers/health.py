@@ -1,19 +1,45 @@
-from fastapi import APIRouter, Header, Query
+from fastapi import APIRouter, Header, Response, status
 from typing import Optional
-from sqlalchemy import text
+from sqlalchemy import text, select
 import asyncio
 import os
 from app.db.session import async_session_maker
 from app.core.config import settings
 from app.core.credentials import env_secret
+from app.models.user import User
 
 router = APIRouter()
+
+@router.get("/live")
+async def liveness():
+    """Liveness probe: verifies process is alive and accepting traffic."""
+    return {"status": "ok"}
+
+
+@router.get("/ready")
+async def readiness(response: Response):
+    """Readiness probe: verifies database connection and representative ORM query."""
+    try:
+        async def _check_db():
+            async with async_session_maker() as session:
+                await session.execute(text("SELECT 1"))
+                await session.execute(select(User.id).limit(1))
+
+        await asyncio.wait_for(_check_db(), timeout=3.0)
+        return {"status": "ready", "database": "connected"}
+    except (asyncio.TimeoutError, TimeoutError):
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "unready", "database": "timeout", "detail": "Database ping timed out"}
+    except Exception as e:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return {"status": "unready", "database": "disconnected", "detail": str(e)}
+
 
 @router.get("")
 @router.get("/")
 async def health_check(
-    secret: Optional[str] = Query(None),
-    x_admin_secret: Optional[str] = Header(None, alias="X-Admin-Secret")
+    response: Response,
+    x_admin_secret: Optional[str] = Header(None, alias="X-Admin-Secret"),
 ):
     db_status = "unknown"
     db_error = None
@@ -21,32 +47,34 @@ async def health_check(
         async def _ping_db():
             async with async_session_maker() as session:
                 await session.execute(text("SELECT 1"))
+                await session.execute(select(User.id).limit(1))
 
-        # Strict 2.5s timeout: return fast 200 OK even if Neon is cold starting
-        await asyncio.wait_for(_ping_db(), timeout=2.5)
+        await asyncio.wait_for(_ping_db(), timeout=3.0)
         db_status = "connected"
     except (asyncio.TimeoutError, TimeoutError):
-        db_status = "waking_up"
-        db_error = "Database ping timed out (Neon sleeping / cold starting)"
+        db_status = "timeout"
+        db_error = "Database ping timed out"
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     except Exception as e:
         db_status = "disconnected"
         db_error = str(e)
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
     # Strictly protect internal API presence diagnostics: only return when authenticated with admin secret
     is_admin_req = bool(
         settings.SECRET_KEY
-        and (secret == settings.SECRET_KEY or x_admin_secret == settings.SECRET_KEY)
+        and x_admin_secret == settings.SECRET_KEY
     )
 
-    response = {
-        "status": "ok",
+    res = {
+        "status": "ok" if db_status == "connected" else "degraded",
         "service": "helix-backend",
         "db": db_status,
     }
     if db_error and is_admin_req:
-        response["db_detail"] = db_error
+        res["db_detail"] = db_error
     if is_admin_req:
-        response["env_vars"] = {
+        res["env_vars"] = {
             "DATABASE_URL": bool(settings.DATABASE_URL or os.getenv("DATABASE_URL")),
             "GROQ_API_KEY": bool(env_secret("GROQ_API_KEY", fallback=settings.GROQ_API_KEY)),
             "OPENROUTER_API_KEY": bool(env_secret("OPENROUTER_API_KEY", fallback=settings.OPENROUTER_API_KEY)),
@@ -62,5 +90,4 @@ async def health_check(
             "USE_MOCKS": settings.USE_MOCKS,
         }
 
-    return response
-
+    return res

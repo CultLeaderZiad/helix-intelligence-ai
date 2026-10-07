@@ -3,10 +3,11 @@ from sqlalchemy import select, func
 import datetime
 from app.models.api_usage import ExternalApiUsage
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-DAILY_API_CAP = 20
+DEFAULT_DAILY_ORG_API_CAP = 500
 
 class APILimitExceeded(Exception):
     pass
@@ -18,24 +19,34 @@ async def check_global_cap_and_log_preflight(
     user_id: str, 
     query: str, 
     max_records: int, 
-    estimated_cost: float
+    estimated_cost: float,
+    daily_cap: Optional[int] = None
 ) -> ExternalApiUsage:
     """
-    Checks if the global daily API cap is exceeded. 
-    If not, creates an 'attempted' pre-flight log and returns it.
+    Checks if the organization's daily API cap is exceeded (F50).
+    Only counts active / successful calls for the organization (status != 'failed').
+    If not exceeded, creates an 'attempted' pre-flight log and returns it.
     """
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     
-    # Check global cap for today (across all paid providers)
+    cap = daily_cap or DEFAULT_DAILY_ORG_API_CAP
+
+    # Check org-scoped cap for today (ignoring failed calls)
     count_query = select(func.count(ExternalApiUsage.id)).where(
-        ExternalApiUsage.created_at >= start_of_day
+        ExternalApiUsage.org_id == org_id,
+        ExternalApiUsage.created_at >= start_of_day,
+        ExternalApiUsage.status != "failed"
     )
-    today_count = await db.scalar(count_query) or 0
+    if hasattr(db, "scalar"):
+        today_count = (await db.scalar(count_query)) or 0
+    else:
+        res = await db.execute(count_query)
+        today_count = res.scalar() if hasattr(res, "scalar") else 0
     
-    if today_count >= DAILY_API_CAP:
-        logger.error(f"SYSTEM-WIDE DAILY API CAP EXCEEDED: {today_count} calls today.")
-        raise APILimitExceeded("System-wide daily API limit reached. Please try again tomorrow.")
+    if today_count >= cap:
+        logger.error(f"Organization {org_id} daily API cap exceeded: {today_count}/{cap} calls today.")
+        raise APILimitExceeded(f"Daily API limit reached ({today_count}/{cap}). Quota resets at 00:00 UTC.")
         
     # Pre-flight log
     usage_log = ExternalApiUsage(

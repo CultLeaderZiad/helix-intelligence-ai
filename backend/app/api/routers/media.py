@@ -73,15 +73,24 @@ async def upload_file(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
-    # Enforce strict 2MB limit
+    # Enforce strict 2MB limit via streaming chunk read
     MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
+    CHUNK_SIZE = 64 * 1024  # 64KB
     
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File size exceeds the maximum limit of 2MB."
-        )
+    total_bytes = 0
+    buffer = bytearray()
+    while True:
+        chunk = await file.read(CHUNK_SIZE)
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        if total_bytes > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File size exceeds the maximum limit of 2MB."
+            )
+        buffer.extend(chunk)
+    content = bytes(buffer)
         
     mime_type = file.content_type or ""
     if not (mime_type.startswith("image/jpeg") or mime_type.startswith("image/png") or mime_type.startswith("image/jpg") or mime_type.startswith("image/webp")):

@@ -1,0 +1,8100 @@
+{
+  "ai_insights": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "creative_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "creatives.id"
+        ]
+      },
+      "kind": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "opportunity",
+        "foreign_keys": []
+      },
+      "title": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "summary": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "reasons": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "confidence": {
+        "type": "FLOAT",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "evidence_creative_ids": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "generated_at": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "model_version": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "creative_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "creative_id": {
+        "name": "creative_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "kind": {
+        "name": "kind",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "title": {
+        "name": "title",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "summary": {
+        "name": "summary",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "reasons": {
+        "name": "reasons",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "confidence": {
+        "name": "confidence",
+        "type": "DOUBLE PRECISION",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "evidence_creative_ids": {
+        "name": "evidence_creative_ids",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "generated_at": {
+        "name": "generated_at",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "model_version": {
+        "name": "model_version",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/ai_insight.py",
+      "line": 9
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "creative_id"
+        ],
+        "target_table": "creatives",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "ai_insights_creative_id_fkey",
+        "constrained_columns": [
+          "creative_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "creatives",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "ai_insights_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "api_keys": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "name": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "Default API Key",
+        "foreign_keys": []
+      },
+      "key_hash": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "prefix": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "is_active": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "last_used_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_api_keys_org_id",
+        "unique": false,
+        "columns": [
+          "api_keys.org_id"
+        ]
+      },
+      {
+        "name": "ix_api_keys_key_hash",
+        "unique": false,
+        "columns": [
+          "api_keys.key_hash"
+        ]
+      },
+      {
+        "name": "ix_api_keys_user_id",
+        "unique": false,
+        "columns": [
+          "api_keys.user_id"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "user_id": {
+        "name": "user_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "name": {
+        "name": "name",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "key_hash": {
+        "name": "key_hash",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "prefix": {
+        "name": "prefix",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "is_active": {
+        "name": "is_active",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      },
+      "last_used_at": {
+        "name": "last_used_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [
+      {
+        "name": "ix_api_keys_key_hash",
+        "unique": false,
+        "column_names": [
+          "key_hash"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_api_keys_org_id",
+        "unique": false,
+        "column_names": [
+          "org_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_api_keys_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/api_key.py",
+      "line": 8
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "api_keys_org_id_fkey",
+        "constrained_columns": [
+          "org_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "organizations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      },
+      {
+        "name": "api_keys_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "api_keys_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "app_updates": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "title": {
+        "type": "VARCHAR(255)",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "body": {
+        "type": "TEXT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "level": {
+        "type": "VARCHAR(50)",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "info",
+        "foreign_keys": []
+      },
+      "category": {
+        "type": "VARCHAR(100)",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "General",
+        "foreign_keys": []
+      },
+      "is_published": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "show_as_banner": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "banner_dismissible": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "show_on_public": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "link_url": {
+        "type": "VARCHAR(500)",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "starts_at": {
+        "type": "TIMESTAMP WITHOUT TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "ends_at": {
+        "type": "TIMESTAMP WITHOUT TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_by": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITHOUT TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "updated_at": {
+        "type": "TIMESTAMP WITHOUT TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/app_update.py",
+      "line": 6
+    },
+    "model_foreign_keys": []
+  },
+  "creative_scores": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "creative_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "creatives.id"
+        ]
+      },
+      "hook": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "clarity": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "retention": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "composite": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "UniqueConstraint",
+        "name": null,
+        "columns": [
+          "creative_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "creative_id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "creative_id": {
+        "name": "creative_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "hook": {
+        "name": "hook",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "clarity": {
+        "name": "clarity",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "retention": {
+        "name": "retention",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "composite": {
+        "name": "composite",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [
+      {
+        "name": "creative_scores_creative_id_key",
+        "unique": true,
+        "column_names": [
+          "creative_id"
+        ],
+        "duplicates_constraint": "creative_scores_creative_id_key",
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/creative_score.py",
+      "line": 8
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "creative_id"
+        ],
+        "target_table": "creatives",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "creative_scores_creative_id_fkey",
+        "constrained_columns": [
+          "creative_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "creatives",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [
+      {
+        "column_names": [
+          "creative_id"
+        ],
+        "name": "creative_scores_creative_id_key",
+        "comment": null,
+        "dialect_options": {
+          "postgresql_include": [],
+          "postgresql_nulls_not_distinct": false
+        }
+      }
+    ],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "creative_scores_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "creatives": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "job_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "scrape_jobs.id"
+        ]
+      },
+      "brand_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "brand_name": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "platform": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "format": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "video",
+        "foreign_keys": []
+      },
+      "headline": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "body": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "cta": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "landing_domain": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "media_url": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "thumbnail_url": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "thumbnail_ratio": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "duration_seconds": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "first_seen": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "last_seen": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "days_active": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "1",
+        "foreign_keys": []
+      },
+      "variant_count": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "1",
+        "foreign_keys": []
+      },
+      "impressions_est": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "is_estimated": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "data_source": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "meta_official",
+        "foreign_keys": []
+      },
+      "spend_band": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "engagement_rate": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "ctr_est": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "job_id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "job_id": {
+        "name": "job_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "brand_id": {
+        "name": "brand_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "platform": {
+        "name": "platform",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "format": {
+        "name": "format",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "headline": {
+        "name": "headline",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "body": {
+        "name": "body",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "cta": {
+        "name": "cta",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "landing_domain": {
+        "name": "landing_domain",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "thumbnail_ratio": {
+        "name": "thumbnail_ratio",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "duration_seconds": {
+        "name": "duration_seconds",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "first_seen": {
+        "name": "first_seen",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "last_seen": {
+        "name": "last_seen",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "days_active": {
+        "name": "days_active",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "variant_count": {
+        "name": "variant_count",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "impressions_est": {
+        "name": "impressions_est",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "spend_band": {
+        "name": "spend_band",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "engagement_rate": {
+        "name": "engagement_rate",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "ctr_est": {
+        "name": "ctr_est",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "is_estimated": {
+        "name": "is_estimated",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "data_source": {
+        "name": "data_source",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/creative.py",
+      "line": 9
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "job_id"
+        ],
+        "target_table": "scrape_jobs",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "creatives_job_id_fkey",
+        "constrained_columns": [
+          "job_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "scrape_jobs",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "creatives_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "external_api_usage": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "provider": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "query": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "max_records_requested": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "estimated_cost_usd": {
+        "type": "FLOAT",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "attempted",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "provider": {
+        "name": "provider",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "user_id": {
+        "name": "user_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "query": {
+        "name": "query",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "max_records_requested": {
+        "name": "max_records_requested",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "estimated_cost_usd": {
+        "name": "estimated_cost_usd",
+        "type": "DOUBLE PRECISION",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "status": {
+        "name": "status",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/api_usage.py",
+      "line": 9
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "external_api_usage_org_id_fkey",
+        "constrained_columns": [
+          "org_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "organizations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      },
+      {
+        "name": "external_api_usage_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "external_api_usage_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "leadgen_jobs": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "queued",
+        "foreign_keys": []
+      },
+      "stage": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "brief",
+        "foreign_keys": []
+      },
+      "stage_label": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "Job queued",
+        "foreign_keys": []
+      },
+      "stage_index": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "stages_total": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "9",
+        "foreign_keys": []
+      },
+      "brief": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "seeds": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "engine_default": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "stealth",
+        "foreign_keys": []
+      },
+      "mode": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "crawl",
+        "foreign_keys": []
+      },
+      "recipe_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "robots_obey": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "adaptive": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "capture_xhr_pattern": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "enrich_emails": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "generate_outreach": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "proxy_mode": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "off",
+        "foreign_keys": []
+      },
+      "checkpoint_path": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "logs": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "leads_count": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "pages_fetched": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "pages_blocked": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "elapsed_ms": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "credits_used": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "credit_budget": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "error_msg": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "started_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "completed_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "heartbeat_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "owner_boot_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "user_id": {
+        "name": "user_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "status": {
+        "name": "status",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'queued'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "stage": {
+        "name": "stage",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'brief'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "stage_label": {
+        "name": "stage_label",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "stage_index": {
+        "name": "stage_index",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "autoincrement": false,
+        "comment": null
+      },
+      "stages_total": {
+        "name": "stages_total",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "9",
+        "autoincrement": false,
+        "comment": null
+      },
+      "brief": {
+        "name": "brief",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "seeds": {
+        "name": "seeds",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "engine_default": {
+        "name": "engine_default",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'stealth'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "mode": {
+        "name": "mode",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'crawl'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "recipe_id": {
+        "name": "recipe_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "robots_obey": {
+        "name": "robots_obey",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "true",
+        "autoincrement": false,
+        "comment": null
+      },
+      "adaptive": {
+        "name": "adaptive",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "true",
+        "autoincrement": false,
+        "comment": null
+      },
+      "capture_xhr_pattern": {
+        "name": "capture_xhr_pattern",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "enrich_emails": {
+        "name": "enrich_emails",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "true",
+        "autoincrement": false,
+        "comment": null
+      },
+      "generate_outreach": {
+        "name": "generate_outreach",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "true",
+        "autoincrement": false,
+        "comment": null
+      },
+      "proxy_mode": {
+        "name": "proxy_mode",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'off'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "checkpoint_path": {
+        "name": "checkpoint_path",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "logs": {
+        "name": "logs",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "leads_count": {
+        "name": "leads_count",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "autoincrement": false,
+        "comment": null
+      },
+      "pages_fetched": {
+        "name": "pages_fetched",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "autoincrement": false,
+        "comment": null
+      },
+      "pages_blocked": {
+        "name": "pages_blocked",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "autoincrement": false,
+        "comment": null
+      },
+      "elapsed_ms": {
+        "name": "elapsed_ms",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "autoincrement": false,
+        "comment": null
+      },
+      "credits_used": {
+        "name": "credits_used",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": "'0'::double precision",
+        "autoincrement": false,
+        "comment": null
+      },
+      "credit_budget": {
+        "name": "credit_budget",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": "'0'::double precision",
+        "autoincrement": false,
+        "comment": null
+      },
+      "error_msg": {
+        "name": "error_msg",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      },
+      "started_at": {
+        "name": "started_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "completed_at": {
+        "name": "completed_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "heartbeat_at": {
+        "name": "heartbeat_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "owner_boot_id": {
+        "name": "owner_boot_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 20
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "leadgen_jobs_org_id_fkey",
+        "constrained_columns": [
+          "org_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "organizations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      },
+      {
+        "name": "leadgen_jobs_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "leadgen_jobs_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "leadgen_leads": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "job_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "leadgen_jobs.id"
+        ]
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "company_name": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "website": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "domain": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "emails": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "phones": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "socials": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "address": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "decision_makers": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "markdown_excerpt": {
+        "type": "TEXT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "markdown_artifact_path": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "extract_status": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "empty",
+        "foreign_keys": []
+      },
+      "fetch_status": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "ok",
+        "foreign_keys": []
+      },
+      "engine_used": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "stealth",
+        "foreign_keys": []
+      },
+      "email_source": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "none",
+        "foreign_keys": []
+      },
+      "phone_source": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "none",
+        "foreign_keys": []
+      },
+      "lead_score": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "priority": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "outreach": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "sources": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "job_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "job_id": {
+        "name": "job_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "company_name": {
+        "name": "company_name",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "website": {
+        "name": "website",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "domain": {
+        "name": "domain",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "emails": {
+        "name": "emails",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "phones": {
+        "name": "phones",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "socials": {
+        "name": "socials",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "address": {
+        "name": "address",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "decision_makers": {
+        "name": "decision_makers",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "markdown_excerpt": {
+        "name": "markdown_excerpt",
+        "type": "TEXT",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "markdown_artifact_path": {
+        "name": "markdown_artifact_path",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "extract_status": {
+        "name": "extract_status",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'empty'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "fetch_status": {
+        "name": "fetch_status",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'ok'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "engine_used": {
+        "name": "engine_used",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'stealth'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "email_source": {
+        "name": "email_source",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'none'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "phone_source": {
+        "name": "phone_source",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'none'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "lead_score": {
+        "name": "lead_score",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": "0",
+        "autoincrement": false,
+        "comment": null
+      },
+      "priority": {
+        "name": "priority",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "outreach": {
+        "name": "outreach",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "sources": {
+        "name": "sources",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 67
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "job_id"
+        ],
+        "target_table": "leadgen_jobs",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "leadgen_leads_job_id_fkey",
+        "constrained_columns": [
+          "job_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "leadgen_jobs",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      },
+      {
+        "name": "leadgen_leads_org_id_fkey",
+        "constrained_columns": [
+          "org_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "organizations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "leadgen_leads_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "leadgen_worker_heartbeat": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "scrapling_worker",
+        "foreign_keys": []
+      },
+      "scrapling_version": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "engines": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "browsers_ready": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "proxy_mode": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "off",
+        "foreign_keys": []
+      },
+      "boot_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "updated_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "scrapling_version": {
+        "name": "scrapling_version",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "engines": {
+        "name": "engines",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "browsers_ready": {
+        "name": "browsers_ready",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": "false",
+        "autoincrement": false,
+        "comment": null
+      },
+      "proxy_mode": {
+        "name": "proxy_mode",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": "'off'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "boot_id": {
+        "name": "boot_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "updated_at": {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/leadgen.py",
+      "line": 104
+    },
+    "model_foreign_keys": [],
+    "database_foreign_keys": [],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "leadgen_worker_heartbeat_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "media_jobs": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "pending",
+        "foreign_keys": []
+      },
+      "prompt": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "provider": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "provider_job_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "updated_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "parameters": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "result_url": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "error_message": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "failure_kind": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "owner_boot_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "heartbeat_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "user_id": {
+        "name": "user_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "status": {
+        "name": "status",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "prompt": {
+        "name": "prompt",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "provider": {
+        "name": "provider",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "provider_job_id": {
+        "name": "provider_job_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "updated_at": {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "parameters": {
+        "name": "parameters",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "result_url": {
+        "name": "result_url",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "error_message": {
+        "name": "error_message",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/media_job.py",
+      "line": 12
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "media_jobs_org_id_fkey",
+        "constrained_columns": [
+          "org_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "organizations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      },
+      {
+        "name": "media_jobs_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "media_jobs_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "monitor_creatives": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "monitor_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "monitors.id"
+        ]
+      },
+      "identity_hash": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "content_hash": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "active",
+        "foreign_keys": []
+      },
+      "missed_runs": {
+        "type": "INTEGER",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "first_seen_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "last_seen_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "creative_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "platform": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "format": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "headline": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "body": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "cta": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "landing_domain": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_monitor_creatives_identity",
+        "unique": true,
+        "columns": [
+          "monitor_creatives.monitor_id",
+          "monitor_creatives.identity_hash"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "monitor_id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/monitor.py",
+      "line": 74
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "monitor_id"
+        ],
+        "target_table": "monitors",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "monitor_events": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "monitor_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "monitors.id"
+        ]
+      },
+      "run_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "monitor_runs.id"
+        ]
+      },
+      "type": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "identity_hash": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "creative_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "headline": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "body": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "cta": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "platform": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "landing_domain": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "previous": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_monitor_events_monitor_created",
+        "unique": false,
+        "columns": [
+          "monitor_events.monitor_id",
+          "monitor_events.created_at"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "run_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "monitor_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/monitor.py",
+      "line": 113
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "run_id"
+        ],
+        "target_table": "monitor_runs",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "monitor_id"
+        ],
+        "target_table": "monitors",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "monitor_runs": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "monitor_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "monitors.id"
+        ]
+      },
+      "job_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "running",
+        "foreign_keys": []
+      },
+      "started_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "finished_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "creatives_seen": {
+        "type": "INTEGER",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "new_count": {
+        "type": "INTEGER",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "killed_count": {
+        "type": "INTEGER",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "changed_count": {
+        "type": "INTEGER",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "is_baseline": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "skipped_reason": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "error": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "credits_charged": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "monitor_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/monitor.py",
+      "line": 47
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "monitor_id"
+        ],
+        "target_table": "monitors",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "monitors": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "name": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "query": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "filters": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "cadence": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "daily",
+        "foreign_keys": []
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "active",
+        "foreign_keys": []
+      },
+      "paused_reason": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "notify_in_app": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "notify_email": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "next_run_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "last_run_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "last_job_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "consecutive_failures": {
+        "type": "INTEGER",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "baseline_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "updated_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/monitor.py",
+      "line": 10
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "notifications": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "type": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "info",
+        "foreign_keys": []
+      },
+      "title": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "message": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "link": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "is_read": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_notifications_user_id",
+        "unique": false,
+        "columns": [
+          "notifications.user_id"
+        ]
+      },
+      {
+        "name": "ix_notifications_is_read",
+        "unique": false,
+        "columns": [
+          "notifications.is_read"
+        ]
+      },
+      {
+        "name": "ix_notifications_created_at",
+        "unique": false,
+        "columns": [
+          "notifications.created_at"
+        ]
+      },
+      {
+        "name": "ix_notifications_org_id",
+        "unique": false,
+        "columns": [
+          "notifications.org_id"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "user_id": {
+        "name": "user_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "type": {
+        "name": "type",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "title": {
+        "name": "title",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "message": {
+        "name": "message",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "link": {
+        "name": "link",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "is_read": {
+        "name": "is_read",
+        "type": "BOOLEAN",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [
+      {
+        "name": "ix_notifications_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_notifications_is_read",
+        "unique": false,
+        "column_names": [
+          "is_read"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_notifications_org_id",
+        "unique": false,
+        "column_names": [
+          "org_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_notifications_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/notification.py",
+      "line": 8
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "notifications_org_id_fkey",
+        "constrained_columns": [
+          "org_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "organizations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      },
+      {
+        "name": "notifications_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "notifications_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "organization_invites": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "email": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "role": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "member",
+        "foreign_keys": []
+      },
+      "invited_by_user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "token": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "pending",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "expires_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_organization_invites_email",
+        "unique": false,
+        "columns": [
+          "organization_invites.email"
+        ]
+      },
+      {
+        "name": "ix_organization_invites_org_id",
+        "unique": false,
+        "columns": [
+          "organization_invites.org_id"
+        ]
+      },
+      {
+        "name": "ix_organization_invites_token",
+        "unique": true,
+        "columns": [
+          "organization_invites.token"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "invited_by_user_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "email": {
+        "name": "email",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "role": {
+        "name": "role",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "invited_by_user_id": {
+        "name": "invited_by_user_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "token": {
+        "name": "token",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "status": {
+        "name": "status",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      },
+      "expires_at": {
+        "name": "expires_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [
+      {
+        "name": "ix_organization_invites_email",
+        "unique": false,
+        "column_names": [
+          "email"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_organization_invites_org_id",
+        "unique": false,
+        "column_names": [
+          "org_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_organization_invites_token",
+        "unique": true,
+        "column_names": [
+          "token"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/organization_member.py",
+      "line": 17
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "invited_by_user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "organization_invites_invited_by_user_id_fkey",
+        "constrained_columns": [
+          "invited_by_user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      },
+      {
+        "name": "organization_invites_org_id_fkey",
+        "constrained_columns": [
+          "org_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "organizations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "organization_invites_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "organization_members": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "role": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "member",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_organization_members_org_id",
+        "unique": false,
+        "columns": [
+          "organization_members.org_id"
+        ]
+      },
+      {
+        "name": "ix_organization_members_user_id",
+        "unique": false,
+        "columns": [
+          "organization_members.user_id"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "user_id": {
+        "name": "user_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "role": {
+        "name": "role",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [
+      {
+        "name": "ix_organization_members_org_id",
+        "unique": false,
+        "column_names": [
+          "org_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_organization_members_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/organization_member.py",
+      "line": 8
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "organization_members_org_id_fkey",
+        "constrained_columns": [
+          "org_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "organizations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      },
+      {
+        "name": "organization_members_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "organization_members_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "organizations": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "name": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "owner_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "plan_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "plan_trial_default",
+        "foreign_keys": []
+      },
+      "plan": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "trial",
+        "foreign_keys": []
+      },
+      "credit_balance": {
+        "type": "FLOAT",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "25.0",
+        "foreign_keys": []
+      },
+      "credits_used": {
+        "type": "FLOAT",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "daily_credits_used_today": {
+        "type": "FLOAT",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "daily_credits_reset_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "images_generated_today": {
+        "type": "FLOAT",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "videos_generated_today": {
+        "type": "FLOAT",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "images_today_date": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "images_trial_total": {
+        "type": "FLOAT",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "custom_feature_flags": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "active",
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "owner_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "name": {
+        "name": "name",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "owner_id": {
+        "name": "owner_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "plan": {
+        "name": "plan",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "plan_id": {
+        "name": "plan_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": "'plan_trial_default'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "credit_balance": {
+        "name": "credit_balance",
+        "type": "DOUBLE PRECISION",
+        "nullable": false,
+        "default": "'25'::double precision",
+        "autoincrement": false,
+        "comment": null
+      },
+      "credits_used": {
+        "name": "credits_used",
+        "type": "DOUBLE PRECISION",
+        "nullable": false,
+        "default": "'0'::double precision",
+        "autoincrement": false,
+        "comment": null
+      },
+      "custom_feature_flags": {
+        "name": "custom_feature_flags",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "status": {
+        "name": "status",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": "'active'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "daily_credits_used_today": {
+        "name": "daily_credits_used_today",
+        "type": "DOUBLE PRECISION",
+        "nullable": false,
+        "default": "'0'::double precision",
+        "autoincrement": false,
+        "comment": null
+      },
+      "daily_credits_reset_at": {
+        "name": "daily_credits_reset_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/organization.py",
+      "line": 9
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "owner_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "organizations_owner_id_fkey",
+        "constrained_columns": [
+          "owner_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "organizations_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "patterns": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "job_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "scrape_jobs.id"
+        ]
+      },
+      "label": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "family": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "prevalence": {
+        "type": "FLOAT",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "lift_index": {
+        "type": "FLOAT",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "1.0",
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "job_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "job_id": {
+        "name": "job_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "label": {
+        "name": "label",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "family": {
+        "name": "family",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "prevalence": {
+        "name": "prevalence",
+        "type": "DOUBLE PRECISION",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "lift_index": {
+        "name": "lift_index",
+        "type": "DOUBLE PRECISION",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/pattern.py",
+      "line": 8
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "job_id"
+        ],
+        "target_table": "scrape_jobs",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "patterns_job_id_fkey",
+        "constrained_columns": [
+          "job_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "scrape_jobs",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "patterns_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "plans": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "name": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "type": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "trial",
+        "foreign_keys": []
+      },
+      "credit_allowance": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "25",
+        "foreign_keys": []
+      },
+      "daily_credit_limit": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "daily_image_limit": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "5",
+        "foreign_keys": []
+      },
+      "daily_video_limit": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "3",
+        "foreign_keys": []
+      },
+      "price_monthly": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "price_per_credit": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "feature_flags": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "created_by_admin_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "updated_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "name": {
+        "name": "name",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "type": {
+        "name": "type",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "credit_allowance": {
+        "name": "credit_allowance",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "price_per_credit": {
+        "name": "price_per_credit",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "feature_flags": {
+        "name": "feature_flags",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_by_admin_id": {
+        "name": "created_by_admin_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      },
+      "updated_at": {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      },
+      "daily_credit_limit": {
+        "name": "daily_credit_limit",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/plan.py",
+      "line": 8
+    },
+    "model_foreign_keys": [],
+    "database_foreign_keys": [],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "plans_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "playbooks": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "public_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "brand_name": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "query": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "title": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "summary": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "patterns": {
+        "type": "JSON",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "creatives": {
+        "type": "JSON",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "insights": {
+        "type": "JSON",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "updated_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_playbooks_public_id",
+        "unique": true,
+        "columns": [
+          "playbooks.public_id"
+        ]
+      },
+      {
+        "name": "ix_playbooks_brand_name",
+        "unique": false,
+        "columns": [
+          "playbooks.brand_name"
+        ]
+      },
+      {
+        "name": "ix_playbooks_org_id",
+        "unique": false,
+        "columns": [
+          "playbooks.org_id"
+        ]
+      },
+      {
+        "name": "ix_playbooks_user_id",
+        "unique": false,
+        "columns": [
+          "playbooks.user_id"
+        ]
+      },
+      {
+        "name": "ix_playbooks_created_at",
+        "unique": false,
+        "columns": [
+          "playbooks.created_at"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/playbook.py",
+      "line": 12
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "saved_creatives": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "creative_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "creatives.id"
+        ]
+      },
+      "collection_name": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "Default",
+        "foreign_keys": []
+      },
+      "tags": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_saved_creatives_user_id",
+        "unique": false,
+        "columns": [
+          "saved_creatives.user_id"
+        ]
+      },
+      {
+        "name": "ix_saved_creatives_org_id",
+        "unique": false,
+        "columns": [
+          "saved_creatives.org_id"
+        ]
+      },
+      {
+        "name": "ix_saved_creatives_creative_id",
+        "unique": false,
+        "columns": [
+          "saved_creatives.creative_id"
+        ]
+      },
+      {
+        "name": "ix_saved_creatives_collection_name",
+        "unique": false,
+        "columns": [
+          "saved_creatives.collection_name"
+        ]
+      },
+      {
+        "name": "ix_saved_creatives_created_at",
+        "unique": false,
+        "columns": [
+          "saved_creatives.created_at"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "creative_id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "user_id": {
+        "name": "user_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "creative_id": {
+        "name": "creative_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "collection_name": {
+        "name": "collection_name",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "tags": {
+        "name": "tags",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [
+      {
+        "name": "ix_saved_creatives_collection_name",
+        "unique": false,
+        "column_names": [
+          "collection_name"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_saved_creatives_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_saved_creatives_creative_id",
+        "unique": false,
+        "column_names": [
+          "creative_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_saved_creatives_org_id",
+        "unique": false,
+        "column_names": [
+          "org_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_saved_creatives_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/saved_creative.py",
+      "line": 8
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "creative_id"
+        ],
+        "target_table": "creatives",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "saved_creatives_creative_id_fkey",
+        "constrained_columns": [
+          "creative_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "creatives",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      },
+      {
+        "name": "saved_creatives_org_id_fkey",
+        "constrained_columns": [
+          "org_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "organizations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      },
+      {
+        "name": "saved_creatives_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "saved_creatives_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "scout_jobs": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "queued",
+        "foreign_keys": []
+      },
+      "platforms": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "handles": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "enrich_emails": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "target_category": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "generate_outreach": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "stage": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "queued",
+        "foreign_keys": []
+      },
+      "stage_label": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "Job queued",
+        "foreign_keys": []
+      },
+      "stage_index": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "stages_total": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "4",
+        "foreign_keys": []
+      },
+      "logs": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "leads_count": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "elapsed_ms": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "credits_used": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "error_msg": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "completed_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "heartbeat_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "owner_boot_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/scout.py",
+      "line": 10
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "scout_leads": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "job_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "scout_jobs.id"
+        ]
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "platform": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "handle": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "name": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "email": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "phone": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "website": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "bio": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "followers": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "lead_score": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "profile_url": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "scrape_status": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "ok",
+        "foreign_keys": []
+      },
+      "account_type": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "priority_level": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "atlas": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "sources": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "job_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/scout.py",
+      "line": 42
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "job_id"
+        ],
+        "target_table": "scout_jobs",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "scout_maps_jobs": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "queued",
+        "foreign_keys": []
+      },
+      "keyword": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "city": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "lat": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "lon": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "depth": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "5",
+        "foreign_keys": []
+      },
+      "extract_emails": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "pull_socials": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "stage": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "queued",
+        "foreign_keys": []
+      },
+      "stage_label": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "Job queued",
+        "foreign_keys": []
+      },
+      "stage_index": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "stages_total": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "4",
+        "foreign_keys": []
+      },
+      "logs": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "results_count": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "elapsed_ms": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "credits_used": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "error_msg": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "completed_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "heartbeat_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "owner_boot_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/scout.py",
+      "line": 68
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "scout_maps_leads": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "job_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "scout_maps_jobs.id"
+        ]
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "title": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "phone": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "email": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "emails_found": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "website": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "category": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "address": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "city": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "rating": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "reviews_count": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "instagram": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "facebook": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "linkedin": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "twitter": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "socials": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "metadata_raw": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "job_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/scout.py",
+      "line": 102
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "job_id"
+        ],
+        "target_table": "scout_maps_jobs",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "scrape_jobs": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "query": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "queued",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "completed_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "record_count": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "progress": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "stage": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "stage_label": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "stage_index": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "stages_total": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "1",
+        "foreign_keys": []
+      },
+      "elapsed_ms": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "error_msg": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "failure_kind": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "owner_boot_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "heartbeat_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "entity_profile": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "query": {
+        "name": "query",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "status": {
+        "name": "status",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "completed_at": {
+        "name": "completed_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "record_count": {
+        "name": "record_count",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "progress": {
+        "name": "progress",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "stage": {
+        "name": "stage",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "stage_label": {
+        "name": "stage_label",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "stage_index": {
+        "name": "stage_index",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "stages_total": {
+        "name": "stages_total",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "elapsed_ms": {
+        "name": "elapsed_ms",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "error_msg": {
+        "name": "error_msg",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [],
+    "source": {
+      "path": "backend/app/models/scrape_job.py",
+      "line": 9
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "scrape_jobs_org_id_fkey",
+        "constrained_columns": [
+          "org_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "organizations",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "scrape_jobs_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "simulation_reports": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "creative_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "creatives.id"
+        ]
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "data_source": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "simulated",
+        "foreign_keys": []
+      },
+      "is_estimated": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "True",
+        "foreign_keys": []
+      },
+      "model_version": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "assumptions": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "evidence_creative_ids": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "segment_reactions": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "recommended_angles": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "generated_at": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "creative_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/simulation_report.py",
+      "line": 11
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "creative_id"
+        ],
+        "target_table": "creatives",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "support_ticket_replies": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "ticket_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "support_tickets.id"
+        ]
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "message": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "is_admin": {
+        "type": "BOOLEAN",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_support_ticket_replies_user_id",
+        "unique": false,
+        "columns": [
+          "support_ticket_replies.user_id"
+        ]
+      },
+      {
+        "name": "ix_support_ticket_replies_ticket_id",
+        "unique": false,
+        "columns": [
+          "support_ticket_replies.ticket_id"
+        ]
+      },
+      {
+        "name": "ix_support_ticket_replies_created_at",
+        "unique": false,
+        "columns": [
+          "support_ticket_replies.created_at"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "ticket_id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/support_ticket.py",
+      "line": 23
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "ticket_id"
+        ],
+        "target_table": "support_tickets",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "support_tickets": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "type": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "feedback",
+        "foreign_keys": []
+      },
+      "subject": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "message": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "open",
+        "foreign_keys": []
+      },
+      "tag": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "context_data": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "updated_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_support_tickets_created_at",
+        "unique": false,
+        "columns": [
+          "support_tickets.created_at"
+        ]
+      },
+      {
+        "name": "ix_support_tickets_org_id",
+        "unique": false,
+        "columns": [
+          "support_tickets.org_id"
+        ]
+      },
+      {
+        "name": "ix_support_tickets_user_id",
+        "unique": false,
+        "columns": [
+          "support_tickets.user_id"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/support_ticket.py",
+      "line": 8
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      },
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  },
+  "usage_logs": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "user_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "users.id"
+        ]
+      },
+      "job_id": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "provider": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "operation": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "discover_search",
+        "foreign_keys": []
+      },
+      "units": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "1.0",
+        "foreign_keys": []
+      },
+      "cost_usd": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "credits_deducted": {
+        "type": "FLOAT",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0.0",
+        "foreign_keys": []
+      },
+      "tokens_used": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "0",
+        "foreign_keys": []
+      },
+      "requests_used": {
+        "type": "INTEGER",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "1",
+        "foreign_keys": []
+      },
+      "metadata_json": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_usage_logs_provider",
+        "unique": false,
+        "columns": [
+          "usage_logs.provider"
+        ]
+      },
+      {
+        "name": "ix_usage_logs_user_id",
+        "unique": false,
+        "columns": [
+          "usage_logs.user_id"
+        ]
+      },
+      {
+        "name": "ix_usage_logs_job_id",
+        "unique": false,
+        "columns": [
+          "usage_logs.job_id"
+        ]
+      },
+      {
+        "name": "ix_usage_logs_org_id",
+        "unique": false,
+        "columns": [
+          "usage_logs.org_id"
+        ]
+      },
+      {
+        "name": "ix_usage_logs_created_at",
+        "unique": false,
+        "columns": [
+          "usage_logs.created_at"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "user_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "user_id": {
+        "name": "user_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "org_id": {
+        "name": "org_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "provider": {
+        "name": "provider",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "tokens_used": {
+        "name": "tokens_used",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "requests_used": {
+        "name": "requests_used",
+        "type": "INTEGER",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      },
+      "job_id": {
+        "name": "job_id",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "operation": {
+        "name": "operation",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": "'discover_search'::character varying",
+        "autoincrement": false,
+        "comment": null
+      },
+      "units": {
+        "name": "units",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "cost_usd": {
+        "name": "cost_usd",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "credits_deducted": {
+        "name": "credits_deducted",
+        "type": "DOUBLE PRECISION",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "metadata_json": {
+        "name": "metadata_json",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [
+      {
+        "name": "ix_usage_logs_created_at",
+        "unique": false,
+        "column_names": [
+          "created_at"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_usage_logs_job_id",
+        "unique": false,
+        "column_names": [
+          "job_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_usage_logs_org_id",
+        "unique": false,
+        "column_names": [
+          "org_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_usage_logs_provider",
+        "unique": false,
+        "column_names": [
+          "provider"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      },
+      {
+        "name": "ix_usage_logs_user_id",
+        "unique": false,
+        "column_names": [
+          "user_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/usage_log.py",
+      "line": 8
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "user_id"
+        ],
+        "target_table": "users",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ],
+    "database_foreign_keys": [
+      {
+        "name": "usage_logs_user_id_fkey",
+        "constrained_columns": [
+          "user_id"
+        ],
+        "referred_schema": null,
+        "referred_table": "users",
+        "referred_columns": [
+          "id"
+        ],
+        "options": {},
+        "comment": null
+      }
+    ],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "usage_logs_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "users": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "email": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "password_hash": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "full_name": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "avatar_url": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "role": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "customer",
+        "foreign_keys": []
+      },
+      "admin_permissions": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "trial_started_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "trial_expires_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "is_suspended": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "is_banned": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "has_completed_onboarding": {
+        "type": "BOOLEAN",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "False",
+        "foreign_keys": []
+      },
+      "signup_metadata": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "password_reset_token_hash": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "password_reset_expires_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": "now()",
+        "python_default": null,
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_users_email",
+        "unique": true,
+        "columns": [
+          "users.email"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "email": {
+        "name": "email",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "password_hash": {
+        "name": "password_hash",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "role": {
+        "name": "role",
+        "type": "VARCHAR",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "trial_started_at": {
+        "name": "trial_started_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "trial_expires_at": {
+        "name": "trial_expires_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": true,
+        "default": "now()",
+        "autoincrement": false,
+        "comment": null
+      },
+      "is_suspended": {
+        "name": "is_suspended",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "has_completed_onboarding": {
+        "name": "has_completed_onboarding",
+        "type": "BOOLEAN",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [
+      {
+        "name": "ix_users_email",
+        "unique": true,
+        "column_names": [
+          "email"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/user.py",
+      "line": 8
+    },
+    "model_foreign_keys": [],
+    "database_foreign_keys": [],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "users_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "webhook_events": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "request_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "provider": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "payload": {
+        "type": "JSON",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "updated_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [
+      {
+        "name": "ix_webhook_events_request_id",
+        "unique": false,
+        "columns": [
+          "webhook_events.request_id"
+        ]
+      }
+    ],
+    "model_constraints": [
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "database_columns": {
+      "id": {
+        "name": "id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "request_id": {
+        "name": "request_id",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "provider": {
+        "name": "provider",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "status": {
+        "name": "status",
+        "type": "VARCHAR",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "payload": {
+        "name": "payload",
+        "type": "JSON",
+        "nullable": true,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "created_at": {
+        "name": "created_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      },
+      "updated_at": {
+        "name": "updated_at",
+        "type": "TIMESTAMP",
+        "nullable": false,
+        "default": null,
+        "autoincrement": false,
+        "comment": null
+      }
+    },
+    "database_indexes": [
+      {
+        "name": "ix_webhook_events_request_id",
+        "unique": false,
+        "column_names": [
+          "request_id"
+        ],
+        "dialect_options": {
+          "postgresql_include": []
+        }
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/webhook_event.py",
+      "line": 12
+    },
+    "model_foreign_keys": [],
+    "database_foreign_keys": [],
+    "database_unique_constraints": [],
+    "database_primary_key": {
+      "constrained_columns": [
+        "id"
+      ],
+      "name": "webhook_events_pkey",
+      "comment": null,
+      "dialect_options": {
+        "postgresql_include": []
+      }
+    }
+  },
+  "workspace_provider_credentials": {
+    "model": {
+      "id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "org_id": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": [
+          "organizations.id"
+        ]
+      },
+      "provider": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "google_gemini",
+        "foreign_keys": []
+      },
+      "encrypted_secret": {
+        "type": "VARCHAR",
+        "nullable": false,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "key_suffix": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "status": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "connected",
+        "foreign_keys": []
+      },
+      "credential_mode": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": "managed",
+        "foreign_keys": []
+      },
+      "model": {
+        "type": "VARCHAR",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "last_tested_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "last_used_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": true,
+        "server_default": null,
+        "python_default": null,
+        "foreign_keys": []
+      },
+      "created_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      },
+      "updated_at": {
+        "type": "TIMESTAMP WITH TIME ZONE",
+        "nullable": false,
+        "server_default": null,
+        "python_default": "callable",
+        "foreign_keys": []
+      }
+    },
+    "model_indexes": [],
+    "model_constraints": [
+      {
+        "kind": "ForeignKeyConstraint",
+        "name": null,
+        "columns": [
+          "org_id"
+        ]
+      },
+      {
+        "kind": "PrimaryKeyConstraint",
+        "name": null,
+        "columns": [
+          "id"
+        ]
+      }
+    ],
+    "source": {
+      "path": "backend/app/models/workspace_credential.py",
+      "line": 12
+    },
+    "model_foreign_keys": [
+      {
+        "columns": [
+          "org_id"
+        ],
+        "target_table": "organizations",
+        "target_columns": [
+          "id"
+        ],
+        "ondelete": null,
+        "onupdate": null,
+        "deferrable": null,
+        "initially": null
+      }
+    ]
+  }
+}

@@ -24,15 +24,28 @@ from app.models.user import User
 async def get_user_org_ids(db: AsyncSession, user: User) -> Optional[List[str]]:
     """Organization ids the caller may read.
 
-    Returns ``None`` for admins, meaning "unrestricted". An empty list is a
-    legitimate answer (a user with no org sees nothing).
+    Returns ``None`` for admins, meaning "unrestricted" (unless scoped to an API key).
+    An empty list is a legitimate answer (a user with no org sees nothing).
     """
+    scoped_org_id = getattr(user, "_scoped_org_id", None)
+    if scoped_org_id:
+        return [scoped_org_id]
+
     if getattr(user, "role", None) == "admin":
         return None
-    rows = (
+
+    from app.models.organization_member import OrganizationMember
+
+    owned_rows = (
         await db.execute(select(Organization.id).where(Organization.owner_id == user.id))
     ).scalars().all()
-    return list(rows or [])
+
+    member_rows = (
+        await db.execute(select(OrganizationMember.org_id).where(OrganizationMember.user_id == user.id))
+    ).scalars().all()
+
+    org_ids = list(dict.fromkeys(list(owned_rows or []) + list(member_rows or [])))
+    return org_ids
 
 
 def is_scoped_out(user_org_ids: Optional[List[str]], org_id: Optional[str]) -> bool:

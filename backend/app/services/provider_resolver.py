@@ -23,6 +23,11 @@ from app.services.billing_service import is_trial_active
 logger = logging.getLogger(__name__)
 
 def _get_managed_provider():
+    from app.core.config import settings
+    if getattr(settings, "GEMINI_API_KEY", None):
+        gemini = GeminiProvider(api_key=settings.GEMINI_API_KEY)
+        if gemini.is_configured:
+            return gemini
     aihubmix = AIHubMixImageProvider()
     if aihubmix.is_configured:
         return aihubmix

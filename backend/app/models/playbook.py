@@ -1,7 +1,8 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, func
-from app.db.base import Base
+from datetime import datetime, timezone
 import uuid
 import secrets
+from sqlalchemy import Column, String, DateTime, ForeignKey, JSON, func
+from app.db.base import Base
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -20,8 +21,8 @@ class Playbook(Base):
     query = Column(String, nullable=False)
     title = Column(String, nullable=False)
     summary = Column(String, nullable=True)
-    patterns = Column(JSON, default=list, nullable=False) # Top 3-5 extracted patterns with lift%
-    creatives = Column(JSON, default=list, nullable=False) # Real scraped creatives with attribution
-    insights = Column(JSON, default=list, nullable=False) # Key Deep Teardown takeaways
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    patterns = Column(JSON, default=list, server_default="[]", nullable=False) # Top 3-5 extracted patterns with lift%
+    creatives = Column(JSON, default=list, server_default="[]", nullable=False) # Real scraped creatives with attribution
+    insights = Column(JSON, default=list, server_default="[]", nullable=False) # Key Deep Teardown takeaways
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False, index=True)
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), onupdate=func.now(), nullable=False)

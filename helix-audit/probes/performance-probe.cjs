@@ -1,0 +1,1 @@
+const fs=require('fs');const s=fs.readFileSync('../src/pages/PerformancePage.jsx','utf8');const start=s.indexOf('    if (creatives.length === 0)');const end=s.indexOf('  }, [creatives])',start);const f=new Function('creatives',s.slice(start,end));console.log('empty',f([]));try{f([{days_active:1,format:'image',scores:{}}])}catch(e){console.log('one_creative',e.name,e.message)}

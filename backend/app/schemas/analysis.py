@@ -21,4 +21,6 @@ class Insight(BaseModel):
     emotional_resonance: Optional[str] = None
     script_teardown: Optional[str] = None
     fatigue_prediction: Optional[str] = None
+    key_elements: Optional[List[str]] = None
+    recommendations: Optional[List[str]] = None
 

@@ -1,3 +1,4 @@
+import sqlalchemy as sa
 from sqlalchemy import Column, String, Boolean, ForeignKey
 from sqlalchemy.dialects.postgresql import JSON
 from app.db.base import Base
@@ -22,8 +23,8 @@ class SimulationReport(Base):
     org_id = Column(String, ForeignKey("organizations.id"), nullable=False)
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
 
-    data_source = Column(String, nullable=False, default="simulated")
-    is_estimated = Column(Boolean, nullable=False, default=True)
+    data_source = Column(String, nullable=False, default="simulated", server_default="simulated")
+    is_estimated = Column(Boolean, nullable=False, default=True, server_default=sa.true())
     model_version = Column(String, nullable=True)
     assumptions = Column(JSON, nullable=True)
     evidence_creative_ids = Column(JSON, nullable=True)

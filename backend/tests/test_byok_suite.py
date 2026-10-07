@@ -113,12 +113,35 @@ def test_no_silent_fallback_contract():
     assert error_message == "Your connected Gemini account is unavailable. Check your API key or Google quota."
     print("[PASS] Test 4: BYOK errors produce explicit client notice without silent billing switch")
 
+def test_scout_credentials_encryption():
+    # Test F21: Scout hunter_api_key and linkedin_cookie encryption
+    raw_hunter = "hunter_live_sec_key_123456"
+    raw_linkedin = "li_at=AQEDASmock_linkedin_cookie_value"
+    
+    enc_hunter = encrypt_secret(raw_hunter)
+    enc_linkedin = encrypt_secret(raw_linkedin)
+    
+    assert enc_hunter != raw_hunter
+    assert "hunter_live" not in enc_hunter
+    assert enc_linkedin != raw_linkedin
+    assert "AQEDAS" not in enc_linkedin
+    
+    from app.services.security_service import safe_decrypt_secret
+    assert safe_decrypt_secret(enc_hunter) == raw_hunter
+    assert safe_decrypt_secret(enc_linkedin) == raw_linkedin
+    # Legacy unencrypted fallback
+    assert safe_decrypt_secret(raw_hunter) == raw_hunter
+    print("[PASS] Test 5 (F21): Scout credentials encrypted at rest and safely decrypted")
+
+
 if __name__ == "__main__":
     print("Running HELIX BYOK & Provider Resolution Test Suite...")
     test_encryption_and_masking()
     test_trial_always_uses_managed()
     test_paid_workspace_uses_byok()
     test_no_silent_fallback_contract()
+    test_scout_credentials_encryption()
     print("\n=================================================================")
     print("ALL HELIX BYOK SUITE TESTS PASSED (100% SUCCESS)")
     print("=================================================================")
+

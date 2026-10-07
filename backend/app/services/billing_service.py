@@ -1,8 +1,11 @@
 import datetime
+import logging
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, cast, String, func
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 from app.models.user import User
 from app.models.organization import Organization
@@ -71,6 +74,9 @@ async def _ensure_daily_reset(db: AsyncSession, org: Organization) -> None:
         await db.flush()
 
 
+from sqlalchemy.exc import IntegrityError
+
+
 async def get_or_create_default_org(
     db: AsyncSession,
     user: User,
@@ -79,28 +85,59 @@ async def get_or_create_default_org(
     """
     Retrieves or creates the default organization for a user.
     Optionally applies a row-level lock (SELECT ... FOR UPDATE).
+    Handles concurrent registration races via a nested savepoint and retry.
     """
     query = select(Organization).where(Organization.owner_id == user.id)
     if lock_row:
-        query = query.with_for_update()
+        query = query.with_for_update().execution_options(populate_existing=True)
 
     result = await db.execute(query)
     org = result.scalar_one_or_none()
 
     if not org:
-        org = Organization(
-            name=f"{user.email.split('@')[0]}'s Workspace",
-            owner_id=user.id,
-            plan_id="plan_trial_default",
-            plan="trial",
-            credit_balance=25.0,
-            credits_used=0.0,
-            daily_credits_used_today=0.0,
-            status="active"
+        # Check if user is a member of an existing organization (F46)
+        from app.models.organization_member import OrganizationMember
+        member_query = (
+            select(Organization)
+            .join(OrganizationMember, Organization.id == OrganizationMember.org_id)
+            .where(OrganizationMember.user_id == user.id)
+            .order_by(OrganizationMember.created_at.asc())
         )
-        db.add(org)
-        await db.commit()
-        await db.refresh(org)
+        if lock_row:
+            member_query = member_query.with_for_update().execution_options(populate_existing=True)
+        member_org = (await db.execute(member_query)).scalars().first()
+        if member_org:
+            org = member_org
+            await _ensure_daily_reset(db, org)
+            return org
+
+        created = False
+        try:
+            async with db.begin_nested():
+                org = Organization(
+                    name=f"{user.email.split('@')[0]}'s Workspace",
+                    owner_id=user.id,
+                    plan_id="plan_trial_default",
+                    plan="trial",
+                    credit_balance=25.0,
+                    credits_used=0.0,
+                    daily_credits_used_today=0.0,
+                    status="active"
+                )
+                db.add(org)
+                await db.flush()
+                created = True
+        except IntegrityError:
+            # Another concurrent request already created the org
+            query = select(Organization).where(Organization.owner_id == user.id)
+            if lock_row:
+                query = query.with_for_update().execution_options(populate_existing=True)
+            result = await db.execute(query)
+            org = result.scalar_one()
+
+        if created:
+            await db.commit()
+            await db.refresh(org)
     else:
         await _ensure_daily_reset(db, org)
     return org
@@ -285,6 +322,25 @@ async def check_quota_and_feature(
     )
 
 
+async def get_idempotent_operation(
+    db: AsyncSession,
+    org_id: str,
+    idempotency_key: str,
+    operation: Optional[str] = None
+) -> Optional[UsageLog]:
+    """Look up an existing operation by idempotency key to prevent double debiting (F10)."""
+    if not idempotency_key or not org_id:
+        return None
+    stmt = select(UsageLog).where(
+        UsageLog.org_id == org_id,
+        cast(UsageLog.metadata_json, String).like(f'%"{idempotency_key}"%')
+    )
+    if operation:
+        stmt = stmt.where(UsageLog.operation == operation)
+    result = await db.execute(stmt)
+    return result.scalars().first()
+
+
 async def charge(
     db: AsyncSession,
     org: Organization,
@@ -295,23 +351,56 @@ async def charge(
     units: float = 1.0,
     cost_usd: float = 0.0,
     job_id: Optional[str] = None,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    idempotency_key: Optional[str] = None
 ) -> UsageLog:
     """
     Atomically deducts `amount` credits from org balance, increments counters,
     and creates a real UsageLog entry.
+    Locks and refreshes the organization row to avoid stale identity-map overwrites (F07).
+    Idempotent: short-circuits if idempotency_key has already been charged (F10).
     """
+    if idempotency_key:
+        existing = await get_idempotent_operation(db, org.id, idempotency_key, operation)
+        if existing:
+            return existing
+
+    # 1. Row-lock and refresh the org with populate_existing=True
+    lock_query = (
+        select(Organization)
+        .where(Organization.id == org.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    locked_org = (await db.execute(lock_query)).scalar_one_or_none() or org
+
+    meta = dict(metadata or {})
+    if idempotency_key:
+        meta["idempotency_key"] = idempotency_key
+
     if amount > 0:
-        org.credit_balance = max(0.0, org.credit_balance - amount)
-        org.credits_used += amount
-        await _ensure_daily_reset(db, org)
-        org.daily_credits_used_today += amount
-        if org.credit_balance <= 0.0:
-            org.status = "quota_exhausted"
+        if locked_org.credit_balance < amount:
+            locked_org.status = "quota_exhausted"
+            await db.commit()
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "code": "insufficient_credits",
+                    "message": f"Not enough credits for this action ({locked_org.credit_balance:.1f} available, {amount:.1f} required).",
+                    "credit_balance": round(float(locked_org.credit_balance), 2),
+                    "required": amount,
+                }
+            )
+        locked_org.credit_balance = max(0.0, locked_org.credit_balance - amount)
+        locked_org.credits_used += amount
+        await _ensure_daily_reset(db, locked_org)
+        locked_org.daily_credits_used_today += amount
+        if locked_org.credit_balance <= 0.0:
+            locked_org.status = "quota_exhausted"
 
     log_entry = UsageLog(
-        org_id=org.id,
-        user_id=user_id or org.owner_id,
+        org_id=locked_org.id,
+        user_id=user_id or locked_org.owner_id,
         job_id=job_id,
         provider=provider,
         operation=operation,
@@ -320,7 +409,7 @@ async def charge(
         credits_deducted=amount,
         tokens_used=int(units) if "token" in operation else 0,
         requests_used=1,
-        metadata_json=metadata or {}
+        metadata_json=meta
     )
     db.add(log_entry)
     await db.commit()
@@ -334,40 +423,60 @@ async def refund(
     amount: float,
     reason: str,
     job_id: Optional[str] = None
-) -> None:
+) -> bool:
     """
     Restores credits to the organization when an asynchronous job fails
     before consuming external provider quota.
+    Idempotent: prevents duplicate refunds for the same job_id (F08).
     """
     if amount <= 0:
-        return
+        return False
 
+    # 1. Lock organization with populate_existing=True (F07, F08)
     result = await db.execute(
-        select(Organization).where(Organization.id == org_id).with_for_update()
+        select(Organization)
+        .where(Organization.id == org_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
     )
     org = result.scalar_one_or_none()
-    if org:
-        org.credit_balance += amount
-        org.credits_used = max(0.0, org.credits_used - amount)
-        org.daily_credits_used_today = max(0.0, org.daily_credits_used_today - amount)
-        if org.status == "quota_exhausted" and org.credit_balance > 0:
-            org.status = "active"
+    if not org:
+        return False
 
-        refund_log = UsageLog(
-            org_id=org.id,
-            user_id=org.owner_id,
-            job_id=job_id,
-            provider="system",
-            operation=f"refund_{reason}",
-            units=1.0,
-            cost_usd=0.0,
-            credits_deducted=-amount,
-            tokens_used=0,
-            requests_used=0,
-            metadata_json={"refund_reason": reason, "amount": amount}
-        )
-        db.add(refund_log)
-        await db.commit()
+    # 2. Idempotency check: if job_id was already refunded, do not refund again (F08)
+    if job_id:
+        existing_refund = (await db.execute(
+            select(UsageLog).where(
+                UsageLog.job_id == job_id,
+                UsageLog.credits_deducted < 0
+            )
+        )).scalars().first()
+        if existing_refund:
+            logger.warning(f"Job {job_id} already has a refund recorded ({existing_refund.id}). Skipping duplicate refund.")
+            return False
+
+    org.credit_balance += amount
+    org.credits_used = max(0.0, org.credits_used - amount)
+    org.daily_credits_used_today = max(0.0, org.daily_credits_used_today - amount)
+    if org.status == "quota_exhausted" and org.credit_balance > 0:
+        org.status = "active"
+
+    refund_log = UsageLog(
+        org_id=org.id,
+        user_id=org.owner_id,
+        job_id=job_id,
+        provider="system",
+        operation=f"refund_{reason}",
+        units=1.0,
+        cost_usd=0.0,
+        credits_deducted=-amount,
+        tokens_used=0,
+        requests_used=0,
+        metadata_json={"refund_reason": reason, "amount": amount}
+    )
+    db.add(refund_log)
+    await db.commit()
+    return True
 
 
 async def meter_and_deduct(
@@ -474,6 +583,8 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
         "credit_balance": round(float(org.credit_balance), 2),
         "credits_used": round(float(org.credits_used), 2),
         "status": org.status,
+        "subscription_lifecycle": "metered" if plan.type == "pay_as_you_go" else ("trial" if plan.type == "trial" else "admin_allocated"),
+        "renews_at": None,
         "trial_expires_at": _format_iso(user.trial_expires_at),
         "trial_days_remaining": trial_days_remaining,
         "daily_credit_limit": daily_limit,
@@ -594,13 +705,14 @@ async def assert_can_generate_image(
     lock_row: bool = True
 ) -> Tuple[Organization, Plan]:
     """
-    Strict server-side gatekeeper for Gemini Trial Image Generation.
+    Strict server-side gatekeeper for Gemini Trial & Paid Media Generation (F11, F55).
     Guarantees:
     - 7-day trial expiry -> 402 HTTP (code: trial_expired)
-    - 5 images/day limit -> 402 HTTP (code: daily_limit)
-    - 25 total images cap -> 402 HTTP (code: trial_total_limit)
+    - Per-plan / trial daily image limits (with in-flight job reservation) -> 402 HTTP (code: daily_limit)
+    - 25 total images cap on trial -> 402 HTTP (code: trial_total_limit)
     - Video on trial -> 402 HTTP (code: video_not_allowed)
-    - Paid plans / Admin -> Bypass trial limitations
+    - Per-plan video limit on paid plans (with in-flight reservation) -> 402 HTTP (code: daily_video_limit)
+    - Admin -> Bypass limitations
     """
     if not org:
         org = await get_or_create_default_org(db, user, lock_row=lock_row)
@@ -620,19 +732,41 @@ async def assert_can_generate_image(
     days_remaining = get_trial_days_remaining(user)
     used_today = int(getattr(org, "images_generated_today", 0) or 0)
     total_used = int(getattr(org, "images_trial_total", 0) or 0)
+    is_video = media_type.lower() in ("video", "controlled_video", "before_after", "quick_video", "premium_video")
 
-    # 1. Video limit on trial (allow 1-3 video generations per day)
-    if is_trial and media_type.lower() in ("video", "controlled_video", "before_after", "quick_video", "premium_video"):
-        videos_used_today = int(getattr(org, "videos_generated_today", 0) or 0)
-        if videos_used_today >= 3:
-            raise HTTPException(
-                status_code=402,
-                detail={
-                    "code": "video_limit_reached",
-                    "message": "You've reached your free daily limit of 3 videos. Upgrade to a paid plan for unlimited video creation.",
-                    "trial_days_remaining": days_remaining
-                }
+    # In-flight concurrent media jobs reservation check (F11)
+    from app.models.media_job import MediaGenerationJob
+    in_flight_count = 0
+    try:
+        if hasattr(db, "scalar"):
+            in_flight_count = (await db.scalar(
+                select(func.count(MediaGenerationJob.id)).where(
+                    MediaGenerationJob.org_id == org.id,
+                    MediaGenerationJob.status.in_(("pending", "running", "processing", "in_progress"))
+                )
+            )) or 0
+        elif hasattr(db, "execute"):
+            res = await db.execute(
+                select(func.count(MediaGenerationJob.id)).where(
+                    MediaGenerationJob.org_id == org.id,
+                    MediaGenerationJob.status.in_(("pending", "running", "processing", "in_progress"))
+                )
             )
+            if hasattr(res, "scalar"):
+                in_flight_count = res.scalar() or 0
+    except Exception:
+        in_flight_count = 0
+
+    # 1. Video limit on trial (video requires a paid plan)
+    if is_trial and is_video:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "video_not_allowed",
+                "message": "Video generation is not available during the free trial. Please upgrade to a paid plan.",
+                "trial_days_remaining": days_remaining
+            }
+        )
 
     # 2. Check 7-Day Trial Expiration
     if is_trial and not is_trial_active(user):
@@ -651,7 +785,7 @@ async def assert_can_generate_image(
         )
 
     # 3. Check 25-image total trial cap
-    if is_trial and total_used >= settings.TRIAL_IMAGES_TOTAL:
+    if is_trial and not is_video and total_used >= settings.TRIAL_IMAGES_TOTAL:
         org.status = "quota_exhausted"
         await db.commit()
         raise HTTPException(
@@ -666,17 +800,38 @@ async def assert_can_generate_image(
             }
         )
 
-    # 4. Check Daily Limit (5 images/day on trial, 50 on paid)
-    daily_limit = settings.TRIAL_IMAGES_PER_DAY if is_trial else settings.PAID_IMAGES_PER_DAY
-    if used_today >= daily_limit:
+    # 4. Check Daily Video Limit on Paid Plans (F55)
+    if is_video:
+        daily_video_limit = (getattr(plan, "daily_video_limit", None) if plan else None) or 3
+        videos_used_today = int(getattr(org, "videos_generated_today", 0) or 0)
+        if (videos_used_today + in_flight_count) >= daily_video_limit:
+            raise HTTPException(
+                status_code=402,
+                detail={
+                    "code": "daily_video_limit",
+                    "message": f"You've reached your daily limit of {daily_video_limit} videos (including in-flight jobs). Your quota resets at 00:00 UTC.",
+                    "videos_used_today": videos_used_today,
+                    "videos_in_flight": in_flight_count,
+                    "daily_video_limit": daily_video_limit
+                }
+            )
+        return org, plan or Plan(id="plan_paid_default", name="Paid Plan", type="pay_as_you_go")
+
+    # 5. Check Daily Image Limit (F55, F11)
+    daily_limit = getattr(plan, "daily_image_limit", None) if plan else None
+    if daily_limit is None:
+        daily_limit = settings.TRIAL_IMAGES_PER_DAY if is_trial else settings.PAID_IMAGES_PER_DAY
+
+    if (used_today + in_flight_count) >= daily_limit:
         raise HTTPException(
             status_code=402,
             detail={
                 "code": "daily_limit",
-                "message": f"You've reached today's limit of {daily_limit} images. Your quota resets at 00:00 UTC.",
+                "message": f"You've reached today's limit of {daily_limit} images (including in-flight jobs). Your quota resets at 00:00 UTC.",
                 "images_used_today": used_today,
+                "images_in_flight": in_flight_count,
                 "images_daily_limit": daily_limit,
-                "images_remaining_today": 0,
+                "images_remaining_today": max(0, daily_limit - used_today - in_flight_count),
                 "trial_days_remaining": days_remaining
             }
         )
@@ -692,14 +847,21 @@ async def record_image_generated(
     cost_usd: float = 0.00
 ) -> UsageLog:
     """
-    Increments daily and total image counters and logs usage.
+    Increments daily and total image counters and logs usage under row-lock (F11).
     """
-    await _ensure_daily_image_reset(db, org)
-    org.images_generated_today = (getattr(org, "images_generated_today", 0) or 0) + 1.0
-    org.images_trial_total = (getattr(org, "images_trial_total", 0) or 0) + 1.0
+    lock_query = (
+        select(Organization)
+        .where(Organization.id == org.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    locked_org = (await db.execute(lock_query)).scalar_one_or_none() or org
+    await _ensure_daily_image_reset(db, locked_org)
+    locked_org.images_generated_today = (getattr(locked_org, "images_generated_today", 0) or 0) + 1.0
+    locked_org.images_trial_total = (getattr(locked_org, "images_trial_total", 0) or 0) + 1.0
 
     log = UsageLog(
-        org_id=org.id,
+        org_id=locked_org.id,
         user_id=user.id,
         job_id=job_id,
         provider="gemini",
@@ -709,13 +871,13 @@ async def record_image_generated(
         credits_deducted=0.0,
         requests_used=1,
         metadata_json={
-            "images_generated_today": int(org.images_generated_today),
-            "images_trial_total": int(org.images_trial_total)
+            "images_generated_today": int(locked_org.images_generated_today),
+            "images_trial_total": int(locked_org.images_trial_total)
         }
     )
     db.add(log)
     await db.commit()
-    await db.refresh(org)
+    await db.refresh(locked_org)
     return log
 
 
@@ -727,13 +889,20 @@ async def record_video_generated(
     cost_usd: float = 0.00
 ) -> UsageLog:
     """
-    Increments daily video counter and logs usage.
+    Increments daily video counter and logs usage under row-lock (F11).
     """
-    await _ensure_daily_image_reset(db, org)
-    org.videos_generated_today = (getattr(org, "videos_generated_today", 0) or 0) + 1.0
+    lock_query = (
+        select(Organization)
+        .where(Organization.id == org.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    locked_org = (await db.execute(lock_query)).scalar_one_or_none() or org
+    await _ensure_daily_image_reset(db, locked_org)
+    locked_org.videos_generated_today = (getattr(locked_org, "videos_generated_today", 0) or 0) + 1.0
 
     log = UsageLog(
-        org_id=org.id,
+        org_id=locked_org.id,
         user_id=user.id,
         job_id=job_id,
         provider="pollinations",
@@ -743,11 +912,11 @@ async def record_video_generated(
         credits_deducted=0.0,
         requests_used=1,
         metadata_json={
-            "videos_generated_today": int(org.videos_generated_today),
+            "videos_generated_today": int(locked_org.videos_generated_today),
         }
     )
     db.add(log)
     await db.commit()
-    await db.refresh(org)
+    await db.refresh(locked_org)
     return log
 

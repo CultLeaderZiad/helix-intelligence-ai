@@ -41,6 +41,9 @@ DISCOVER_ACTIVE = ("queued", "running")
 # It was missing from the original sweep, so a media job interrupted during
 # that wait stayed active forever.
 MEDIA_ACTIVE = ("pending", "running", "processing", "in_progress")
+SCOUT_ACTIVE = ("queued", "running")
+MAPS_ACTIVE = ("queued", "running")
+LEADGEN_ACTIVE = ("queued", "running")
 
 DISCOVER_MESSAGE = (
     "Interrupted by a service restart, not by a problem with your search. "
@@ -50,6 +53,15 @@ MEDIA_MESSAGE = (
     "Interrupted by a service restart, not by a problem with your prompt. "
     "You were not charged. Please try generating again."
 )
+SCOUT_MESSAGE = (
+    "Interrupted by a service restart. Any credits deducted for this run were refunded. Please run it again."
+)
+MAPS_MESSAGE = (
+    "Interrupted by a service restart. Any credits deducted for this run were refunded. Please run it again."
+)
+LEADGEN_MESSAGE = (
+    "Interrupted by a worker or service restart. Any credits deducted for this run were refunded. Please run it again."
+)
 
 
 async def _sweep_table(
@@ -58,6 +70,8 @@ async def _sweep_table(
     error_column: str,
     message: str,
     select_extra: str = "",
+    has_failure_kind: bool = True,
+    extra_update_clauses: str = "",
 ) -> List[Dict[str, Any]]:
     """Mark dead rows failed, returning what was swept."""
     cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
@@ -72,27 +86,56 @@ async def _sweep_table(
     params = {"boot": BOOT_ID, "cutoff": cutoff}
 
     async with async_session_maker() as db:
+        lock_suffix = " FOR UPDATE SKIP LOCKED" if db.bind and db.bind.dialect.name == "postgresql" else ""
         rows = (
             await db.execute(
-                text(f"SELECT id{select_extra} FROM {table} WHERE {predicate}"), params
+                text(f"SELECT id{select_extra} FROM {table} WHERE {predicate}{lock_suffix}"), params
             )
         ).mappings().all()
         if not rows:
             return []
 
+        ids = [r["id"] for r in rows]
+        id_placeholders = ", ".join(f":id_{i}" for i in range(len(ids)))
+        id_params = {f"id_{i}": row_id for i, row_id in enumerate(ids)}
+        
+        failure_kind_clause = "failure_kind = 'service_restart'," if has_failure_kind else ""
+        extra_clauses = f", {extra_update_clauses}" if extra_update_clauses else ""
+        
         await db.execute(
             text(
                 f"""UPDATE {table}
                     SET status = 'failed',
-                        failure_kind = 'service_restart',
+                        {failure_kind_clause}
                         {error_column} = :message
-                    WHERE {predicate}"""
+                        {extra_clauses}
+                    WHERE id IN ({id_placeholders})"""
             ),
-            {**params, "message": message},
+            {**id_params, "message": message},
         )
         await db.commit()
 
     return [dict(r) for r in rows]
+
+
+async def _sweep_unrefunded_failed_jobs() -> List[Dict[str, Any]]:
+    """Sweep scrape jobs that failed but have not had their credits refunded yet (F08)."""
+    async with async_session_maker() as db:
+        lock_suffix = " FOR UPDATE OF sj SKIP LOCKED" if db.bind and db.bind.dialect.name == "postgresql" else ""
+        query = text(f"""
+            SELECT sj.id, sj.org_id
+            FROM scrape_jobs sj
+            JOIN usage_logs ul_charge ON ul_charge.job_id = sj.id AND ul_charge.credits_deducted > 0
+            WHERE sj.status = 'failed'
+              AND NOT EXISTS (
+                  SELECT 1 FROM usage_logs ul_refund
+                  WHERE ul_refund.job_id = sj.id AND ul_refund.credits_deducted < 0
+              )
+            {lock_suffix}
+            LIMIT 50
+        """)
+        rows = (await db.execute(query)).mappings().all()
+        return [dict(r) for r in rows]
 
 
 async def _sweep_monitor_runs() -> int:
@@ -162,9 +205,18 @@ async def reconcile_once() -> Dict[str, int]:
         discover_rows = []
 
     # Discover charges upfront, so an interrupted run took money for a result
-    # the user can never receive. Media only charges on success, so there is
-    # nothing to give back there.
-    for row in discover_rows:
+    # the user can never receive. Also refund any failed jobs that crashed before refund could run (F08).
+    failed_unrefunded = []
+    try:
+        failed_unrefunded = await _sweep_unrefunded_failed_jobs()
+    except Exception as e:
+        logger.error("Sweep unrefunded failed jobs failed: %s", e)
+
+    all_to_refund = {r["id"]: r for r in discover_rows}
+    for r in failed_unrefunded:
+        all_to_refund[r["id"]] = r
+
+    for job_id, row in all_to_refund.items():
         try:
             async with async_session_maker() as db:
                 await refund(
@@ -172,11 +224,11 @@ async def reconcile_once() -> Dict[str, int]:
                     row["org_id"],
                     DISCOVER_SEARCH_CREDIT_COST,
                     "service_restart_sweep",
-                    row["id"],
+                    job_id,
                 )
             swept["refunded"] += 1
         except Exception as e:
-            logger.error("Refund failed for swept job %s: %s", row["id"], e)
+            logger.error("Refund failed for swept job %s: %s", job_id, e)
 
     try:
         media_rows = await _sweep_table(
@@ -186,17 +238,99 @@ async def reconcile_once() -> Dict[str, int]:
     except Exception as e:
         logger.error("Media reconciliation failed: %s", e)
 
+    # 3. Social Scout Jobs (F25)
+    try:
+        scout_rows = await _sweep_table(
+            "scout_jobs",
+            SCOUT_ACTIVE,
+            "error_msg",
+            SCOUT_MESSAGE,
+            select_extra=", org_id, credits_used",
+            has_failure_kind=False,
+            extra_update_clauses="stage = 'failed', stage_label = 'Failed'"
+        )
+        swept["scout"] = len(scout_rows)
+        for r in scout_rows:
+            credits = float(r.get("credits_used") or 0.0)
+            if credits > 0:
+                try:
+                    async with async_session_maker() as db:
+                        await refund(db, r["org_id"], credits, "scout_service_restart_sweep", r["id"])
+                    swept["refunded"] += 1
+                except Exception as e:
+                    logger.error("Refund failed for swept scout job %s: %s", r["id"], e)
+    except Exception as e:
+        logger.error("Scout reconciliation failed: %s", e)
+
+    # 4. Maps Scout Jobs (F25)
+    try:
+        maps_rows = await _sweep_table(
+            "scout_maps_jobs",
+            MAPS_ACTIVE,
+            "error_msg",
+            MAPS_MESSAGE,
+            select_extra=", org_id, credits_used",
+            has_failure_kind=False,
+            extra_update_clauses="stage = 'failed', stage_label = 'Failed'"
+        )
+        swept["maps"] = len(maps_rows)
+        for r in maps_rows:
+            credits = float(r.get("credits_used") or 0.0)
+            if credits > 0:
+                try:
+                    async with async_session_maker() as db:
+                        await refund(db, r["org_id"], credits, "maps_service_restart_sweep", r["id"])
+                    swept["refunded"] += 1
+                except Exception as e:
+                    logger.error("Refund failed for swept maps job %s: %s", r["id"], e)
+    except Exception as e:
+        logger.error("Maps reconciliation failed: %s", e)
+
+    # 5. LeadGen Jobs (F25)
+    try:
+        leadgen_rows = await _sweep_table(
+            "leadgen_jobs",
+            LEADGEN_ACTIVE,
+            "error_msg",
+            LEADGEN_MESSAGE,
+            select_extra=", org_id, credits_used",
+            has_failure_kind=False,
+            extra_update_clauses="stage = 'failed', stage_label = 'Failed'"
+        )
+        swept["leadgen"] = len(leadgen_rows)
+        for r in leadgen_rows:
+            credits = float(r.get("credits_used") or 0.0)
+            if credits > 0:
+                try:
+                    async with async_session_maker() as db:
+                        await refund(db, r["org_id"], credits, "leadgen_service_restart_sweep", r["id"])
+                    swept["refunded"] += 1
+                except Exception as e:
+                    logger.error("Refund failed for swept leadgen job %s: %s", r["id"], e)
+    except Exception as e:
+        logger.error("LeadGen reconciliation failed: %s", e)
+
     try:
         swept["monitor_runs"] = await _sweep_monitor_runs()
     except Exception as e:
         logger.error("Monitor run reconciliation failed: %s", e)
 
-    if swept["discover"] or swept["media"] or swept["monitor_runs"]:
+    if (
+        swept["discover"]
+        or swept["media"]
+        or swept.get("scout")
+        or swept.get("maps")
+        or swept.get("leadgen")
+        or swept["monitor_runs"]
+    ):
         logger.warning(
-            "Job reconciliation: %d discover (%d refunded), %d media, %d monitor runs marked failed.",
+            "Job reconciliation: %d discover, %d media, %d scout, %d maps, %d leadgen (%d total refunded), %d monitor runs marked failed.",
             swept["discover"],
-            swept["refunded"],
             swept["media"],
+            swept.get("scout", 0),
+            swept.get("maps", 0),
+            swept.get("leadgen", 0),
+            swept["refunded"],
             swept["monitor_runs"],
         )
     return swept

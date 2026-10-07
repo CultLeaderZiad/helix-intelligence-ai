@@ -55,6 +55,11 @@ def _extension_for(mime_type: str) -> str:
     return guessed or ".bin"
 
 
+def is_production() -> bool:
+    env = (os.environ.get("ENVIRONMENT") or getattr(settings, "ENVIRONMENT", "") or "").lower()
+    return env in ("production", "prod") or bool(os.environ.get("RENDER"))
+
+
 def r2_enabled() -> bool:
     """R2 is used only when it is completely configured.
 
@@ -62,7 +67,7 @@ def r2_enabled() -> bool:
     public origin the only way to hand out a link is a presigned URL, which
     expires after at most seven days. Storing an expiring URL in the database
     would reintroduce the exact bug this module exists to fix, so a partial
-    configuration falls back to local disk and logs loudly instead.
+    configuration or running in production without R2 raises a RuntimeError (F49).
     """
     required = (
         settings.R2_ACCOUNT_ID,
@@ -75,12 +80,19 @@ def r2_enabled() -> bool:
         return True
 
     if any(required):
-        logger.error(
-            "R2 is partially configured and therefore disabled. "
+        msg = (
+            "R2 is partially configured and therefore invalid. "
             "Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, "
-            "R2_BUCKET and R2_PUBLIC_BASE_URL together. "
-            "Falling back to EPHEMERAL local disk."
+            "R2_BUCKET and R2_PUBLIC_BASE_URL together."
         )
+        logger.error(msg)
+        raise RuntimeError(msg)
+
+    if is_production():
+        msg = "R2 durable storage is required in production environments to prevent media loss."
+        logger.error(msg)
+        raise RuntimeError(msg)
+
     return False
 
 
@@ -196,3 +208,27 @@ async def store_media_from_url(job_id: str, source_url: str) -> str:
     except Exception as e:
         logger.error("Failed to download/store media for job %s: %s", job_id, e)
         return source_url
+
+
+async def save_file(data: bytes, filename: str, content_type: Optional[str] = None) -> str:
+    """Save raw file bytes and return a durable URL (F34).
+    
+    Compatible with existing callers expecting a filename-based save.
+    """
+    if not data:
+        raise ValueError("save_file called with empty data")
+
+    mime = content_type or mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    ext = os.path.splitext(filename)[1] or _extension_for(mime)
+    stem = os.path.splitext(filename)[0].replace("/", "_").replace("\\", "_")
+    unique_filename = f"{stem}_{uuid.uuid4().hex[:8]}{ext}"
+
+    if r2_enabled():
+        key = f"uploads/{unique_filename}"
+        await asyncio.to_thread(_r2_put, key, data, mime)
+        url = f"{settings.R2_PUBLIC_BASE_URL}/{key}"
+        logger.info("Saved file in R2: %s", key)
+        return url
+
+    return _store_local(unique_filename, data)
+

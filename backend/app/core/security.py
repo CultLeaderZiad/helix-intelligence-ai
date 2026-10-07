@@ -11,23 +11,32 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+import time
+
 ALGORITHM = "RS256"  # Neon JWKS issues RS256 JWTs by default
 HS256_ALGORITHM = "HS256"
 
 _jwks_cache = None
+_jwks_cache_expiry = 0.0
+_JWKS_CACHE_TTL_SECONDS = 3600.0  # 1 hour TTL
 
-async def get_jwks_keys():
-    """Fetch and cache JWKS keys from Neon Auth."""
-    global _jwks_cache
-    if _jwks_cache is None:
+async def get_jwks_keys(force_refresh: bool = False):
+    """Fetch and cache JWKS keys from Neon Auth with TTL and force-refresh support."""
+    global _jwks_cache, _jwks_cache_expiry
+    now = time.time()
+    if force_refresh or _jwks_cache is None or now >= _jwks_cache_expiry:
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(settings.NEON_JWKS_URL)
                 response.raise_for_status()
                 _jwks_cache = response.json()
+                _jwks_cache_expiry = now + _JWKS_CACHE_TTL_SECONDS
                 logger.info(f"Loaded JWKS keys from {settings.NEON_JWKS_URL}")
         except Exception as e:
             logger.error(f"Failed to load JWKS: {e}")
+            if _jwks_cache is not None:
+                # If network fails but we had a cache, serve stale cache as fallback
+                return _jwks_cache
             raise ValueError("Authentication service unavailable")
     return _jwks_cache
 
@@ -41,29 +50,52 @@ async def verify_neon_token(token: str) -> dict:
     except Exception:
         pass
 
-    # 2. Fall back to Neon JWKS RS256
+    # 2. Fall back to Neon JWKS RS256 with auto-refresh on unknown kid (key rotation)
     try:
         jwks = await get_jwks_keys()
-        payload = jwt.decode(
-            token,
-            jwks,
-            algorithms=[ALGORITHM],
-            options={"verify_aud": False}  # Neon might not set 'aud' natively
-        )
-        return payload
+        try:
+            payload = jwt.decode(
+                token,
+                jwks,
+                algorithms=[ALGORITHM],
+                options={"verify_aud": False}
+            )
+            return payload
+        except Exception:
+            # Key rotation: if validation failed with cached keys, force a refresh once
+            jwks = await get_jwks_keys(force_refresh=True)
+            payload = jwt.decode(
+                token,
+                jwks,
+                algorithms=[ALGORITHM],
+                options={"verify_aud": False}
+            )
+            return payload
     except Exception as e:
         logger.warning(f"JWT Validation failed: {e}")
         return None
 
-def create_access_token(subject: Union[str, Any], role: str = "customer", expires_delta: timedelta = None) -> str:
-    """Create local HS256 JWT token."""
+def create_access_token(
+    subject: Union[str, Any],
+    role: str = "customer",
+    expires_delta: timedelta = None,
+    token_version: int = 1
+) -> str:
+    """Create local HS256 JWT token with session versioning."""
+    now = datetime.now(timezone.utc)
     expire_minutes = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 60 * 24 * 7)
     if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
+        expire = now + timedelta(minutes=expire_minutes)
     
-    to_encode = {"exp": expire, "sub": str(subject), "role": role}
+    to_encode = {
+        "exp": expire,
+        "iat": int(now.timestamp()),
+        "sub": str(subject),
+        "role": role,
+        "ver": int(token_version or 1),
+    }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=HS256_ALGORITHM)
     return encoded_jwt
 
@@ -71,7 +103,7 @@ def create_password_reset_token(user_id: str) -> str:
     """Single-purpose, short-lived JWT for the password reset flow.
 
     Has a distinct `purpose` claim so it can never be accepted as a session
-    token, and a short lifetime so a leaked reset link is quickly unusable.
+    token, a cryptographic `jti`, and a short lifetime.
     """
     expire_minutes = int(getattr(settings, "PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", 30))
     expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
@@ -79,6 +111,7 @@ def create_password_reset_token(user_id: str) -> str:
         "exp": expire,
         "sub": str(user_id),
         "purpose": "password_reset",
+        "jti": secrets.token_urlsafe(16),
     }
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=HS256_ALGORITHM)
 
@@ -105,6 +138,12 @@ def _verify_password_sync(plain_password: str, hashed_password: str) -> bool:
     never stalled by PBKDF2's 100k iterations (a DoS amplifier on auth)."""
     if not hashed_password or not plain_password:
         return False
+
+    # Accounts managed via external auth (OAuth/Neon) have no local password.
+    # Disallow any login attempt with external-auth markers or non-hash strings.
+    if hashed_password.startswith("EXTERNAL_AUTH") or hashed_password == "EXTERNAL_AUTH_MANAGED":
+        return False
+
     try:
         if hashed_password.startswith("pbkdf2:sha256:"):
             parts = hashed_password.split("$")
@@ -115,13 +154,16 @@ def _verify_password_sync(plain_password: str, hashed_password: str) -> bool:
             expected_key = parts[2]
             key = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt.encode("utf-8"), iterations)
             return secrets.compare_digest(key.hex(), expected_key)
-        else:
-            # Fallback for plain or legacy hash formats
+        elif hashed_password.startswith(("$2a$", "$2b$", "$2y$")):
+            # Fallback for legacy bcrypt hash formats
             try:
                 import bcrypt
                 return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
             except Exception:
-                return secrets.compare_digest(plain_password, hashed_password)
+                return False
+        else:
+            # Non-hash marker or unsupported format: never compare plaintext
+            return False
     except Exception as e:
         logger.error(f"Password verification error: {e}")
         return False

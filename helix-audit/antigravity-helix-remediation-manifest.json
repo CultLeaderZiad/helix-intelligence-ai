@@ -1,0 +1,149 @@
+{
+  "source_audit_revision": "fa8164920031a8dfaa036e2a67ee6f107a48a9f2",
+  "finding_count": 82,
+  "severity_counts": {
+    "P0": 12,
+    "P1": 49,
+    "P2": 19,
+    "P3": 2
+  },
+  "phase_assignments": [
+    {
+      "phase": "1",
+      "name": "Schema, startup and regression gates",
+      "finding_ids": [
+        "F01",
+        "F13",
+        "F14",
+        "F15",
+        "F16",
+        "F62",
+        "F74",
+        "F77"
+      ]
+    },
+    {
+      "phase": "2",
+      "name": "Authentication, sessions and credential protection",
+      "finding_ids": [
+        "F02",
+        "F17",
+        "F18",
+        "F19",
+        "F20",
+        "F21",
+        "F22",
+        "F52",
+        "F59",
+        "F60",
+        "F76"
+      ]
+    },
+    {
+      "phase": "3",
+      "name": "Tenant, workspace and administrative authorization",
+      "finding_ids": [
+        "F03",
+        "F04",
+        "F05",
+        "F06",
+        "F12",
+        "F46",
+        "F47",
+        "F48",
+        "F53",
+        "F61",
+        "F80"
+      ]
+    },
+    {
+      "phase": "4",
+      "name": "Credits, quotas and idempotency",
+      "finding_ids": [
+        "F07",
+        "F08",
+        "F10",
+        "F11",
+        "F27",
+        "F28",
+        "F32",
+        "F50",
+        "F55"
+      ]
+    },
+    {
+      "phase": "5",
+      "name": "Durable jobs and worker execution",
+      "finding_ids": [
+        "F24",
+        "F25",
+        "F26",
+        "F30",
+        "F40",
+        "F65",
+        "F70",
+        "F82"
+      ]
+    },
+    {
+      "phase": "6",
+      "name": "Providers, output integrity and durable media",
+      "finding_ids": [
+        "F09",
+        "F23",
+        "F29",
+        "F31",
+        "F38",
+        "F39",
+        "F41",
+        "F49",
+        "F54",
+        "F66",
+        "F81"
+      ]
+    },
+    {
+      "phase": "7",
+      "name": "Frontend and broken user flows",
+      "finding_ids": [
+        "F33",
+        "F34",
+        "F35",
+        "F36",
+        "F37",
+        "F42",
+        "F43",
+        "F44",
+        "F45",
+        "F51",
+        "F56",
+        "F57",
+        "F68",
+        "F69",
+        "F73",
+        "F75"
+      ]
+    },
+    {
+      "phase": "8",
+      "name": "Operational, analytics and code-health closure",
+      "finding_ids": [
+        "F58",
+        "F63",
+        "F64",
+        "F67",
+        "F71",
+        "F72",
+        "F78"
+      ]
+    },
+    {
+      "phase": "9",
+      "name": "Payment lifecycle and release closure",
+      "finding_ids": [
+        "F79"
+      ]
+    }
+  ],
+  "prompt_sha256": "8292928e5e1e143761c3d43aa8ed91283d61d8ac2de7a3a75bee2abf77a98a5f"
+}

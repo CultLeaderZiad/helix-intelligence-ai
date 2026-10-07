@@ -74,9 +74,15 @@ const DocsDetailPage = safeLazy(() => import("@/pages/docs/DocsDetailPage").then
 const ScoutPage = safeLazy(() => import("@/pages/ScoutPage").then(m => ({ default: m.default || m.ScoutPage })))
 const ScoutCliDocsPage = safeLazy(() => import("@/pages/docs/ScoutCliDocsPage").then(m => ({ default: m.default || m.ScoutCliDocsPage })))
 const ScoutLeadGenerationPage = safeLazy(() => import("@/pages/ScoutLeadGenerationPage").then(m => ({ default: m.default || m.ScoutLeadGenerationPage })))
+const LegalPage = safeLazy(() => import("@/pages/LegalPage").then(m => ({ default: m.LegalPage })))
 
 const PUBLIC_TITLES = {
   "/docs": "Documentation & API Reference",
+  "/privacy": "Privacy Policy",
+  "/terms": "Terms of Service",
+  "/cookies": "Cookie Policy",
+  "/legal": "Legal Documents & Compliance",
+  "/legal/subprocessors": "Authorized Sub-processors",
   "/sign-in": "Sign in",
   "/sign-up": "Create account",
   "/forgot-password": "Reset password",
@@ -169,6 +175,11 @@ export default function App() {
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/playbook/:publicId" element={<PublicPlaybookPage />} />
                   <Route path="/updates" element={<PublicUpdatesPage />} />
+                  <Route path="/legal" element={<LegalPage />} />
+                  <Route path="/legal/:section" element={<LegalPage />} />
+                  <Route path="/privacy" element={<LegalPage />} />
+                  <Route path="/terms" element={<LegalPage />} />
+                  <Route path="/cookies" element={<LegalPage />} />
 
                   {/* Public documentation system */}
                   <Route path="/docs" element={<DocsHomePage />} />

@@ -164,8 +164,9 @@ async def run_scout_job_worker(job_id: str):
         org_res = await db.execute(select(Organization).where(Organization.id == job.org_id))
         org = org_res.scalars().first()
         flags = (org.custom_feature_flags if org else {}) or {}
-        linkedin_cookie = flags.get("linkedin_cookie") or flags.get("linkedin_byok_cookie")
-        hunter_key = flags.get("hunter_api_key") or os.environ.get("HUNTER_API_KEY")
+        from app.services.security_service import safe_decrypt_secret
+        linkedin_cookie = safe_decrypt_secret(flags.get("linkedin_cookie") or flags.get("linkedin_byok_cookie"))
+        hunter_key = safe_decrypt_secret(flags.get("hunter_api_key")) or os.environ.get("HUNTER_API_KEY")
         sg_key = get_scrapegraph_key()
 
         job.status = "running"
@@ -194,6 +195,21 @@ async def run_scout_job_worker(job_id: str):
             job.error_msg = str(parse_err)
             job.logs = logs
             job.completed_at = datetime.now(timezone.utc)
+            if job.credits_used and job.credits_used > 0:
+                from app.services.billing_service import refund
+                await refund(db, job.org_id, job.credits_used, f"scout_parse_error: {parse_err}", job.id)
+            await db.commit()
+            return
+
+        if not targets:
+            logs.append("> parse_error: No valid targets found")
+            job.status = "failed"
+            job.error_msg = "No valid targets found"
+            job.logs = logs
+            job.completed_at = datetime.now(timezone.utc)
+            if job.credits_used and job.credits_used > 0:
+                from app.services.billing_service import refund
+                await refund(db, job.org_id, job.credits_used, "scout_no_targets", job.id)
             await db.commit()
             return
 
@@ -403,4 +419,7 @@ async def run_scout_job_worker(job_id: str):
             logs.append(f"> fatal error: {str(exc)}")
             job.logs = logs
             job.completed_at = datetime.now(timezone.utc)
+            if job.credits_used and job.credits_used > 0:
+                from app.services.billing_service import refund
+                await refund(db, job.org_id, job.credits_used, f"scout_worker_fatal: {exc}", job.id)
             await db.commit()

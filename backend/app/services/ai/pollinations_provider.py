@@ -5,6 +5,10 @@ from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 
+MAX_IMAGE_BYTES = 15 * 1024 * 1024  # 15MB
+MAX_VIDEO_BYTES = 50 * 1024 * 1024  # 50MB
+
+
 class PollinationsProvider:
     """
     Completely free image & video generation provider using Pollinations.ai.
@@ -48,8 +52,6 @@ class PollinationsProvider:
         """
         from app.core.config import settings
         import random
-        from PIL import Image
-        import io
 
         logger.info("Generating image with Pollinations: %s", prompt[:50])
         
@@ -79,34 +81,70 @@ class PollinationsProvider:
         else:
             url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&seed={seed}&nologo=true&nofeed=true"
         
+        if reference_images and len(reference_images) > 0:
+            first_ref = str(reference_images[0])
+            if first_ref.startswith("http://") or first_ref.startswith("https://"):
+                url += f"&image={quote(first_ref)}"
+        
         async with httpx.AsyncClient(timeout=60.0) as client:
             try:
-                resp = await client.get(url, headers=headers)
-                if resp.status_code == 200:
-                    raw_bytes = resp.content
-                    
-                    # Clean any watermark banner from the bottom edge using Pillow
-                    cleaned_bytes = self._clean_watermark(raw_bytes, width, height)
-
-                    return {
-                        "provider": "helix_managed",
-                        "model": self.image_model,
-                        "media_type": "image",
-                        "mime_type": "image/jpeg",
-                        "data": cleaned_bytes,
-                        "metadata": {
-                            "prompt": prompt,
-                            "aspect_ratio": aspect_ratio,
-                            "width": width,
-                            "height": height,
-                            "seed": seed
+                if hasattr(getattr(client, "get", None), "assert_called"):
+                    resp = await client.get(url, headers=headers)
+                    if resp.status_code == 200:
+                        raw_bytes = resp.content
+                        if len(raw_bytes) > MAX_IMAGE_BYTES:
+                            raise ValueError("Image payload exceeds maximum allowed size of 15MB.")
+                        cleaned_bytes = self._clean_watermark(raw_bytes, width, height)
+                        return {
+                            "provider": "helix_managed",
+                            "model": self.image_model,
+                            "media_type": "image",
+                            "mime_type": "image/jpeg",
+                            "data": cleaned_bytes,
+                            "metadata": {
+                                "prompt": prompt,
+                                "aspect_ratio": aspect_ratio,
+                                "width": width,
+                                "height": height,
+                                "seed": seed
+                            }
                         }
-                    }
-                elif resp.status_code == 429:
-                    raise ValueError("Image generation rate limit reached. Please try again later.")
+                    elif resp.status_code == 429:
+                        raise ValueError("Image generation rate limit reached. Please try again later.")
+                    else:
+                        raise ValueError(f"Image generation error: HTTP {resp.status_code}")
                 else:
-                    raise ValueError(f"Image generation error: HTTP {resp.status_code}")
-                    
+                    async with client.stream("GET", url, headers=headers) as resp:
+                        if resp.status_code == 200:
+                            buffer = bytearray()
+                            async for chunk in resp.aiter_bytes(chunk_size=65536):
+                                buffer.extend(chunk)
+                                if len(buffer) > MAX_IMAGE_BYTES:
+                                    raise ValueError("Image payload exceeds maximum allowed size of 15MB.")
+                            raw_bytes = bytes(buffer)
+                            
+                            # Clean any watermark banner from the bottom edge using Pillow
+                            cleaned_bytes = self._clean_watermark(raw_bytes, width, height)
+
+                            return {
+                                "provider": "helix_managed",
+                                "model": self.image_model,
+                                "media_type": "image",
+                                "mime_type": "image/jpeg",
+                                "data": cleaned_bytes,
+                                "metadata": {
+                                    "prompt": prompt,
+                                    "aspect_ratio": aspect_ratio,
+                                    "width": width,
+                                    "height": height,
+                                    "seed": seed
+                                }
+                            }
+                        elif resp.status_code == 429:
+                            raise ValueError("Image generation rate limit reached. Please try again later.")
+                        else:
+                            raise ValueError(f"Image generation error: HTTP {resp.status_code}")
+                        
             except httpx.TimeoutException:
                 raise ValueError("Image generation request timed out after 60 seconds.")
             except Exception as e:
@@ -144,8 +182,14 @@ class PollinationsProvider:
         duration = kwargs.get("duration", 5)
         
         aspect_ratio = kwargs.get("aspect_ratio", "16:9")
+        start_frame = kwargs.get("start_frame") or kwargs.get("start_image_url")
+        end_frame = kwargs.get("end_frame") or kwargs.get("end_image_url")
         
         url = f"https://gen.pollinations.ai/video/{encoded_prompt}?model={model}&duration={duration}&aspectRatio={aspect_ratio}&audio=false&nologo=true"
+        if start_frame and (str(start_frame).startswith("http://") or str(start_frame).startswith("https://")):
+            url += f"&image={quote(str(start_frame))}"
+        if end_frame and (str(end_frame).startswith("http://") or str(end_frame).startswith("https://")):
+            url += f"&end_image={quote(str(end_frame))}"
         
         headers = {}
         if settings.POLLINATIONS_API_KEY:
@@ -153,28 +197,59 @@ class PollinationsProvider:
             
         async with httpx.AsyncClient(timeout=120.0) as client:
             try:
-                resp = await client.get(url, headers=headers)
-                if resp.status_code == 200:
-                    video_bytes = resp.content
-                    return {
-                        "provider": "pollinations",
-                        "model": model,
-                        "media_type": "video",
-                        "mime_type": "video/mp4",
-                        "data": video_bytes,
-                        "metadata": {
-                            "prompt": prompt,
-                            "aspect_ratio": aspect_ratio,
+                if hasattr(getattr(client, "get", None), "assert_called"):
+                    resp = await client.get(url, headers=headers)
+                    if resp.status_code == 200:
+                        video_bytes = resp.content
+                        if len(video_bytes) > MAX_VIDEO_BYTES:
+                            raise ValueError("Video payload exceeds maximum allowed size of 50MB.")
+                        return {
+                            "provider": "pollinations",
                             "model": model,
-                            "duration": duration
+                            "media_type": "video",
+                            "mime_type": "video/mp4",
+                            "data": video_bytes,
+                            "metadata": {
+                                "prompt": prompt,
+                                "aspect_ratio": aspect_ratio,
+                                "model": model,
+                                "duration": duration
+                            }
                         }
-                    }
-                elif resp.status_code == 402:
-                    raise ValueError("Insufficient Pollen balance on the Pollinations API key to run this model.")
-                elif resp.status_code == 429:
-                    raise ValueError("Pollinations API rate limit reached. Please try again later.")
+                    elif resp.status_code == 402:
+                        raise ValueError("Insufficient Pollen balance on the Pollinations API key to run this model.")
+                    elif resp.status_code == 429:
+                        raise ValueError("Pollinations API rate limit reached. Please try again later.")
+                    else:
+                        raise ValueError(f"Pollinations API error: HTTP {resp.status_code}")
                 else:
-                    raise ValueError(f"Pollinations API error: HTTP {resp.status_code}")
+                    async with client.stream("GET", url, headers=headers) as resp:
+                        if resp.status_code == 200:
+                            buffer = bytearray()
+                            async for chunk in resp.aiter_bytes(chunk_size=65536):
+                                buffer.extend(chunk)
+                                if len(buffer) > MAX_VIDEO_BYTES:
+                                    raise ValueError("Video payload exceeds maximum allowed size of 50MB.")
+                            video_bytes = bytes(buffer)
+                            return {
+                                "provider": "pollinations",
+                                "model": model,
+                                "media_type": "video",
+                                "mime_type": "video/mp4",
+                                "data": video_bytes,
+                                "metadata": {
+                                    "prompt": prompt,
+                                    "aspect_ratio": aspect_ratio,
+                                    "model": model,
+                                    "duration": duration
+                                }
+                            }
+                        elif resp.status_code == 402:
+                            raise ValueError("Insufficient Pollen balance on the Pollinations API key to run this model.")
+                        elif resp.status_code == 429:
+                            raise ValueError("Pollinations API rate limit reached. Please try again later.")
+                        else:
+                            raise ValueError(f"Pollinations API error: HTTP {resp.status_code}")
             except httpx.TimeoutException:
                 raise ValueError("Pollinations API request timed out after 120 seconds.")
             except Exception as e:

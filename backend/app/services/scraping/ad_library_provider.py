@@ -83,6 +83,8 @@ class AdLibraryProvider(ScraperProvider):
         # Execution tracking
         self.last_provider_used: str = "none"
         self.sources_tried: List[str] = []
+        self.successful_queries_count: int = 0
+        self.provider_outage: bool = False
 
     async def search(
         self,
@@ -106,6 +108,8 @@ class AdLibraryProvider(ScraperProvider):
         country = (filters or {}).get("country", "ALL")
         self.sources_tried = []
         self.last_provider_used = "none"
+        self.successful_queries_count = 0
+        self.provider_outage = False
 
         # ----------------------------------------------------------------------
         # 1. METAPI (Primary: Live Meta Ad Library search)
@@ -120,6 +124,7 @@ class AdLibraryProvider(ScraperProvider):
                     filters=filters,
                     progress_callback=progress_callback
                 )
+                self.successful_queries_count += 1
                 if creatives:
                     self.last_provider_used = "metapi"
                     logger.info(f"[AdDiscovery] Metapi succeeded with {len(creatives)} creatives")
@@ -152,6 +157,7 @@ class AdLibraryProvider(ScraperProvider):
                         filters=filters,
                         progress_callback=progress_callback
                     )
+                    self.successful_queries_count += 1
                     if creatives:
                         self.last_provider_used = "adyntel"
                         logger.info(f"[AdDiscovery] Adyntel succeeded with {len(creatives)} creatives")
@@ -173,6 +179,7 @@ class AdLibraryProvider(ScraperProvider):
                 if progress_callback:
                     await progress_callback(0, "Querying Meta Graph API (Official)...")
                 creatives = await self.query_meta_api(cleaned_query, country=country, max_records=max_records)
+                self.successful_queries_count += 1
                 if creatives:
                     self.last_provider_used = "meta_graph"
                     logger.info(f"[AdDiscovery] Meta Graph API succeeded with {len(creatives)} creatives")
@@ -195,6 +202,7 @@ class AdLibraryProvider(ScraperProvider):
                     max_records=max_records,
                     progress_callback=progress_callback
                 )
+                self.successful_queries_count += 1
                 if creatives:
                     self.last_provider_used = "apify"
                     logger.info(f"[AdDiscovery] Apify succeeded with {len(creatives)} creatives")
@@ -203,6 +211,12 @@ class AdLibraryProvider(ScraperProvider):
                 logger.warning(f"[AdDiscovery] Apify search failed: {e}")
         elif not self.apify_token:
             self.sources_tried.append("Apify (not configured)")
+
+        if self.successful_queries_count == 0:
+            self.provider_outage = True
+            logger.warning(
+                f"[AdDiscovery] Provider outage detected: all providers failed or unconfigured for query='{cleaned_query}'"
+            )
 
         logger.info(f"[AdDiscovery] All providers exhausted for query='{cleaned_query}'. Tried: {self.sources_tried}")
         return []

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, ForeignKey
+from sqlalchemy import Column, String, DateTime, ForeignKey, func
 from app.db.base import Base
 import uuid
 from datetime import datetime, timezone
@@ -17,10 +17,10 @@ class WorkspaceProviderCredential(Base):
     provider = Column(String, nullable=False, default="google_gemini")
     encrypted_secret = Column(String, nullable=False)
     key_suffix = Column(String, nullable=True) # e.g. "abcd" for masked display
-    status = Column(String, default="connected") # 'connected' | 'error' | 'untested'
-    credential_mode = Column(String, default="managed") # 'managed' | 'byok'
+    status = Column(String, default="connected", server_default="connected", nullable=True) # 'connected' | 'error' | 'untested'
+    credential_mode = Column(String, default="managed", server_default="managed", nullable=True) # 'managed' | 'byok'
     model = Column(String, nullable=True)
     last_tested_at = Column(DateTime(timezone=True), nullable=True)
     last_used_at = Column(DateTime(timezone=True), nullable=True)
-    created_at = Column(DateTime(timezone=True), default=utc_now, nullable=False)
-    updated_at = Column(DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=utc_now, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=utc_now, server_default=func.now(), onupdate=utc_now, nullable=False)

@@ -1,7 +1,9 @@
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Float, JSON
+from datetime import datetime, timezone
+import uuid
+import sqlalchemy as sa
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Float, JSON, Index, func
 from sqlalchemy.orm import relationship
 from app.db.base import Base
-import uuid
 
 def generate_uuid():
     return str(uuid.uuid4())
@@ -13,7 +15,7 @@ class ScrapeJob(Base):
     org_id = Column(String, ForeignKey("organizations.id"), nullable=False)
     query = Column(String, nullable=False)
     status = Column(String, default="queued") # 'queued' | 'running' | 'succeeded' | 'failed'
-    created_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     record_count = Column(Integer, default=0)
     
@@ -39,3 +41,7 @@ class ScrapeJob(Base):
 
     # Strategic Entity Intelligence & PR Dossier
     entity_profile = Column(JSON, nullable=True)
+
+    __table_args__ = (
+        Index("ix_scrape_jobs_org_status_created", "org_id", "status", "created_at"),
+    )

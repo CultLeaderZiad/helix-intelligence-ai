@@ -1,0 +1,8 @@
+{
+  "runtime-probes": "sentinel_login 200 token_issued True\n/api/creatives/private-creative 404 private_data False\n/api/brands/ 200 private_data True\n/api/patterns/ 200 private_data True\nsave_foreign 200\nsaved_foreign_content 200 True\ncompile_foreign 200\npublic_foreign_content 200 True\navatar_upload 500\ncustom_swipe 500\nmanaged_insight_with_defaults 500\nmultitier_init NameError name 'os' is not defined\ngemini_invocation got an unexpected keyword argument 'seed'\nmapped_loopback_accepted True\nrepeated_refund_balance 27.0\ncached_org_lock_balance_before 27.0 after_two_charges 26.0",
+  "extra-probes": "provider_outage_result 0.92 charged 0.5 foreign_text True",
+  "schema-extra": "additional_PK_FK_actions_existing_server_default_differences []",
+  "worker-probe": "claim 0 None; claim 1 RuntimeError Event loop is closed; claim 2 None",
+  "health-probe": "health 200 {\"status\":\"ok\",\"service\":\"helix-backend\",\"db\":\"connected\"}; sign-in 500 UndefinedColumnError users.full_name",
+  "frontend-metrics": "empty callback returns zero metrics; one creative -> ReferenceError avgDays is not defined"
+}

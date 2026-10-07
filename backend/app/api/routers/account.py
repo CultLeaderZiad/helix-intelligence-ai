@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Body, HTTPException, UploadFile, File, F
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from typing import Dict, Any, List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 from app.schemas.account import TrialStatusResponse
 from app.core.deps import get_db, get_current_user
@@ -33,6 +33,16 @@ class ProfileUpdateRequest(BaseModel):
     avatar_url: Optional[str] = None
     current_password: Optional[str] = None
     new_password: Optional[str] = None
+
+    @field_validator('new_password')
+    @classmethod
+    def validate_new_password(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            if len(v) < 8:
+                raise ValueError('Password must be at least 8 characters long')
+            if len(v) > 128:
+                raise ValueError('Password cannot exceed 128 characters')
+        return v
 
 @router.get("/profile")
 async def get_profile(current_user: User = Depends(get_current_user)):
@@ -63,6 +73,8 @@ async def update_profile(
         if not await verify_password(req.current_password, current_user.password_hash):
             raise HTTPException(status_code=400, detail="Current password does not match")
         current_user.password_hash = get_password_hash(req.new_password)
+        from app.services import auth_service
+        await auth_service.revoke_user_sessions(db, current_user)
 
     await db.commit()
     await db.refresh(current_user)
@@ -87,7 +99,7 @@ async def upload_avatar(
     ext = file.filename.split(".")[-1].lower() if "." in file.filename else "png"
     filename = f"avatar_{current_user.id}_{int(datetime.datetime.utcnow().timestamp())}.{ext}"
     
-    avatar_url = await storage_service.save_file(contents, filename)
+    avatar_url = await storage_service.save_file(contents, filename, content_type=file.content_type)
     current_user.avatar_url = avatar_url
     await db.commit()
     await db.refresh(current_user)

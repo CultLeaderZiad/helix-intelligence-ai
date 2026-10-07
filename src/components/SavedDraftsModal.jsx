@@ -200,10 +200,11 @@ export function SavedDraftsModal({ isOpen, onClose, onSelectSearch, onSelectDraf
           {activeTab === "new_draft" && (
             <form onSubmit={handleSaveNewDraft} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono text-text-muted mb-1">
+                <label htmlFor="draft-title-input" className="block text-xs font-mono text-text-muted mb-1">
                   Draft Title / Name
                 </label>
                 <input
+                  id="draft-title-input"
                   type="text"
                   value={draftTitle}
                   onChange={(e) => setDraftTitle(e.target.value)}
@@ -213,10 +214,11 @@ export function SavedDraftsModal({ isOpen, onClose, onSelectSearch, onSelectDraf
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-text-muted mb-1">
+                <label htmlFor="draft-target-input" className="block text-xs font-mono text-text-muted mb-1">
                   Search Target / Competitor
                 </label>
                 <input
+                  id="draft-target-input"
                   type="text"
                   value={currentQuery}
                   readOnly
@@ -225,10 +227,11 @@ export function SavedDraftsModal({ isOpen, onClose, onSelectSearch, onSelectDraf
               </div>
 
               <div>
-                <label className="block text-xs font-mono text-text-muted mb-1">
+                <label htmlFor="draft-notes-input" className="block text-xs font-mono text-text-muted mb-1">
                   Creative Requirements & Strategy Notes
                 </label>
                 <textarea
+                  id="draft-notes-input"
                   rows={3}
                   value={draftNotes}
                   onChange={(e) => setDraftNotes(e.target.value)}

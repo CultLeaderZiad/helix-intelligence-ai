@@ -20,6 +20,8 @@ from app.services.ai.gemini_provider import GeminiProvider
 from app.services.storage_service import store_media_bytes
 # (Higgsfield provider removed from the app - Gemini serves all generations)
 from app.services.media.modes import resolve_mode_spec
+from datetime import datetime, timezone
+from app.core.runtime import BOOT_ID
 from app.services.job_heartbeat import heartbeat
 from app.core.config import settings
 
@@ -113,29 +115,37 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             await db.commit()
             return
 
-        # Resolve provider (Managed or BYOK)
-        provider_instance, credential_mode = await resolve_image_provider(db, user, org)
+        # Check if job was already canceled before starting (F40)
+        if job.status == "canceled":
+            logger.info("Media job %s was canceled prior to start, aborting", job_id)
+            return
 
-        params = dict(job.parameters or {})
-        
-        # Override with per-request BYOK if provided in parameters
-        custom_api_key = custom_api_key or params.get("custom_api_key")  # in-memory key wins; legacy rows may still carry one
-        custom_model = params.get("custom_model")
-        
-        if custom_api_key:
-            provider_instance = GeminiProvider(api_key=custom_api_key)
-            credential_mode = "byok_request"
-            
-        if custom_model:
-            provider_instance.image_model = custom_model
-
-        job.status = "running"
-        params["credential_mode"] = credential_mode
-        params["model"] = provider_instance.image_model
-        job.parameters = params
-        await db.commit()
-
+        credential_mode = "managed"
         try:
+            # Resolve provider (Managed or BYOK) (F82)
+            provider_instance, credential_mode = await resolve_image_provider(db, user, org)
+
+            params = dict(job.parameters or {})
+            
+            # Override with per-request BYOK if provided in parameters
+            custom_api_key = custom_api_key or params.get("custom_api_key")  # in-memory key wins; legacy rows may still carry one
+            custom_model = params.get("custom_model")
+            
+            if custom_api_key:
+                provider_instance = GeminiProvider(api_key=custom_api_key)
+                credential_mode = "byok_request"
+                
+            if custom_model:
+                provider_instance.image_model = custom_model
+
+            job.status = "running"
+            job.owner_boot_id = BOOT_ID
+            job.heartbeat_at = datetime.now(timezone.utc)
+            params["credential_mode"] = credential_mode
+            params["model"] = provider_instance.image_model
+            job.parameters = params
+            await db.commit()
+
             aspect_ratio = params.get("aspect_ratio", "1:1")
             reference_images = list(params.get("reference_images") or [])
             if params.get("start_image_url"):
@@ -146,12 +156,21 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             media_category = mode_spec.get("output_type", "image")
 
             if media_category == "video":
-                # If provider is Pollinations, use it. Otherwise fallback to Pollinations for video
+                start_frame = params.get("start_frame") or params.get("start_image_url")
+                end_frame = params.get("end_frame") or params.get("end_image_url")
+                video_kwargs = {}
+                if start_frame:
+                    video_kwargs["start_frame"] = start_frame
+                if end_frame:
+                    video_kwargs["end_frame"] = end_frame
+
+                # If provider is Pollinations, use it. Otherwise fallback to Pollinations for video (F39)
                 if hasattr(provider_instance, "generate_video"):
                     gen_result = await provider_instance.generate_video(
                         prompt=job.prompt,
                         aspect_ratio=aspect_ratio,
-                        model=params.get("custom_model") or "wan-fast"
+                        model=params.get("custom_model") or "wan-fast",
+                        **video_kwargs
                     )
                 else:
                     from app.services.ai.pollinations_provider import PollinationsProvider
@@ -159,7 +178,8 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
                     gen_result = await temp_provider.generate_video(
                         prompt=job.prompt,
                         aspect_ratio=aspect_ratio,
-                        model=params.get("custom_model") or "wan-fast"
+                        model=params.get("custom_model") or "wan-fast",
+                        **video_kwargs
                     )
             else:
                 gen_result = await provider_instance.generate_image(
@@ -173,6 +193,12 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             media_bytes = gen_result.get("data")
             mime_type = gen_result.get("mime_type", "video/mp4" if media_category == "video" else "image/png")
             final_url = await store_media_bytes(job.id, media_bytes, mime_type)
+
+            # Check if job was canceled while generation was running (F40)
+            await db.refresh(job)
+            if job.status == "canceled":
+                logger.info("Media job %s was canceled during execution, skipping completion and usage recording", job.id)
+                return
 
             job.status = "completed"
             job.result_url = final_url
@@ -192,7 +218,10 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             )
 
         except Exception as e:
-            logger.error("Gemini image generation failed for job %s: %s", job_id, str(e))
+            logger.error("Media generation failed for job %s: %s", job_id, str(e))
+            await db.refresh(job)
+            if job.status == "canceled":
+                return
             job.status = "failed"
             job.failure_kind = "error"
             err_msg = str(e)
@@ -269,7 +298,9 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
         prompt=request.prompt,
         provider=provider,
         parameters=parameters,
-        status="pending"
+        status="pending",
+        owner_boot_id=BOOT_ID,
+        heartbeat_at=datetime.now(timezone.utc),
     )
     db.add(job)
     await db.commit()

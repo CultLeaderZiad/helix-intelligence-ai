@@ -1,0 +1,198 @@
+{
+  "revision": "fa8164920031a8dfaa036e2a67ee6f107a48a9f2",
+  "repository": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai",
+  "source_inputs": "output/helix-audit/file-coverage.json: SHA256 of all525 tracked files; no uncommitted/untracked repository edits",
+  "environment": {
+    "python": "3.13.15",
+    "fastapi": "0.142.2",
+    "sqlalchemy": "2.1.1",
+    "alembic": "1.20.0",
+    "asyncpg": "0.31.0",
+    "httpx": "0.28.1",
+    "postgresql": "16.14",
+    "node": "24.14.1",
+    "pnpm_in_repo": "9.15.4",
+    "global_pnpm_outside_repo": "10.34.5",
+    "pyflakes": "4.0.1",
+    "eslint": "10.11.0"
+  },
+  "test_artifact_hashes": {
+    "/home/vercel-sandbox/workspace/output/helix-audit/probes/runtime-probes.py": "9513cca54a527caf4c1c7029168d82283637c3a8316ddc339368e23f263ecf24",
+    "/home/vercel-sandbox/workspace/output/helix-audit/probes/worker-probe.py": "14e70621cbd4850b140f5706f8db3834452512c55005a082297227bc4aba23e6",
+    "/home/vercel-sandbox/workspace/output/helix-audit/probes/health-probe.py": "5474de34ab280f31bbb3f892b85b11fb0d22a17e3471438f2d4439c3e5c6c9ca",
+    "/home/vercel-sandbox/workspace/output/helix-audit/probes/extra-probes.py": "7df957518ca843da9f0aeb4e9ecebbac17482b502c26213a3a1d3bb013fdc285",
+    "/home/vercel-sandbox/workspace/output/helix-audit/probes/schema-audit.py": "14d76916e17f150a2bb78571dd31e24bae29ec90f60dfdd528e6099c39daf416",
+    "/home/vercel-sandbox/workspace/output/helix-audit/probes/schema-extra.py": "4e6aeae35ebb4f2d5d6ec010ce53342c73e275cf321d526e18fce47d66fdaa0c",
+    "/home/vercel-sandbox/workspace/output/helix-audit/probes/route-inventory.py": "63a302b55c7cd260b76aacb2c15cd4f7af75bd132f213723920e79452497031e",
+    "/home/vercel-sandbox/workspace/output/helix-audit/probes/performance-probe.cjs": "c0f38995957b8d5c4736747aed16d561b590c28a3a666bbd3bb4d429f17b5f8c",
+    "/tmp/helix-js-audit/eslint.config.mjs": "91a6e5b072a91ffc2df331ebefba27068d2e557992c1e0391f9af68f2b137239",
+    "/tmp/helix-audit-review/backend/alembic/versions/46af201944fd_add_is_suspended_to_users.py": "17831bec2e959b5d63c909888808bbbb2cd568a5aefb3ff8075265aacdfb8488",
+    "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/package.json": "521a3a233f52d3b9c38643343f691eecc77e659d663457a62f87cf2efd9fe7ac",
+    "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/pnpm-lock.yaml": "611880c660e7b78db5382821a9cb8bd2e9f82842941c3cc009dd0f3e1d50e78b",
+    "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend/requirements.txt": "5262dece846626fd45811f941dab0485bbb963efbed51f1e0e736d1e72782cb5",
+    "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend/alembic/env.py": "c93b5d4de3b1519a7b54f89fbf75f76ed5da7eb5561ace71587d2c2c01eed50b",
+    "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend/alembic.ini": "1de444e5202747246718c3f80264c8fe64eabc697267869670771edb140050fd",
+    "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/.env.production": "106cb4f90e4329e18e6f97b63b4e1da7f8d800170095b934d479efc81e56e1e1",
+    "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/vercel.json": "c7f52b3d639a10c8073e87734c5e2900e208d17dcd82b41bb041c0607f607720",
+    "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/render.yaml": "6105273cc0767560cee7362d663a3cf33c995869c4e9775b87fd89db82d785cc"
+  },
+  "checks": [
+    {
+      "check": "Fresh schema",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_migrations /tmp/helix-audit-venv/bin/alembic upgrade head",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "failed",
+      "exit_status": 1,
+      "observations": "Fresh PostgreSQL16 helix_migrations; original migrations. UndefinedColumn at 46af201944fd. /tmp/helix-upgrade.log."
+    },
+    {
+      "check": "Original head check",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_migrations /tmp/helix-audit-venv/bin/alembic check",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "failed",
+      "exit_status": null,
+      "observations": "Target database is not up to date after failed upgrade. Shell wrapper did not preserve command exit status."
+    },
+    {
+      "check": "Diagnostic head upgrade",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_migrations /tmp/helix-audit-venv/bin/alembic upgrade head",
+      "cwd": "/tmp/helix-audit-review/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "Scratch revision46 changed only two drop_column calls to if_exists=True. Diagnostic head reached; does not validate original migrations."
+    },
+    {
+      "check": "Diagnostic head schema check",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_migrations /tmp/helix-audit-venv/bin/alembic check",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "failed",
+      "exit_status": 255,
+      "observations": "Diagnostic head DB with original model metadata; new tables/columns/nullability drift detected."
+    },
+    {
+      "check": "All-model comparison",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_migrations /tmp/helix-audit-venv/bin/python /tmp/helix-schema-audit.py",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "Introspection completed; 14 missing tables,24 missing columns,34 default-presence,3 nullability. This is a completed audit, not a passing schema gate."
+    },
+    {
+      "check": "Constraint/default extension",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_migrations /tmp/helix-audit-venv/bin/python /tmp/helix-schema-extra.py",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "No additional PK, FK action or nonempty-server-default-expression differences."
+    },
+    {
+      "check": "Security regression suite",
+      "command": "/tmp/helix-audit-venv/bin/python tests/test_security_regressions.py",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "All source string assertions pass; original tree. Reused within this turn; unchanged tested inputs."
+    },
+    {
+      "check": "Auth/reset suite",
+      "command": "/tmp/helix-audit-venv/bin/python tests/test_auth_reset_suite.py",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "Six SQLite create_all checks pass. Synthetic SECRET_KEY/DATABASE_URL; no production schema coverage. Reused within this turn."
+    },
+    {
+      "check": "Frontend locked install",
+      "command": "pnpm install --frozen-lockfile",
+      "cwd": "/tmp/helix-audit-review",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "Scratch source copy; package.json/pnpm-lock.yaml unchanged. Two backend token literals sanitized; irrelevant to frontend build."
+    },
+    {
+      "check": "Production build",
+      "command": "pnpm build",
+      "cwd": "/tmp/helix-audit-review",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "Node24.14.1 pnpm9.15.4; generated docs metadata and Vite build; bundle size warning. Reused unchanged frontend inputs."
+    },
+    {
+      "check": "Python undefined names",
+      "command": "/tmp/helix-audit-venv/bin/python -m pyflakes app/services/ai/ai_router.py app/services/support_service.py",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "failed",
+      "exit_status": 1,
+      "observations": "Focused rerun confirmed exit1 and undefined os/func; broad scan earlier found the same errors but its wrapper exited0."
+    },
+    {
+      "check": "Frontend undefined names",
+      "command": "/tmp/helix-js-audit/node_modules/.bin/eslint --config /tmp/helix-js-audit/eslint.config.mjs src --format json",
+      "cwd": "/tmp/helix-audit-review",
+      "status": "failed",
+      "exit_status": 1,
+      "observations": "Clock,avgDays,survivorRate,fatigued,scaling undefined. Two missing exhaustive-deps-rule notices are minimal audit-config limitations."
+    },
+    {
+      "check": "runtime-probes",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_runtime /tmp/helix-audit-venv/bin/python /tmp/helix-runtime-probes.py",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "Two synthetic tenants on create_all schema; sentinel takeover/leaks and three500s confirmed; refund/stale balance/Gemini signature/SSRF guard probes. Exit0 means probe completed; exploit/crash observations fail production readiness."
+    },
+    {
+      "check": "extra-probes",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_runtime /tmp/helix-audit-venv/bin/python /tmp/helix-extra-probes.py",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "Synthetic failing provider, real usage ledger;0.5 credit charged and private text returned. AIRouter monkeypatched only in test process; no provider traffic. Exit0 means probe completed; exploit/crash observations fail production readiness."
+    },
+    {
+      "check": "worker-probe",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_runtime /tmp/helix-audit-venv/bin/python /tmp/helix-worker-probe.py",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "Three synchronous queue polls with shared async engine; second raises closed loop; no browser launched. Exit0 means probe completed; exploit/crash observations fail production readiness."
+    },
+    {
+      "check": "health-probe",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_migrations /tmp/helix-audit-venv/bin/python /tmp/helix-health-probe.py",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "ASGI without lifespan (no startup DDL);health200 and signin500 on diagnostic migration schema. Exit0 means probe completed; exploit/crash observations fail production readiness."
+    },
+    {
+      "check": "route-inventory",
+      "command": "SECRET_KEY=synthetic-audit-only DATABASE_URL=postgresql://vercel-sandbox@127.0.0.1:55432/helix_runtime /tmp/helix-audit-venv/bin/python /tmp/helix-route-inventory.py",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "All registered routes and recursive auth dependencies; no provider traffic. Exit0 means probe completed; exploit/crash observations fail production readiness."
+    },
+    {
+      "check": "Audit artifacts",
+      "command": "python3 /tmp/helix-finalize.py",
+      "cwd": "/home/vercel-sandbox/workspace",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "First run observed exit0: all JSON parsed,82 finding/comment counts,525 hashed file entries and all cited paths/lines validated; summary-comment below GitHub size limit; source hashes unchanged."
+    },
+    {
+      "check": "Performance callback",
+      "command": "node (stdin; exact source preserved in output/helix-audit/probes/performance-probe.cjs)",
+      "cwd": "/home/vercel-sandbox/workspace/repos/github.com/cultleaderziad/helix-intelligence-ai/backend",
+      "status": "passed",
+      "exit_status": 0,
+      "observations": "Empty branch works; populated callback throws ReferenceError. Ran before artifact copy."
+    }
+  ],
+  "outstanding": [
+    "Live provider integrations,productionDB,R2/Neon operational state,real payment settlement,browser/RTL/a11y/512MB load: unexecuted; not implied by local passes.",
+    "Fixes and revalidation: audit-only task, no code remediation attempted.",
+    "PR posting: blocked on identity of all-new audit PR; all repository PRs inspected,none matches."
+  ]
+}

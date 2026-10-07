@@ -31,21 +31,33 @@ export function BillingPage() {
     return isNaN(d.getTime()) ? "—" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })
   }
 
-  const formatTrialExpiration = (b) => {
-    if (b?.plan_type && b.plan_type !== "trial") {
-      return "Monthly renewal"
+  const formatPlanLifecycle = (b) => {
+    if (!b?.plan_type || b.plan_type === "trial") {
+      if (b?.trial_expires_at) {
+        const cleaned = typeof b.trial_expires_at === "string" ? b.trial_expires_at.replace(/\+00:00Z$/, "Z").replace(/\+00:00$/, "Z") : b.trial_expires_at
+        const d = new Date(cleaned)
+        if (!isNaN(d.getTime())) {
+          return `Expires ${d.toLocaleDateString()}`
+        }
+      }
+      if (b?.trial_days_remaining !== null && b?.trial_days_remaining !== undefined) {
+        return `${b.trial_days_remaining} days remaining`
+      }
+      return "7-Day Free Trial"
     }
-    if (b?.trial_expires_at) {
-      const cleaned = typeof b.trial_expires_at === "string" ? b.trial_expires_at.replace(/\+00:00Z$/, "Z").replace(/\+00:00$/, "Z") : b.trial_expires_at
-      const d = new Date(cleaned)
+
+    if (b.plan_type === "pay_as_you_go") {
+      return "Pay-as-you-go (Metered credits)"
+    }
+
+    if (b.renews_at) {
+      const d = new Date(b.renews_at)
       if (!isNaN(d.getTime())) {
-        return `Expires ${d.toLocaleDateString()}`
+        return `Renews on ${d.toLocaleDateString()}`
       }
     }
-    if (b?.trial_days_remaining !== null && b?.trial_days_remaining !== undefined) {
-      return `${b.trial_days_remaining} days remaining`
-    }
-    return "7-Day Free Trial"
+
+    return "Workspace plan (Managed by Admin)"
   }
 
   const fetchBilling = async () => {
@@ -159,10 +171,12 @@ export function BillingPage() {
               ? (billing?.trial_days_remaining !== null && billing?.trial_days_remaining !== undefined
                   ? `${billing.trial_days_remaining} days left`
                   : "7 days trial")
-              : "Active"}
+              : billing?.plan_type === "pay_as_you_go"
+                ? "Metered Balance"
+                : "Active Allocation"}
           </div>
           <p className="text-xs text-slate-500">
-            {formatTrialExpiration(billing)}
+            {formatPlanLifecycle(billing)}
           </p>
         </div>
       </div>

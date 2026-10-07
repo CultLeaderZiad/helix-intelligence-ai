@@ -10,8 +10,23 @@
 
 const env = import.meta.env ?? {}
 
+const VALID_DATA_SOURCES = ["api", "mock"]
+const rawDataSource = (env.VITE_DATA_SOURCE ?? "api").trim().toLowerCase()
+
+if (!VALID_DATA_SOURCES.includes(rawDataSource)) {
+  throw new Error(
+    `Invalid VITE_DATA_SOURCE: '${env.VITE_DATA_SOURCE}'. Allowed values are 'api' or 'mock'.`
+  )
+}
+
+if (env.PROD && rawDataSource === "mock") {
+  throw new Error(
+    "VITE_DATA_SOURCE cannot be set to 'mock' in production builds. Production must connect to real API backend."
+  )
+}
+
 /** @type {'mock'|'api'} */
-export const DATA_SOURCE = env.VITE_DATA_SOURCE === "api" ? "api" : "mock"
+export const DATA_SOURCE = rawDataSource === "mock" ? "mock" : "api"
 
 export const API_BASE_URL = env.VITE_API_BASE_URL ?? "/api"
 

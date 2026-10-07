@@ -36,6 +36,18 @@
     "violations": []
   },
   {
+    "route": "Privacy Policy (/privacy)",
+    "path": "/privacy",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
+    "route": "Terms of Service (/terms)",
+    "path": "/terms",
+    "violationsCount": 0,
+    "violations": []
+  },
+  {
     "route": "Discover (/discover)",
     "path": "/discover",
     "violationsCount": 0,

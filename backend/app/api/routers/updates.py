@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc
 
-from app.core.deps import get_db, get_current_user, get_current_admin
+from app.core.deps import get_db, get_current_user, get_current_admin, get_optional_user
 from app.models.user import User
 from app.models.app_update import AppUpdate
 from app.schemas.app_update import (
@@ -15,6 +15,14 @@ from app.schemas.app_update import (
 
 router = APIRouter()
 
+def normalize_to_utc(dt: Optional[datetime.datetime]) -> Optional[datetime.datetime]:
+    """Properly converts timezone-aware datetime to UTC without stripping offsets (F69)."""
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        return dt.astimezone(datetime.timezone.utc)
+    return dt.replace(tzinfo=datetime.timezone.utc)
+
 # ---------------------------------------------------------------------------
 # Public & Authenticated Endpoints
 # ---------------------------------------------------------------------------
@@ -22,17 +30,22 @@ router = APIRouter()
 @router.get("", response_model=List[AppUpdateResponse])
 async def list_published_updates(
     db: AsyncSession = Depends(get_db),
+    user: Optional[User] = Depends(get_optional_user),
 ):
     """
     List all published updates currently active or within schedule.
+    Unauthenticated callers only receive updates flagged with show_on_public=True (F48).
     """
-    now = datetime.datetime.utcnow()
-    query = select(AppUpdate).where(
+    now = datetime.datetime.now(datetime.timezone.utc)
+    conditions = [
         AppUpdate.is_published == True,
         or_(AppUpdate.starts_at == None, AppUpdate.starts_at <= now),
         or_(AppUpdate.ends_at == None, AppUpdate.ends_at >= now),
-    ).order_by(desc(AppUpdate.created_at))
+    ]
+    if user is None:
+        conditions.append(AppUpdate.show_on_public == True)
 
+    query = select(AppUpdate).where(*conditions).order_by(desc(AppUpdate.created_at))
     result = await db.execute(query)
     return result.scalars().all()
 
@@ -40,20 +53,25 @@ async def list_published_updates(
 @router.get("/banner", response_model=Optional[AppUpdateResponse])
 async def get_active_banner(
     db: AsyncSession = Depends(get_db),
+    user: Optional[User] = Depends(get_optional_user),
 ):
     """
     Returns the single active public/app-wide banner:
     Highest priority = most recent published update with show_as_banner=True
     and within its scheduled start/end times.
+    Unauthenticated callers only receive banners with show_on_public=True (F48).
     """
-    now = datetime.datetime.utcnow()
-    query = select(AppUpdate).where(
+    now = datetime.datetime.now(datetime.timezone.utc)
+    conditions = [
         AppUpdate.is_published == True,
         AppUpdate.show_as_banner == True,
         or_(AppUpdate.starts_at == None, AppUpdate.starts_at <= now),
         or_(AppUpdate.ends_at == None, AppUpdate.ends_at >= now),
-    ).order_by(desc(AppUpdate.created_at)).limit(1)
+    ]
+    if user is None:
+        conditions.append(AppUpdate.show_on_public == True)
 
+    query = select(AppUpdate).where(*conditions).order_by(desc(AppUpdate.created_at)).limit(1)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
@@ -85,10 +103,10 @@ async def admin_create_update(
     Admin: Create a new update or banner announcement.
     """
     create_data = update_in.model_dump()
-    if create_data.get("starts_at") and getattr(create_data["starts_at"], "tzinfo", None):
-        create_data["starts_at"] = create_data["starts_at"].replace(tzinfo=None)
-    if create_data.get("ends_at") and getattr(create_data["ends_at"], "tzinfo", None):
-        create_data["ends_at"] = create_data["ends_at"].replace(tzinfo=None)
+    if create_data.get("starts_at") is not None:
+        create_data["starts_at"] = normalize_to_utc(create_data["starts_at"])
+    if create_data.get("ends_at") is not None:
+        create_data["ends_at"] = normalize_to_utc(create_data["ends_at"])
 
     update = AppUpdate(
         **create_data,
@@ -134,16 +152,16 @@ async def admin_update_update(
         raise HTTPException(status_code=404, detail="Update not found")
 
     update_data = update_in.model_dump(exclude_unset=True)
-    if update_data.get("starts_at") and getattr(update_data["starts_at"], "tzinfo", None):
-        update_data["starts_at"] = update_data["starts_at"].replace(tzinfo=None)
-    if update_data.get("ends_at") and getattr(update_data["ends_at"], "tzinfo", None):
-        update_data["ends_at"] = update_data["ends_at"].replace(tzinfo=None)
+    if "starts_at" in update_data and update_data["starts_at"] is not None:
+        update_data["starts_at"] = normalize_to_utc(update_data["starts_at"])
+    if "ends_at" in update_data and update_data["ends_at"] is not None:
+        update_data["ends_at"] = normalize_to_utc(update_data["ends_at"])
 
     for field, value in update_data.items():
         if hasattr(update, field):
             setattr(update, field, value)
 
-    update.updated_at = datetime.datetime.utcnow()
+    update.updated_at = datetime.datetime.now(datetime.timezone.utc)
     await db.commit()
     await db.refresh(update)
     return update

@@ -1,0 +1,1955 @@
+[
+  {
+    "path": "/api/auth/sign-up",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/auth.py",
+    "line": 131,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/auth/sign-in",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/auth.py",
+    "line": 162,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/auth/sign-out",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/auth.py",
+    "line": 183,
+    "dependencies": []
+  },
+  {
+    "path": "/api/auth/forgot-password",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/auth.py",
+    "line": 188,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/auth/reset-password",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/auth.py",
+    "line": 216,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/auth/session",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/auth.py",
+    "line": 234,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/auth/session/onboarding/complete",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/auth.py",
+    "line": 238,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/auth/webhook",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/auth.py",
+    "line": 248,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/profile",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 37,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/profile",
+    "methods": [
+      "PATCH"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 50,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/avatar",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 80,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/usage/today",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 97,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/trial-status",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 151,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/onboarding-complete",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 203,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/billing",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 212,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/api-keys",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 220,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/api-keys",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 227,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/api-keys/{key_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 235,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/team",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 244,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/team/invites",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 251,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/team/invites/{invite_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 259,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/team/invites/accept",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 267,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/account/team/members/{member_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "file": "backend/app/api/routers/account.py",
+    "line": 275,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/notifications/",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/notifications.py",
+    "line": 10,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/notifications",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/notifications.py",
+    "line": 10,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/notifications/{notification_id}/read",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/notifications.py",
+    "line": 18,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/notifications/read-all",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/notifications.py",
+    "line": 26,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/discovery/jobs",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/discover.py",
+    "line": 12,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/discovery/jobs/{job_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/discover.py",
+    "line": 23,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/discovery/jobs/{job_id}/results",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/discover.py",
+    "line": 29,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/discovery/jobs",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/discover.py",
+    "line": 43,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/creatives/",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 15,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/creatives",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 15,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/creatives/saved",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 29,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/creatives/custom",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 39,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/creatives/{creative_id}/save",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 47,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/creatives/{creative_id}/save",
+    "methods": [
+      "DELETE"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 56,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/creatives/{creative_id}/insights",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 64,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/creatives/{creative_id}/generate-insights",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 74,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/creatives/{creative_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 86,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/creatives/translate-copy",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 133,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/brands/",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 96,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/patterns/",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 105,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/patterns/generate",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/creatives.py",
+    "line": 114,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/insights/",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/analysis.py",
+    "line": 36,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/media/jobs",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/media.py",
+    "line": 11,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/media/models",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/media.py",
+    "line": 20,
+    "dependencies": []
+  },
+  {
+    "path": "/api/media/providers",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/media.py",
+    "line": 26,
+    "dependencies": []
+  },
+  {
+    "path": "/api/media/jobs/{job_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/media.py",
+    "line": 44,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/media/jobs/{job_id}/cancel",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/media.py",
+    "line": 55,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/media/upload",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/media.py",
+    "line": 71,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/workspaces/providers",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/providers.py",
+    "line": 31,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/workspaces/provider-credentials/google-gemini",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/providers.py",
+    "line": 67,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/workspaces/provider-credentials/google-gemini/test",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/providers.py",
+    "line": 143,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/workspaces/provider-credentials/google-gemini",
+    "methods": [
+      "DELETE"
+    ],
+    "file": "backend/app/api/routers/providers.py",
+    "line": 191,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/workspaces/provider-mode",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/providers.py",
+    "line": 215,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/updates",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/updates.py",
+    "line": 22,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/updates/banner",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/updates.py",
+    "line": 40,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/updates/admin/all",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/updates.py",
+    "line": 65,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/updates/admin",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/updates.py",
+    "line": 78,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/updates/admin/{update_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/updates.py",
+    "line": 103,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/updates/admin/{update_id}",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/updates.py",
+    "line": 119,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/updates/admin/{update_id}",
+    "methods": [
+      "PUT"
+    ],
+    "file": "backend/app/api/routers/updates.py",
+    "line": 119,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/updates/admin/{update_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "file": "backend/app/api/routers/updates.py",
+    "line": 119,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/updates/admin/{update_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "file": "backend/app/api/routers/updates.py",
+    "line": 152,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/overview/stats",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 22,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/jobs",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 26,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/system/health",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 30,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/plans",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 35,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/plans",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 39,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/plans/{plan_id}",
+    "methods": [
+      "PUT"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 47,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/plans/{plan_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 56,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/organizations",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 65,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/organizations/{org_id}/grant-credits",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 69,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/organizations/{org_id}/switch-plan",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 78,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/organizations/{org_id}/feature-flags",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 87,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/usage",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 97,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/usage/logs",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 101,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/users",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 123,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/users/{user_id}/status",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 127,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/users/{user_id}/ban",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 136,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/users/{user_id}/role",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 145,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/users/{user_id}/plan",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 154,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/users/{user_id}/impersonate",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 163,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/broadcast",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 183,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_full_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/support/tickets",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 198,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/support/tickets/{ticket_id}/reply",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 210,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/admin/support/tickets/{ticket_id}/status",
+    "methods": [
+      "PATCH"
+    ],
+    "file": "backend/app/api/routers/admin.py",
+    "line": 222,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_admin",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/support/tickets",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/support.py",
+    "line": 22,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/support/tickets",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/support.py",
+    "line": 45,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/support/tickets/{ticket_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/support.py",
+    "line": 52,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/support/tickets/{ticket_id}/reply",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/support.py",
+    "line": 60,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/playbooks",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/playbooks.py",
+    "line": 22,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/playbooks",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/playbooks.py",
+    "line": 49,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/playbooks/public/{public_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/playbooks.py",
+    "line": 56,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/dashboard/metrics",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/dashboard.py",
+    "line": 11,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/simulation/segments",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/simulation.py",
+    "line": 13,
+    "dependencies": []
+  },
+  {
+    "path": "/api/simulation/creatives/{creative_id}/simulate",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/simulation.py",
+    "line": 19,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/health/",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/health.py",
+    "line": 12,
+    "dependencies": []
+  },
+  {
+    "path": "/api/health",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/health.py",
+    "line": 12,
+    "dependencies": []
+  },
+  {
+    "path": "/api/monitors/",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/monitors.py",
+    "line": 39,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/monitors",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/monitors.py",
+    "line": 39,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/monitors/",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/monitors.py",
+    "line": 48,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/monitors",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/monitors.py",
+    "line": 48,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/monitors/events",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/monitors.py",
+    "line": 68,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/monitors/{monitor_id}",
+    "methods": [
+      "PATCH"
+    ],
+    "file": "backend/app/api/routers/monitors.py",
+    "line": 80,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/monitors/{monitor_id}",
+    "methods": [
+      "DELETE"
+    ],
+    "file": "backend/app/api/routers/monitors.py",
+    "line": 92,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/monitors/{monitor_id}/run",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/monitors.py",
+    "line": 101,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/monitors/tick",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/monitors.py",
+    "line": 110,
+    "dependencies": []
+  },
+  {
+    "path": "/api/scout/jobs",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 47,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/jobs/{job_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 124,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/jobs/{job_id}/leads",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 156,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/org-jobs",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 204,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/latest-job",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 232,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/export",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 290,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/maps/jobs",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 355,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/maps/jobs/{job_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 422,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/maps/jobs/{job_id}/leads",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 459,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/maps/org-jobs",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 507,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/maps/latest-job",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 536,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/maps/export",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 596,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/settings",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 652,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/settings",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 678,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/jobs",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 47,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/jobs/{job_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 124,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/jobs/{job_id}/leads",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 156,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/org-jobs",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 204,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/latest-job",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 232,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/export",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 290,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/maps/jobs",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 355,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/maps/jobs/{job_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 422,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/maps/jobs/{job_id}/leads",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 459,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/maps/org-jobs",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 507,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/maps/latest-job",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 536,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/maps/export",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 596,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/settings",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 652,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/v1/scout/settings",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/scout.py",
+    "line": 678,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/jobs",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 223,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/jobs/{job_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 320,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/jobs/{job_id}/leads",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 330,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/jobs/{job_id}/leads/{lead_id}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 346,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/jobs/{job_id}/pause",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 360,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/jobs/{job_id}/resume",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 376,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/jobs/{job_id}/export.csv",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 440,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/jobs/{job_id}/export.jsonl",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 464,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/recipes",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 496,
+    "dependencies": [
+      "<fastapi.security.oauth2.OAuth2PasswordBearer object at 0x7f9243141e80>",
+      "get_current_user",
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/worker/health",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 500,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/scout/leadgen/worker/heartbeat",
+    "methods": [
+      "POST"
+    ],
+    "file": "backend/app/api/routers/leadgen.py",
+    "line": 572,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/uploads/{filename}",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/api/routers/uploads.py",
+    "line": 83,
+    "dependencies": [
+      "get_db"
+    ]
+  },
+  {
+    "path": "/api/health",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/main.py",
+    "line": 255,
+    "dependencies": []
+  },
+  {
+    "path": "/health",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/main.py",
+    "line": 255,
+    "dependencies": []
+  },
+  {
+    "path": "/api",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/main.py",
+    "line": 255,
+    "dependencies": []
+  },
+  {
+    "path": "/",
+    "methods": [
+      "GET"
+    ],
+    "file": "backend/app/main.py",
+    "line": 255,
+    "dependencies": []
+  }
+]

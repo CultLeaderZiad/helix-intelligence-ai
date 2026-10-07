@@ -24,9 +24,21 @@ async def compile_playbook(
     pre_insights: Optional[List[Dict[str, Any]]] = None,
     pre_patterns: Optional[List[Dict[str, Any]]] = None,
 ) -> Playbook:
-    # 1. Fetch user's org
-    org = (await db.execute(select(Organization).where(Organization.owner_id == user.id))).scalar_one_or_none()
+    from app.services.billing_service import get_or_create_default_org
+    from app.core.tenancy import get_user_org_ids
+    from app.models.scrape_job import ScrapeJob
+    from sqlalchemy import or_
+
+    # 1. Fetch user's org & tenant scope
+    org = await get_or_create_default_org(db, user)
     org_id = org.id if org else None
+    user_org_ids = await get_user_org_ids(db, user)
+
+    # Validate job_id ownership if provided (F04)
+    if job_id:
+        job = (await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))).scalar_one_or_none()
+        if not job or (user_org_ids is not None and job.org_id not in user_org_ids):
+            raise HTTPException(status_code=404, detail="Job not found or access denied")
 
     # 2. Collect top real creatives for this brand/job or use pre-provided
     formatted_creatives = []
@@ -50,7 +62,11 @@ async def compile_playbook(
         if job_id:
             creatives_stmt = creatives_stmt.where(Creative.job_id == job_id)
         else:
-            creatives_stmt = creatives_stmt.where(Creative.brand_id.ilike(f"%{brand_name}%"))
+            if user_org_ids is not None:
+                scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
+                creatives_stmt = creatives_stmt.where(Creative.job_id.in_(scoped_jobs))
+            if brand_name:
+                creatives_stmt = creatives_stmt.where(Creative.brand_id.ilike(f"%{brand_name}%"))
         creatives_stmt = creatives_stmt.order_by(desc(Creative.days_active)).limit(6)
         
         creatives_res = (await db.execute(creatives_stmt)).scalars().all()
@@ -77,6 +93,10 @@ async def compile_playbook(
         patterns_stmt = select(Pattern)
         if job_id:
             patterns_stmt = patterns_stmt.where(Pattern.job_id == job_id)
+        else:
+            if user_org_ids is not None:
+                scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
+                patterns_stmt = patterns_stmt.where(or_(Pattern.job_id.in_(scoped_jobs), Pattern.job_id.is_(None)))
         patterns_stmt = patterns_stmt.limit(5)
         patterns_res = (await db.execute(patterns_stmt)).scalars().all()
 
@@ -108,6 +128,10 @@ async def compile_playbook(
         insights_stmt = select(AIInsight).limit(5)
         if job_id:
             insights_stmt = insights_stmt.join(Creative, AIInsight.creative_id == Creative.id).where(Creative.job_id == job_id)
+        else:
+            if user_org_ids is not None:
+                scoped_creatives = select(Creative.id).join(ScrapeJob, Creative.job_id == ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
+                insights_stmt = insights_stmt.where(AIInsight.creative_id.in_(scoped_creatives))
         insights_res = (await db.execute(insights_stmt)).scalars().all()
 
         for ins in insights_res:

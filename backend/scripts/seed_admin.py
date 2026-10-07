@@ -15,8 +15,15 @@ from sqlalchemy import select
 
 async def seed_admin():
     async with async_session_maker() as db:
-        email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
-        password = os.environ.get("ADMIN_PASSWORD", "password123")
+        email = os.environ.get("ADMIN_EMAIL")
+        if not email:
+            raise ValueError("ADMIN_EMAIL environment variable is required to seed an administrator.")
+        
+        password = os.environ.get("ADMIN_PASSWORD")
+        if not password:
+            import secrets
+            password = secrets.token_urlsafe(24)
+            print(f"Generated secure random admin password: {password}")
         
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()

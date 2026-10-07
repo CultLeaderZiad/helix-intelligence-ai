@@ -28,16 +28,71 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 target_metadata = Base.metadata
 
-config.set_main_option("sqlalchemy.url", settings.async_database_url)
+def _clean_async_url(url: str) -> str:
+    if not url:
+        return url
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    if "sslmode=" in url:
+        url = url.replace("sslmode=", "ssl=")
+    for bad in ("channel_binding=require&", "&channel_binding=require", "?channel_binding=require"):
+        url = url.replace(bad, "" if "&" in bad else "?" if "?" in bad else "")
+    return url
+
+custom_url = os.environ.get("TEST_DATABASE_URL")
+if custom_url:
+    config.set_main_option("sqlalchemy.url", _clean_async_url(custom_url))
+elif not config.get_main_option("sqlalchemy.url") or config.get_main_option("sqlalchemy.url") == "driver://user:pass@localhost/dbname":
+    config.set_main_option("sqlalchemy.url", settings.async_database_url)
+
+import re
+
+def _norm_json_default(val: str | None) -> str:
+    if not val:
+        return ""
+    v = re.sub(r"::jsonb?", "", str(val)).strip()
+    return v.strip("'").strip()
+
+
+def custom_compare_server_default(
+    context,
+    inspected_column,
+    metadata_column,
+    inspected_default,
+    metadata_default,
+    rendered_metadata_default,
+):
+    col_type = str(metadata_column.type).lower()
+    if "json" in col_type:
+        d1 = _norm_json_default(inspected_default)
+        d2 = _norm_json_default(rendered_metadata_default)
+        if d1 == d2:
+            return False
+        return True
+    return None
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "index" and name in ("uq_scrape_jobs_active_query", "ix_users_lower_email"):
+        return False
+    return True
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
+    is_sqlite = bool(url and "sqlite" in url)
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True,
+        compare_server_default=custom_compare_server_default,
+        include_object=include_object,
+        render_as_batch=is_sqlite,
     )
 
     with context.begin_transaction():
@@ -45,7 +100,15 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    is_sqlite = connection.dialect.name == "sqlite"
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        compare_type=True,
+        compare_server_default=custom_compare_server_default,
+        include_object=include_object,
+        render_as_batch=is_sqlite,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

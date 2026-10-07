@@ -199,7 +199,12 @@ async def get_creative_by_id(
         pattern_ids=[]
     )
 
-async def list_brands(db: AsyncSession, page: int = 1, page_size: int = 20) -> Paginated[BrandSchema]:
+async def list_brands(
+    db: AsyncSession,
+    page: int = 1,
+    page_size: int = 20,
+    user_org_ids: Optional[List[str]] = None
+) -> Paginated[BrandSchema]:
     if settings.USE_MOCKS:
         mock_brand = BrandSchema(
             id="mock-brand",
@@ -217,13 +222,17 @@ async def list_brands(db: AsyncSession, page: int = 1, page_size: int = 20) -> P
             has_more=False
         )
 
-    # Since we don't have a separate Brand table, we can generate unique brands from creatives
-    # Grouping creatives by brand_id
+    # Since we don't have a separate Brand table, generate unique brands from creatives
     query = select(
         Creative.brand_id,
         func.max(Creative.brand_name).label("brand_name"),
         func.count(Creative.id).label("ad_count")
-    ).group_by(Creative.brand_id)
+    )
+    if user_org_ids is not None:
+        scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
+        query = query.where(Creative.job_id.in_(scoped_jobs))
+
+    query = query.group_by(Creative.brand_id)
     result = await db.execute(query)
     rows = result.all()
     
@@ -251,7 +260,12 @@ async def list_brands(db: AsyncSession, page: int = 1, page_size: int = 20) -> P
         has_more=(offset + page_size) < total
     )
 
-async def list_patterns(db: AsyncSession, page: int = 1, page_size: int = 20) -> Paginated[PatternSchema]:
+async def list_patterns(
+    db: AsyncSession,
+    page: int = 1,
+    page_size: int = 20,
+    user_org_ids: Optional[List[str]] = None
+) -> Paginated[PatternSchema]:
     if settings.USE_MOCKS:
         mock_pattern = PatternSchema(
             id="mock-pattern-1",
@@ -268,11 +282,22 @@ async def list_patterns(db: AsyncSession, page: int = 1, page_size: int = 20) ->
             has_more=False
         )
 
+    filters = []
+    if user_org_ids is not None:
+        from sqlalchemy import or_
+        scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
+        filters.append(or_(Pattern.job_id.in_(scoped_jobs), Pattern.job_id.is_(None)))
+
     count_query = select(func.count(Pattern.id))
+    if filters:
+        count_query = count_query.where(*filters)
     total = await db.scalar(count_query) or 0
     
     offset = (page - 1) * page_size
-    query = select(Pattern).offset(offset).limit(page_size)
+    query = select(Pattern)
+    if filters:
+        query = query.where(*filters)
+    query = query.offset(offset).limit(page_size)
     result = await db.execute(query)
     patterns = result.scalars().all()
     
@@ -299,18 +324,46 @@ from app.services.ai.ai_router import AIRouter
 from app.models.user import User
 from typing import List
 
-async def generate_patterns_for_recent_creatives(db: AsyncSession, user: User, job_id: str, byok_key: str = None, byok_provider: str = None) -> List[PatternSchema]:
-    # Fetch creatives for this specific job, or fallback to recent creatives
-    query = select(Creative).where(Creative.job_id == job_id).limit(10) if job_id else select(Creative).order_by(Creative.first_seen.desc()).limit(10)
+async def generate_patterns_for_recent_creatives(
+    db: AsyncSession,
+    user: User,
+    job_id: Optional[str] = None,
+    byok_key: Optional[str] = None,
+    byok_provider: Optional[str] = None,
+    user_org_ids: Optional[List[str]] = None
+) -> List[PatternSchema]:
+    # 1. Scope and fetch creatives (F53)
+    if job_id:
+        job = (await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))).scalar_one_or_none()
+        if not job or (user_org_ids is not None and job.org_id not in user_org_ids):
+            raise HTTPException(status_code=404, detail="Job not found")
+        query = select(Creative).where(Creative.job_id == job_id).limit(10)
+    else:
+        query = select(Creative)
+        if user_org_ids is not None:
+            scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
+            query = query.where(Creative.job_id.in_(scoped_jobs))
+        query = query.order_by(Creative.first_seen.desc()).limit(10)
+
     result = await db.execute(query)
     creatives_models = result.scalars().all()
-    if not creatives_models and job_id:
-        query = select(Creative).order_by(Creative.first_seen.desc()).limit(10)
-        result = await db.execute(query)
-        creatives_models = result.scalars().all()
     
     if not creatives_models:
-        raise HTTPException(status_code=400, detail="No creatives available for pattern extraction")
+        raise HTTPException(
+            status_code=400,
+            detail="No creatives available for pattern extraction in your workspace. Please run a discovery search first."
+        )
+
+    # 2. Server-side credit & feature gate (F53)
+    from app.services.billing_service import assert_can_spend, charge, ANALYSIS_PATTERN_CREDIT_COST, ESTIMATED_PROVIDER_COSTS
+    cost = 0.0 if (byok_key and byok_provider) else ANALYSIS_PATTERN_CREDIT_COST
+    org, plan = await assert_can_spend(
+        db,
+        user=user,
+        required_credits=cost,
+        feature_name="intelligence",
+        lock_row=False
+    )
         
     provider = await AIRouter.get_provider_for_user(db, user, byok_key, byok_provider)
     
@@ -337,9 +390,24 @@ async def generate_patterns_for_recent_creatives(db: AsyncSession, user: User, j
         
     try:
         patterns = await provider.generate_patterns(creative_schemas)
+        provider_name = getattr(provider, "model", "unknown")
         
-        # Log usage
-        await AIRouter.log_usage(db, user.id, getattr(provider, "model", "unknown"), tokens=0)
+        # 3. Deduct credit only after successful generation
+        if cost > 0:
+            await charge(
+                db=db,
+                org=org,
+                user_id=user.id,
+                amount=cost,
+                provider=provider_name,
+                operation="pattern_synthesis",
+                units=1.0,
+                cost_usd=ESTIMATED_PROVIDER_COSTS.get("groq_tokens", 0.0006) * 1000,
+                job_id=job_id,
+                metadata={"job_id": job_id, "patterns_count": len(patterns)}
+            )
+        else:
+            await AIRouter.log_usage(db, user.id, provider_name, org_id=org.id, tokens=0)
         
         # Save patterns to DB
         for p_schema in patterns:
@@ -400,6 +468,16 @@ async def save_creative(
     creative = (await db.execute(select(Creative).where(Creative.id == creative_id))).scalar_one_or_none()
     if not creative:
         raise HTTPException(status_code=404, detail="Creative not found")
+
+    # Tenant isolation: ensure creative belongs to caller's org(s) (F03)
+    from app.core.tenancy import get_user_org_ids
+    user_org_ids = await get_user_org_ids(db, user)
+    if user_org_ids is not None:
+        job_org = (await db.execute(
+            select(ScrapeJob.org_id).where(ScrapeJob.id == creative.job_id)
+        )).scalar_one_or_none()
+        if job_org not in user_org_ids:
+            raise HTTPException(status_code=404, detail="Creative not found")
 
     # 3. Check already saved
     existing = (await db.execute(
@@ -524,7 +602,7 @@ async def list_saved_creatives(
 
 async def create_custom_swipe_reference(db: AsyncSession, user: "User", data: dict) -> dict:
     from app.models.creative import Creative
-    from app.models.score import Score
+    from app.models.scrape_job import ScrapeJob
     from app.models.saved_creative import SavedCreative
     from app.services.billing_service import check_quota_and_feature
     import uuid
@@ -533,14 +611,34 @@ async def create_custom_swipe_reference(db: AsyncSession, user: "User", data: di
 
     url = data.get("url", "").strip()
     headline = data.get("headline", "").strip() or "Custom Ad Reference"
-    body = data.get("body", "").strip() or f"Saved reference link: {url}"
+    body = data.get("body", "").strip() or (f"Saved reference link: {url}" if url else "Custom reference")
     format_type = data.get("format", "video" if (".mp4" in url or "youtube" in url or "tiktok" in url) else "image")
     platform = data.get("platform", "web")
     collection_name = data.get("collection", "Default")
 
+    # Ensure parent ScrapeJob exists for org tenancy & relational integrity (F33)
+    custom_job_id = f"custom_job_{org.id}"
+    job_exists = (await db.execute(select(ScrapeJob).where(ScrapeJob.id == custom_job_id))).scalar_one_or_none()
+    if not job_exists:
+        job = ScrapeJob(
+            id=custom_job_id,
+            org_id=org.id,
+            query="Custom Swipe Files",
+            status="succeeded",
+            record_count=1,
+            progress=1.0,
+            stage="complete"
+        )
+        db.add(job)
+        await db.flush()
+
     new_id = f"custom_{uuid.uuid4().hex[:12]}"
+    brand_id = f"custom_brand_{uuid.uuid4().hex[:8]}"
     creative = Creative(
         id=new_id,
+        job_id=custom_job_id,
+        brand_id=brand_id,
+        brand_name=headline[:50],
         platform=platform,
         format=format_type,
         headline=headline,
@@ -550,7 +648,9 @@ async def create_custom_swipe_reference(db: AsyncSession, user: "User", data: di
         thumbnail_ratio="1:1" if format_type == "image" else "9:16",
         days_active=1,
         variant_count=1,
-        impressions_est=10000
+        impressions_est=None,
+        is_estimated=False,
+        data_source="manual_upload"
     )
     db.add(creative)
 

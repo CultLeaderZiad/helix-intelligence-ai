@@ -1,7 +1,8 @@
 import json
 import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from abc import ABC, abstractmethod
+from fastapi import HTTPException
 from app.schemas.analysis import Insight, Pattern
 from app.schemas.creative import Creative
 from app.schemas.simulation import PersonaSegment, SegmentReaction
@@ -57,41 +58,16 @@ class AIProvider(ABC):
                 result_text = result_text.split("```")[1].split("```")[0].strip()
                 
             data = json.loads(result_text)
+            if not isinstance(data, dict):
+                raise ValueError("AI response did not return a JSON object")
+        except HTTPException:
+            raise
         except Exception as e:
-            # Resilient Semantic Fallback: Construct calibrated strategic teardown directly from ad copy
-            headline = (creative.headline or "").strip()
-            body = (creative.body or "").strip()
-            cta = (creative.cta or "Shop Now").strip()
-            days = creative.days_active or 1
-            sentences = [s.strip() for s in body.replace("\n", ". ").split(".") if len(s.strip()) > 8]
-
-            hook_preview = headline or (sentences[0] if sentences else "Pattern Interrupt")
-            problem_preview = sentences[1] if len(sentences) > 1 else "Core customer frustration or misconception"
-            solution_preview = sentences[2] if len(sentences) > 2 else "Unique mechanism and transformation promise"
-
-            durability_tier = "High Durability Evergreen" if days >= 14 else "Active Testing Phase"
-            fatigue_forecast = (
-                f"Active for {days} days on {creative.platform}. Sustained runtime demonstrates proven unit economics. "
-                "Recommended iteration: test 3 new 0-3s visual hooks while keeping this proven core offer script intact."
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=503,
+                detail=f"AI insight generation provider failed: {str(e)}"
             )
-
-            data = {
-                "kind": "opportunity",
-                "title": f"Contrarian Paradigm Shift ({durability_tier})",
-                "summary": f"Hooks viewers by attacking conventional wisdom ('{hook_preview[:70]}...'), instantly isolating the root problem before revealing the proprietary transformation.",
-                "confidence": 0.92,
-                "emotional_resonance": (
-                    "Taps into frustration and skepticism reversal. By declaring that the audience's prior failures were not their fault, "
-                    "it disarms defensive guards and establishes deep trust and immediate emotional relief."
-                ),
-                "script_teardown": (
-                    f"• [0-3s Hook / Disruption]: {hook_preview}\n"
-                    f"• [3-12s Agitation / Pivot]: Challenges common beliefs: '{problem_preview}'. Validates viewer anxiety.\n"
-                    f"• [12-24s Mechanism / Proof]: Introduces the unique mechanism: '{solution_preview}'. Establishes authority credentials.\n"
-                    f"• [24s+ Conversion Direct]: Friction-free call to action with risk-reversal guarantee: '{cta}'."
-                ),
-                "fatigue_prediction": fatigue_forecast
-            }
 
         return Insight(
             id=f"insight_{int(datetime.datetime.now().timestamp() * 1000)}",

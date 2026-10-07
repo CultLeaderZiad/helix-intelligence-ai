@@ -68,7 +68,11 @@ async def main():
             auth_service.authenticate_user(db, UserLogin(email="legacy@vynex.com", password="whatever")),
             401,
         )
-        print("[PASS] legacy/unverifiable hash still rejects sign-in with 401")
+        await expect_http_error(
+            auth_service.authenticate_user(db, UserLogin(email="legacy@vynex.com", password="EXTERNAL_AUTH_MANAGED")),
+            401,
+        )
+        print("[PASS] legacy/unverifiable hash still rejects sign-in with 401 (including EXTERNAL_AUTH_MANAGED)")
 
         # 2. Reset request mints a single-use token.
         user, raw_token = await auth_service.request_password_reset(db, "LEGACY@VYNEX.com")
@@ -111,7 +115,37 @@ async def main():
         )
         print("[PASS] sign-up stores lowercase email; duplicate rejected case-insensitively")
 
+        # 7. Stale links do NOT invalidate newer links (F18)
+        _, link_stale = await auth_service.request_password_reset(db, "legacy@vynex.com")
+        _, link_fresh = await auth_service.request_password_reset(db, "legacy@vynex.com")
+        # Submitting the stale link must fail with 400
+        await expect_http_error(
+            auth_service.reset_password(db, link_stale, "StaleAttempt123!"), 400)
+        # But the fresh link must STILL succeed!
+        user_after_fresh = await auth_service.reset_password(db, link_fresh, "FreshSuccess123!")
+        assert await verify_password("FreshSuccess123!", user_after_fresh.password_hash)
+        print("[PASS] F18: stale reset link does not invalidate new link; new link succeeds")
+
+        # 8. Session revocation on password reset or logout (F19)
+        from app.core.deps import get_current_user
+        session_token_1 = await auth_service.authenticate_user(
+            db, UserLogin(email="legacy@vynex.com", password="FreshSuccess123!"))
+        # First verification works
+        auth_u1 = await get_current_user(db=db, token=session_token_1)
+        assert auth_u1.id == "usr_legacy"
+        
+        # Now revoke sessions
+        await auth_service.revoke_user_sessions(db, auth_u1)
+        # Old token is now revoked and rejected with 401
+        await expect_http_error(
+            get_current_user(db=db, token=session_token_1), 401)
+        print("[PASS] F19: old token is revoked and rejected with 401 after session revocation")
+
     print("\nALL AUTH RESET TESTS PASSED")
+
+
+def test_auth_reset_suite():
+    asyncio.run(main())
 
 
 if __name__ == "__main__":

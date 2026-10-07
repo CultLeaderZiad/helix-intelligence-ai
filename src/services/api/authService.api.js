@@ -13,15 +13,22 @@ import { request, ServiceError } from "../http"
 const TOKEN_KEY = "helix_access_token"
 const CACHED_USER_KEY = "helix_cached_user"
 
+let inMemoryToken = null
+
 export function getStoredToken() {
   if (typeof window === "undefined") return null
-  return localStorage.getItem(TOKEN_KEY) || localStorage.getItem("helix_auth_token")
+  if (inMemoryToken) return inMemoryToken
+  const token = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || localStorage.getItem("helix_auth_token")
+  if (token) {
+    inMemoryToken = token
+  }
+  return token
 }
 
 export function getCachedUser() {
   if (typeof window === "undefined") return null
   try {
-    const raw = localStorage.getItem(CACHED_USER_KEY)
+    const raw = sessionStorage.getItem(CACHED_USER_KEY) || localStorage.getItem(CACHED_USER_KEY)
     return raw ? JSON.parse(raw) : null
   } catch {
     return null
@@ -31,23 +38,48 @@ export function getCachedUser() {
 function storeUser(user) {
   if (typeof window === "undefined" || !user) return
   try {
-    localStorage.setItem(CACHED_USER_KEY, JSON.stringify(user))
+    const raw = JSON.stringify(user)
+    sessionStorage.setItem(CACHED_USER_KEY, raw)
+    localStorage.setItem(CACHED_USER_KEY, raw)
   } catch {}
 }
 
 function storeToken(token) {
   if (typeof window === "undefined") return
+  inMemoryToken = token || null
   if (token) {
-    localStorage.setItem(TOKEN_KEY, token)
-    localStorage.setItem("helix_auth_token", token)
+    try {
+      sessionStorage.setItem(TOKEN_KEY, token)
+      localStorage.setItem(TOKEN_KEY, token)
+    } catch {}
+  }
+}
+
+export function clearAllTenantStorage() {
+  if (typeof window === "undefined") return
+  inMemoryToken = null
+  const keysToRemove = [
+    TOKEN_KEY,
+    "helix_auth_token",
+    CACHED_USER_KEY,
+    "helix_latest_search",
+    "helix_search_history",
+    "helix_active_creative",
+    "helix_saved_drafts",
+    "helix_admin_token",
+    "helix_impersonation",
+    "helix_impersonated_user"
+  ]
+  for (const k of keysToRemove) {
+    try {
+      localStorage.removeItem(k)
+      sessionStorage.removeItem(k)
+    } catch {}
   }
 }
 
 function clearToken() {
-  if (typeof window === "undefined") return
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem("helix_auth_token")
-  localStorage.removeItem(CACHED_USER_KEY)
+  clearAllTenantStorage()
 }
 
 /**

@@ -1,0 +1,1714 @@
+[
+  {
+    "id": "F01",
+    "severity": "P0",
+    "area": "Schema",
+    "refs": [
+      {
+        "path": "backend/app/models/user.py",
+        "line": 23
+      },
+      {
+        "path": "backend/app/main.py",
+        "line": 48
+      }
+    ],
+    "title": "The incident class remains: models and migrations describe different databases.",
+    "reproduction": "A migration-built database cannot load users, organizations, plans, creatives or jobs. Beyond signup_metadata there are 24 absent columns and 14 absent tables; every mismatch is enumerated in Appendix 1. Local sign-in returned 500 while health returned 200/connected.",
+    "fix": "Add reviewed, data-preserving Alembic revisions for every Appendix 1 gap; backfill before NOT NULL, and upgrade existing databases before serving the new ORM.",
+    "effort": "L",
+    "evidence": "PostgreSQL introspection + ASGI reproduction"
+  },
+  {
+    "id": "F02",
+    "severity": "P0",
+    "area": "Authentication",
+    "refs": [
+      {
+        "path": "backend/app/core/security.py",
+        "line": 124
+      },
+      {
+        "path": "backend/app/api/routers/auth.py",
+        "line": 301
+      }
+    ],
+    "title": "A shared external-auth marker is a working password.",
+    "reproduction": "Create/sync an external-auth user, then sign in with their email and password EXTERNAL_AUTH_MANAGED. The bcrypt exception falls back to literal comparison. Local test returned 200 and an access token.",
+    "fix": "Reject unsupported password hash formats (return False). Explicitly disable local-password login for external-only accounts; invalidate affected sessions and audit logins.",
+    "effort": "S",
+    "evidence": "ASGI reproduction"
+  },
+  {
+    "id": "F03",
+    "severity": "P0",
+    "area": "Tenant isolation",
+    "refs": [
+      {
+        "path": "backend/app/services/creative_service.py",
+        "line": 400
+      }
+    ],
+    "title": "Saving a foreign creative bypasses the scoped creative GET.",
+    "reproduction": "As tenant B, POST /api/creatives/{A_creative_id}/save, then GET /api/creatives/saved. Full private text is returned even though direct GET correctly returns 404.",
+    "fix": "Resolve the creative through ScrapeJob and authorized org IDs before saving; add a two-tenant regression.",
+    "effort": "S",
+    "evidence": "ASGI reproduction"
+  },
+  {
+    "id": "F04",
+    "severity": "P0",
+    "area": "Tenant isolation",
+    "refs": [
+      {
+        "path": "backend/app/services/playbook_service.py",
+        "line": 49
+      },
+      {
+        "path": "backend/app/services/playbook_service.py",
+        "line": 77
+      },
+      {
+        "path": "backend/app/services/playbook_service.py",
+        "line": 108
+      }
+    ],
+    "title": "Playbook compilation publishes other tenants’ data.",
+    "reproduction": "Compile with another tenant’s job_id; the resulting unauthenticated public URL contains their creative. Omitting job_id also selects global patterns/insights without any guessed ID.",
+    "fix": "Scope all source selections to the caller’s org; validate job ownership before compiling. Restrict public publication to an explicit authorized action and remove contaminated playbooks.",
+    "effort": "M",
+    "evidence": "ASGI reproduction with public read"
+  },
+  {
+    "id": "F05",
+    "severity": "P0",
+    "area": "Tenant isolation",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/creatives.py",
+        "line": 96
+      },
+      {
+        "path": "backend/app/services/creative_service.py",
+        "line": 222
+      },
+      {
+        "path": "backend/app/services/creative_service.py",
+        "line": 271
+      }
+    ],
+    "title": "Brand and pattern lists are global.",
+    "reproduction": "Tenant B calls GET /api/brands/ and /api/patterns/. Local fixture returned tenant A’s secret brand and pattern.",
+    "fix": "Pass authorized org IDs and join through scrape_jobs on both queries; scope counts as well as rows.",
+    "effort": "S",
+    "evidence": "ASGI reproduction"
+  },
+  {
+    "id": "F06",
+    "severity": "P0",
+    "area": "Tenant isolation",
+    "refs": [
+      {
+        "path": "backend/app/services/analysis_service.py",
+        "line": 34
+      },
+      {
+        "path": "backend/app/services/simulation_service.py",
+        "line": 32
+      }
+    ],
+    "title": "Insight/simulation creation accepts foreign creative IDs.",
+    "reproduction": "Generate an insight for another tenant’s ID; the service reads its private body and writes against that creative. A local failing-provider substitute still returned A’s text to B.",
+    "fix": "Use the same scoped creative resolver as GET before any model call or charge; scope both mutation paths.",
+    "effort": "S",
+    "evidence": "Insight path reproduced; simulation code trace"
+  },
+  {
+    "id": "F07",
+    "severity": "P0",
+    "area": "Credits",
+    "refs": [
+      {
+        "path": "backend/app/services/billing_service.py",
+        "line": 305
+      },
+      {
+        "path": "backend/app/services/discover_service.py",
+        "line": 272
+      },
+      {
+        "path": "backend/app/db/session.py",
+        "line": 23
+      }
+    ],
+    "title": "Concurrent charges lose deductions despite FOR UPDATE.",
+    "reproduction": "Load an org in session A; session B charges and commits; A’s lock query reuses its stale identity-map object. Two 1-credit charges reduced 27 to 26, not 25. Discovery additionally commits its job before charging, releasing its lock.",
+    "fix": "Make reservation, conditional atomic balance UPDATE, usage ledger and job insertion one transaction; refresh locked ORM rows with populate_existing. Reject insufficient balances instead of clamping to zero.",
+    "effort": "M",
+    "evidence": "Two-session PostgreSQL reproduction"
+  },
+  {
+    "id": "F08",
+    "severity": "P0",
+    "area": "Credits",
+    "refs": [
+      {
+        "path": "backend/app/services/billing_service.py",
+        "line": 345
+      },
+      {
+        "path": "backend/app/services/job_reconciliation.py",
+        "line": 75
+      },
+      {
+        "path": "backend/app/services/job_reconciliation.py",
+        "line": 167
+      }
+    ],
+    "title": "Refunds can mint credits or be lost permanently.",
+    "reproduction": "Refund the same job twice: balance rises twice (25→27). Two sweepers can select the same stale job before updating and both refund it. A crash after failed-state commit and before refund loses the refund.",
+    "fix": "Reference the original debit with a unique reversal key; claim failed jobs using UPDATE … RETURNING and settle state plus reversal in one transaction.",
+    "effort": "M",
+    "evidence": "Repeated refund reproduced; sweeper race traced"
+  },
+  {
+    "id": "F09",
+    "severity": "P0",
+    "area": "Credits / truthfulness",
+    "refs": [
+      {
+        "path": "backend/app/services/ai/base.py",
+        "line": 60
+      },
+      {
+        "path": "backend/app/services/analysis_service.py",
+        "line": 75
+      }
+    ],
+    "title": "Provider outages produce charged fabricated analysis.",
+    "reproduction": "Make the provider raise an error. The base class fabricates 92% confidence, proof and performance claims; the caller treats it as success and bills it. Local result deducted 0.5 credits.",
+    "fix": "Propagate a typed provider error; bill only validated provider output. If an offline heuristic is offered, label it explicitly and do not bill it as AI analysis.",
+    "effort": "M",
+    "evidence": "Synthetic failing provider + real PostgreSQL ledger"
+  },
+  {
+    "id": "F10",
+    "severity": "P0",
+    "area": "Credits / retries",
+    "refs": [
+      {
+        "path": "src/services/http.js",
+        "line": 96
+      },
+      {
+        "path": "src/services/http.js",
+        "line": 105
+      }
+    ],
+    "title": "Transport retries replay paid mutations.",
+    "reproduction": "Let a Scout/leadgen job or admin credit mutation commit, then drop its response/return 502. The shared HTTP client retries POST/PATCH as well as GET; endpoints have no request-id ledger, so effects can repeat.",
+    "fix": "Retry safe reads only until mutations implement tenant-scoped idempotency keys and unique stored responses; reuse one key for every retry.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F11",
+    "severity": "P0",
+    "area": "Media quotas",
+    "refs": [
+      {
+        "path": "backend/app/services/media_service.py",
+        "line": 243
+      },
+      {
+        "path": "backend/app/services/media_service.py",
+        "line": 275
+      },
+      {
+        "path": "backend/app/services/billing_service.py",
+        "line": 697
+      }
+    ],
+    "title": "Concurrent media jobs bypass generation quotas.",
+    "reproduction": "Submit several jobs before the first completes. Admission reads completed counters without reserving a slot; completion increments stale ORM values. A five-image allowance can authorize many paid provider calls.",
+    "fix": "Atomically reserve image/video slots at enqueue, track in-flight usage, settle once on completion, and release once on failure.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F12",
+    "severity": "P0",
+    "area": "Privacy",
+    "refs": [
+      {
+        "path": "src/context/SearchContext.jsx",
+        "line": 3
+      },
+      {
+        "path": "src/services/api/authService.api.js",
+        "line": 46
+      },
+      {
+        "path": "src/App.jsx",
+        "line": 159
+      }
+    ],
+    "title": "Workspace data survives account changes in the same browser.",
+    "reproduction": "User A searches/saves drafts, signs out, then B signs in. Global localStorage keys and a persistent SearchProvider restore A’s searches, active creative and drafts.",
+    "fix": "Key persisted data by authenticated user/workspace and clear in-memory plus persisted tenant state on sign-out/identity change.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F13",
+    "severity": "P1",
+    "area": "Migrations",
+    "refs": [
+      {
+        "path": "backend/alembic/versions/46af201944fd_add_is_suspended_to_users.py",
+        "line": 24
+      }
+    ],
+    "title": "A fresh alembic upgrade fails.",
+    "reproduction": "Run alembic upgrade head on empty PostgreSQL. Revision 46af201944fd drops creatives.source_type, which prior revisions never created; is_impression_estimate has the same problem.",
+    "fix": "Make the historical transition handle databases with and without these legacy columns; test empty upgrades and upgrades from deployed revisions.",
+    "effort": "S",
+    "evidence": "Fresh PostgreSQL upgrade failed exit 1"
+  },
+  {
+    "id": "F14",
+    "severity": "P1",
+    "area": "Startup / schema",
+    "refs": [
+      {
+        "path": "backend/app/main.py",
+        "line": 45
+      },
+      {
+        "path": "backend/app/main.py",
+        "line": 87
+      },
+      {
+        "path": "render.yaml",
+        "line": 6
+      }
+    ],
+    "title": "Startup changes schema outside Alembic and continues after schema errors.",
+    "reproduction": "Boot with a restricted DB role or incompatible legacy schema. create_all/raw ALTER statements run in one transaction; caught PostgreSQL errors abort that transaction, yet startup continues. Render start never runs migrations.",
+    "fix": "Move all DDL and the active-job unique index to Alembic; run a single migration release step; fail readiness/startup on incompatible schema.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F15",
+    "severity": "P1",
+    "area": "Readiness",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/health.py",
+        "line": 23
+      },
+      {
+        "path": "backend/app/api/routers/health.py",
+        "line": 41
+      },
+      {
+        "path": "backend/app/main.py",
+        "line": 255
+      }
+    ],
+    "title": "Health reports success during DB/schema outages.",
+    "reproduction": "Use the migration-built schema: /api/health returns 200/status=ok/db=connected while sign-in returns 500. A disconnect also retains HTTP 200; /health is unconditional.",
+    "fix": "Separate liveness from readiness; readiness must verify DB, expected Alembic head and representative critical schema access, returning 503 on failure.",
+    "effort": "S",
+    "evidence": "ASGI + PostgreSQL reproduction"
+  },
+  {
+    "id": "F16",
+    "severity": "P1",
+    "area": "CI",
+    "refs": [
+      {
+        "path": ".github/workflows/ci.yml",
+        "line": 35
+      },
+      {
+        "path": "backend/tests/test_auth_reset_suite.py",
+        "line": 1
+      }
+    ],
+    "title": "The existing gates cannot catch the reported incident or runtime name errors.",
+    "reproduction": "CI compiles/imports and asserts source strings; no real PostgreSQL upgrade/check or route flow test. SQLite auth tests create_all, hiding migration drift. Build passed despite F35/F36.",
+    "fix": "Add PostgreSQL fresh/upgrade fixtures, alembic upgrade head && alembic check (with server-default comparison), auth/tenant/billing/job regression tests and Python/JS undefined-name linting.",
+    "effort": "M",
+    "evidence": "Current static tests and build passed; concrete gaps reproduced"
+  },
+  {
+    "id": "F17",
+    "severity": "P1",
+    "area": "Password reset",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/auth.py",
+        "line": 204
+      }
+    ],
+    "title": "Forgot-password sends no email and logs the usable reset token.",
+    "reproduction": "Request a reset for an existing account: the endpoint reports success, but only logs email and reset URL. The user receives nothing; anyone with access to those logs can redeem the link.",
+    "fix": "Deliver through the existing email service, keep the neutral public response, and remove raw tokens/URLs from logs. Retire exposed tokens and review log retention.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F18",
+    "severity": "P1",
+    "area": "Password reset",
+    "refs": [
+      {
+        "path": "backend/app/services/auth_service.py",
+        "line": 159
+      },
+      {
+        "path": "backend/app/services/auth_service.py",
+        "line": 177
+      },
+      {
+        "path": "backend/app/core/security.py",
+        "line": 78
+      }
+    ],
+    "title": "Reset tokens are not atomically single-use; stale links invalidate new links.",
+    "reproduction": "Redeem one token concurrently in two sessions, or issue token B then submit older token A: both requests can read the same usable hash; a mismatched old token clears B. Same-second requests can mint identical JWTs.",
+    "fix": "Use a random jti and a conditional UPDATE matching the current hash/expiry; consume once, never erase a different current token.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F19",
+    "severity": "P1",
+    "area": "Session lifecycle",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/auth.py",
+        "line": 183
+      },
+      {
+        "path": "backend/app/core/security.py",
+        "line": 66
+      },
+      {
+        "path": "backend/app/services/auth_service.py",
+        "line": 185
+      }
+    ],
+    "title": "Logout and password resets do not revoke stolen sessions.",
+    "reproduction": "Copy a bearer token, sign out or reset the password, then call an authenticated route with the old token. Only expiry/banned-state checks limit continued use; there is no session version/revocation.",
+    "fix": "Use short-lived access tokens plus rotating/revocable refresh sessions or a checked per-user session version; revoke on reset/logout as appropriate.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F20",
+    "severity": "P1",
+    "area": "Secrets",
+    "refs": [
+      {
+        "path": "backend/scripts/inspect_meta_token.py",
+        "line": 6
+      },
+      {
+        "path": "backend/scripts/test_new_meta.py",
+        "line": 5
+      }
+    ],
+    "title": "Meta access-token literals are committed.",
+    "reproduction": "Anyone with repository access can extract the two token-shaped credentials from these scripts. Their current provider validity is unverified.",
+    "fix": "Revoke/rotate them, remove literals, load secrets from the environment, and scan repository history. Do not merely delete current lines.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F21",
+    "severity": "P1",
+    "area": "Secrets",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/scout.py",
+        "line": 690
+      }
+    ],
+    "title": "Scout credentials are stored as plaintext JSON.",
+    "reproduction": "Save a Hunter key or LinkedIn auth cookie. The router writes raw values into organizations.custom_feature_flags; a DB read/backup exposes them even though API flag responses redact them.",
+    "fix": "Move these credentials to the encrypted workspace-provider credential store and migrate/rotate existing plaintext values.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F22",
+    "severity": "P1",
+    "area": "Secrets in URLs",
+    "refs": [
+      {
+        "path": "src/services/api/analysisService.api.js",
+        "line": 18
+      },
+      {
+        "path": "backend/app/api/routers/creatives.py",
+        "line": 77
+      },
+      {
+        "path": "backend/app/api/routers/health.py",
+        "line": 38
+      }
+    ],
+    "title": "BYOK credentials and the JWT signing secret are accepted in query strings.",
+    "reproduction": "Generate a BYOK insight or open health?secret=…. URLs carry the provider key or server signing secret into ordinary access/observability logs.",
+    "fix": "Send BYOK secrets in an authenticated request body; remove the health query secret and use a separate limited diagnostic credential, never SECRET_KEY.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F23",
+    "severity": "P1",
+    "area": "SSRF",
+    "refs": [
+      {
+        "path": "backend/app/services/leadgen_pipeline.py",
+        "line": 122
+      },
+      {
+        "path": "backend/app/services/leadgen_pipeline.py",
+        "line": 168
+      },
+      {
+        "path": "backend/app/services/security_service.py",
+        "line": 99
+      }
+    ],
+    "title": "URL guards allow private network fetches.",
+    "reproduction": "Give leadgen a hostname resolving to a private address, or a public sitemap redirect/child pointing to metadata/loopback. The literal-only check accepts DNS names and child/redirect fetches are unguarded. The shared guard also accepts IPv4-mapped IPv6 loopback.",
+    "fix": "Resolve and validate every A/AAAA result, normalize mapped IPv4, bind the validated destination, revalidate each redirect and browser subrequest; add network egress restrictions.",
+    "effort": "M",
+    "evidence": "Mapped-loopback guard bypass reproduced; fetch paths traced"
+  },
+  {
+    "id": "F24",
+    "severity": "P1",
+    "area": "Worker",
+    "refs": [
+      {
+        "path": "backend/workers/scrapling/worker.py",
+        "line": 126
+      },
+      {
+        "path": "backend/workers/scrapling/worker.py",
+        "line": 188
+      },
+      {
+        "path": "backend/app/db/session.py",
+        "line": 5
+      }
+    ],
+    "title": "The worker reuses async database connections across destroyed event loops.",
+    "reproduction": "Call _claim_next_job twice with the configured PostgreSQL pool. The first poll succeeds; the second raises Event loop is closed. Running the pipeline creates yet another loop.",
+    "fix": "Run one async worker main for the process and await claims/jobs in that loop; dispose the engine during shutdown.",
+    "effort": "S",
+    "evidence": "Local PostgreSQL worker poll reproduction"
+  },
+  {
+    "id": "F25",
+    "severity": "P1",
+    "area": "Job durability",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/scout.py",
+        "line": 113
+      },
+      {
+        "path": "backend/app/services/media_service.py",
+        "line": 282
+      },
+      {
+        "path": "backend/app/services/job_reconciliation.py",
+        "line": 151
+      }
+    ],
+    "title": "Background tasks are not a durable queue; Scout/Maps/leadgen lack dead-job recovery.",
+    "reproduction": "Terminate the web process during Scout/Maps execution or the worker after claiming a leadgen job. Pending work exists only in process tasks; the reconciler covers discovery/media/monitor runs, not these job tables.",
+    "fix": "Use a durable queue/DB worker with leases, heartbeat renewal, bounded attempts and atomic claims; reclaim expired Scout/Maps/leadgen work and settle credits once.",
+    "effort": "L",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F26",
+    "severity": "P1",
+    "area": "Worker availability",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/leadgen.py",
+        "line": 190
+      },
+      {
+        "path": "backend/app/api/routers/leadgen.py",
+        "line": 244
+      }
+    ],
+    "title": "An enabled flag is treated as a live worker.",
+    "reproduction": "Set SCRAPLING_WORKER_ENABLED=true and stop the worker. Job creation still charges/enqueues indefinitely despite stale/missing heartbeat.",
+    "fix": "Gate admission on a recent healthy heartbeat/capacity or expose queued state with a bounded execution SLA and automatic expiry/refund.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F27",
+    "severity": "P1",
+    "area": "Leadgen billing",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/leadgen.py",
+        "line": 259
+      },
+      {
+        "path": "backend/app/api/routers/leadgen.py",
+        "line": 272
+      },
+      {
+        "path": "backend/app/api/routers/leadgen.py",
+        "line": 305
+      }
+    ],
+    "title": "Leadgen bypasses billing policy and overwrites the user’s spend ceiling.",
+    "reproduction": "An expired/disabled-plan user with balance can enqueue; direct subtraction skips trial/feature/daily checks and UsageLog. Set credit_budget just above base but below computed cost: the route replaces it with the higher cost and charges it.",
+    "fix": "Use the shared atomic reservation/ledger, honor plan gates and the requested hard budget, and reject estimates exceeding it.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F28",
+    "severity": "P1",
+    "area": "Credits / providers",
+    "refs": [
+      {
+        "path": "backend/app/services/scout_service.py",
+        "line": 193
+      },
+      {
+        "path": "backend/app/services/maps_scout_service.py",
+        "line": 476
+      },
+      {
+        "path": "backend/app/services/leadgen_pipeline.py",
+        "line": 288
+      }
+    ],
+    "title": "Failed Scout/Maps/leadgen jobs retain their upfront charges.",
+    "reproduction": "Enqueue then fail parsing, provider setup or Scrapling availability before useful work. Failure handlers only set failed/error fields; no reversal is made.",
+    "fix": "Track the reserved charge and provider consumption; reverse unused amounts exactly once on failure/cancellation, with explicit billing rules for partial results.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F29",
+    "severity": "P1",
+    "area": "Discovery truthfulness",
+    "refs": [
+      {
+        "path": "backend/app/services/scraping/ad_library_provider.py",
+        "line": 202
+      },
+      {
+        "path": "backend/app/services/discover_service.py",
+        "line": 485
+      }
+    ],
+    "title": "Provider failure is reported as a successful empty search and charged.",
+    "reproduction": "Cause every discovery provider to reject/timeout, or leave them unconfigured. All errors become []; the job succeeds with “No active ads” and retains its initial debit.",
+    "fix": "Return typed provider outcomes; distinguish verified zero results from unavailable/failed search and refund failed execution.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F30",
+    "severity": "P1",
+    "area": "Leadgen pause/resume",
+    "refs": [
+      {
+        "path": "backend/app/services/leadgen_pipeline.py",
+        "line": 401
+      },
+      {
+        "path": "backend/app/api/routers/leadgen.py",
+        "line": 385
+      },
+      {
+        "path": "backend/app/services/leadgen_pipeline.py",
+        "line": 256
+      }
+    ],
+    "title": "Pause uses a stale object and resume never selects the checkpoint path.",
+    "reproduction": "Pause during crawling: the repeated select returns the cached instance. Resume writes queued, worker claims running, but run_leadgen_job loads a checkpoint only for paused status. Work restarts instead of resuming.",
+    "fix": "Refresh control fields on each loop; represent resume intent/checkpoint version separately from queue status and claim it atomically.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F31",
+    "severity": "P1",
+    "area": "AI runtime",
+    "refs": [
+      {
+        "path": "backend/app/services/ai/ai_router.py",
+        "line": 23
+      }
+    ],
+    "title": "Default AI provider construction raises NameError.",
+    "reproduction": "Leave either optional AIHUBMIX_API_KEY/TOKENHARBOR_API_KEY unset; MultiTierAIProvider evaluates os.getenv without importing os. Insight creation returns 500 before provider fallback.",
+    "fix": "Import os (or use validated settings exclusively); test initialization with every optional key absent.",
+    "effort": "S",
+    "evidence": "Pyflakes + direct constructor + ASGI reproduction"
+  },
+  {
+    "id": "F32",
+    "severity": "P1",
+    "area": "Paid plans",
+    "refs": [
+      {
+        "path": "backend/app/services/ai/ai_router.py",
+        "line": 101
+      },
+      {
+        "path": "backend/app/services/ai/ai_router.py",
+        "line": 117
+      }
+    ],
+    "title": "Upgraded users remain subject to expired-trial AI gates.",
+    "reproduction": "Upgrade a user whose trial_expires_at is in the past. AI routing still rejects them based only on user.trial_expires_at and applies the trial 20-usage limit regardless of paid plan.",
+    "fix": "Use the current organization plan/entitlements; only apply trial expiry and trial-specific request limits to trial plans.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F33",
+    "severity": "P1",
+    "area": "Custom swipe",
+    "refs": [
+      {
+        "path": "backend/app/services/creative_service.py",
+        "line": 527
+      },
+      {
+        "path": "backend/app/services/creative_service.py",
+        "line": 542
+      }
+    ],
+    "title": "Custom swipe creation always fails.",
+    "reproduction": "POST /api/creatives/custom: app.models.score does not exist. Removing that import still leaves required job_id/brand_id missing and introduces a fake 10,000-impression metric.",
+    "fix": "Remove the bad import; model an owned manual reference with valid required relations and unknown metrics instead of invented values.",
+    "effort": "M",
+    "evidence": "ASGI 500 reproduction + schema trace"
+  },
+  {
+    "id": "F34",
+    "severity": "P1",
+    "area": "Avatar",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/account.py",
+        "line": 90
+      }
+    ],
+    "title": "Avatar upload calls a nonexistent storage function.",
+    "reproduction": "POST a valid multipart file to /api/account/avatar. storage_service has no save_file; local request returned 500.",
+    "fix": "Use store_media_bytes with validated image MIME/content and persist the returned URL; cap size before buffering.",
+    "effort": "S",
+    "evidence": "ASGI reproduction"
+  },
+  {
+    "id": "F35",
+    "severity": "P1",
+    "area": "Frontend runtime",
+    "refs": [
+      {
+        "path": "src/pages/PerformancePage.jsx",
+        "line": 205
+      }
+    ],
+    "title": "Performance crashes as soon as it has data.",
+    "reproduction": "Open Performance with one creative: avgDays, survivorRate, fatigued and scaling are undefined; survivors is already a number but .length is read.",
+    "fix": "Compute the missing metrics and return survivors directly; test empty and nonempty page data.",
+    "effort": "S",
+    "evidence": "Undefined-name lint + extracted callback ReferenceError"
+  },
+  {
+    "id": "F36",
+    "severity": "P1",
+    "area": "Frontend runtime",
+    "refs": [
+      {
+        "path": "src/components/NotificationBell.jsx",
+        "line": 238
+      }
+    ],
+    "title": "Opening a nonempty notification menu crashes rendering.",
+    "reproduction": "Load a notification and open the bell: <Clock> is rendered but Clock is never imported or defined.",
+    "fix": "Import Clock from the existing icon package and render-test a populated menu.",
+    "effort": "S",
+    "evidence": "Undefined-name lint + render branch trace"
+  },
+  {
+    "id": "F37",
+    "severity": "P1",
+    "area": "Support",
+    "refs": [
+      {
+        "path": "backend/app/services/support_service.py",
+        "line": 70
+      }
+    ],
+    "title": "Support ticket listing fails once a ticket exists.",
+    "reproduction": "Create a ticket, then list tickets. hasattr(func, \"count\") itself raises NameError because func is not imported; an empty account hides the bug.",
+    "fix": "Import sqlalchemy.func or remove the unused count; fetch reply counts in one aggregate if needed.",
+    "effort": "S",
+    "evidence": "Pyflakes + nonempty branch trace"
+  },
+  {
+    "id": "F38",
+    "severity": "P1",
+    "area": "Gemini media",
+    "refs": [
+      {
+        "path": "backend/app/services/media_service.py",
+        "line": 165
+      },
+      {
+        "path": "backend/app/services/ai/gemini_provider.py",
+        "line": 82
+      }
+    ],
+    "title": "Every Gemini BYOK image call has an invalid argument.",
+    "reproduction": "Generate with Gemini BYOK. The service passes seed, but GeminiProvider.generate_image has no seed parameter or **kwargs, so it fails before HTTP.",
+    "fix": "Align the provider interface; pass only supported options and test each provider through the shared call site.",
+    "effort": "S",
+    "evidence": "Python signature binding reproduction"
+  },
+  {
+    "id": "F39",
+    "severity": "P1",
+    "area": "Media capabilities",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/media.py",
+        "line": 31
+      },
+      {
+        "path": "backend/app/services/provider_resolver.py",
+        "line": 25
+      },
+      {
+        "path": "backend/app/services/media_service.py",
+        "line": 147
+      }
+    ],
+    "title": "Advertised media provider/mode capabilities are not wired through.",
+    "reproduction": "The provider catalog promises managed Gemini and first/last-frame modes, but managed resolution chooses AIHubMix/Pollinations; the video call does not forward start/end frames. Pollinations image generation ignores reference images.",
+    "fix": "Publish capabilities from actual configured adapters; implement/forward frame and reference inputs or disable those options.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F40",
+    "severity": "P1",
+    "area": "Media cancellation",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/media.py",
+        "line": 66
+      },
+      {
+        "path": "backend/app/services/media_service.py",
+        "line": 177
+      }
+    ],
+    "title": "Canceled media jobs can become completed and consume quota.",
+    "reproduction": "Cancel while the provider is running. The endpoint only updates status; the background task later unconditionally writes completed and records generation.",
+    "fix": "Cancel provider work where supported; otherwise conditionally settle only a still-running job and accurately explain cancellation/billing semantics.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F41",
+    "severity": "P1",
+    "area": "Insight persistence",
+    "refs": [
+      {
+        "path": "backend/app/services/analysis_service.py",
+        "line": 93
+      },
+      {
+        "path": "src/pages/IntelligencePage.jsx",
+        "line": 327
+      }
+    ],
+    "title": "Paid detailed insight fields disappear after reload.",
+    "reproduction": "Generate an insight containing emotional_resonance/script_teardown/fatigue_prediction, navigate away and reload. Persistence omits these fields; the UI treats the saved result as incomplete and regenerates.",
+    "fix": "Add migrated storage for the complete validated response and restore it without charging again; include schema/model version and evidence fields.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F42",
+    "severity": "P1",
+    "area": "Frontend false data",
+    "refs": [
+      {
+        "path": "src/pages/IntelligencePage.jsx",
+        "line": 346
+      },
+      {
+        "path": "src/pages/IntelligencePage.jsx",
+        "line": 53
+      },
+      {
+        "path": "src/pages/IntelligencePage.jsx",
+        "line": 291
+      }
+    ],
+    "title": "Intelligence invents output after errors and substitutes unrelated translations.",
+    "reproduction": "Fail insight generation (including billing errors): client code synthesizes high-confidence analysis. Select a pet-related creative and translate: baked Naturia text/forced conclusions can replace its actual content.",
+    "fix": "Display the real failure and retry action; remove canned translations/teardowns from production paths and render only returned, labeled evidence.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F43",
+    "severity": "P1",
+    "area": "Frontend false data",
+    "refs": [
+      {
+        "path": "src/context/SearchContext.jsx",
+        "line": 22
+      },
+      {
+        "path": "src/context/SearchContext.jsx",
+        "line": 94
+      }
+    ],
+    "title": "New accounts are given fictional search history.",
+    "reproduction": "Clear localStorage and sign in: DEFAULT_SEARCH_HISTORY restores sample searches, counts and scores instead of an empty state even in API mode.",
+    "fix": "Default to empty user-owned history; limit fixtures to an explicit labeled demo build.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F44",
+    "severity": "P1",
+    "area": "Playbook wiring",
+    "refs": [
+      {
+        "path": "src/pages/IntelligencePage.jsx",
+        "line": 407
+      },
+      {
+        "path": "src/context/SearchContext.jsx",
+        "line": 140
+      }
+    ],
+    "title": "The UI drops the search job ID when compiling a playbook.",
+    "reproduction": "Finish discovery then compile. SearchContext stores jobId while the page reads job_id; backend falls back to unrelated/global source selections (F04).",
+    "fix": "Use one typed jobId contract and require an authorized source job at compilation.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F45",
+    "severity": "P1",
+    "area": "Session loading",
+    "refs": [
+      {
+        "path": "src/context/AuthContext.jsx",
+        "line": 54
+      },
+      {
+        "path": "src/context/AuthContext.jsx",
+        "line": 78
+      }
+    ],
+    "title": "A transient session failure can leave the app loading forever.",
+    "reproduction": "Keep a token, remove cached_user, and return 500 from /auth/me. Initial state is loading; error/null-session branches update state only if the token was cleared, so no terminal state is reached.",
+    "fix": "Always transition to an explicit session-error/unauthenticated state with retry; never leave initial loading unresolved.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F46",
+    "severity": "P1",
+    "area": "Teams",
+    "refs": [
+      {
+        "path": "backend/app/services/team_service.py",
+        "line": 109
+      },
+      {
+        "path": "backend/app/core/tenancy.py",
+        "line": 33
+      },
+      {
+        "path": "backend/app/services/billing_service.py",
+        "line": 83
+      }
+    ],
+    "title": "Team invitations report delivery but shared workspaces do not work.",
+    "reproduction": "Invite a member: the code returns “Invitation sent” without sending mail. Accept it manually: authorization/default-org lookup only considers ownership, ignoring OrganizationMember.",
+    "fix": "Send a real invitation and implement selected-workspace membership/roles throughout reads and billing; provide an acceptance route in the UI.",
+    "effort": "L",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F47",
+    "severity": "P1",
+    "area": "Team security",
+    "refs": [
+      {
+        "path": "backend/app/services/team_service.py",
+        "line": 129
+      }
+    ],
+    "title": "An invitation is not bound to its intended email or consumed atomically.",
+    "reproduction": "Log in with a different email and redeem a known pending token; any user is inserted. Concurrent accepts can both observe pending and insert membership.",
+    "fix": "Compare normalized invite email to the authenticated verified identity, consume with a conditional update, and enforce UNIQUE(org_id,user_id).",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F48",
+    "severity": "P1",
+    "area": "Public updates",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/updates.py",
+        "line": 30
+      },
+      {
+        "path": "backend/app/api/routers/updates.py",
+        "line": 50
+      }
+    ],
+    "title": "App-only updates are exposed by public APIs.",
+    "reproduction": "Publish an update with show_on_public=false, then request /api/updates or /api/updates/banner anonymously. Neither query applies the visibility flag.",
+    "fix": "Apply show_on_public to anonymous routes and create a separate authenticated app-update route.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F49",
+    "severity": "P1",
+    "area": "Storage",
+    "refs": [
+      {
+        "path": "backend/app/services/storage_service.py",
+        "line": 77
+      },
+      {
+        "path": "backend/app/services/storage_service.py",
+        "line": 180
+      }
+    ],
+    "title": "Production media falls back to ephemeral storage on incomplete R2 configuration.",
+    "reproduction": "Omit one R2 variable and generate media: storage falls back to local disk (with a warning), but the job reports success. Restart/deploy the ephemeral instance and the database URL points to a lost file.",
+    "fix": "Fail production startup on incomplete R2 configuration; permit disk only in explicit development mode and verify storage before settling job success.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F50",
+    "severity": "P1",
+    "area": "Provider capacity",
+    "refs": [
+      {
+        "path": "backend/app/services/api_usage_service.py",
+        "line": 9
+      },
+      {
+        "path": "backend/app/services/api_usage_service.py",
+        "line": 31
+      }
+    ],
+    "title": "Twenty provider attempts disable discovery for every tenant.",
+    "reproduction": "Accumulate 20 ExternalApiUsage rows in a day, including failures; all orgs hit one hard-coded global cap. Count-then-insert is also racy.",
+    "fix": "Use configurable provider budgets and atomic reservations, per-tenant fairness, and an explicit unavailable response without a customer charge.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F51",
+    "severity": "P1",
+    "area": "Admin impersonation",
+    "refs": [
+      {
+        "path": "src/pages/admin/UsersPage.jsx",
+        "line": 125
+      },
+      {
+        "path": "src/services/http.js",
+        "line": 76
+      }
+    ],
+    "title": "The impersonation UI keeps using the administrator token.",
+    "reproduction": "Sign in normally (both token keys set), then impersonate. The UI writes only helix_auth_token while the HTTP client prefers existing helix_access_token, so requests remain admin despite the success message.",
+    "fix": "Use the shared token setter, clear cached identity/tenant state, and show an explicit impersonation session/exit action.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F52",
+    "severity": "P1",
+    "area": "Default administrator",
+    "refs": [
+      {
+        "path": "backend/scripts/seed_admin.py",
+        "line": 18
+      }
+    ],
+    "title": "The admin seeder has a public fallback password.",
+    "reproduction": "Run the shipped seed script without overriding its optional admin credentials: it creates/updates admin@example.com with password123.",
+    "fix": "Require explicit credentials and an intentional environment; fail if absent and never overwrite an existing admin password implicitly.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F53",
+    "severity": "P1",
+    "area": "Pattern generation",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/creatives.py",
+        "line": 121
+      },
+      {
+        "path": "backend/app/services/creative_service.py",
+        "line": 302
+      }
+    ],
+    "title": "Pattern generation has shifted arguments, global data selection and no credit gate.",
+    "reproduction": "POST /api/patterns/generate: the router passes byok_key into the required job_id parameter and byok_provider into byok_key. With no key it selects global recent creatives; with a key it can use the secret as a job FK and fail persistence. It only logs usage, bypassing the paid feature/credit gate.",
+    "fix": "Require an owned job ID; use keyword arguments and the shared reservation gate. Never fall back to global creatives when an owned job is empty.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F54",
+    "severity": "P1",
+    "area": "Monitors",
+    "refs": [
+      {
+        "path": "backend/app/services/monitor_service.py",
+        "line": 500
+      },
+      {
+        "path": "backend/app/services/monitor_service.py",
+        "line": 509
+      },
+      {
+        "path": "backend/app/services/monitor_service.py",
+        "line": 574
+      }
+    ],
+    "title": "Provider outages can create false “ad stopped” alerts.",
+    "reproduction": "After a real baseline, let provider failures produce two successful-empty runs (F29). Monitor diffing treats the missing inventory as actual ad removals, increments missed_runs and emits stopped events.",
+    "fix": "Only apply diffs after a complete successful provider snapshot; preserve prior state on provider failure/partial coverage and report degraded monitoring.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F55",
+    "severity": "P1",
+    "area": "Plan limits",
+    "refs": [
+      {
+        "path": "backend/app/services/billing_service.py",
+        "line": 625
+      },
+      {
+        "path": "backend/app/services/billing_service.py",
+        "line": 670
+      },
+      {
+        "path": "backend/app/models/plan.py",
+        "line": 16
+      }
+    ],
+    "title": "Configured per-plan image/video limits are ignored.",
+    "reproduction": "Set daily_image_limit/daily_video_limit on a plan. Admission still uses environment image limits and hard-coded trial video rules; configured limits do not determine access. Paid video admission lacks its own completed/in-flight video cap.",
+    "fix": "Derive both image and video entitlements from the current plan and custom overrides; enforce them in the atomic reservation from F11.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F56",
+    "severity": "P1",
+    "area": "False metrics",
+    "refs": [
+      {
+        "path": "src/pages/DashboardPage.jsx",
+        "line": 88
+      },
+      {
+        "path": "src/pages/DashboardPage.jsx",
+        "line": 99
+      }
+    ],
+    "title": "Exported playbooks invent confidence and performance lift.",
+    "reproduction": "Compile from the dashboard: confidence is hard-coded to .92/.95 and lift is manufactured from avg_score with a minimum 5%, without observed conversion/lift measurements.",
+    "fix": "Remove invented confidence/lift; show unavailable or a clearly named heuristic with provenance and no causal performance claim.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F57",
+    "severity": "P1",
+    "area": "Frontend error states",
+    "refs": [
+      {
+        "path": "src/hooks/useLeadGenJob.js",
+        "line": 55
+      },
+      {
+        "path": "src/pages/PerformancePage.jsx",
+        "line": 220
+      },
+      {
+        "path": "src/services/http.js",
+        "line": 135
+      }
+    ],
+    "title": "Failed reads/saves are displayed as success, empty data or a waking server.",
+    "reproduction": "Return 500 fetching leads: hook catches it and enters READY with []. Fail save/unsave: Performance still updates the saved badge. A structured worker_offline/provider 503 is retried then overwritten as server_waking.",
+    "fix": "Keep separate loading/empty/error states, apply optimistic changes only with rollback, and retain server error codes/messages; only label known cold-start failures as such.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F79",
+    "severity": "P1",
+    "area": "Billing completeness",
+    "refs": [
+      {
+        "path": "src/pages/BillingPage.jsx",
+        "line": 36
+      },
+      {
+        "path": "backend/app/api/routers/account.py",
+        "line": 212
+      }
+    ],
+    "title": "Paid plans display “Monthly renewal” without a subscription lifecycle.",
+    "reproduction": "Assign any non-trial plan, including pay_as_you_go: UI says Monthly renewal. Billing routes only expose summaries/usage; there is no checkout, payment settlement, renewal, invoice or payment-webhook flow in this code.",
+    "fix": "Show the actual manual/beta billing state. Before accepting payments, implement provider checkout plus verified idempotent settlement, subscription state and reconciliation; do not grant credits from client assertions.",
+    "effort": "L",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F80",
+    "severity": "P1",
+    "area": "Admin authorization",
+    "refs": [
+      {
+        "path": "backend/app/services/admin_service.py",
+        "line": 633
+      },
+      {
+        "path": "backend/app/core/deps.py",
+        "line": 88
+      },
+      {
+        "path": "backend/app/api/routers/admin.py",
+        "line": 124
+      }
+    ],
+    "title": "Stored granular admin permissions do not restrict access.",
+    "reproduction": "Set restrictive admin_permissions for an assistant-admin, then call admin list/read endpoints. The dependency checks role only and no route consults the permissions JSON.",
+    "fix": "Define and enforce server-side named permissions for each admin operation, or remove the unsupported permission controls/contract; retain the strict full-admin gate for destructive operations.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F81",
+    "severity": "P1",
+    "area": "Leadgen capabilities",
+    "refs": [
+      {
+        "path": "backend/app/services/scrapling_engine.py",
+        "line": 80
+      },
+      {
+        "path": "backend/app/api/routers/leadgen.py",
+        "line": 299
+      }
+    ],
+    "title": "The XHR-capture option is accepted and stored but never implemented.",
+    "reproduction": "Set capture_xhr_pattern for a site whose contact data is loaded only through XHR. The worker forwards it into fetch(), which never uses the parameter; the promised data capture does not happen.",
+    "fix": "Implement bounded capture/filtering with provenance and SSRF controls, or reject/disable the unsupported option instead of accepting it.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F82",
+    "severity": "P1",
+    "area": "Media stuck jobs",
+    "refs": [
+      {
+        "path": "backend/app/services/media_service.py",
+        "line": 117
+      },
+      {
+        "path": "backend/app/services/media_service.py",
+        "line": 138
+      },
+      {
+        "path": "backend/app/services/job_reconciliation.py",
+        "line": 69
+      }
+    ],
+    "title": "Provider-resolution failures leave media jobs pending indefinitely.",
+    "reproduction": "Use a paid workspace with an undecryptable stored Gemini key. resolve_image_provider raises before the task’s try block; no failed state is written. The reconciler excludes jobs owned by the current boot even after their task dies.",
+    "fix": "Wrap the entire execution path including credential resolution; persist terminal failure and release reservations in finally/error handling. Recover expired task leases even within the same process.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F58",
+    "severity": "P2",
+    "area": "Rate limiting",
+    "refs": [
+      {
+        "path": "backend/app/middleware/rate_limit.py",
+        "line": 58
+      },
+      {
+        "path": "backend/app/middleware/rate_limit.py",
+        "line": 64
+      },
+      {
+        "path": "backend/app/main.py",
+        "line": 245
+      }
+    ],
+    "title": "Rate limits are spoofable in the app, instance-local and incomplete.",
+    "reproduction": "Change X-Forwarded-For on requests reaching the app, alternate instances/restart, or use /api/v1/scout aliases/leadgen paths absent from the rules. Buckets never evict old client keys. Public-edge header sanitization is unverified.",
+    "fix": "Use shared expiring counters keyed by authenticated user/org and trusted proxy-derived IP; cover all expensive endpoints and aliases and bound key cardinality.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F59",
+    "severity": "P2",
+    "area": "JWT key rotation",
+    "refs": [
+      {
+        "path": "backend/app/core/security.py",
+        "line": 22
+      },
+      {
+        "path": "backend/app/core/security.py",
+        "line": 47
+      }
+    ],
+    "title": "JWKS cache never refreshes.",
+    "reproduction": "Authenticate once to fill the process cache, then rotate the signing key/new kid. That process keeps old keys indefinitely and rejects new sessions until restart.",
+    "fix": "Cache with a bounded TTL and refresh once on unknown kid; validate the configured issuer/audience and require expected claims for each token type.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F60",
+    "severity": "P2",
+    "area": "Password policy",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/account.py",
+        "line": 60
+      }
+    ],
+    "title": "Profile password changes bypass signup/reset length checks.",
+    "reproduction": "PATCH /api/account/profile with correct current_password and new_password=\"x\". The endpoint hashes it without a shared minimum-length policy.",
+    "fix": "Use the same validated password schema in signup, reset and profile change.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F61",
+    "severity": "P2",
+    "area": "API entitlements",
+    "refs": [
+      {
+        "path": "backend/app/services/api_key_service.py",
+        "line": 88
+      },
+      {
+        "path": "backend/app/core/deps.py",
+        "line": 27
+      }
+    ],
+    "title": "Issued API keys outlive the public_api entitlement and lose workspace scope.",
+    "reproduction": "Create a key on an enabled plan, downgrade/disable public_api, then use the active key for authenticated reads. Authentication checks only key activity, returns an org, and the user dependency discards that scope.",
+    "fix": "Return an authentication principal containing key/org/scopes; recheck entitlement and org state at use, and revoke/disable keys on downgrade.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F62",
+    "severity": "P2",
+    "area": "Database concurrency",
+    "refs": [
+      {
+        "path": "backend/app/services/billing_service.py",
+        "line": 83
+      },
+      {
+        "path": "backend/app/models/organization.py",
+        "line": 14
+      }
+    ],
+    "title": "Default-organization creation races.",
+    "reproduction": "Two initial requests for a user without an org both SELECT none and insert. There is no owner/default-org uniqueness rule; subsequent scalar_one_or_none lookups can raise MultipleResultsFound.",
+    "fix": "Define a unique default-org invariant and use an upsert/transaction retry. Preserve explicit multiple-workspace ownership separately if intended.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F63",
+    "severity": "P2",
+    "area": "Database performance",
+    "refs": [
+      {
+        "path": "backend/app/models/scrape_job.py",
+        "line": 13
+      },
+      {
+        "path": "backend/app/models/creative.py",
+        "line": 13
+      },
+      {
+        "path": "backend/app/models/leadgen.py",
+        "line": 71
+      }
+    ],
+    "title": "Hot tenant/job/filter queries lack supporting indexes.",
+    "reproduction": "As jobs/leads grow, filters on scrape_jobs(org_id,status,created_at), creatives(job_id/brand_id), leadgen_leads(job_id) and the queued-job ordering scan increasing table ranges. The metadata/index inventory shows the missing coverage.",
+    "fix": "Add query-driven compound/partial indexes via migrations; use EXPLAIN on representative volumes. Index lower(email) if retaining lower(email) login lookup.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F64",
+    "severity": "P2",
+    "area": "Query scaling",
+    "refs": [
+      {
+        "path": "backend/app/services/support_service.py",
+        "line": 60
+      },
+      {
+        "path": "backend/app/services/admin_service.py",
+        "line": 336
+      },
+      {
+        "path": "backend/app/services/admin_service.py",
+        "line": 572
+      }
+    ],
+    "title": "Several lists are unbounded; support adds an N+1 count query.",
+    "reproduction": "Accumulate many tickets/users/orgs. These selects return all rows; after fixing func, ticket listing executes one additional reply count per ticket and does not even return that count.",
+    "fix": "Paginate these collections with bounded page sizes; aggregate reply counts in one query or remove the unused queries.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F65",
+    "severity": "P2",
+    "area": "Request latency",
+    "refs": [
+      {
+        "path": "backend/app/services/analysis_service.py",
+        "line": 41
+      },
+      {
+        "path": "backend/app/services/analysis_service.py",
+        "line": 70
+      }
+    ],
+    "title": "LLM work holds an organization row lock inside a request.",
+    "reproduction": "Start a slow provider call for one org, then perform another billed operation in that org. The first request holds the spending lock until the provider returns/charge commits, delaying other core flows and occupying a connection.",
+    "fix": "Reserve credits and commit promptly, run work as a durable job with an execution deadline, then settle the result once.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F66",
+    "severity": "P2",
+    "area": "Network / memory",
+    "refs": [
+      {
+        "path": "backend/app/services/scrapling_engine.py",
+        "line": 59
+      },
+      {
+        "path": "backend/app/services/leadgen_pipeline.py",
+        "line": 178
+      },
+      {
+        "path": "backend/app/services/ai/pollinations_provider.py",
+        "line": 158
+      },
+      {
+        "path": "backend/app/api/routers/media.py",
+        "line": 79
+      }
+    ],
+    "title": "Fetch/upload paths have unbounded time, recursion or memory use.",
+    "reproduction": "Use a robots.txt endpoint that never finishes, a self-referencing sitemap index, an arbitrarily large media response, or an oversized multipart body. robots read has no explicit timeout; sitemap recursion has no visited/depth guard; media is fully buffered before limits.",
+    "fix": "Apply connect/read/total deadlines, visited/depth/page limits, bounded streaming reads/uploads and image decoding validation before storage; bound browser concurrency/memory.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F67",
+    "severity": "P2",
+    "area": "CSV export",
+    "refs": [
+      {
+        "path": "backend/app/api/routers/scout.py",
+        "line": 323
+      },
+      {
+        "path": "backend/app/api/routers/leadgen.py",
+        "line": 452
+      }
+    ],
+    "title": "Scraped strings can become spreadsheet formulas.",
+    "reproduction": "Scrape a title/name/value beginning with =, +, -, @ or a control character, export CSV and open in a spreadsheet. csv.writer quoting does not make formula cells inert.",
+    "fix": "Escape formula-leading cells or generate typed text spreadsheet cells; test malicious scraped values on all export endpoints.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F68",
+    "severity": "P2",
+    "area": "Polling",
+    "refs": [
+      {
+        "path": "src/hooks/useDiscoverySearch.js",
+        "line": 120
+      },
+      {
+        "path": "src/hooks/useDiscoverySearch.js",
+        "line": 146
+      },
+      {
+        "path": "src/services/config.js",
+        "line": 23
+      }
+    ],
+    "title": "Polling overlaps requests and stale failures can cancel a newer job.",
+    "reproduction": "Delay job-status responses beyond 400ms: setInterval starts more requests while previous requests retry. Start a new search before an old poll rejects: the catch checks mounted but not the captured job ID and stops the current poll.",
+    "fix": "Use an awaited recursive timeout with one request in flight, AbortController and generation checks on both success/failure; choose timeout from the actual job SLA.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F69",
+    "severity": "P2",
+    "area": "Datetime contracts",
+    "refs": [
+      {
+        "path": "backend/app/services/team_service.py",
+        "line": 70
+      },
+      {
+        "path": "backend/app/api/routers/updates.py",
+        "line": 89
+      }
+    ],
+    "title": "Datetime serialization and scheduling lose timezone correctness.",
+    "reproduction": "Serialize an aware invite timestamp: isoformat()+\"Z\" yields +00:00Z, which JS can reject. Schedule an update at 10:00+03:00: stripping tzinfo treats it as 10:00 UTC rather than 07:00 UTC.",
+    "fix": "Emit one ISO8601 timezone representation; normalize with astimezone(UTC) before any deliberate naive storage, preferably keep timestamptz end-to-end.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F70",
+    "severity": "P2",
+    "area": "Startup reconciliation",
+    "refs": [
+      {
+        "path": "backend/app/main.py",
+        "line": 126
+      }
+    ],
+    "title": "Starting another instance can fail a live long-running job.",
+    "reproduction": "Keep a job alive for >10 minutes with fresh heartbeat, then boot another API instance. Startup reconciliation uses created_at only, ignoring heartbeat and owner lease, and marks it failed/refunds it.",
+    "fix": "Use the lease-aware reconciler exclusively and atomic ownership/state transitions; never infer process death from total job age.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F71",
+    "severity": "P2",
+    "area": "Analytics privacy",
+    "refs": [
+      {
+        "path": "src/lib/utm.js",
+        "line": 54
+      },
+      {
+        "path": "src/pages/auth/SignUpPage.jsx",
+        "line": 97
+      },
+      {
+        "path": "backend/app/services/auth_service.py",
+        "line": 78
+      }
+    ],
+    "title": "Unvalidated attribution can carry PII into analytics and logs.",
+    "reproduction": "Visit with utm_campaign=person@example.com then sign up: it is forwarded verbatim to Plausible. A cross-origin referrer that supplies a full URL is persisted with its query; signup logs metadata alongside email.",
+    "fix": "Allowlist bounded campaign identifiers, strip URL queries/fragments, store only approved referrer origin/host, and redact registration logs; test PII-shaped values.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F72",
+    "severity": "P2",
+    "area": "Analytics attribution",
+    "refs": [
+      {
+        "path": "src/lib/utm.js",
+        "line": 29
+      }
+    ],
+    "title": "Term/content-only UTM visits are dropped.",
+    "reproduction": "Land with only ?utm_term=... or ?utm_content=.... These are read but omitted from the condition that persists attribution.",
+    "fix": "Include all supported campaign fields in the capture predicate and add a small attribution contract test.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F73",
+    "severity": "P2",
+    "area": "Accessibility",
+    "refs": [
+      {
+        "path": "src/components/ui/ConfirmDialog.jsx",
+        "line": 25
+      },
+      {
+        "path": "src/components/ui/Field.jsx",
+        "line": 40
+      },
+      {
+        "path": "src/components/SavedDraftsModal.jsx",
+        "line": 203
+      }
+    ],
+    "title": "Keyboard/focus and label contracts are incomplete.",
+    "reproduction": "Tab through an open ConfirmDialog: only Escape handling/initial focus exists, no focus containment/restoration. Password reveal is tabIndex=-1. Saved draft labels have no associated control IDs.",
+    "fix": "Use an accessible dialog primitive with focus trap/restore and inert background; keep reveal keyboard-reachable and connect labels to unique control IDs.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F74",
+    "severity": "P2",
+    "area": "Deploy reproducibility",
+    "refs": [
+      {
+        "path": "backend/requirements.txt",
+        "line": 1
+      },
+      {
+        "path": "backend/workers/scrapling/requirements.txt",
+        "line": 1
+      }
+    ],
+    "title": "Backend/worker deploys resolve unbounded dependency versions.",
+    "reproduction": "Redeploy the same SHA after a new FastAPI/SQLAlchemy/Scrapling release: >= constraints can select a different runtime; the audit already resolved SQLAlchemy 2.1.1.",
+    "fix": "Commit tested dependency locks/constraints including browser and worker versions; update them deliberately with migration/job tests.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F75",
+    "severity": "P2",
+    "area": "Production config",
+    "refs": [
+      {
+        "path": "src/services/config.js",
+        "line": 14
+      }
+    ],
+    "title": "Invalid data-source configuration silently enables mock mode.",
+    "reproduction": "Build with VITE_DATA_SOURCE blank or misspelled: services choose mock without an error. The committed production env currently selects api, so this is a misconfiguration risk rather than evidence the live site uses mocks.",
+    "fix": "Fail production builds unless the data source is api; require an explicit separate labeled demo configuration for mocks.",
+    "effort": "S",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F76",
+    "severity": "P2",
+    "area": "Browser token storage",
+    "refs": [
+      {
+        "path": "src/services/api/authService.api.js",
+        "line": 41
+      }
+    ],
+    "title": "Long-lived bearer tokens are readable by every script on the origin.",
+    "reproduction": "Run JavaScript in the app origin (for example, a compromised injected analytics script): both localStorage token keys are immediately readable and remain useful after logout/reset (F19). No exploitable XSS was established.",
+    "fix": "Use secure HttpOnly SameSite session cookies with CSRF protection or short-lived memory-held access tokens backed by rotating protected refresh sessions; restrict third-party script execution.",
+    "effort": "M",
+    "evidence": "Code trace"
+  },
+  {
+    "id": "F77",
+    "severity": "P3",
+    "area": "Schema consistency",
+    "refs": [
+      {
+        "path": "backend/app/models/leadgen.py",
+        "line": 58
+      },
+      {
+        "path": "backend/alembic/versions/a1b2c3d4e5f6_add_leadgen_tables.py",
+        "line": 47
+      }
+    ],
+    "title": "Additional default/nullability differences make creation paths inconsistent.",
+    "reproduction": "The diagnostic intended-head comparison found 34 server-default presence differences and three nullable timestamp columns whose models say NOT NULL. These are listed individually in Appendix 1; ordinary ORM Python defaults mask most default gaps.",
+    "fix": "Choose one explicit contract for defaults/nullability, backfill NULLs where needed, and align models/migrations. Enable compare_server_default in the schema check.",
+    "effort": "M",
+    "evidence": "PostgreSQL schema introspection"
+  },
+  {
+    "id": "F78",
+    "severity": "P3",
+    "area": "Code health",
+    "refs": [
+      {
+        "path": "dist/index.html",
+        "line": 1
+      },
+      {
+        "path": "backend/app/services/billing_service.py",
+        "line": 589
+      },
+      {
+        "path": "backend/app/services/analysis_service.py",
+        "line": 121
+      }
+    ],
+    "title": "Generated artifacts, large modules and duplicated fallback/billing logic raise drift risk.",
+    "reproduction": "Tracked dist/index.html references an old build; source and generated assets can diverge. Large files and separate generic-credit/image-quota/fallback implementations already disagree (F09/F11/F55). Appendix 3 lists every >500-line source/text file and TODO/FIXME markers.",
+    "fix": "Stop tracking dist; consolidate entitlement/ledger and provider-error logic, then split large modules by behavior with regression coverage.",
+    "effort": "M",
+    "evidence": "Code trace"
+  }
+]

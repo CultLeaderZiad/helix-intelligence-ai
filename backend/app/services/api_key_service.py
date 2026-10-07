@@ -98,6 +98,23 @@ async def authenticate_api_key(db: AsyncSession, raw_key: str) -> Tuple[User, Or
         raise HTTPException(status_code=401, detail="Invalid or revoked API Key")
 
     api_key, user, org = row
+
+    # Re-validate public_api entitlement (F61)
+    from app.models.plan import Plan
+    plan = None
+    if org.plan_id:
+        plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
+
+    effective_flags = dict(plan.feature_flags or {}) if (plan and plan.feature_flags) else {}
+    if org.custom_feature_flags:
+        effective_flags.update(org.custom_feature_flags)
+
+    if not effective_flags.get("public_api", False):
+        raise HTTPException(
+            status_code=403,
+            detail="The organization associated with this API key does not have the 'public_api' entitlement enabled."
+        )
+
     api_key.last_used_at = datetime.datetime.now(datetime.timezone.utc)
     await db.commit()
 

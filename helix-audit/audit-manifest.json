@@ -1,0 +1,14 @@
+{
+  "revision": "fa8164920031a8dfaa036e2a67ee6f107a48a9f2",
+  "tracked_files": 525,
+  "findings": 82,
+  "severity_counts": {
+    "P0": 12,
+    "P1": 49,
+    "P2": 19,
+    "P3": 2
+  },
+  "routes": 153,
+  "source_changes": false,
+  "pr_comments_posted": false
+}

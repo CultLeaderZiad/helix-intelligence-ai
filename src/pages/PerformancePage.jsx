@@ -183,19 +183,36 @@ export function PerformancePage() {
     }).sort((a, b) => (b.days_active || 1) - (a.days_active || 1))
   }, [creatives, filterFormat, minDays])
 
-  // Performance Aggregate Metrics
+  // Performance Aggregate Metrics (F35)
   const metrics = useMemo(() => {
-    if (creatives.length === 0) return { avgDays: 0, survivorCount: 0, videoCount: 0, avgScore: 0 }
+    if (creatives.length === 0) {
+      return {
+        avgDays: 0,
+        survivorRate: 0,
+        survivorCount: 0,
+        fatiguedCount: 0,
+        scalingCount: 0,
+        topHookAvg: 0,
+        formats: { image: 0, video: 0 },
+        videoCount: 0,
+        avgScore: "—"
+      }
+    }
     
     const totalDays = creatives.reduce((acc, c) => acc + (c.days_active || 1), 0)
-    const survivors = creatives.filter((c) => (c.days_active || 1) >= 14).length
+    const avgDays = Math.round(totalDays / creatives.length)
+    const survivors = creatives.filter((c) => (c.days_active || 1) >= 14)
+    const survivorCount = survivors.length
+    const survivorRate = Math.round((survivorCount / creatives.length) * 100)
+    const fatigued = creatives.filter((c) => (c.days_active || 1) >= 30)
+    const scaling = creatives.filter((c) => (c.days_active || 1) >= 7 && (c.days_active || 1) < 30)
     const videos = creatives.filter((c) => c.format === "video").length
     const hookSum = creatives.reduce((acc, c) => acc + (c.scores?.hook || 0), 0)
     const topHookAvg = Math.round(hookSum / creatives.length)
 
     const formats = {
       image: creatives.filter((c) => c.format === "image").length,
-      video: creatives.filter((c) => c.format === "video").length
+      video: videos
     }
 
     const scores = creatives.filter((c) => c.scores?.composite).map((c) => c.scores.composite)
@@ -204,7 +221,7 @@ export function PerformancePage() {
     return {
       avgDays,
       survivorRate,
-      survivorCount: survivors.length,
+      survivorCount,
       fatiguedCount: fatigued.length,
       scalingCount: scaling.length,
       topHookAvg,
@@ -214,18 +231,23 @@ export function PerformancePage() {
     }
   }, [creatives])
 
+  // F57: Update saved status only after API succeeds
   async function handleToggleSave(creative) {
     const isSaved = savedIds.has(creative.id)
-    if (isSaved) {
-      await creativeService.unsaveCreative(creative.id).catch(() => {})
-      setSavedIds((prev) => {
-        const next = new Set(prev)
-        next.delete(creative.id)
-        return next
-      })
-    } else {
-      await creativeService.saveCreative(creative.id).catch(() => {})
-      setSavedIds((prev) => new Set(prev).add(creative.id))
+    try {
+      if (isSaved) {
+        await creativeService.unsaveCreative(creative.id)
+        setSavedIds((prev) => {
+          const next = new Set(prev)
+          next.delete(creative.id)
+          return next
+        })
+      } else {
+        await creativeService.saveCreative(creative.id)
+        setSavedIds((prev) => new Set(prev).add(creative.id))
+      }
+    } catch (err) {
+      console.error("Failed to update saved creative", err)
     }
   }
 

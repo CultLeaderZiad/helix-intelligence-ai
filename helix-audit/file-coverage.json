@@ -1,0 +1,4362 @@
+[
+  {
+    "path": ".agents/skills/neon-postgres/SKILL.md",
+    "sha256": "eb8081a09e25ff2062e8f8de7cba00c38123aeb259771605c988ca0245389886",
+    "bytes": 9176,
+    "coverage": "inventory + text/static scan",
+    "lines": 177,
+    "finding_ids": []
+  },
+  {
+    "path": ".agents/skills/neon/SKILL.md",
+    "sha256": "2288231fb0aaeedae21eb77762dcb44ced134d0b9e241404f2c6c35a6c2e4a5b",
+    "bytes": 28683,
+    "coverage": "inventory + text/static scan",
+    "lines": 457,
+    "finding_ids": []
+  },
+  {
+    "path": ".claude/skills/neon-postgres/SKILL.md",
+    "sha256": "eb8081a09e25ff2062e8f8de7cba00c38123aeb259771605c988ca0245389886",
+    "bytes": 9176,
+    "coverage": "inventory + text/static scan",
+    "lines": 177,
+    "finding_ids": []
+  },
+  {
+    "path": ".claude/skills/neon/SKILL.md",
+    "sha256": "2288231fb0aaeedae21eb77762dcb44ced134d0b9e241404f2c6c35a6c2e4a5b",
+    "bytes": 28683,
+    "coverage": "inventory + text/static scan",
+    "lines": 457,
+    "finding_ids": []
+  },
+  {
+    "path": ".env.example",
+    "sha256": "8f738501bcf817408934113ad4a9eea233f75ee8c9a171589791626fa35be29a",
+    "bytes": 4213,
+    "coverage": "inventory + text/static scan",
+    "lines": 103,
+    "finding_ids": []
+  },
+  {
+    "path": ".env.production",
+    "sha256": "106cb4f90e4329e18e6f97b63b4e1da7f8d800170095b934d479efc81e56e1e1",
+    "bytes": 86,
+    "coverage": "inventory + text/static scan",
+    "lines": 2,
+    "finding_ids": []
+  },
+  {
+    "path": ".github/workflows/ci.yml",
+    "sha256": "0e4e791b5dfde9a575bed6b97ee8e7696d3c3be77c9a1170c7803c56bd86ccfa",
+    "bytes": 3195,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 85,
+    "finding_ids": [
+      "F16"
+    ]
+  },
+  {
+    "path": ".gitignore",
+    "sha256": "0a3de82700c6f217273f1007df8bf87f7cbac6c5e7423e022729fd61b885a861",
+    "bytes": 501,
+    "coverage": "inventory + text/static scan",
+    "lines": 38,
+    "finding_ids": []
+  },
+  {
+    "path": ".hoplite/settings.json",
+    "sha256": "4495266fa88c6184117ff92eaf1f7dbe970fcac20c655ab6781c2570597b2488",
+    "bytes": 457,
+    "coverage": "inventory + text/static scan",
+    "lines": 27,
+    "finding_ids": []
+  },
+  {
+    "path": ".neon",
+    "sha256": "035ab89f1f81d78552875da8576c8b1ce53447c30fd60e3063af934473b0369f",
+    "bytes": 80,
+    "coverage": "inventory + text/static scan",
+    "lines": 4,
+    "finding_ids": []
+  },
+  {
+    "path": "API_CONTRACTS.md",
+    "sha256": "052fd0f9356655f652b4b87438d0b7081cddb6e801011516a8985d4e6517b699",
+    "bytes": 5301,
+    "coverage": "inventory + text/static scan",
+    "lines": 197,
+    "finding_ids": []
+  },
+  {
+    "path": "ARCHITECTURE.md",
+    "sha256": "a79484006ad3780071e1be750a563ecb9ca16e3beccd4fe2e1f18d99d3be7b25",
+    "bytes": 14781,
+    "coverage": "inventory + text/static scan",
+    "lines": 286,
+    "finding_ids": []
+  },
+  {
+    "path": "DEVELOPMENT.md",
+    "sha256": "2edae7cb3ea1083840b5c90b64becd548bf0b77cea5fed29919a93239fdc7745",
+    "bytes": 21738,
+    "coverage": "inventory + text/static scan",
+    "lines": 453,
+    "finding_ids": []
+  },
+  {
+    "path": "DOCS.md",
+    "sha256": "eb28a7900d0733eeece4b8cb6ea4e43af2d28aedfdbce81affc15c94b4da9d29",
+    "bytes": 9700,
+    "coverage": "inventory + text/static scan",
+    "lines": 301,
+    "finding_ids": []
+  },
+  {
+    "path": "README.md",
+    "sha256": "4bb1e95bd0fe172e0cbd5fdf02d2ccbb7b9ee326b46eb941fae17ff18d17915e",
+    "bytes": 2045,
+    "coverage": "inventory + text/static scan",
+    "lines": 40,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic.ini",
+    "sha256": "1de444e5202747246718c3f80264c8fe64eabc697267869670771edb140050fd",
+    "bytes": 5008,
+    "coverage": "inventory + text/static scan",
+    "lines": 149,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/README",
+    "sha256": "31595cf53626af9ed16e15c44fa43183209cc163fbc3ebcb904b22ac436a8884",
+    "bytes": 38,
+    "coverage": "inventory + text/static scan",
+    "lines": 1,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/env.py",
+    "sha256": "c93b5d4de3b1519a7b54f89fbf75f76ed5da7eb5561ace71587d2c2c01eed50b",
+    "bytes": 2119,
+    "coverage": "inventory + text/static scan",
+    "lines": 79,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/script.py.mako",
+    "sha256": "d38920781b4d31ae1c0a71bc09f41c2ade8feab9e5a087e3f30cb4bbf0c1c9d3",
+    "bytes": 704,
+    "coverage": "inventory + text/static scan",
+    "lines": 28,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/versions/26d99f8467f6_add_usagelog_model.py",
+    "sha256": "5961a544e15173bc819712a6031c12788661d7cde944a616c7ba2107e9822f10",
+    "bytes": 1857,
+    "coverage": "inventory + text/static scan",
+    "lines": 48,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/versions/296fd86254e3_add_has_completed_onboarding_flag.py",
+    "sha256": "b78c1c9566bc3d0512a620180276630a4de0e7ac4243194a30e957b2ff1d8dae",
+    "bytes": 916,
+    "coverage": "inventory + text/static scan",
+    "lines": 32,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/versions/3c8be5787f7a_add_mediagenerationjob.py",
+    "sha256": "04ad917edbf6bc479bfb2f9c32c6fe91c6b12a2a300712890ce98ae95d1a7a74",
+    "bytes": 1685,
+    "coverage": "inventory + text/static scan",
+    "lines": 48,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/versions/46af201944fd_add_is_suspended_to_users.py",
+    "sha256": "a2f561501ddafeea1fe459c01bca988944059021039eb6babddc9b3e7c07118f",
+    "bytes": 1214,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 36,
+    "finding_ids": [
+      "F13"
+    ]
+  },
+  {
+    "path": "backend/alembic/versions/48ce41ebc764_add_billing_and_gated_features.py",
+    "sha256": "f7a865fd9328bd1fc6c73b5a4968122ea1525d2f75681626f64a3e1dffc3944e",
+    "bytes": 12685,
+    "coverage": "inventory + text/static scan",
+    "lines": 245,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/versions/51fc8263b0bc_add_webhookevent_model.py",
+    "sha256": "cecbaef9306b462f23b50f00f78701b16c4923cd88eaf061cc9575be8bf0ee10",
+    "bytes": 1475,
+    "coverage": "inventory + text/static scan",
+    "lines": 43,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/versions/8873440dfb27_add_api_usage_table.py",
+    "sha256": "9e749e6bf56611edd2f15c45fabee3b0b944c2dfda736a99bab0f1359aa73100",
+    "bytes": 1556,
+    "coverage": "inventory + text/static scan",
+    "lines": 45,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/versions/a1b2c3d4e5f6_add_leadgen_tables.py",
+    "sha256": "76e74891d0c9683520d23d6231fd459f55add346da175b1178d2d8ed83223a82",
+    "bytes": 4883,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 93,
+    "finding_ids": [
+      "F77"
+    ]
+  },
+  {
+    "path": "backend/alembic/versions/b04f12968b0c_initial_backend_scaffold.py",
+    "sha256": "177b92765b72bbebccf9a1f75c3b24f9cd1270446463dceab73d3a9f63c6a198",
+    "bytes": 5929,
+    "coverage": "inventory + text/static scan",
+    "lines": 133,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/alembic/versions/c4d92e1f7a8b_add_daily_credit_limit.py",
+    "sha256": "9995562ae8174e48b7b58272247d176c5902b6122e1b7caedec169e65663383f",
+    "bytes": 1350,
+    "coverage": "inventory + text/static scan",
+    "lines": 38,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/__init__.py",
+    "sha256": "4daa145a40b0460d3d0f9e6468e5f59a3b7e6afa89742dae906a19cda73b489c",
+    "bytes": 19,
+    "coverage": "inventory + text/static scan",
+    "lines": 1,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/account.py",
+    "sha256": "86c46c6e6f4fd71cfe4e975d90d7715e643760d2364f3cde20d7b4c6a8e1bf10",
+    "bytes": 10379,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 281,
+    "finding_ids": [
+      "F34",
+      "F60",
+      "F79"
+    ]
+  },
+  {
+    "path": "backend/app/api/routers/admin.py",
+    "sha256": "7b30f447122aebc31485d9dfab54e856e56516420b160c8ab93bb98c6d499cf9",
+    "bytes": 8772,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 229,
+    "finding_ids": [
+      "F80"
+    ]
+  },
+  {
+    "path": "backend/app/api/routers/analysis.py",
+    "sha256": "1d2c616ce5d46cd3119e5efe3cadc45b2d709c43c28325abee2c4336f3f353f5",
+    "bytes": 1684,
+    "coverage": "inventory + text/static scan",
+    "lines": 46,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/auth.py",
+    "sha256": "3fcdac78c67046da7aa82fa84767201c9c2b1edd1aca092c77ee4cb3436333a3",
+    "bytes": 13542,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 313,
+    "finding_ids": [
+      "F02",
+      "F17",
+      "F19"
+    ]
+  },
+  {
+    "path": "backend/app/api/routers/creatives.py",
+    "sha256": "eb695c40012756127350530ee15c30d2912c909828d94151d7e71a43fc4c1bba",
+    "bytes": 4977,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 143,
+    "finding_ids": [
+      "F05",
+      "F22",
+      "F53"
+    ]
+  },
+  {
+    "path": "backend/app/api/routers/dashboard.py",
+    "sha256": "b962d2b615aaadffa1cbb079e006c6d7186383fa49840612c0d7e3e6cd174606",
+    "bytes": 514,
+    "coverage": "inventory + text/static scan",
+    "lines": 16,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/discover.py",
+    "sha256": "5c6d8307c5f509b74cc5311813993cad7b7f0beefb6e8bb5a5d7553186bb3df0",
+    "bytes": 2027,
+    "coverage": "inventory + text/static scan",
+    "lines": 51,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/health.py",
+    "sha256": "977164b6d0dfe93d25733c70ba6c21977c306cf6fd5d3a6f6dcdca77eba1f762",
+    "bytes": 2912,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 66,
+    "finding_ids": [
+      "F15",
+      "F22"
+    ]
+  },
+  {
+    "path": "backend/app/api/routers/leadgen.py",
+    "sha256": "b4da2ef0e41cd00cd8f964fc17b10ee74555c021b40114970d87a07c588ba6fe",
+    "bytes": 23778,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 600,
+    "finding_ids": [
+      "F26",
+      "F27",
+      "F30",
+      "F67",
+      "F81"
+    ]
+  },
+  {
+    "path": "backend/app/api/routers/media.py",
+    "sha256": "1f1c0f429fc935abfec1c776c4bd784f70790c8d380f543f1c02fc579f3bf884",
+    "bytes": 3570,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 94,
+    "finding_ids": [
+      "F39",
+      "F40",
+      "F66"
+    ]
+  },
+  {
+    "path": "backend/app/api/routers/monitors.py",
+    "sha256": "3e0c58ffa85097db1b29324cb715831b4be7666fdc72b8fecbb267aac0c177d1",
+    "bytes": 5028,
+    "coverage": "inventory + text/static scan",
+    "lines": 149,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/notifications.py",
+    "sha256": "ccffdaf09d3f06d18a1c0ab827a502f8cd43a21c9b45cd4bac5e7fda9b4ca097",
+    "bytes": 1029,
+    "coverage": "inventory + text/static scan",
+    "lines": 31,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/playbooks.py",
+    "sha256": "7e22968cad39c5a72c2093782ffabf7fe5e0153b06b029052d5231d5f9363b63",
+    "bytes": 2022,
+    "coverage": "inventory + text/static scan",
+    "lines": 62,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/providers.py",
+    "sha256": "9052b886a65e521fa3a98a985cffaf36ef7622ec89c0786a6adc16bf7d8be4de",
+    "bytes": 8797,
+    "coverage": "inventory + text/static scan",
+    "lines": 252,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/scout.py",
+    "sha256": "a8b41d819ee67a1a2bbb058cc116c76a592116f56d084cccaab11367e262a72d",
+    "bytes": 26144,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 699,
+    "finding_ids": [
+      "F21",
+      "F25",
+      "F67"
+    ]
+  },
+  {
+    "path": "backend/app/api/routers/simulation.py",
+    "sha256": "32464140522aec61120e1c66a5582434c21a319bba29bce1b9b8f66cdbefc2d4",
+    "bytes": 1054,
+    "coverage": "inventory + text/static scan",
+    "lines": 33,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/support.py",
+    "sha256": "13398d71413b49817cc03b289125691807e78dcc8b7c900092410195496a05bc",
+    "bytes": 2014,
+    "coverage": "inventory + text/static scan",
+    "lines": 67,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/api/routers/updates.py",
+    "sha256": "8d5c1bec0201146cfe8a7725c0db7d5644644e837543f9d3d39f23f9b8a2d396",
+    "bytes": 5841,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 168,
+    "finding_ids": [
+      "F48",
+      "F69"
+    ]
+  },
+  {
+    "path": "backend/app/api/routers/uploads.py",
+    "sha256": "73cb342b2e3a8d360d3cdbcd80956b79489354d883a7dc9e7cda44e0b0b03eec",
+    "bytes": 3626,
+    "coverage": "inventory + text/static scan",
+    "lines": 106,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/core/config.py",
+    "sha256": "c23b6c54505c0c1c1690f8cbd47519418254198ab917bb715fe39ce5bd062fd4",
+    "bytes": 12626,
+    "coverage": "inventory + text/static scan",
+    "lines": 246,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/core/credentials.py",
+    "sha256": "d6b2afcceab82a8d1524187afb1f584f58d4c3a76498bf11ea6caceada45ecb1",
+    "bytes": 1693,
+    "coverage": "inventory + text/static scan",
+    "lines": 52,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/core/deps.py",
+    "sha256": "3ff24912d34091d19b730bb02363ac2cf91a23601ead09907f95b08c7daddd07",
+    "bytes": 3727,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 104,
+    "finding_ids": [
+      "F61",
+      "F80"
+    ]
+  },
+  {
+    "path": "backend/app/core/runtime.py",
+    "sha256": "b7d2248232c36ada9a6ea5eee0a5506f0167b4ea5183191d2821d9f10e48d9cd",
+    "bytes": 400,
+    "coverage": "inventory + text/static scan",
+    "lines": 11,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/core/security.py",
+    "sha256": "e61eb41a77d3135e7618fbc5105fa45df18b06f177ec90f6fe6643d4c5c9aaac",
+    "bytes": 6031,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 147,
+    "finding_ids": [
+      "F02",
+      "F18",
+      "F19",
+      "F59"
+    ]
+  },
+  {
+    "path": "backend/app/core/tenancy.py",
+    "sha256": "787667dfe0ad8f6b2a83aeea0396bc61d23877d0a38c4cf0f529ac9c551f28de",
+    "bytes": 1482,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 42,
+    "finding_ids": [
+      "F46"
+    ]
+  },
+  {
+    "path": "backend/app/data/leadgen_recipes/clinic-beauty-mena.json",
+    "sha256": "a7e1924b273cdaa4392306c9111469cfe5eb35e3587a61f4b60e626910f925a7",
+    "bytes": 1043,
+    "coverage": "inventory + text/static scan",
+    "lines": 23,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/data/leadgen_recipes/competitor-pricing-digest.json",
+    "sha256": "08a9028e75dde222d65383eab33e404dedf68792be869ed34e1136e41288e207",
+    "bytes": 828,
+    "coverage": "inventory + text/static scan",
+    "lines": 21,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/data/leadgen_recipes/directory-outbound.json",
+    "sha256": "ccefe401c51dfaa383f1f9882a1073d0ce66fbc9571e2bf0506f90249de9812f",
+    "bytes": 1069,
+    "coverage": "inventory + text/static scan",
+    "lines": 24,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/data/leadgen_recipes/mena-construction-contact.json",
+    "sha256": "22ff4d7b2b7c9d5971276bf3fe8603fa5286c31b950aa30a4abf997d694464c7",
+    "bytes": 1066,
+    "coverage": "inventory + text/static scan",
+    "lines": 24,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/data/leadgen_recipes/shopify-brand.json",
+    "sha256": "3ec3c017cdc217db737c7af6bb80bdabe4d2abbdf2cc1c752b608c5b7e58967a",
+    "bytes": 980,
+    "coverage": "inventory + text/static scan",
+    "lines": 23,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/data/leadgen_recipes/sitemap-company-crawl.json",
+    "sha256": "7efd4a3f5818176ecadc61a2696565145375ae62d2d0515206d34dcd11f51cdb",
+    "bytes": 954,
+    "coverage": "inventory + text/static scan",
+    "lines": 23,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/db/base.py",
+    "sha256": "05afb0b7ca79f5b2e679438d9184a8e4c86b907fbf1dd4f8cc4d58f4c546ad24",
+    "bytes": 83,
+    "coverage": "inventory + text/static scan",
+    "lines": 3,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/db/session.py",
+    "sha256": "d6c0191c081996e069f9a4375a6e50dd1f84ab55c2ad7c151e21cabf130be2d8",
+    "bytes": 774,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 27,
+    "finding_ids": [
+      "F07",
+      "F24"
+    ]
+  },
+  {
+    "path": "backend/app/main.py",
+    "sha256": "d41830d21ddc1130e8f47e515fef53d52386fab8fb55f9c4f7667ce95961119e",
+    "bytes": 14071,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 264,
+    "finding_ids": [
+      "F01",
+      "F14",
+      "F15",
+      "F58",
+      "F70"
+    ]
+  },
+  {
+    "path": "backend/app/middleware/__init__.py",
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "bytes": 1,
+    "coverage": "inventory + text/static scan",
+    "lines": 1,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/middleware/rate_limit.py",
+    "sha256": "5dea0e6ba5bc3d7b73d3b8ce2a748b43dce6ca9a4398c54858c3d7faeed37c23",
+    "bytes": 4646,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 108,
+    "finding_ids": [
+      "F58"
+    ]
+  },
+  {
+    "path": "backend/app/models/__init__.py",
+    "sha256": "763c3d6fe2762aa81cebd5e89bbe99ca81d1303a5276f799f7b18f62dd69c675",
+    "bytes": 1065,
+    "coverage": "inventory + text/static scan",
+    "lines": 25,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/ai_insight.py",
+    "sha256": "8def8c1203868cec9684d5b70a869ed8e2c46f6b34f849d21132d181a179be71",
+    "bytes": 983,
+    "coverage": "inventory + text/static scan",
+    "lines": 24,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/api_key.py",
+    "sha256": "f96e502486d3dd7795756c592dde2c75d5b2b0d3a2ca73bf6b091759d0be8ac2",
+    "bytes": 855,
+    "coverage": "inventory + text/static scan",
+    "lines": 19,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/api_usage.py",
+    "sha256": "027684720575ade5f4c983724a4d32f3d1a9e5bad5d9e34e1ede8ae02563dc0c",
+    "bytes": 1035,
+    "coverage": "inventory + text/static scan",
+    "lines": 20,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/app_update.py",
+    "sha256": "30c0b980a5f7e860b09e90bd007a01b887a6476ab75d61747490c70fa2d8a57c",
+    "bytes": 1223,
+    "coverage": "inventory + text/static scan",
+    "lines": 23,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/creative.py",
+    "sha256": "067853632eba851c2c3519d6617efa18b6261fa12351eeed7a872a968362719a",
+    "bytes": 1801,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 40,
+    "finding_ids": [
+      "F63"
+    ]
+  },
+  {
+    "path": "backend/app/models/creative_score.py",
+    "sha256": "50fee48233f925ce59eb562fbf737cbfc55b2c38251cc4d772660027cb57dcdd",
+    "bytes": 628,
+    "coverage": "inventory + text/static scan",
+    "lines": 17,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/leadgen.py",
+    "sha256": "b837a5979963877bd622692eac14d52e223a96cb18a4b6f254cd07f7ba60359d",
+    "bytes": 5462,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 116,
+    "finding_ids": [
+      "F63",
+      "F77"
+    ]
+  },
+  {
+    "path": "backend/app/models/media_job.py",
+    "sha256": "b73020d80edb26982551fe59e094ec0a3afc07f2ae62dd7f3ae22c6c32dfc18b",
+    "bytes": 1449,
+    "coverage": "inventory + text/static scan",
+    "lines": 36,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/monitor.py",
+    "sha256": "5ebe535c7594dbaa9c5337cc303976c0632bcc0aed46964cb28b8d3f7569039e",
+    "bytes": 5555,
+    "coverage": "inventory + text/static scan",
+    "lines": 140,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/notification.py",
+    "sha256": "0ed174df3c506055f36eaa148479a993edbc10d263004e387b8b3d609de3c077",
+    "bytes": 871,
+    "coverage": "inventory + text/static scan",
+    "lines": 19,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/organization.py",
+    "sha256": "f7ecff2d94ae98ecfbb32851bc0d0e7f41171e8f47195418a6051898a30df2b8",
+    "bytes": 1462,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 27,
+    "finding_ids": [
+      "F62"
+    ]
+  },
+  {
+    "path": "backend/app/models/organization_member.py",
+    "sha256": "a61ca06e8cb72500e6c1e3efbf8b145fcdb8f218d92fdecb33703b7a6ddd2d63",
+    "bytes": 1371,
+    "coverage": "inventory + text/static scan",
+    "lines": 28,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/pattern.py",
+    "sha256": "112dbc1ee6f82a1f1e156c513cc2859c8262626edfb35716a5843fdfc5c13a65",
+    "bytes": 704,
+    "coverage": "inventory + text/static scan",
+    "lines": 19,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/plan.py",
+    "sha256": "180799c3932b3289f4670d7d95db365c464d64b11814c996e09f12535160e0a2",
+    "bytes": 1317,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 23,
+    "finding_ids": [
+      "F55"
+    ]
+  },
+  {
+    "path": "backend/app/models/playbook.py",
+    "sha256": "3514edba4159201a32844634881f04b893f1218e4685413b128e4fa40181f432",
+    "bytes": 1302,
+    "coverage": "inventory + text/static scan",
+    "lines": 27,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/saved_creative.py",
+    "sha256": "9d3febdf0a440b043fe146a7faaabc49537888cf4d3426e88253d8c95f128817",
+    "bytes": 779,
+    "coverage": "inventory + text/static scan",
+    "lines": 17,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/scout.py",
+    "sha256": "d8e0ba97dd19d74bedd639298d5162b1b78edc5dbfb7dee31f7e1448073bde03",
+    "bytes": 5982,
+    "coverage": "inventory + text/static scan",
+    "lines": 126,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/scrape_job.py",
+    "sha256": "2a5a1096a1f84c19c7c53a02417f00ddd972a0e2ec260f988583888af0e9255c",
+    "bytes": 1793,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 41,
+    "finding_ids": [
+      "F63"
+    ]
+  },
+  {
+    "path": "backend/app/models/simulation_report.py",
+    "sha256": "a435f5ef3d37cf6c14df93f66b1bdbf8bf4e479fd25c210ad84be2993da3163c",
+    "bytes": 1286,
+    "coverage": "inventory + text/static scan",
+    "lines": 32,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/support_ticket.py",
+    "sha256": "9a4fe3153f71831747a1c6626c644239a965cd614287047bc0d25f6320a7fc48",
+    "bytes": 1635,
+    "coverage": "inventory + text/static scan",
+    "lines": 31,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/usage_log.py",
+    "sha256": "246b77e008ceeb5add9ac4a270b0804f20b037ddc04f4a80941c03068578fcad",
+    "bytes": 1255,
+    "coverage": "inventory + text/static scan",
+    "lines": 24,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/user.py",
+    "sha256": "2732c2305a237c26e957bdbdb9ee69271ae6c4d3bbdcc15d5bb13ba6cd6b9ce8",
+    "bytes": 1221,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 26,
+    "finding_ids": [
+      "F01"
+    ]
+  },
+  {
+    "path": "backend/app/models/webhook_event.py",
+    "sha256": "e0ef3b8c53514c092ee4c53a35c24cfcf3a2a159c2027062e022adb8aca71cc4",
+    "bytes": 773,
+    "coverage": "inventory + text/static scan",
+    "lines": 21,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/models/workspace_credential.py",
+    "sha256": "4daa82d65e3808fb41e2702db16f57abef320de2deedbde5a006e284b51b093c",
+    "bytes": 1209,
+    "coverage": "inventory + text/static scan",
+    "lines": 26,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/__init__.py",
+    "sha256": "916ef41ae6cdf7c606e11f9039fa20d9f9f831f4b452e3c42749fee48a9bfd7e",
+    "bytes": 338,
+    "coverage": "inventory + text/static scan",
+    "lines": 6,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/account.py",
+    "sha256": "50c63e671959c4612a8c0c2ffe24ce2c3be28520392b815c1a24e9ea8630d87e",
+    "bytes": 386,
+    "coverage": "inventory + text/static scan",
+    "lines": 12,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/admin.py",
+    "sha256": "bf9fb15d2ad7fee6c5ab2ea3851ce58f361b037e3bd3fdac5225ae935eb7e347",
+    "bytes": 5152,
+    "coverage": "inventory + text/static scan",
+    "lines": 189,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/analysis.py",
+    "sha256": "54e795341974401a5e8633f13d57641501d265525a66bcbc611498b3bdbfd974",
+    "bytes": 528,
+    "coverage": "inventory + text/static scan",
+    "lines": 24,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/app_update.py",
+    "sha256": "f19db6734a26e79ab3d1df1f8f15662d2bfaf1dd05371c8f9a17965c448bf390",
+    "bytes": 1206,
+    "coverage": "inventory + text/static scan",
+    "lines": 41,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/auth.py",
+    "sha256": "347b03519a7d63831e64ebfeb38d700f837da33aca1536bf0ad9ba33adca440a",
+    "bytes": 2590,
+    "coverage": "inventory + text/static scan",
+    "lines": 85,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/common.py",
+    "sha256": "fa5591c9056c0073d63071f15467004fa07c051c823d3375cd2a16f95f34677b",
+    "bytes": 380,
+    "coverage": "inventory + text/static scan",
+    "lines": 17,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/creative.py",
+    "sha256": "c28eba00df74083784a6f11e2e27c4ed4c83f6c3ea5b1f054f4c65217196c138",
+    "bytes": 1209,
+    "coverage": "inventory + text/static scan",
+    "lines": 47,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/discover.py",
+    "sha256": "594f7f7616d1e6b6881166711ae065c047fc98113f1db644787b68eca79690ae",
+    "bytes": 1182,
+    "coverage": "inventory + text/static scan",
+    "lines": 38,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/leadgen.py",
+    "sha256": "fa8c3eb083d262812f73ce6c11b5abfda72e876254035d8e9e7fbfeea4a0e30f",
+    "bytes": 2972,
+    "coverage": "inventory + text/static scan",
+    "lines": 82,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/media.py",
+    "sha256": "c10a3d08a2a4830048e63928246c4dffb84d47343f648a9e7b4ec65b126b4bcd",
+    "bytes": 935,
+    "coverage": "inventory + text/static scan",
+    "lines": 32,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/scout.py",
+    "sha256": "3fb7e57bfe38ebed8a9bf4f3f41a0f7603b5018b2a5a48665f98d2784f6b6564",
+    "bytes": 3705,
+    "coverage": "inventory + text/static scan",
+    "lines": 105,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/schemas/simulation.py",
+    "sha256": "05cf25215c59154b99309eb0a8a248563d3f6a9d6457bfaac7a83baf8ccd3e1b",
+    "bytes": 3181,
+    "coverage": "inventory + text/static scan",
+    "lines": 82,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/__init__.py",
+    "sha256": "8caa2b96052bede9798a99fced0639c9ac8555a7b9b597286c0b8aae8f98906b",
+    "bytes": 279,
+    "coverage": "inventory + text/static scan",
+    "lines": 5,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/admin_service.py",
+    "sha256": "caf725ae20d4e827ca552e5afc8e9f43370bb23035074ac45162cb3a9b1d083c",
+    "bytes": 29739,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 741,
+    "finding_ids": [
+      "F64",
+      "F80"
+    ]
+  },
+  {
+    "path": "backend/app/services/ai/ai_router.py",
+    "sha256": "8345d9bda02be61d79aaa2da96acb16beab719e368f46532cc0e8908d5bde2af",
+    "bytes": 6503,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 163,
+    "finding_ids": [
+      "F31",
+      "F32"
+    ]
+  },
+  {
+    "path": "backend/app/services/ai/aihubmix_image_provider.py",
+    "sha256": "db801146e928d069b1ddee168def97f3cc1bf050780e0b448ae587304ceef87e",
+    "bytes": 12036,
+    "coverage": "inventory + text/static scan",
+    "lines": 301,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/ai/base.py",
+    "sha256": "971dde89b8c773113a1aad7686b6d1f464d971458363c6c60560959ada0af047",
+    "bytes": 12595,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 253,
+    "finding_ids": [
+      "F09"
+    ]
+  },
+  {
+    "path": "backend/app/services/ai/byok_provider.py",
+    "sha256": "21c8351dfd0d449710564bff2fd944672038ba8e57e58e8da66f3bff3cf23bfa",
+    "bytes": 2354,
+    "coverage": "inventory + text/static scan",
+    "lines": 64,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/ai/gemini_provider.py",
+    "sha256": "b178061dbc3fd89291b1dc4308b40a9d705899ae755c77d9c8153febcf0a50d3",
+    "bytes": 11748,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 246,
+    "finding_ids": [
+      "F38"
+    ]
+  },
+  {
+    "path": "backend/app/services/ai/groq_provider.py",
+    "sha256": "c7121454c856278a6c54674ff194532ebf4782ca2db22c6408442e0e927ecb99",
+    "bytes": 1907,
+    "coverage": "inventory + text/static scan",
+    "lines": 48,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/ai/openai_compatible_provider.py",
+    "sha256": "84dd198af79fa088e4a2293dd9c995e627a84218d9219022f7d1f4b7ff909b15",
+    "bytes": 1096,
+    "coverage": "inventory + text/static scan",
+    "lines": 32,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/ai/openrouter_provider.py",
+    "sha256": "73db5853e38ca4c6bde977a4b1be3c864197fa69161866acc77f9f9f9e161258",
+    "bytes": 1393,
+    "coverage": "inventory + text/static scan",
+    "lines": 35,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/ai/pollinations_provider.py",
+    "sha256": "1a93a98e51769c7ef1453f688ca00c56c1c820126a42bb3181bbc9651029713b",
+    "bytes": 7910,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 182,
+    "finding_ids": [
+      "F66"
+    ]
+  },
+  {
+    "path": "backend/app/services/analysis_service.py",
+    "sha256": "2ced3037404ed28ad18b31fd8f0bdacf8a8a8f539d00b76e297a3639ef2bb5b0",
+    "bytes": 11704,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 295,
+    "finding_ids": [
+      "F06",
+      "F09",
+      "F41",
+      "F65",
+      "F78"
+    ]
+  },
+  {
+    "path": "backend/app/services/api_key_service.py",
+    "sha256": "45ed72c5fc2c295d9f9ec5698b39e9594c8f3d543110b41b80d3062fec9e5b95",
+    "bytes": 3566,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 104,
+    "finding_ids": [
+      "F61"
+    ]
+  },
+  {
+    "path": "backend/app/services/api_usage_service.py",
+    "sha256": "0442a3f8b4405840c52e054ddc09ba59e1caef91242a77e9fa0a48059aed9988",
+    "bytes": 1921,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 63,
+    "finding_ids": [
+      "F50"
+    ]
+  },
+  {
+    "path": "backend/app/services/atlas_pipeline.py",
+    "sha256": "2550aa1502303d57252b1ebfa615548d4a20a854a7cc0bd43bbfe71b56b8ceb0",
+    "bytes": 12508,
+    "coverage": "inventory + text/static scan",
+    "lines": 321,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/auth_service.py",
+    "sha256": "1e94a3ad75c3c77b3f281e67672daa10748df50628754167260838ef5bbeadad",
+    "bytes": 8333,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 191,
+    "finding_ids": [
+      "F18",
+      "F19",
+      "F71"
+    ]
+  },
+  {
+    "path": "backend/app/services/billing_service.py",
+    "sha256": "92c37d2fdeced7fadd2a5f1108acaad9404cdeb015e925d26992da0770eed840",
+    "bytes": 26593,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 753,
+    "finding_ids": [
+      "F07",
+      "F08",
+      "F11",
+      "F46",
+      "F55",
+      "F62",
+      "F78"
+    ]
+  },
+  {
+    "path": "backend/app/services/creative_fingerprint.py",
+    "sha256": "da2d2ca9369b12c43fbac2eab6abc1b7113a8a627c24bddae5bb168f1ef7ae03",
+    "bytes": 10536,
+    "coverage": "inventory + text/static scan",
+    "lines": 302,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/creative_service.py",
+    "sha256": "631d91b03062e673461a802c77d863d5fdf8f119a210574e76caa9cc655581a9",
+    "bytes": 30203,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 755,
+    "finding_ids": [
+      "F03",
+      "F05",
+      "F33",
+      "F53"
+    ]
+  },
+  {
+    "path": "backend/app/services/dashboard_service.py",
+    "sha256": "19e709bc4c252603468bb9bc2dd5b0e53ed2e16191d2d2e07b0c5049991f4397",
+    "bytes": 17897,
+    "coverage": "inventory + text/static scan",
+    "lines": 445,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/discover_service.py",
+    "sha256": "871c8c929fec8351f492cc4529ea371fb18f3d2bc0f9b37d5b23615d7b733bd5",
+    "bytes": 27853,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 653,
+    "finding_ids": [
+      "F07",
+      "F29"
+    ]
+  },
+  {
+    "path": "backend/app/services/email_service.py",
+    "sha256": "48d1d5f60b816337c97baff5dc80ec8a437e00af5a018239d47d5ba48de8cb87",
+    "bytes": 4040,
+    "coverage": "inventory + text/static scan",
+    "lines": 127,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/entity_intelligence.py",
+    "sha256": "0081df6a7487fc4f2f763d21bb569d9f45abb30c83ab637ef73f479249d81c4b",
+    "bytes": 25390,
+    "coverage": "inventory + text/static scan",
+    "lines": 504,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/job_heartbeat.py",
+    "sha256": "ffa0d98b65949a31c4eeb7bbd86b5ced49b5f77ac2abc108e927cb7d82bc653f",
+    "bytes": 2749,
+    "coverage": "inventory + text/static scan",
+    "lines": 73,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/job_reconciliation.py",
+    "sha256": "cd4a829a7500abb98ea769533682395cacdc69729f8008f670dbdb5529c984a1",
+    "bytes": 8210,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 220,
+    "finding_ids": [
+      "F08",
+      "F25",
+      "F82"
+    ]
+  },
+  {
+    "path": "backend/app/services/leadgen_pipeline.py",
+    "sha256": "c68cde7a6cfc76ad9ac16c615fb5506adc2796e5dc1b9fc66f258934ed778c7e",
+    "bytes": 36659,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 788,
+    "finding_ids": [
+      "F23",
+      "F28",
+      "F30",
+      "F66"
+    ]
+  },
+  {
+    "path": "backend/app/services/lifecycle_email_service.py",
+    "sha256": "67911565d7d427c51c21c33d15c0d1c259322b0fe114bc33db8a5c86613ee394",
+    "bytes": 5143,
+    "coverage": "inventory + text/static scan",
+    "lines": 131,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/maps_scout_service.py",
+    "sha256": "31c0d1d28e3f5834b98fdcef6c2cac27b8c25e0818332c42e9f246a323eef8ff",
+    "bytes": 23175,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 482,
+    "finding_ids": [
+      "F28"
+    ]
+  },
+  {
+    "path": "backend/app/services/media/gemini_image_provider.py",
+    "sha256": "d69f8ebc559871c7488ee81fb51c6b98c07c4f7651fad92591bf3bc2a166220a",
+    "bytes": 1383,
+    "coverage": "inventory + text/static scan",
+    "lines": 49,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/media/modes.py",
+    "sha256": "ccc09b95680e4db3dc5ca48d03e57ef1b3056a471fa22cb348151c06799517f5",
+    "bytes": 4921,
+    "coverage": "inventory + text/static scan",
+    "lines": 121,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/media_service.py",
+    "sha256": "a587b00fa95c439e9d743e68c4b6a2018360c350592cac72b92b49b7d56c8a99",
+    "bytes": 12386,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 301,
+    "finding_ids": [
+      "F11",
+      "F25",
+      "F38",
+      "F39",
+      "F40",
+      "F82"
+    ]
+  },
+  {
+    "path": "backend/app/services/monitor_service.py",
+    "sha256": "778a5be237a650e5cb1321caf73a61b32dbbaf419d7648c64ddd63e893fcdbc0",
+    "bytes": 31638,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 833,
+    "finding_ids": [
+      "F54"
+    ]
+  },
+  {
+    "path": "backend/app/services/notification_service.py",
+    "sha256": "82752b7a56d750c0f707879d592c4c8f9eb288a37ce6c428b4fdce5085b99f9b",
+    "bytes": 2453,
+    "coverage": "inventory + text/static scan",
+    "lines": 81,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/playbook_service.py",
+    "sha256": "d13c6805aa734fb1332958a8963d41c1c066ec8557807e0faa708fb51d4dfec0",
+    "bytes": 7998,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 199,
+    "finding_ids": [
+      "F04"
+    ]
+  },
+  {
+    "path": "backend/app/services/provider_resolver.py",
+    "sha256": "e86c09a0cc069beb33fb0b342ae292d04dc51fa07229918173c9e1c9963800cb",
+    "bytes": 3096,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 77,
+    "finding_ids": [
+      "F39"
+    ]
+  },
+  {
+    "path": "backend/app/services/query_translator.py",
+    "sha256": "a685160d770e955b0c668d3bb0a9d90a6a7832bdfd178cbb2a2e638f116fe516",
+    "bytes": 3056,
+    "coverage": "inventory + text/static scan",
+    "lines": 86,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/scout_parse.py",
+    "sha256": "6cec4bcd2327923fed47126f87fa01cb1dcbc70f22512954bf300209a98cad70",
+    "bytes": 6267,
+    "coverage": "inventory + text/static scan",
+    "lines": 159,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/scout_service.py",
+    "sha256": "930780390ff4f6d02fb0c14cc751a8d36489c96b1ebf9a3e26ae3621e9be3b92",
+    "bytes": 20711,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 406,
+    "finding_ids": [
+      "F28"
+    ]
+  },
+  {
+    "path": "backend/app/services/scrapegraph_lead_service.py",
+    "sha256": "18c8857f1d2495331ce40f7784b80ca22ee520fe3bbf69b9e57378483e09bdf1",
+    "bytes": 16403,
+    "coverage": "inventory + text/static scan",
+    "lines": 411,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/scraping/__init__.py",
+    "sha256": "63abcfd41d24b53d1fba66d33e3add9228f6c4d646a7bc7ede9090f62b764c86",
+    "bytes": 55,
+    "coverage": "inventory + text/static scan",
+    "lines": 1,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/scraping/ad_library_provider.py",
+    "sha256": "d2c9e7202cdbec7428394ca1bc602f07e071d7966386ad8b09e4338eeb401fc0",
+    "bytes": 18512,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 413,
+    "finding_ids": [
+      "F29"
+    ]
+  },
+  {
+    "path": "backend/app/services/scraping/adyntel_provider.py",
+    "sha256": "d210e7b81164b9a8f6d540ad3c209eedfcbfa47584fc67fd0c9de63ce203d2b4",
+    "bytes": 6751,
+    "coverage": "inventory + text/static scan",
+    "lines": 174,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/scraping/base.py",
+    "sha256": "a98c85f428cbff63a39eb591989bc88ec9988848294b74d89ff2158af126bb77",
+    "bytes": 1408,
+    "coverage": "inventory + text/static scan",
+    "lines": 43,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/scraping/metapi_provider.py",
+    "sha256": "c95efedf66b6d79f30e2ac2977fa765c24bcaf8d2aa1c4e91ba76e00b68c124f",
+    "bytes": 9472,
+    "coverage": "inventory + text/static scan",
+    "lines": 229,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/scraping/normalizer.py",
+    "sha256": "3b52d77405564302e48d0c8d9c495de16393eedb37358503b894f8252f1633bf",
+    "bytes": 6195,
+    "coverage": "inventory + text/static scan",
+    "lines": 163,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/scraping/scrapegraph_provider.py",
+    "sha256": "e5a60e24d97dfc6b008548e977fd0b3c586a7e92d1f165b86986e7afa7d76bd0",
+    "bytes": 2422,
+    "coverage": "inventory + text/static scan",
+    "lines": 66,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/app/services/scrapling_engine.py",
+    "sha256": "75325ac541128df7e9a62da1511e22da01d8c69c0886f63dbafb20829ab45a18",
+    "bytes": 10516,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 265,
+    "finding_ids": [
+      "F66",
+      "F81"
+    ]
+  },
+  {
+    "path": "backend/app/services/security_service.py",
+    "sha256": "eba069a2c00749b048d24602cf2cc07bcd4181058600e136ebc6a4c70e527206",
+    "bytes": 4203,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 119,
+    "finding_ids": [
+      "F23"
+    ]
+  },
+  {
+    "path": "backend/app/services/simulation_service.py",
+    "sha256": "8d55ad2ed7e23b84475a51fd614b367dd37e67ae1fa7048c02f58f1aad2a9772",
+    "bytes": 6386,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 165,
+    "finding_ids": [
+      "F06"
+    ]
+  },
+  {
+    "path": "backend/app/services/storage_service.py",
+    "sha256": "51beece247a17ec751733771262551ee68ee734882e053831216dfa7612ab402",
+    "bytes": 6957,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 198,
+    "finding_ids": [
+      "F49"
+    ]
+  },
+  {
+    "path": "backend/app/services/support_service.py",
+    "sha256": "871b04d2f5ffbbe7eb445d53e7e10d655956c63bd9ed084c27d7513954212c25",
+    "bytes": 8826,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 248,
+    "finding_ids": [
+      "F37",
+      "F64"
+    ]
+  },
+  {
+    "path": "backend/app/services/team_service.py",
+    "sha256": "5ba3683da92f5e84e0ab44aff9d30915b4364766cbd420de02f7df87f08fc77e",
+    "bytes": 6659,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 180,
+    "finding_ids": [
+      "F46",
+      "F47",
+      "F69"
+    ]
+  },
+  {
+    "path": "backend/app/uploads/5ad97e98-72cf-4f24-81eb-b154afb3db67_5b81b1a3.jpg",
+    "sha256": "8a344b10dd1ec148893a46feae12f4cf51435879c030dc74954ec6117bfcb6fc",
+    "bytes": 25568,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "backend/app/uploads/d62c6053-7d78-44f6-b222-a6a5891ae9d0_af951344.jpg",
+    "sha256": "35a4c28bca038529b7aa4be9ab786a6f6d43c2baa21cc71c9fa4b7d5279d0e47",
+    "bytes": 34400,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "backend/app/uploads/e31da210-c1c1-4098-81c5-ed441971cadf_35f134ce.jpg",
+    "sha256": "35a4c28bca038529b7aa4be9ab786a6f6d43c2baa21cc71c9fa4b7d5279d0e47",
+    "bytes": 34400,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "backend/create_tables.py",
+    "sha256": "11ecc6f8bf5bda1f65cb683a3cc1d3b82f54fb68e5d2ddec25abace549d40de3",
+    "bytes": 517,
+    "coverage": "inventory + text/static scan",
+    "lines": 19,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/metapi_dict_sample.json",
+    "sha256": "0c36d87afab33f4dbcb8d5c81a50e60a66d088c29dd99d2ca870e18b9c182129",
+    "bytes": 982674,
+    "coverage": "inventory + text/static scan",
+    "lines": 4191,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/requirements.txt",
+    "sha256": "5262dece846626fd45811f941dab0485bbb963efbed51f1e0e736d1e72782cb5",
+    "bytes": 395,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 17,
+    "finding_ids": [
+      "F74"
+    ]
+  },
+  {
+    "path": "backend/scripts/_tmp_append_resend_from.py",
+    "sha256": "16886c9481a62cff0e54aa15349039a79d8719dd953644ae1bffe7934b1a6389",
+    "bytes": 514,
+    "coverage": "inventory + text/static scan",
+    "lines": 14,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_corpus_inspect.py",
+    "sha256": "3b935dba1ac35d8d5579e9d243d52250110f3e03b780fe635021eec3a89f462c",
+    "bytes": 2291,
+    "coverage": "inventory + text/static scan",
+    "lines": 68,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_corpus_inspect2.py",
+    "sha256": "f02e975cb109f8d53938ee9d5541931c3c09a0fef7e18be59dd1357f7c8e63f9",
+    "bytes": 2420,
+    "coverage": "inventory + text/static scan",
+    "lines": 73,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_live_discover_probe.py",
+    "sha256": "8b6714703afd5fec545f2fd495d8babfb633018de0de2cd8d78baa832127240c",
+    "bytes": 3317,
+    "coverage": "inventory + text/static scan",
+    "lines": 95,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_live_prod_verify.json",
+    "sha256": "112dab595a5205bf671f673baf9aea097d855d6cc4f89c67afc6f5309e8154e5",
+    "bytes": 1961,
+    "coverage": "inventory + text/static scan",
+    "lines": 69,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_live_prod_verify.py",
+    "sha256": "a45921b26536c5323696f49a5dc274c2cdad7aabd847a0cbdb28b7be0e63fc09",
+    "bytes": 4944,
+    "coverage": "inventory + text/static scan",
+    "lines": 124,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_live_sim.json",
+    "sha256": "43b01440ecdc43713f05fb844081d41ae539da704e7366cffac1d0b2693190a7",
+    "bytes": 2835,
+    "coverage": "inventory + text/static scan",
+    "lines": 83,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_live_sim.py",
+    "sha256": "e8797bc952d073a1751cf3023f4be9dab3bf6cb679be0c54d27f616252c053cb",
+    "bytes": 4285,
+    "coverage": "inventory + text/static scan",
+    "lines": 109,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_monitor_fail_notify.py",
+    "sha256": "b79c2f8a23bca2e0e79acf91f44440ef1943f3f6e25f8a4f16687c5743ec8ae0",
+    "bytes": 3196,
+    "coverage": "inventory + text/static scan",
+    "lines": 80,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_prod_job_and_bd.py",
+    "sha256": "a3440cc840b01bb8392e3d2ab7ce37528ad1070f5e719b87a62edcdbdcf3c9a5",
+    "bytes": 1791,
+    "coverage": "inventory + text/static scan",
+    "lines": 53,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_provider_probe.py",
+    "sha256": "208cbcfa6ec57c44f83fb369a7ace4bf1a708a742163fa5f8fa29aea1b355345",
+    "bytes": 4201,
+    "coverage": "inventory + text/static scan",
+    "lines": 111,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_resend_env_check.py",
+    "sha256": "9ab00eb2d794e62897bb234f5d2b4de1ea2969cc31cf73bab9ebf5b375853d6a",
+    "bytes": 1275,
+    "coverage": "inventory + text/static scan",
+    "lines": 33,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_resend_monitor_e2e.py",
+    "sha256": "7da33db1a57b2d8959e977e0c1e673b87b3670a4ec2abe70af2aaa930efec0ae",
+    "bytes": 4441,
+    "coverage": "inventory + text/static scan",
+    "lines": 114,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_resend_retrieve_diag.py",
+    "sha256": "5606a7b0386e168a4f684eca1e3c1f6f78c19abc9e019a8a84135bfc39060e53",
+    "bytes": 1115,
+    "coverage": "inventory + text/static scan",
+    "lines": 27,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_set_app_base_url.py",
+    "sha256": "e455b0b8da8812540b7180c3b1fe0d8e379e17b95b020eff612e1ae2bcb4e3b5",
+    "bytes": 581,
+    "coverage": "inventory + text/static scan",
+    "lines": 17,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_vercel_bundle_check.py",
+    "sha256": "f4c2f719bc813604e257e653988e718eb3716c6b2bbdbe845f8c2666e08017fb",
+    "bytes": 902,
+    "coverage": "inventory + text/static scan",
+    "lines": 25,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_vercel_datasource.py",
+    "sha256": "a32540759fb3fdf5ff239288d8be11fb7ba535cf6d98123ac333079c5353a8eb",
+    "bytes": 661,
+    "coverage": "inventory + text/static scan",
+    "lines": 13,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/_tmp_write_keys.py",
+    "sha256": "04b3ff8c6adcd85b7fc6594182af55e08730b05eabb82938b4a4fd94d0846a6b",
+    "bytes": 1023,
+    "coverage": "inventory + text/static scan",
+    "lines": 38,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/check_db.py",
+    "sha256": "4003e6b335605379c7347d8159395f4706749519477fe19463e5ed1a08de6806",
+    "bytes": 668,
+    "coverage": "inventory + text/static scan",
+    "lines": 21,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/check_job_results.py",
+    "sha256": "f9f309725621364bc1a7c4b20f300b275d4f426d5326603faba41fb96f753a54",
+    "bytes": 1351,
+    "coverage": "inventory + text/static scan",
+    "lines": 31,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/check_neon_tables.py",
+    "sha256": "9febd9af1c46256f4e85d98f7a56dc6d73832cfd523b4c97c3a15e89746201ad",
+    "bytes": 1180,
+    "coverage": "inventory + text/static scan",
+    "lines": 33,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/check_users.py",
+    "sha256": "88f8e8e5de46a233c9205ee323988e6177d2d46d9d566a342dffbe4e5da3c459",
+    "bytes": 696,
+    "coverage": "inventory + text/static scan",
+    "lines": 22,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/dump_real_job.py",
+    "sha256": "644f9784cd247ea6b9423cd5d828b4099f4046a3b9b6157b7702cb1205b2834d",
+    "bytes": 4894,
+    "coverage": "inventory + text/static scan",
+    "lines": 126,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/fetch_gymshark_raw.py",
+    "sha256": "c4208ca57c01c7ce5ceaacdae33fbb9e41c4f00fcc04d9c39805975d22c780c0",
+    "bytes": 1469,
+    "coverage": "inventory + text/static scan",
+    "lines": 44,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/full_audit.py",
+    "sha256": "fe9f10b4b995c517730d28e1c2549510bba4097a33dba8cbee24a63b07a9095d",
+    "bytes": 12923,
+    "coverage": "inventory + text/static scan",
+    "lines": 324,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/inspect_db.py",
+    "sha256": "473fb2c23f4b61a4548291133a53de405670b1a464bd9ac8c3390b528d9745b4",
+    "bytes": 2770,
+    "coverage": "inventory + text/static scan",
+    "lines": 53,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/inspect_exact_job.py",
+    "sha256": "e02f2d98a2d39b3ad0d4bf5dbf4f57f5b22495022c3353a21cd20f70516e845d",
+    "bytes": 2834,
+    "coverage": "inventory + text/static scan",
+    "lines": 56,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/inspect_meta_token.py",
+    "sha256": "b4c75ee764803d7230b99703ae9f42eba19da23af1c5737237ebc8654b79a104",
+    "bytes": 1475,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 43,
+    "finding_ids": [
+      "F20"
+    ]
+  },
+  {
+    "path": "backend/scripts/inspect_plans.py",
+    "sha256": "60cb9b19ee87f8067a29e969d2655e4011c1d891ba96b423b2fb6364f08284e5",
+    "bytes": 670,
+    "coverage": "inventory + text/static scan",
+    "lines": 22,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/inspect_pr_details.py",
+    "sha256": "10508cb827105a0bd748eb040fd2eecd905d6130a58743a9fcff63e8a491c873",
+    "bytes": 726,
+    "coverage": "inventory + text/static scan",
+    "lines": 17,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/inspect_prs.py",
+    "sha256": "1ae2c9b603a279be155a8432bc49283bc116d880935daf02f3d7a9a1090ec4d2",
+    "bytes": 656,
+    "coverage": "inventory + text/static scan",
+    "lines": 20,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/inspect_raw_metapi.py",
+    "sha256": "6c4a8c95644a6d2c4df6b12d08926bc1385025a3c3b389fced46c0a98137090e",
+    "bytes": 3338,
+    "coverage": "inventory + text/static scan",
+    "lines": 85,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/job_dump.json",
+    "sha256": "8e5ecf6b6b184b8dec259cde80205dafeb9233b7484f581ba6301bd9c6d331e9",
+    "bytes": 3415,
+    "coverage": "inventory + text/static scan",
+    "lines": 126,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/list_users.py",
+    "sha256": "462f346de3e29b96447b93243e59927e4dd4434a8e2a08ec75068968645e5ad7",
+    "bytes": 551,
+    "coverage": "inventory + text/static scan",
+    "lines": 20,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/normalize_plans.py",
+    "sha256": "8d67f93ac1ffd171adda6520f129d8cc73afaaa631c8c11ae5eeb0a0de6801c7",
+    "bytes": 2506,
+    "coverage": "inventory + text/static scan",
+    "lines": 66,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/promote_admins.py",
+    "sha256": "a923065cea5a03a9ac66ea0e2d0d19ca75dd6f1108e55c564c4b6cc2dc1102f7",
+    "bytes": 865,
+    "coverage": "inventory + text/static scan",
+    "lines": 32,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/raw_metapi_gymshark.json",
+    "sha256": "7843c0d1e86bfd051fcb5c152a32809cfca4e114c94cf701202d30378665459f",
+    "bytes": 315164,
+    "coverage": "inventory + text/static scan",
+    "lines": 3327,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/raw_metapi_shopify.json",
+    "sha256": "83652f8e36aa4124d0808e8f5303b0d04db60045a960fa87d1fafbcc20d94be5",
+    "bytes": 220107,
+    "coverage": "inventory + text/static scan",
+    "lines": 3087,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/reset_admin_password.py",
+    "sha256": "9206137b5993f9d0bbe754731cd67249078a72d3df633611417bc37d6244bc53",
+    "bytes": 3107,
+    "coverage": "inventory + text/static scan",
+    "lines": 78,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/run_migrations.py",
+    "sha256": "1d25003f6eb4b2cb25f2082ee08a1c75c31f25a289d0aff3eb96d707c9092dd1",
+    "bytes": 1699,
+    "coverage": "inventory + text/static scan",
+    "lines": 36,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/seed_admin.py",
+    "sha256": "b4bea75bfcacd9c076af9df9bcb5421b7b15fac17408f88191227c26bfec6beb",
+    "bytes": 1713,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 49,
+    "finding_ids": [
+      "F52"
+    ]
+  },
+  {
+    "path": "backend/scripts/test_admin_suite_live.py",
+    "sha256": "d242f3a7dddb6385aaefd82e7423d14e983287c508d76c2b7e6a8cf29c78817a",
+    "bytes": 4562,
+    "coverage": "inventory + text/static scan",
+    "lines": 98,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_credit_caps.py",
+    "sha256": "3c385e604a4a8a7446c4af0a5649ba3f81f4c4bb3eb4a594267c13ddc9780439",
+    "bytes": 8752,
+    "coverage": "inventory + text/static scan",
+    "lines": 182,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_dashboard.py",
+    "sha256": "ddf2e184a3e70ac6c35a1c841508c8cd56bae29ac16c6335db29de6abfb9cba1",
+    "bytes": 530,
+    "coverage": "inventory + text/static scan",
+    "lines": 14,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_discover_live.py",
+    "sha256": "be602f398ed40d9e99224c27347674ab9ab4ebc4c0e747acd5f48b6ae240c538",
+    "bytes": 1508,
+    "coverage": "inventory + text/static scan",
+    "lines": 36,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_discover_live_e2e.py",
+    "sha256": "4f358ff852a61fcf3ef0d217a6607d04898b9833981c626dab0d9d92f10a275a",
+    "bytes": 2275,
+    "coverage": "inventory + text/static scan",
+    "lines": 59,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_dynamic_queries.py",
+    "sha256": "300e3f669dd39d7d664249ff324405b2a238096cab6267a54a4f3e948f3966f1",
+    "bytes": 3018,
+    "coverage": "inventory + text/static scan",
+    "lines": 72,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_full_loop.py",
+    "sha256": "3edbd082cc93c8f5e61ec289a1ea8b47dee6e8093129357c95628589f9c399a3",
+    "bytes": 8467,
+    "coverage": "inventory + text/static scan",
+    "lines": 184,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_gemini_image_live.py",
+    "sha256": "55ea9a6335dd6ac2af9e6e9e917d75d9b4d64ce9e3a0af2b4a94300b39cbee7a",
+    "bytes": 1791,
+    "coverage": "inventory + text/static scan",
+    "lines": 51,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_media_api.py",
+    "sha256": "c507aa6121b038318031d7b4e9ed6e7acdec82d8544052aaff655e622693f7eb",
+    "bytes": 1923,
+    "coverage": "inventory + text/static scan",
+    "lines": 52,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_meta_api.py",
+    "sha256": "b90e8f1a04a06b4bcbc3b6f22552237e33ab71b0a7eb8061f4fe74d205a129cc",
+    "bytes": 498,
+    "coverage": "inventory + text/static scan",
+    "lines": 16,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_mo_salah_live.py",
+    "sha256": "1ff5c4b08d30cf7cfebae7e6ff9af3cb8fb1b5e9a66da3b7e3e3c89f2daeef6e",
+    "bytes": 4519,
+    "coverage": "inventory + text/static scan",
+    "lines": 103,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_new_meta.py",
+    "sha256": "f1c360e8d4315ea085bac69c309c0465ba598c5cc0f0488963fdb41b2002f3cd",
+    "bytes": 1145,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 28,
+    "finding_ids": [
+      "F20"
+    ]
+  },
+  {
+    "path": "backend/scripts/test_pipeline.py",
+    "sha256": "6ad0cba0446fb2b9aa2130d201c2ee54f81c093383d514179023e90b8ef0a4b1",
+    "bytes": 1080,
+    "coverage": "inventory + text/static scan",
+    "lines": 33,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_providers.py",
+    "sha256": "a79f1e56085bd0b4d22ecad52503575786c5a6dd6f847410230150b0f011c369",
+    "bytes": 4458,
+    "coverage": "inventory + text/static scan",
+    "lines": 112,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_scrapers.py",
+    "sha256": "530d9616973191cc14ca75ced9c096121193affaa6372c5c9e3e8ba03c76e69f",
+    "bytes": 1760,
+    "coverage": "inventory + text/static scan",
+    "lines": 38,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_tiered_and_caps_live.py",
+    "sha256": "725a1bfeae7046101abb934fbfb864c120861d4ddd5559be031d91b320a93f27",
+    "bytes": 4677,
+    "coverage": "inventory + text/static scan",
+    "lines": 97,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_trial_and_admin_bypass.py",
+    "sha256": "e5d4deece67deef2f3a6234f568dd52061c110346e1e0f66603e344534144928",
+    "bytes": 5346,
+    "coverage": "inventory + text/static scan",
+    "lines": 140,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/test_unified_backend.py",
+    "sha256": "db9cf38cedc9cd1a378f218757544dd70ec7963d3382111056e5a8462ca77283",
+    "bytes": 7084,
+    "coverage": "inventory + text/static scan",
+    "lines": 157,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/verify_all_live.py",
+    "sha256": "d69010ccddd46fbcbdd8963cad5b990c6423ad107cfed11842419df0cb278ba1",
+    "bytes": 4479,
+    "coverage": "inventory + text/static scan",
+    "lines": 109,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/verify_consolidated_chain.py",
+    "sha256": "221938704e368a89ba26f2925b39c3c95533e49720a82e1b177ae55ad9fbdd3e",
+    "bytes": 2677,
+    "coverage": "inventory + text/static scan",
+    "lines": 62,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/verify_headline_fix.py",
+    "sha256": "01233a99667aed7ca6f82cc13ab7c174255632194ac8f431017e69689177dc5d",
+    "bytes": 1136,
+    "coverage": "inventory + text/static scan",
+    "lines": 33,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/verify_real_discovery.py",
+    "sha256": "ee9f45deae7aeb9e77631af23357d8c1635f219d5dc878e638bd34dc0f433686",
+    "bytes": 5696,
+    "coverage": "inventory + text/static scan",
+    "lines": 125,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/scripts/verify_softocde_develop.py",
+    "sha256": "c87415e0d429ca8b0b3d6c192e74038456f0151f6300e52a04cc3ce9a04e0959",
+    "bytes": 3957,
+    "coverage": "inventory + text/static scan",
+    "lines": 89,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/tests/test_auth_reset_suite.py",
+    "sha256": "db1bccc24adf226bb89fd764f0755f77b25eb87ba0b5021bb166d29c34dd27ce",
+    "bytes": 5076,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 118,
+    "finding_ids": [
+      "F16"
+    ]
+  },
+  {
+    "path": "backend/tests/test_byok_suite.py",
+    "sha256": "3b52525282e11df103bbe20418ae07c69b59ae4dcbe350e9ea5f9ceb5c06e1b6",
+    "bytes": 4623,
+    "coverage": "inventory + text/static scan",
+    "lines": 124,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/tests/test_gemini_trial_suite.py",
+    "sha256": "d99b38f023891c318c939155a3feb91b0d53d2eff58b3eb8e8ebba350c9043aa",
+    "bytes": 7272,
+    "coverage": "inventory + text/static scan",
+    "lines": 212,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/tests/test_security_regressions.py",
+    "sha256": "1644b24397e300028eb9065d25729d5381015fad28292a9cebd6435be1d401ed",
+    "bytes": 7300,
+    "coverage": "inventory + text/static scan",
+    "lines": 207,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/uploads/f5cd6e7c-393f-46c5-ac34-21d1750593e0_9536367b.jpg",
+    "sha256": "f53bac40dda14d6ffdf9346a54524880befbbc71c2c26a8781a0faa43c0b69db",
+    "bytes": 57152,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "backend/uploads/test_remix_e6c16198_aa5874ac.jpg",
+    "sha256": "e899d241bc3f2f9e4aacda966cf6cc47989e894e2c4dcd9ee08527c2b04839cc",
+    "bytes": 25394,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "backend/uploads/test_remix_ef2ba8be12_73d69c5c.jpg",
+    "sha256": "e899d241bc3f2f9e4aacda966cf6cc47989e894e2c4dcd9ee08527c2b04839cc",
+    "bytes": 25394,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "backend/vendor/google_maps_scraper/LICENSE",
+    "sha256": "ba1f6966b19608e49325c68712e73fe1f2439090aa2e9261a14eccfdecee5ee5",
+    "bytes": 1195,
+    "coverage": "inventory + text/static scan",
+    "lines": 22,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/LICENSE",
+    "sha256": "86ce3f91ed29a0735489450b80dc6a3ec741a3c61fe8e3d2bb35795a996ed498",
+    "bytes": 1111,
+    "coverage": "inventory + text/static scan",
+    "lines": 22,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/NOTICE",
+    "sha256": "de00ef29fa2f028d47dadbfd67a768c8bd4790e8a81abf13dff58993188411d9",
+    "bytes": 402,
+    "coverage": "inventory + text/static scan",
+    "lines": 9,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/__init__.py",
+    "sha256": "c220c0590bb3b277e8fe70a71784219a68b31fd50a442d66ae984f50af24e991",
+    "bytes": 1011,
+    "coverage": "inventory + text/static scan",
+    "lines": 30,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/__init__.py",
+    "sha256": "6fcf8daa16411060dfd4199ce970bb0dbcd524d163ee864f624b034d3eea5749",
+    "bytes": 39,
+    "coverage": "inventory + text/static scan",
+    "lines": 1,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/enrichment.py",
+    "sha256": "50d059a2e09767874fa349f178a54c4f12cfa98a9ba7035837515fb52af99c78",
+    "bytes": 5044,
+    "coverage": "inventory + text/static scan",
+    "lines": 113,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/github.py",
+    "sha256": "5f83aacab7d7a37b2a903ebc6f9991e14ebeba708bf5c5c958ff061133b72c96",
+    "bytes": 3473,
+    "coverage": "inventory + text/static scan",
+    "lines": 92,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/instagram.py",
+    "sha256": "f262572578a1d657bfa3494099dc8233a13ea509df335efa8aa1bcfe1c6a308d",
+    "bytes": 7991,
+    "coverage": "inventory + text/static scan",
+    "lines": 197,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/linkedin.py",
+    "sha256": "6ab842b0758c3f0ad4be262bac7b6de31c121fcc127486eb9def206ffadf4bca",
+    "bytes": 2511,
+    "coverage": "inventory + text/static scan",
+    "lines": 78,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/linktree.py",
+    "sha256": "68d53f68f9a9757b5a97b07f7edcb04e8b59ebb51ca7f2582c6a1c3d465f860f",
+    "bytes": 4645,
+    "coverage": "inventory + text/static scan",
+    "lines": 119,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/pinterest.py",
+    "sha256": "667549bad96552f48a42f8c8cd7f3749f30ed7f0147261eac25ff75581cba80b",
+    "bytes": 2049,
+    "coverage": "inventory + text/static scan",
+    "lines": 63,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/stealth.py",
+    "sha256": "a7daab947ba5ad32aa0a1b46ceca268eb978e3c096097872b514dbf143637324",
+    "bytes": 2202,
+    "coverage": "inventory + text/static scan",
+    "lines": 50,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/tiktok.py",
+    "sha256": "18dd16fa1ed2fdbdfc9f26469e11e64e5424011fcfda915bf14a48f3e6187b72",
+    "bytes": 3101,
+    "coverage": "inventory + text/static scan",
+    "lines": 93,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/twitch.py",
+    "sha256": "9a4aac40ed5b3594852db3d06350961b2ea7d13f94182968e0161e079a3abb66",
+    "bytes": 2052,
+    "coverage": "inventory + text/static scan",
+    "lines": 63,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/utils.py",
+    "sha256": "b400d01db9f1e270fe823cfd38bab7c333116943232d48bce2dd98cdc4f48747",
+    "bytes": 1576,
+    "coverage": "inventory + text/static scan",
+    "lines": 53,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/vendor/helix_scout/scrapers/youtube.py",
+    "sha256": "b6a5f59ac0c2e20030dc849c1add7d81304f6a907ea5f4c5bca9dd588f043448",
+    "bytes": 3074,
+    "coverage": "inventory + text/static scan",
+    "lines": 94,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/workers/scrapling/Dockerfile",
+    "sha256": "fc0cbb5950a6cea103ff586b17d46208c97ad43d91fa18d90165563bdddd4bfd",
+    "bytes": 838,
+    "coverage": "inventory + text/static scan",
+    "lines": 22,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/workers/scrapling/NOTICE",
+    "sha256": "8a2aad98aeec95e5e394955505a2c20685e2b54169e4cdf95637a137b545504e",
+    "bytes": 1627,
+    "coverage": "inventory + text/static scan",
+    "lines": 29,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/workers/scrapling/README.md",
+    "sha256": "f431ce8655e1066cd9f8cec0a7d6941cdd225a35e7320f793f9ded63aa96a346",
+    "bytes": 1981,
+    "coverage": "inventory + text/static scan",
+    "lines": 49,
+    "finding_ids": []
+  },
+  {
+    "path": "backend/workers/scrapling/requirements.txt",
+    "sha256": "4d6e664631e4ead87dddc8059d6c02742965ab53b184c3a6e2e2fe19c1955001",
+    "bytes": 183,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 3,
+    "finding_ids": [
+      "F74"
+    ]
+  },
+  {
+    "path": "backend/workers/scrapling/worker.py",
+    "sha256": "3ff2c9a95d060bfe8f83bc96eec20ca4033d11655d12df6291135412c0e01455",
+    "bytes": 6940,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 199,
+    "finding_ids": [
+      "F24"
+    ]
+  },
+  {
+    "path": "dist/apple-icon.png",
+    "sha256": "da678942d4656a903f61000551cc51c09464d7a223faaae304e8210e1ca19257",
+    "bytes": 2626,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2",
+    "sha256": "ca157063339ac4ad418f214f3abfed119b0798ab4d377386ce5c9e5a7a435ebd",
+    "bytes": 25960,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2",
+    "sha256": "71d5ee93cc1e9f1d520a3a8b66456de18c7879d8df09d57fcd2eaff75fef0075",
+    "bytes": 18748,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2",
+    "sha256": "6e9e020a25f9b56d418f2c085b1d3c09725a4da23fe693a5b463064606732190",
+    "bytes": 11232,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/inter-greek-wght-normal-CkhJZR-_.woff2",
+    "sha256": "1be3448e292fbf05ffe176fe1e43f135013d50b1e7d324ad1a558f623d3bb6f6",
+    "bytes": 18996,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+    "sha256": "34b9c504cab7a73e37b746343a449132e56cf7b5481af2cb81dc74dcff25c956",
+    "bytes": 85068,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+    "sha256": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62",
+    "bytes": 48256,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2",
+    "sha256": "5c66f9e07e90c6d4ac4922cc68d60de26c17b1858e677fb5e603fce3952b3ff2",
+    "bytes": 10252,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/jetbrains-mono-cyrillic-wght-normal-D73BlboJ.woff2",
+    "sha256": "d274604c40757f98f07df623a8b8fb5194508a6fa4f5413a7a107f09e3b7452a",
+    "bytes": 12108,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/jetbrains-mono-greek-wght-normal-Bw9x6K1M.woff2",
+    "sha256": "ee863198077f3093ffa81c072581cc4bd608a04e60a8a9c0b846396ce4f14109",
+    "bytes": 9004,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/jetbrains-mono-latin-ext-wght-normal-DBQx-q_a.woff2",
+    "sha256": "79bfdab9ba467e26eea4122e6f2567e188dd8a09a8c730d501fc487c4ab99c6e",
+    "bytes": 15196,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2",
+    "sha256": "18be452724bfdc236c074ca94a249a7f41a86752c7d04ab258ce9ed5651f6a7e",
+    "bytes": 40404,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/assets/jetbrains-mono-vietnamese-wght-normal-Bt-aOZkq.woff2",
+    "sha256": "2288795da89dd97e648954b96e22b4501bd85dfc453264460b252f888b582ca2",
+    "bytes": 7504,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/icon-dark-32x32.png",
+    "sha256": "8a1570b2955c3748b6844356a7487d88c60f9f1e699e870a3452a3decd1ba03c",
+    "bytes": 585,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/icon-light-32x32.png",
+    "sha256": "83145e5bb033ace23cd8e7fbb63e7c39733aaf58f8a7280d7800995cced6f7c2",
+    "bytes": 566,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/icon.svg",
+    "sha256": "263f117c0c69a44d3206a5702105c178ebaa164bca325f3c3973a13bd948f1bf",
+    "bytes": 1304,
+    "coverage": "inventory + text/static scan",
+    "lines": 26,
+    "finding_ids": []
+  },
+  {
+    "path": "dist/index.html",
+    "sha256": "194269083f946d4c6406354d9f2f6894cc8a50af600427e32fde162181080818",
+    "bytes": 2811,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 49,
+    "finding_ids": [
+      "F78"
+    ]
+  },
+  {
+    "path": "dist/placeholder-logo.png",
+    "sha256": "d7c39d978af643ba9525de6fb8171e0f834882db4110c82ecad0df3f4f69551a",
+    "bytes": 568,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/placeholder-logo.svg",
+    "sha256": "19a9e968f4656d52a4c249b4056117ad109370ba9da51cdc630ddded74cec73b",
+    "bytes": 3208,
+    "coverage": "inventory + text/static scan",
+    "lines": 1,
+    "finding_ids": []
+  },
+  {
+    "path": "dist/placeholder-user.jpg",
+    "sha256": "22be067d748175598a5e00123902f5c8332dd7f101de03dfb92ec08d85bb5e53",
+    "bytes": 1635,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/placeholder.jpg",
+    "sha256": "14be0c7aa11cca1e78f0966176b286a6d36d00ec64be027775dfeb33d8e2dfdf",
+    "bytes": 1064,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "dist/placeholder.svg",
+    "sha256": "64badf7aabda0b9630b87020ffb6095cb858ccbcf66b355c2aa08b1063954d3b",
+    "bytes": 3253,
+    "coverage": "inventory + text/static scan",
+    "lines": 1,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/api-reference/authentication.md",
+    "sha256": "456838ae9f27728acd8328415dce2320dd4288d813b8bb74747a16de26349741",
+    "bytes": 2394,
+    "coverage": "inventory + text/static scan",
+    "lines": 71,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/api-reference/credit-costs-and-limits.md",
+    "sha256": "325484119e630e7ee23e8248737f2f09bb478fb09dce48bfed62f88b92b62b26",
+    "bytes": 2773,
+    "coverage": "inventory + text/static scan",
+    "lines": 47,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/api-reference/endpoint-creatives.md",
+    "sha256": "c87e1d00b56e55326bbea7e3acb7515c80cec64c67f00eae216c1638ad3dd745",
+    "bytes": 4008,
+    "coverage": "inventory + text/static scan",
+    "lines": 140,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/api-reference/endpoint-discover.md",
+    "sha256": "91b5b04257f29a4edaf809abaedfd6960cc0a1ec6c97e6af4ec389a8eedbf24a",
+    "bytes": 4391,
+    "coverage": "inventory + text/static scan",
+    "lines": 164,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/api-reference/endpoint-media-generate.md",
+    "sha256": "11bf03ca463ee34363f4f28e794f386e985f77cc9362db2a7d727381be062e64",
+    "bytes": 3386,
+    "coverage": "inventory + text/static scan",
+    "lines": 129,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/api-reference/endpoint-monitors.md",
+    "sha256": "0d7b3f7690d1514d8ec2eb94cbcbade5c7ca39fc354bb8d6ebfa454458a53a63",
+    "bytes": 2939,
+    "coverage": "inventory + text/static scan",
+    "lines": 120,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/compliance/AUDIT.md",
+    "sha256": "40c1ff9a4b2cf862f4de8105f6451c626df9ec52eacf4e7caa9bf594610e3330",
+    "bytes": 27229,
+    "coverage": "inventory + text/static scan",
+    "lines": 187,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/compliance/axe-scan-results.json",
+    "sha256": "775d1b958c9c19dfd4fe67abbfabfe5c060be5066cafde4fca9c9c29e596d4a9",
+    "bytes": 1506,
+    "coverage": "inventory + text/static scan",
+    "lines": 74,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/concept-audience-simulation.md",
+    "sha256": "44be4fedecb1cfdf48d2c71be2912cc2772b002fcd78d4d18535f2f9a4510905",
+    "bytes": 3000,
+    "coverage": "inventory + text/static scan",
+    "lines": 49,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/concept-competitor-monitors.md",
+    "sha256": "d67489baab7cfa712c02c3eb02cc517430bc692707f147b89c8155a9d4042856",
+    "bytes": 2086,
+    "coverage": "inventory + text/static scan",
+    "lines": 41,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/concept-estimated-vs-real-data.md",
+    "sha256": "fc062b822b7efd8c6ef84e983228bdafb2a453504fa8ef1b1992fb01ab742aa0",
+    "bytes": 3321,
+    "coverage": "inventory + text/static scan",
+    "lines": 54,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/concept-how-discover-works.md",
+    "sha256": "a82548778519c5b72d4a31db669edb2c6889f04d254c697d0f4c9190110f4b2c",
+    "bytes": 2968,
+    "coverage": "inventory + text/static scan",
+    "lines": 50,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/concept-scoring-system.md",
+    "sha256": "ae856b54981061265439e65e5a5086f24c7bdde2631bee20ba40dd4f3e858cb7",
+    "bytes": 3341,
+    "coverage": "inventory + text/static scan",
+    "lines": 62,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/faq.md",
+    "sha256": "89b32156d944b2809d4c8738c4f5f164756b7e579b7314ce1d445a07a5f03659",
+    "bytes": 3745,
+    "coverage": "inventory + text/static scan",
+    "lines": 62,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/lead-generation.md",
+    "sha256": "ef8570936c837d0dafc4f8d31f68fd5702ad6c7fba154eb7db53c0d1b4aabc08",
+    "bytes": 5132,
+    "coverage": "inventory + text/static scan",
+    "lines": 132,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/quickstart-account-and-trial.md",
+    "sha256": "c2aa64d713c63ac43217cfce01e0bcc9efa9762fe7c50f8867ff173fb9782365",
+    "bytes": 1899,
+    "coverage": "inventory + text/static scan",
+    "lines": 46,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/quickstart-credits-and-limits.md",
+    "sha256": "4510cedf98dbd702afc4ffcdcfefbbd09a2e712613db42c32988e1c2f9bfd3e4",
+    "bytes": 2567,
+    "coverage": "inventory + text/static scan",
+    "lines": 53,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/quickstart-first-search.md",
+    "sha256": "211e3052429d7227f501ab60ce278bba64a0fd7800d26dd8167478bb982c14e9",
+    "bytes": 2483,
+    "coverage": "inventory + text/static scan",
+    "lines": 58,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/quickstart-reading-intelligence.md",
+    "sha256": "0124a76522a61b30b6cdb2e98078d76a00e862634910081ab1f4a0be29b1c006",
+    "bytes": 3171,
+    "coverage": "inventory + text/static scan",
+    "lines": 54,
+    "finding_ids": []
+  },
+  {
+    "path": "docs/user-guide/quickstart-remix-studio.md",
+    "sha256": "d3767557ad2f14d1c264050ae43a28971cba853782fe8b9a47c9b096d5423d1a",
+    "bytes": 2585,
+    "coverage": "inventory + text/static scan",
+    "lines": 55,
+    "finding_ids": []
+  },
+  {
+    "path": "e2e_live_test.cjs",
+    "sha256": "5275f057f249e0b4e461cc7d4851936c8e3456412610475e32bce06be47af438",
+    "bytes": 4588,
+    "coverage": "inventory + text/static scan",
+    "lines": 111,
+    "finding_ids": []
+  },
+  {
+    "path": "index.html",
+    "sha256": "f2aad8d5b400fb60dcbe9ad4338ba0f8345b1028c33c796ca7a5aebef4ea0f59",
+    "bytes": 2669,
+    "coverage": "inventory + text/static scan",
+    "lines": 47,
+    "finding_ids": []
+  },
+  {
+    "path": "jsconfig.json",
+    "sha256": "503b3c22bd5ef848bc5e646451cec1614abeb5b2d190a2fbd4ea4dadc0c9f05e",
+    "bytes": 292,
+    "coverage": "inventory + text/static scan",
+    "lines": 15,
+    "finding_ids": []
+  },
+  {
+    "path": "login_after_click.png",
+    "sha256": "00627d44001bbc39fe543f2389d26d8de7c397b45daf5f1d9ad1f5b1181156dc",
+    "bytes": 41249,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "login_before_click.png",
+    "sha256": "e026624423f264fc1de5263bb0da5a6e70f35eccec0ef260059fb21f21096998",
+    "bytes": 24899,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "package.json",
+    "sha256": "521a3a233f52d3b9c38643343f691eecc77e659d663457a62f87cf2efd9fe7ac",
+    "bytes": 812,
+    "coverage": "inventory + text/static scan",
+    "lines": 32,
+    "finding_ids": []
+  },
+  {
+    "path": "pnpm-lock.yaml",
+    "sha256": "611880c660e7b78db5382821a9cb8bd2e9f82842941c3cc009dd0f3e1d50e78b",
+    "bytes": 64787,
+    "coverage": "inventory + text/static scan",
+    "lines": 1898,
+    "finding_ids": []
+  },
+  {
+    "path": "pnpm-workspace.yaml",
+    "sha256": "06eb1e024a7ea3476f849078efeeb0bf15d9634f28d2bed01fb462b6563df871",
+    "bytes": 48,
+    "coverage": "inventory + text/static scan",
+    "lines": 5,
+    "finding_ids": []
+  },
+  {
+    "path": "public/apple-icon.png",
+    "sha256": "da678942d4656a903f61000551cc51c09464d7a223faaae304e8210e1ca19257",
+    "bytes": 2626,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "public/brand/helix-logo.png",
+    "sha256": "e046ea71017724023b0813b35e69f84caa2fd6f638bcfec7ddc0134d5629f165",
+    "bytes": 80628,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "public/brand/helix-mark.png",
+    "sha256": "e046ea71017724023b0813b35e69f84caa2fd6f638bcfec7ddc0134d5629f165",
+    "bytes": 80628,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "public/brand/helix-mark.svg",
+    "sha256": "8ccb34d246f83562148c2b470601403dcbffdd5176af8dfe80f82e8296d8fd27",
+    "bytes": 489,
+    "coverage": "inventory + text/static scan",
+    "lines": 8,
+    "finding_ids": []
+  },
+  {
+    "path": "public/brand/helix-wordmark.svg",
+    "sha256": "e10f811a8101d45ab5565da09f61b1bae9be4c01259442439fcfb70dd748d18d",
+    "bytes": 778,
+    "coverage": "inventory + text/static scan",
+    "lines": 11,
+    "finding_ids": []
+  },
+  {
+    "path": "public/helix-logo.svg",
+    "sha256": "7315cb32bdccaa38c70b8ec0f8dda8de98da5ba57600aac7c79975f2c5bb0a4e",
+    "bytes": 316,
+    "coverage": "inventory + text/static scan",
+    "lines": 5,
+    "finding_ids": []
+  },
+  {
+    "path": "public/icon-dark-32x32.png",
+    "sha256": "8a1570b2955c3748b6844356a7487d88c60f9f1e699e870a3452a3decd1ba03c",
+    "bytes": 585,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "public/icon-light-32x32.png",
+    "sha256": "83145e5bb033ace23cd8e7fbb63e7c39733aaf58f8a7280d7800995cced6f7c2",
+    "bytes": 566,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "public/icon.svg",
+    "sha256": "263f117c0c69a44d3206a5702105c178ebaa164bca325f3c3973a13bd948f1bf",
+    "bytes": 1304,
+    "coverage": "inventory + text/static scan",
+    "lines": 26,
+    "finding_ids": []
+  },
+  {
+    "path": "public/placeholder-logo.png",
+    "sha256": "d7c39d978af643ba9525de6fb8171e0f834882db4110c82ecad0df3f4f69551a",
+    "bytes": 568,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "public/placeholder-logo.svg",
+    "sha256": "19a9e968f4656d52a4c249b4056117ad109370ba9da51cdc630ddded74cec73b",
+    "bytes": 3208,
+    "coverage": "inventory + text/static scan",
+    "lines": 1,
+    "finding_ids": []
+  },
+  {
+    "path": "public/placeholder-user.jpg",
+    "sha256": "22be067d748175598a5e00123902f5c8332dd7f101de03dfb92ec08d85bb5e53",
+    "bytes": 1635,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "public/placeholder.jpg",
+    "sha256": "14be0c7aa11cca1e78f0966176b286a6d36d00ec64be027775dfeb33d8e2dfdf",
+    "bytes": 1064,
+    "coverage": "binary asset inventory"
+  },
+  {
+    "path": "public/placeholder.svg",
+    "sha256": "64badf7aabda0b9630b87020ffb6095cb858ccbcf66b355c2aa08b1063954d3b",
+    "bytes": 3253,
+    "coverage": "inventory + text/static scan",
+    "lines": 1,
+    "finding_ids": []
+  },
+  {
+    "path": "public/robots.txt",
+    "sha256": "149a0888e0fdffc0bfc20cb2c55af60e23d03b25ee8c3a54eda458662a2345cb",
+    "bytes": 169,
+    "coverage": "inventory + text/static scan",
+    "lines": 8,
+    "finding_ids": []
+  },
+  {
+    "path": "public/sitemap.xml",
+    "sha256": "c0343e0ae4734a5be3a2ec42b4dfbca7d06ceaa97775607c94c0e11316a4ff44",
+    "bytes": 631,
+    "coverage": "inventory + text/static scan",
+    "lines": 7,
+    "finding_ids": []
+  },
+  {
+    "path": "render.yaml",
+    "sha256": "6105273cc0767560cee7362d663a3cf33c995869c4e9775b87fd89db82d785cc",
+    "bytes": 8432,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 110,
+    "finding_ids": [
+      "F14"
+    ]
+  },
+  {
+    "path": "scripts/axe.min.js",
+    "sha256": "b511cd9dec01c76f4b2ad1723b66b6db37d4c2eb4ed199076e1829d9ee7b75e3",
+    "bytes": 553290,
+    "coverage": "inventory + text/static scan",
+    "lines": 12,
+    "finding_ids": []
+  },
+  {
+    "path": "scripts/generate_docs_git_meta.js",
+    "sha256": "ea2c08d4764f0cd0b6cae935ef354589bab0546be327c117c0515ad12ca6b361",
+    "bytes": 1930,
+    "coverage": "inventory + text/static scan",
+    "lines": 62,
+    "finding_ids": []
+  },
+  {
+    "path": "scripts/run_axe_audit.js",
+    "sha256": "c02f0b04962f0e669f116a1910585d8b27faed3e83a9cb1d22f2b2243a1469c0",
+    "bytes": 5431,
+    "coverage": "inventory + text/static scan",
+    "lines": 177,
+    "finding_ids": []
+  },
+  {
+    "path": "scripts/test_keyboard_forms.js",
+    "sha256": "450eb9ee0ed0c3f07ae4201d6d59517ae2148521fc8670f2395a011d6569bfef",
+    "bytes": 7843,
+    "coverage": "inventory + text/static scan",
+    "lines": 220,
+    "finding_ids": []
+  },
+  {
+    "path": "skills-lock.json",
+    "sha256": "4ad6a6b7f158390abffaa5d74ae7797ba394f203c2d301167afd3af38cd980fb",
+    "bytes": 511,
+    "coverage": "inventory + text/static scan",
+    "lines": 17,
+    "finding_ids": []
+  },
+  {
+    "path": "src/App.jsx",
+    "sha256": "113b4fc0193e365c645601bd2ef8d53f2fb69e0fd6bbc1095839e64e8c6106d8",
+    "bytes": 13561,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 243,
+    "finding_ids": [
+      "F12"
+    ]
+  },
+  {
+    "path": "src/app/AppShell.jsx",
+    "sha256": "5a5fae23694c4e05cefc7b2565e90b7901976929c1b6851c42a6bc221a712cee",
+    "bytes": 6418,
+    "coverage": "inventory + text/static scan",
+    "lines": 163,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/BreadcrumbBar.jsx",
+    "sha256": "f90a7b3aef57c7ddf9cf3fdb3b3d69e13e7aafac7413782c057ce747c87bc1c0",
+    "bytes": 1981,
+    "coverage": "inventory + text/static scan",
+    "lines": 59,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/CommandBar.jsx",
+    "sha256": "fa6af57c9e448638a107bb8d3a9040d7904f7651180f04ac93a924774df8184b",
+    "bytes": 4994,
+    "coverage": "inventory + text/static scan",
+    "lines": 150,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/OnboardingTour.jsx",
+    "sha256": "56c8b794a9813545df6957ce42661fdb795c1db6f30a56c7d8fb45bc160c5217",
+    "bytes": 2350,
+    "coverage": "inventory + text/static scan",
+    "lines": 83,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/ProtectedRoute.jsx",
+    "sha256": "2215459bbc94c42861bf5dad82c9c96c52801a6f8310ecd702e3c18832d4b78b",
+    "bytes": 1558,
+    "coverage": "inventory + text/static scan",
+    "lines": 44,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/PublicHeader.jsx",
+    "sha256": "82e69e2a9b3f01d505c35b2d90e325fa194f11c9e589631500b4fd3fa9379da2",
+    "bytes": 1560,
+    "coverage": "inventory + text/static scan",
+    "lines": 48,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/Sidebar.jsx",
+    "sha256": "d26c4d6afc776017e2cd96f96ee987be08f997e29bd4c4e20ed1cce5c2a7abc0",
+    "bytes": 13837,
+    "coverage": "inventory + text/static scan",
+    "lines": 401,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/StatusBar.jsx",
+    "sha256": "43c55221c3e12a06d31a397455e840627e956638a4fcb98e8e88216061e006c6",
+    "bytes": 5821,
+    "coverage": "inventory + text/static scan",
+    "lines": 139,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/TelemetryContext.jsx",
+    "sha256": "7d373902c789ed16e22c0d61246560e8d879755919ef777180a4fdcc62ec9898",
+    "bytes": 1119,
+    "coverage": "inventory + text/static scan",
+    "lines": 39,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/admin/AdminShell.jsx",
+    "sha256": "dc9879ff5af6261a816c41102a4a1cd42631fb3adcd36b52f65fa99b7d16c3e5",
+    "bytes": 3888,
+    "coverage": "inventory + text/static scan",
+    "lines": 102,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/admin/AdminSidebar.jsx",
+    "sha256": "819b30c940d5f9b5c31ab56ea3e1f58ceddaaefbd004af4ae54e4973c3d2e88c",
+    "bytes": 4662,
+    "coverage": "inventory + text/static scan",
+    "lines": 126,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/admin/adminNavigation.js",
+    "sha256": "ccdeee37fe83502346825bce93d4c9650cc95f89eff94e2f4337f66e0a26071c",
+    "bytes": 2800,
+    "coverage": "inventory + text/static scan",
+    "lines": 144,
+    "finding_ids": []
+  },
+  {
+    "path": "src/app/navigation.js",
+    "sha256": "c1e62834396ded4639bf2ab41cd595b83f77816a0804f3727307d97b11c99f1a",
+    "bytes": 1466,
+    "coverage": "inventory + text/static scan",
+    "lines": 57,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/AdminBroadcastModal.jsx",
+    "sha256": "608c6005382a67840b7ef41d8de21b0f0e71862d62e1424e8000f6bcf8168263",
+    "bytes": 6886,
+    "coverage": "inventory + text/static scan",
+    "lines": 161,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ErrorBoundary.jsx",
+    "sha256": "f67e8ca5084bd2789d621f2c386a13bf75a881ef129daf51a4bab0be07798920",
+    "bytes": 5160,
+    "coverage": "inventory + text/static scan",
+    "lines": 132,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/LanguageSwitcher.jsx",
+    "sha256": "9c52a65079e370561abd2cdbbf7c21da300be7d2a7cbec0fcc2b17cd7c93e946",
+    "bytes": 1000,
+    "coverage": "inventory + text/static scan",
+    "lines": 23,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/NotificationBell.jsx",
+    "sha256": "bfd5393e77ee0e4752231bd691565eb802b8c5c9944bca9ab5a368206455c470",
+    "bytes": 10153,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 274,
+    "finding_ids": [
+      "F36"
+    ]
+  },
+  {
+    "path": "src/components/OnboardingWizardModal.jsx",
+    "sha256": "f43d7b9aa26246da10f385d13156cad3da7d882e8f9909a48ee347b862360d2d",
+    "bytes": 11642,
+    "coverage": "inventory + text/static scan",
+    "lines": 250,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/SavedDraftsModal.jsx",
+    "sha256": "26bef3f1cacc46045e23ecd45a260b3fe75ea5581cded004d824cdd76e376c55",
+    "bytes": 11260,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 258,
+    "finding_ids": [
+      "F73"
+    ]
+  },
+  {
+    "path": "src/components/SupportFeedbackModal.jsx",
+    "sha256": "d6f6723bafafca80789b38edcacb6a205781e0c342a9ff9a61cbbfdd6e71a5ff",
+    "bytes": 9161,
+    "coverage": "inventory + text/static scan",
+    "lines": 211,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/UpdatesBanner.jsx",
+    "sha256": "8016db0b0e99b1171c303c0914521a89b605d4f482ca82dc6bec865f79aff6fc",
+    "bytes": 3977,
+    "coverage": "inventory + text/static scan",
+    "lines": 129,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/Button.jsx",
+    "sha256": "ab78f1ee643c9d8573f431d6818cf08cb5a256d37443a80023193f6a32e3471b",
+    "bytes": 1399,
+    "coverage": "inventory + text/static scan",
+    "lines": 51,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/CardSwap.css",
+    "sha256": "712292cde0736b0ff2f1cf424b6d6a8ded3178664728dc54633ec2c5793f4027",
+    "bytes": 1509,
+    "coverage": "inventory + text/static scan",
+    "lines": 66,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/CardSwap.jsx",
+    "sha256": "993658224dc5dd71378e7d2022976d5ffea05859ce3b1d23c0ec5f7621635ec5",
+    "bytes": 9539,
+    "coverage": "inventory + text/static scan",
+    "lines": 370,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/ConfirmDialog.jsx",
+    "sha256": "c83587ff436c4c48b60512bc8440d7070a35ec685fdcceca7dba069fb7dfc44d",
+    "bytes": 3815,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 118,
+    "finding_ids": [
+      "F73"
+    ]
+  },
+  {
+    "path": "src/components/ui/Field.jsx",
+    "sha256": "934fde82a93fbcf8d931667ed839e7a4abe04ff25c42f4b56656689e77c7bb7e",
+    "bytes": 3947,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 135,
+    "finding_ids": [
+      "F73"
+    ]
+  },
+  {
+    "path": "src/components/ui/FloatingSupportButton.jsx",
+    "sha256": "236885062dc981ebfabe7aab0b61463c3e9d5ca0fcb38b53ecb646846a9a6ed3",
+    "bytes": 1488,
+    "coverage": "inventory + text/static scan",
+    "lines": 38,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/InfoTip.jsx",
+    "sha256": "471e057920d2c4ed18160aae6e675b87d38eaeca2159cb8a6fef327a83ba700e",
+    "bytes": 3233,
+    "coverage": "inventory + text/static scan",
+    "lines": 97,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/KeyHint.jsx",
+    "sha256": "04b10d7a729a20fe6ccf0046d30089e952edf6dbf85eabba86a2a931fcd96c5b",
+    "bytes": 674,
+    "coverage": "inventory + text/static scan",
+    "lines": 24,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/Logo.jsx",
+    "sha256": "254d0f591038318c7a2598e80f0bbca7a78d3e765feeb1aefb09122736113399",
+    "bytes": 895,
+    "coverage": "inventory + text/static scan",
+    "lines": 27,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/Metric.jsx",
+    "sha256": "47e518d7017bc6d8f6c26470974452626ca7085c7de18964fba907761b80947c",
+    "bytes": 1886,
+    "coverage": "inventory + text/static scan",
+    "lines": 62,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/Panel.jsx",
+    "sha256": "90aea9e3a392712e7d8a8c4ab27fadc3c8326c1dceaba90bd1492353f152141a",
+    "bytes": 943,
+    "coverage": "inventory + text/static scan",
+    "lines": 43,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/PillNav.css",
+    "sha256": "4e4222b70321f9815d29ad323e669c857c631b881691d40fa0048c81d3a127c1",
+    "bytes": 5324,
+    "coverage": "inventory + text/static scan",
+    "lines": 290,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/PillNav.jsx",
+    "sha256": "3ca4e17d59052566cac5544d65781365b6f8a06326bb327d94ef3424ee5dbcf7",
+    "bytes": 10178,
+    "coverage": "inventory + text/static scan",
+    "lines": 341,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/ProgressBar.jsx",
+    "sha256": "5d31817ff9ed65b8501113bf2615526be344ca4f3572b0ed4e5ed784d5885793",
+    "bytes": 994,
+    "coverage": "inventory + text/static scan",
+    "lines": 38,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/ScrollToTopButton.jsx",
+    "sha256": "6694de66b18ecdf1bbec5d1f0e3ee28563dd9e5b35a485ef8df70087e5d53fe9",
+    "bytes": 1564,
+    "coverage": "inventory + text/static scan",
+    "lines": 48,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/SkipToContent.jsx",
+    "sha256": "976001cc79230eeb73026aec5c71a2fb8e370f543045ae0b66025f8266c98801",
+    "bytes": 983,
+    "coverage": "inventory + text/static scan",
+    "lines": 29,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/States.jsx",
+    "sha256": "42d8adc111324375d6467484962be757d824185c672d8925e23f6bc06a3113cd",
+    "bytes": 5179,
+    "coverage": "inventory + text/static scan",
+    "lines": 168,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/Tag.jsx",
+    "sha256": "f220fd55823f403c134a2d9f56c25b1af1491bcb44a10e37cf084d5d36fbe1fe",
+    "bytes": 816,
+    "coverage": "inventory + text/static scan",
+    "lines": 28,
+    "finding_ids": []
+  },
+  {
+    "path": "src/components/ui/TrialBanner.jsx",
+    "sha256": "b722e470a74acb7a18716b1b415bdcd59d5082ff8dbc67961106527d051fd197",
+    "bytes": 2059,
+    "coverage": "inventory + text/static scan",
+    "lines": 57,
+    "finding_ids": []
+  },
+  {
+    "path": "src/context/AuthContext.jsx",
+    "sha256": "d467f25fa451b6279e71be42da406c5a7475acb5059f3a675a334840f2a303e0",
+    "bytes": 5579,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 183,
+    "finding_ids": [
+      "F45"
+    ]
+  },
+  {
+    "path": "src/context/LanguageContext.jsx",
+    "sha256": "8a188fcf5d69dfbfbbc94477445328a82862a392f64bda9db1511bee5c5423d0",
+    "bytes": 22577,
+    "coverage": "inventory + text/static scan",
+    "lines": 452,
+    "finding_ids": []
+  },
+  {
+    "path": "src/context/SearchContext.jsx",
+    "sha256": "508aae1aacc5d9b5d19d2808733e9d2a7126bce69e858d48802147492e3c3a27",
+    "bytes": 8944,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 278,
+    "finding_ids": [
+      "F12",
+      "F43",
+      "F44"
+    ]
+  },
+  {
+    "path": "src/data/brands.js",
+    "sha256": "dbb81ca67fa4b9352a4dd16c8b11fb4cd91dff49a96ab48d3d572bf67e91e7d6",
+    "bytes": 1659,
+    "coverage": "inventory + text/static scan",
+    "lines": 76,
+    "finding_ids": []
+  },
+  {
+    "path": "src/data/creatives.js",
+    "sha256": "6b1c65898a3393c649d93b555256383ea8b4fc87c3255eceb8b0e8399695341d",
+    "bytes": 21038,
+    "coverage": "inventory + text/static scan",
+    "lines": 686,
+    "finding_ids": []
+  },
+  {
+    "path": "src/data/insights.js",
+    "sha256": "fcb76f49c899ba1d281e79ee140075d64e49d865bf746f41d483bc32cc241102",
+    "bytes": 3487,
+    "coverage": "inventory + text/static scan",
+    "lines": 89,
+    "finding_ids": []
+  },
+  {
+    "path": "src/data/jobs.js",
+    "sha256": "c81146ea50b0b202c1f49dc681eebd8fdbf2676ed486a18c69a12ae8d17051e9",
+    "bytes": 1626,
+    "coverage": "inventory + text/static scan",
+    "lines": 49,
+    "finding_ids": []
+  },
+  {
+    "path": "src/data/patterns.js",
+    "sha256": "eb895ce8958901ffae56021acb596d8101c1c7d20600f7427dd3f3b0da4de2e8",
+    "bytes": 3077,
+    "coverage": "inventory + text/static scan",
+    "lines": 38,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/admin/OrganizationsTable.jsx",
+    "sha256": "0bf9da97cf4cadb130afbb88da58bd064c2609f00375b4492cc5e67caf9374b3",
+    "bytes": 3321,
+    "coverage": "inventory + text/static scan",
+    "lines": 87,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/admin/OverviewStatStrip.jsx",
+    "sha256": "7ee8e708b85f8e86a84e17c879e3c8f650b169b7c55bfa07a7bd2198b770061d",
+    "bytes": 3487,
+    "coverage": "inventory + text/static scan",
+    "lines": 91,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/admin/RecentJobsTable.jsx",
+    "sha256": "19b3babaf1e9bca088299c5c26d703e005f9724c7000c1be730013ce75fa3e97",
+    "bytes": 3248,
+    "coverage": "inventory + text/static scan",
+    "lines": 84,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/admin/SystemHealthPanel.jsx",
+    "sha256": "8abf817f183a948a662895de7f9289c24278b475e85838a91d7d6c2ab7d856b5",
+    "bytes": 1837,
+    "coverage": "inventory + text/static scan",
+    "lines": 54,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/admin/UsersTable.jsx",
+    "sha256": "991ee13f64b2c9bdc36971a4aed7536d99abbda2bee0e0a67c37e0ac1f183df1",
+    "bytes": 3196,
+    "coverage": "inventory + text/static scan",
+    "lines": 86,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/auth/AuthField.jsx",
+    "sha256": "8fe7b995642c678080d3fb20a12d740844455a8a2f9996f659ce3563609b3ce8",
+    "bytes": 1274,
+    "coverage": "inventory + text/static scan",
+    "lines": 38,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/auth/AuthLayout.jsx",
+    "sha256": "e82f03d9eab2800ebd96c1bcf9e4308531da2ab235080f1b80418aec8c183672",
+    "bytes": 1796,
+    "coverage": "inventory + text/static scan",
+    "lines": 49,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/auth/FormBanner.jsx",
+    "sha256": "b9f82371b459b6d8d624410d105a7cb5246335687f544e35589465a71398f352",
+    "bytes": 1349,
+    "coverage": "inventory + text/static scan",
+    "lines": 41,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/auth/PasswordStrength.jsx",
+    "sha256": "d8372f669f56f3156e4392f7abd335b736332ac52ca10d51b8128608469aa850",
+    "bytes": 1384,
+    "coverage": "inventory + text/static scan",
+    "lines": 39,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/auth/validation.js",
+    "sha256": "84c36f17979f53e3d1e8768f9074bccd1124840d116d96468ffb36bd58d1c9b0",
+    "bytes": 1873,
+    "coverage": "inventory + text/static scan",
+    "lines": 53,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/create/AudienceSimulationPanel.jsx",
+    "sha256": "b779fc033b1dbb11b2aacaa65912fd7315f6398cdddd4d3cb2c9de29d15e873e",
+    "bytes": 8169,
+    "coverage": "inventory + text/static scan",
+    "lines": 202,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/discover/CreativeDetailPanel.jsx",
+    "sha256": "ba98e71e9f39b5dd116e92492cda443f966b5fc9b10a2f3ee8beee9ee7a80fa2",
+    "bytes": 15176,
+    "coverage": "inventory + text/static scan",
+    "lines": 388,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/discover/EntityDossierCard.jsx",
+    "sha256": "beed948a94fafb356a65e4988781ae533295157f90f2ab197756fb35d4213f96",
+    "bytes": 24177,
+    "coverage": "inventory + text/static scan",
+    "lines": 511,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/discover/FilterRail.jsx",
+    "sha256": "694b638c04ce894b82fed21dfbe6d9d7d1e02ba80c3e219d2c49672427bcaf74",
+    "bytes": 6159,
+    "coverage": "inventory + text/static scan",
+    "lines": 168,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/discover/JobProgress.jsx",
+    "sha256": "eebf8d9656c0bba38a705d5e529ff86e47cd181fa51ac9a3e27cca93d0633f66",
+    "bytes": 5744,
+    "coverage": "inventory + text/static scan",
+    "lines": 165,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/discover/ResultSummary.jsx",
+    "sha256": "d8aa06e21b79fb135727dea6b45091c59565c20964d6b8e2be82b7897cdb2973",
+    "bytes": 2530,
+    "coverage": "inventory + text/static scan",
+    "lines": 67,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/discover/ResultsTable.jsx",
+    "sha256": "708a99904d60a6441e5b39fb8afef01235d4c60104cd76875a02d9ae27cca09f",
+    "bytes": 6498,
+    "coverage": "inventory + text/static scan",
+    "lines": 158,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/discover/SearchQueryBar.jsx",
+    "sha256": "27fcfa6f9bb6c59a4416342d7520937c6dce247edbcd674e65f2cc9c630c6691",
+    "bytes": 4935,
+    "coverage": "inventory + text/static scan",
+    "lines": 138,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/docs/DocSearchModal.jsx",
+    "sha256": "950cc26c8c8828b27103f560098bf7f1b92525acf7dc4333a1c3caa3bd02be26",
+    "bytes": 12298,
+    "coverage": "inventory + text/static scan",
+    "lines": 328,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/docs/DocsLayout.jsx",
+    "sha256": "d4a5b5351e5fe7cf0cf68f4cb37fe6f95a86b7eb787d039409108ab41fa6f285",
+    "bytes": 22098,
+    "coverage": "inventory + text/static scan",
+    "lines": 513,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/docs/MarkdownRenderer.jsx",
+    "sha256": "2b1e80ecdad2ad5a5503ca06948c225b6b3aab5611c1f33e252a633728cbbe38",
+    "bytes": 16208,
+    "coverage": "inventory + text/static scan",
+    "lines": 531,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/docs/docsData.js",
+    "sha256": "ff0d8260d7e584d97fcfef2b91109337efded6cf6711a12273d580cb55048bef",
+    "bytes": 8616,
+    "coverage": "inventory + text/static scan",
+    "lines": 239,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/docs/docsGitMeta.json",
+    "sha256": "3fd608b425dec147a6440c2f78fb268fbcf9af5aeccc630a138b3b1015cc131a",
+    "bytes": 2092,
+    "coverage": "inventory + text/static scan",
+    "lines": 78,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/marketing/DocsSection.jsx",
+    "sha256": "939a8f5844ca076e4d60d56e0160a45d7015ca153b2dc348cf08662fce23ad22",
+    "bytes": 3705,
+    "coverage": "inventory + text/static scan",
+    "lines": 90,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/marketing/Hero.jsx",
+    "sha256": "a223af5b6511a723a823d35f1b30af49b9930f831812ac1138e69f6e3e10bb8d",
+    "bytes": 23921,
+    "coverage": "inventory + text/static scan",
+    "lines": 515,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/marketing/LoopsSection.jsx",
+    "sha256": "2c8da4f9927ae53a125ce6d1c51b6cf03b76264c7cae86787dbf64e4d118f528",
+    "bytes": 38565,
+    "coverage": "inventory + text/static scan",
+    "lines": 647,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/marketing/MarketingFooter.jsx",
+    "sha256": "4489524bd23e55cfeebbd67535d1404a6cabe319d69ee3517a797205c1b6c5f0",
+    "bytes": 14875,
+    "coverage": "inventory + text/static scan",
+    "lines": 333,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/marketing/PricingSection.jsx",
+    "sha256": "155470fc50ba9b36e63228066c1629d2f8235fb359d4445875988c3a6e28fe86",
+    "bytes": 4606,
+    "coverage": "inventory + text/static scan",
+    "lines": 141,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/BriefForm.jsx",
+    "sha256": "0fdb9aa61cc0d20e9ea516757fb357358551e4eb44285a5988067047a11d7c02",
+    "bytes": 5002,
+    "coverage": "inventory + text/static scan",
+    "lines": 121,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/EmptyStates.jsx",
+    "sha256": "3bf08e18b0dd568124c86232e5278283d37672ca6c70e8eb38abca61f3ffa0b8",
+    "bytes": 3081,
+    "coverage": "inventory + text/static scan",
+    "lines": 67,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/EnginePicker.jsx",
+    "sha256": "b8aae4b0854e2d4dfbab34d5ce2a045e24e50bcf02a88f7e4b539f25994e7114",
+    "bytes": 4123,
+    "coverage": "inventory + text/static scan",
+    "lines": 106,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/ExportBar.jsx",
+    "sha256": "9630c27abc69cccd457a3da9b8c41a92fc9dfff14870dfbebd8b41340bdcca18",
+    "bytes": 2072,
+    "coverage": "inventory + text/static scan",
+    "lines": 54,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/JobProgress.jsx",
+    "sha256": "55bb07213b96542be6deeac229c5e2be792500bea2d717769db2369e2c5811c8",
+    "bytes": 5130,
+    "coverage": "inventory + text/static scan",
+    "lines": 118,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/LeadDetail.jsx",
+    "sha256": "5d0a88c4236664561b9bce60407a73a68e46b623d1b3aa8d06f784c7bbade82f",
+    "bytes": 8746,
+    "coverage": "inventory + text/static scan",
+    "lines": 206,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/LeadsTable.jsx",
+    "sha256": "04a7b703c161d53eedb369048b5581289c010ca2e6819144c2cc8bd66d7238a1",
+    "bytes": 4748,
+    "coverage": "inventory + text/static scan",
+    "lines": 108,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/RecipeLibrary.jsx",
+    "sha256": "baefd1366109175cc1cfdb7002529aa6659c7c42a2c15713edc2862d509b05a8",
+    "bytes": 2464,
+    "coverage": "inventory + text/static scan",
+    "lines": 62,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/ScoutLeadGenSubNav.jsx",
+    "sha256": "b1dff8582574fbe34f2c12b1ec5009ce4cf4ca1fc8f684b40273d9b0c45bc442",
+    "bytes": 1977,
+    "coverage": "inventory + text/static scan",
+    "lines": 48,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/SeedInput.jsx",
+    "sha256": "d3deea5d8e6ab63274d18bbb56c613f03e70023c6c7280070dbce42bfbbc392f",
+    "bytes": 2613,
+    "coverage": "inventory + text/static scan",
+    "lines": 64,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout-leadgen/SettingsStrip.jsx",
+    "sha256": "c36b7b65ccaf29708e39532d3b3f08cebe6c580906974a1efe05d251dbeafe9e",
+    "bytes": 2608,
+    "coverage": "inventory + text/static scan",
+    "lines": 62,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/AtlasJsonView.jsx",
+    "sha256": "a818e855641fdd54f1b1110b1c448b386812ad54484317a0ef9d3ed1637e24f7",
+    "bytes": 1631,
+    "coverage": "inventory + text/static scan",
+    "lines": 45,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/HandleInput.jsx",
+    "sha256": "afe01752ee6a8e7dee9c9a21203da9e4e9dc8f9724d5664c75fe75fd9d9d8442",
+    "bytes": 6916,
+    "coverage": "inventory + text/static scan",
+    "lines": 188,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/LeadDetailPanel.jsx",
+    "sha256": "f26ccb427a08910a7c69dfe6d76e8dd5901763002bed32bec07a3fd3173945dc",
+    "bytes": 21305,
+    "coverage": "inventory + text/static scan",
+    "lines": 477,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/LeadsTable.jsx",
+    "sha256": "492771c957b33f9ad44e6fe954dbdd84a330dc12f9e551b24e7f8d4d0c5ec113",
+    "bytes": 6455,
+    "coverage": "inventory + text/static scan",
+    "lines": 141,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/MapsLeadDetailPanel.jsx",
+    "sha256": "b716698afa6e1c5a3e7182c7aedcbfb2b04b7aa2c6e31d809deb4d3bf7264074",
+    "bytes": 7491,
+    "coverage": "inventory + text/static scan",
+    "lines": 192,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/MapsLeadsTable.jsx",
+    "sha256": "3443011de45e3b22e03c2a7f7ef190ad6dac6fd2e4091e9af1b93e31798f5c22",
+    "bytes": 9554,
+    "coverage": "inventory + text/static scan",
+    "lines": 217,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/MapsQueryForm.jsx",
+    "sha256": "cc58ecf63362a5746adcf4a1a29e15e7a653721749b6bc3caceb3c3713ab6eab",
+    "bytes": 7608,
+    "coverage": "inventory + text/static scan",
+    "lines": 189,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/PlatformPicker.jsx",
+    "sha256": "33e56d7c3088a8146d17ff9aa65d8a81b27aa3aacfcae1a6bdbe1d634c0b6bd3",
+    "bytes": 2013,
+    "coverage": "inventory + text/static scan",
+    "lines": 59,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/ScoutJobProgress.jsx",
+    "sha256": "4f8153df77764f48db473521ee508a66c49f4d9d41f736aa1f10bc81eb44d398",
+    "bytes": 3545,
+    "coverage": "inventory + text/static scan",
+    "lines": 86,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/ScoutModeTabs.jsx",
+    "sha256": "a625e78cda1cb2494c120d572cd8dd895e66cefa6a225a2f4384052effcb0e2d",
+    "bytes": 3385,
+    "coverage": "inventory + text/static scan",
+    "lines": 88,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/ScoutSettingsDrawer.jsx",
+    "sha256": "9c3d2a629ed665cc1e848ca735fabd3a91ca44f675500f48e12642bba3a02aac",
+    "bytes": 6699,
+    "coverage": "inventory + text/static scan",
+    "lines": 168,
+    "finding_ids": []
+  },
+  {
+    "path": "src/features/scout/TargetCategoryField.jsx",
+    "sha256": "ebc47562c33170069bb2d25914cc4b96e0f5294fc54ece90c744f11ff8d75ed2",
+    "bytes": 2230,
+    "coverage": "inventory + text/static scan",
+    "lines": 65,
+    "finding_ids": []
+  },
+  {
+    "path": "src/hooks/useAdminOverview.js",
+    "sha256": "cb9334697347ad2db737ac89bd2510fddba8065a7961b8a10cf539eeb922d429",
+    "bytes": 2401,
+    "coverage": "inventory + text/static scan",
+    "lines": 67,
+    "finding_ids": []
+  },
+  {
+    "path": "src/hooks/useAsync.js",
+    "sha256": "529ca23100c44c3be6c04010795bc52fdb942ed79b514163c625b8ed92cd3494",
+    "bytes": 1566,
+    "coverage": "inventory + text/static scan",
+    "lines": 56,
+    "finding_ids": []
+  },
+  {
+    "path": "src/hooks/useDiscoverySearch.js",
+    "sha256": "f59b6afa63187b7090352eb2f5fafb41385f22fde347e9b2a3062042458b8fc3",
+    "bytes": 5682,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 197,
+    "finding_ids": [
+      "F68"
+    ]
+  },
+  {
+    "path": "src/hooks/useLeadGenJob.js",
+    "sha256": "c81e6bc9a1fa31e60dc3921a581db3070a7d4584f750133b192789c323f2df79",
+    "bytes": 7378,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 237,
+    "finding_ids": [
+      "F57"
+    ]
+  },
+  {
+    "path": "src/hooks/useMapsScoutSearch.js",
+    "sha256": "273f35d8fdb2edf77485c29e14eb0b8b2bcda5c829053d79aa302dde153abd40",
+    "bytes": 4999,
+    "coverage": "inventory + text/static scan",
+    "lines": 175,
+    "finding_ids": []
+  },
+  {
+    "path": "src/hooks/useMediaGenerate.js",
+    "sha256": "bc19deedd86d080278682bc3607f441a54707726c80555c89651a07baa2e71f1",
+    "bytes": 4314,
+    "coverage": "inventory + text/static scan",
+    "lines": 148,
+    "finding_ids": []
+  },
+  {
+    "path": "src/hooks/useMediaQuery.js",
+    "sha256": "2bf70c701ff1c57ce73edde5fe4e35ec8da31b43a57b2f38820fb0ffb06005ef",
+    "bytes": 985,
+    "coverage": "inventory + text/static scan",
+    "lines": 28,
+    "finding_ids": []
+  },
+  {
+    "path": "src/hooks/useMonitors.js",
+    "sha256": "6820a53c2379ebe0c50964c2ef4796e1098447be5dc994a72eb4547f36309daa",
+    "bytes": 2611,
+    "coverage": "inventory + text/static scan",
+    "lines": 82,
+    "finding_ids": []
+  },
+  {
+    "path": "src/hooks/useScoutSearch.js",
+    "sha256": "16319c9a90046b3053cde7a0e16404e6706757184e7e53febfac2a10657e431a",
+    "bytes": 4878,
+    "coverage": "inventory + text/static scan",
+    "lines": 175,
+    "finding_ids": []
+  },
+  {
+    "path": "src/hooks/useSimulation.js",
+    "sha256": "5dcbf84f28e44b86be5b0741917a387ffbbdf11c69a89918a2400cf82abbcd9b",
+    "bytes": 1298,
+    "coverage": "inventory + text/static scan",
+    "lines": 52,
+    "finding_ids": []
+  },
+  {
+    "path": "src/lib/analytics.js",
+    "sha256": "a56fb624513b68c316d5a1254b73b22b1d6b2fc5e686dfd33ad99047b985124d",
+    "bytes": 1913,
+    "coverage": "inventory + text/static scan",
+    "lines": 52,
+    "finding_ids": []
+  },
+  {
+    "path": "src/lib/constants.js",
+    "sha256": "eaad9641789e48b8e630a87c1a31918fdef1e534505a48c13ba8c83059a9c3c4",
+    "bytes": 1534,
+    "coverage": "inventory + text/static scan",
+    "lines": 54,
+    "finding_ids": []
+  },
+  {
+    "path": "src/lib/format.js",
+    "sha256": "2374476631e3ff2553f0c498c610f8c8aab910e48d6550021509b5d5d38ae927",
+    "bytes": 3397,
+    "coverage": "inventory + text/static scan",
+    "lines": 119,
+    "finding_ids": []
+  },
+  {
+    "path": "src/lib/insight.js",
+    "sha256": "3efb0aa60e9dad0b75ae17f74a93a1d0720e3d1dc7e16e121cbd4e8fbb203c12",
+    "bytes": 1563,
+    "coverage": "inventory + text/static scan",
+    "lines": 53,
+    "finding_ids": []
+  },
+  {
+    "path": "src/lib/score.js",
+    "sha256": "21b19b12795e369930a8e616d986cc1f7bcf8f872f8688854d3d2d4c15bb61aa",
+    "bytes": 1224,
+    "coverage": "inventory + text/static scan",
+    "lines": 41,
+    "finding_ids": []
+  },
+  {
+    "path": "src/lib/utils.js",
+    "sha256": "ba252326d87fbe9144ec41063847d1a50c161c65c8134b1c12c909d1cc2eae5a",
+    "bytes": 135,
+    "coverage": "inventory + text/static scan",
+    "lines": 6,
+    "finding_ids": []
+  },
+  {
+    "path": "src/lib/utm.js",
+    "sha256": "80cc722d6369b0637eb8f6aa91fd58c3586815dc24c2ce635caa280424f80be0",
+    "bytes": 3119,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 93,
+    "finding_ids": [
+      "F71",
+      "F72"
+    ]
+  },
+  {
+    "path": "src/main.jsx",
+    "sha256": "e612797fb5c0ca9a9034f5cb1c54e3ec9dbc9cd2fb934459f31946ce50d8384f",
+    "bytes": 827,
+    "coverage": "inventory + text/static scan",
+    "lines": 27,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/ApiKeysPage.jsx",
+    "sha256": "5946335886b8d304d3137565135be20f8e09f9050c1a132a3d73ddc411564845",
+    "bytes": 23465,
+    "coverage": "inventory + text/static scan",
+    "lines": 578,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/BillingPage.jsx",
+    "sha256": "becfff091d3c37888640af82b7a0ffb6874f05bde25352ddcfdb35ce634e8c52",
+    "bytes": 12833,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 280,
+    "finding_ids": [
+      "F79"
+    ]
+  },
+  {
+    "path": "src/pages/CreatePage.jsx",
+    "sha256": "795f6ffc3be9ad07c16e6bb5f69b06d73f3a2c7879228c34bf4742099d3f0b63",
+    "bytes": 39271,
+    "coverage": "inventory + text/static scan",
+    "lines": 795,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/DashboardPage.jsx",
+    "sha256": "2bc6803cf75062aa6713d5b62783523983505c3a3155deae0543727e04bfbbbf",
+    "bytes": 31806,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 641,
+    "finding_ids": [
+      "F56"
+    ]
+  },
+  {
+    "path": "src/pages/DiscoverPage.jsx",
+    "sha256": "6b96851bbf4a24ba83b69ec24e61588dae85121eabd3c1aa748c294f7cc01b7e",
+    "bytes": 20164,
+    "coverage": "inventory + text/static scan",
+    "lines": 532,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/GuidePage.jsx",
+    "sha256": "4f4755f55a0b8026d78d404971793e1096ec7e041f48b062c45476efd0d4741c",
+    "bytes": 16245,
+    "coverage": "inventory + text/static scan",
+    "lines": 372,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/IntelligencePage.jsx",
+    "sha256": "bb64b6f8ec700d589fe71af226c2780e4f396eb53e066f64299f1099a031c31d",
+    "bytes": 57517,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 1098,
+    "finding_ids": [
+      "F41",
+      "F42",
+      "F44"
+    ]
+  },
+  {
+    "path": "src/pages/LandingPage.jsx",
+    "sha256": "c0c7c7f5f48df51cc9df12ffdf71fdc7e6fb115bd9101974cdb90da1fc95de30",
+    "bytes": 1647,
+    "coverage": "inventory + text/static scan",
+    "lines": 42,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/MonitorsPage.jsx",
+    "sha256": "0f7afd8386cc6c1e8df9c91ff7ea86385841dfe44ab11d588f9ed5c41e613550",
+    "bytes": 17631,
+    "coverage": "inventory + text/static scan",
+    "lines": 497,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/NotFoundPage.jsx",
+    "sha256": "855c12b456313204b88410b5cc25a33c4134c758b7e380d912b2b2d09fa363b2",
+    "bytes": 910,
+    "coverage": "inventory + text/static scan",
+    "lines": 27,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/NotificationsPage.jsx",
+    "sha256": "028aafbf307fdfebd99f8747159620a18b83f2a81431d2ac932ea95b2708b74f",
+    "bytes": 10462,
+    "coverage": "inventory + text/static scan",
+    "lines": 266,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/PendingLoopPage.jsx",
+    "sha256": "b522d2b14615deaab7bb585e7d150af8674740957dc5e520fa6a73b9930232eb",
+    "bytes": 1126,
+    "coverage": "inventory + text/static scan",
+    "lines": 35,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/PerformancePage.jsx",
+    "sha256": "be4a6efb28bb7634f030567e82c3ec48830eff6d5410e6c1b65d211660a7edc0",
+    "bytes": 25859,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 600,
+    "finding_ids": [
+      "F35",
+      "F57"
+    ]
+  },
+  {
+    "path": "src/pages/ProfileSettingsPage.jsx",
+    "sha256": "52fc24e348787672dc5aeb1d21729559271559938e567144e6c5e57160676896",
+    "bytes": 13218,
+    "coverage": "inventory + text/static scan",
+    "lines": 314,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/PublicPlaybookPage.jsx",
+    "sha256": "eb699a26628df36e99d6aa6a9abbf9022f4ea73ca54db7a37bb2c525891d7674",
+    "bytes": 16191,
+    "coverage": "inventory + text/static scan",
+    "lines": 328,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/PublicUpdatesPage.jsx",
+    "sha256": "d5e4eba22003316e83c6adb29cedb743a9f8adf88af90157d7d792e2b5c8f6d6",
+    "bytes": 14673,
+    "coverage": "inventory + text/static scan",
+    "lines": 393,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/ScoutLeadGenerationPage.jsx",
+    "sha256": "8aea8ac10576f58d60b210756205c641d3fd101ba673b5ee0f7a0983e524d3e6",
+    "bytes": 9122,
+    "coverage": "inventory + text/static scan",
+    "lines": 223,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/ScoutPage.jsx",
+    "sha256": "bb4b8dc3687f8f57b86fa2d85b77f5279dd54a4933aa34e82d23dacb3532fe2e",
+    "bytes": 27928,
+    "coverage": "inventory + text/static scan",
+    "lines": 616,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/SupportPage.jsx",
+    "sha256": "b4ec6db4173a2992d4a39f7e893b63d7958da491e25e7183d4f04457771f22c9",
+    "bytes": 13642,
+    "coverage": "inventory + text/static scan",
+    "lines": 303,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/SwipeFilesPage.jsx",
+    "sha256": "4be43b4ee76e195bc71a2d093d07c9f35d717cbed2321992db0c5b85ff8f1aaa",
+    "bytes": 19731,
+    "coverage": "inventory + text/static scan",
+    "lines": 493,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/TeamPage.jsx",
+    "sha256": "739458a510fc392187dd38ff8dfe1d333d209c9ed7b13c6e0f87c3156b5b0d98",
+    "bytes": 14595,
+    "coverage": "inventory + text/static scan",
+    "lines": 359,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/AdminPendingPage.jsx",
+    "sha256": "82b78deb0e2197481d6bb600a9c5209965e525c65b32c97c980e4e33b5a28392",
+    "bytes": 1282,
+    "coverage": "inventory + text/static scan",
+    "lines": 34,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/AuditLogPage.jsx",
+    "sha256": "909502733b3ca357fbcde5a04371c26f0bbed901c34d4b7bc21375882ef1c64a",
+    "bytes": 14391,
+    "coverage": "inventory + text/static scan",
+    "lines": 316,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/DataSourcesPage.jsx",
+    "sha256": "0c9309d07a3c58cba47ddb8c8f6ca676725df7b2f92de4cfcadd8052d9192dcf",
+    "bytes": 14245,
+    "coverage": "inventory + text/static scan",
+    "lines": 341,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/FeatureFlagsPage.jsx",
+    "sha256": "65cfd5921bb774170f80237616b9e3e607aa8ca52963a5557f5134fa1235d354",
+    "bytes": 6181,
+    "coverage": "inventory + text/static scan",
+    "lines": 158,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/OrganizationsPage.jsx",
+    "sha256": "fbe532a06b0b754889ce2153fea3ec31537d3f5f83cb32584e8bb2313ae39eb6",
+    "bytes": 18197,
+    "coverage": "inventory + text/static scan",
+    "lines": 433,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/OverviewPage.jsx",
+    "sha256": "99e69d485a4ad5d2bf1d25476f6451f3b88d1888f104093885484f3d5730b4e9",
+    "bytes": 5570,
+    "coverage": "inventory + text/static scan",
+    "lines": 158,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/ScrapeJobsPage.jsx",
+    "sha256": "eeb77b69375f7f9ef0d1ec3e4b7b919ca42eef2129e637592034f2843a0df6d6",
+    "bytes": 14870,
+    "coverage": "inventory + text/static scan",
+    "lines": 319,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/SubscriptionsPlansPage.jsx",
+    "sha256": "c7bb9087c8000a176026727e0c77ac8f42e268038b9743e3848c2c6e26a0592c",
+    "bytes": 21036,
+    "coverage": "inventory + text/static scan",
+    "lines": 504,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/SupportAdminPage.jsx",
+    "sha256": "4e6a23c8712d692a38ecd3ff4d919c90c2145a8b41034de580e5325005606498",
+    "bytes": 13181,
+    "coverage": "inventory + text/static scan",
+    "lines": 289,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/SystemHealthPage.jsx",
+    "sha256": "36d3d8a8b0e07baf2006c2655af56f1cdda2fb2bb580a4a083117f99afcf0cdc",
+    "bytes": 8048,
+    "coverage": "inventory + text/static scan",
+    "lines": 187,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/UpdatesPage.jsx",
+    "sha256": "8a50b6e02c1b9de9349ac4b7ea8b006db06eb2a219607f62d95b38b8e6c60e69",
+    "bytes": 30098,
+    "coverage": "inventory + text/static scan",
+    "lines": 713,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/UsagePage.jsx",
+    "sha256": "129372156d45286cedb718f13e7295bf6089f3df4798c069190af93e94bf9d0a",
+    "bytes": 9870,
+    "coverage": "inventory + text/static scan",
+    "lines": 227,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/admin/UsersPage.jsx",
+    "sha256": "e492f77f5af8241ee7732213abbdd4ef3206966d1afb03ba14c7ee6cf49171a9",
+    "bytes": 17755,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 422,
+    "finding_ids": [
+      "F51"
+    ]
+  },
+  {
+    "path": "src/pages/auth/ForgotPasswordPage.jsx",
+    "sha256": "3e10a2e1033338a0c1a23c124461055d2efa11cdd0799c498230449d02064393",
+    "bytes": 6897,
+    "coverage": "inventory + text/static scan",
+    "lines": 210,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/auth/ResetPasswordPage.jsx",
+    "sha256": "643d2dcb9e44b1f8fd33cc213ba87a10078222575656f50b394bd551b6918709",
+    "bytes": 5799,
+    "coverage": "inventory + text/static scan",
+    "lines": 179,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/auth/SignInPage.jsx",
+    "sha256": "6528ce5a3274fea720c7e11397f687e49ddd80051973c1383eecb445cdc9c94c",
+    "bytes": 7408,
+    "coverage": "inventory + text/static scan",
+    "lines": 215,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/auth/SignUpPage.jsx",
+    "sha256": "0ec335b7eae7f26a9c5f3770159016cca5c3b742ffabeaaaf9c14f7cd53bcbba",
+    "bytes": 10764,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 301,
+    "finding_ids": [
+      "F71"
+    ]
+  },
+  {
+    "path": "src/pages/docs/DocsDetailPage.jsx",
+    "sha256": "24800a6f4d6ea6254924f3381640c0a8f947c5d8f18cad049ea8e6d0e6fb0b6a",
+    "bytes": 1899,
+    "coverage": "inventory + text/static scan",
+    "lines": 53,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/docs/DocsHomePage.jsx",
+    "sha256": "0f76ebb168ef61b99da00e4abb0838a149ccc9d45206163479f3fb74d2d0893f",
+    "bytes": 21703,
+    "coverage": "inventory + text/static scan",
+    "lines": 393,
+    "finding_ids": []
+  },
+  {
+    "path": "src/pages/docs/ScoutCliDocsPage.jsx",
+    "sha256": "a12a85a6b1286e716fdde6bc72af2f3abfc8628713a6fd068adcf947d8e2ed70",
+    "bytes": 3975,
+    "coverage": "inventory + text/static scan",
+    "lines": 85,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/accountService.api.js",
+    "sha256": "66d725b0cba0856e6790d9a2c214298fc65f5fa75779dde0999356aa5fd3b3e3",
+    "bytes": 1599,
+    "coverage": "inventory + text/static scan",
+    "lines": 83,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/adminService.api.js",
+    "sha256": "3230016f89cdf7bde8d942d2acbaf042b62f3412e4087b6dc9bb21f5c2c62f16",
+    "bytes": 3859,
+    "coverage": "inventory + text/static scan",
+    "lines": 158,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/analysisService.api.js",
+    "sha256": "4e13d77b5ee6573c332d06b1d684046b29ae266dfe7cb4a779f2688399ff3ac9",
+    "bytes": 995,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 34,
+    "finding_ids": [
+      "F22"
+    ]
+  },
+  {
+    "path": "src/services/api/authService.api.js",
+    "sha256": "aac64a21f760df5171f1aa984119760fa78054dcc17b2649184a5272fce81d74",
+    "bytes": 6547,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 230,
+    "finding_ids": [
+      "F12",
+      "F76"
+    ]
+  },
+  {
+    "path": "src/services/api/creativeService.api.js",
+    "sha256": "e15ade7882e452a7c549d5336db168bd8584ae4240bc9c7db6945c0ba3832ebe",
+    "bytes": 2200,
+    "coverage": "inventory + text/static scan",
+    "lines": 80,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/dashboardService.api.js",
+    "sha256": "eeb5c8e68c0b7d8d3b68e29af00c33b798252d4126a5574ffa3d0f89c3181231",
+    "bytes": 175,
+    "coverage": "inventory + text/static scan",
+    "lines": 9,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/discoverService.api.js",
+    "sha256": "ff9de94dc7a97ae459b5f7c3332a463a63996e2e50f7d81aca212466d3ab4f9f",
+    "bytes": 1228,
+    "coverage": "inventory + text/static scan",
+    "lines": 41,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/leadgen.js",
+    "sha256": "e03a7b96b963d933cfb44bcf42e53ecd4e1237c8e5ff36870c3511b5a390b855",
+    "bytes": 2621,
+    "coverage": "inventory + text/static scan",
+    "lines": 82,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/mapsScoutService.api.js",
+    "sha256": "467b6bc91cc29fad6e5bf85cb943442226e7d00f89a610522eb42b5f860b1bc5",
+    "bytes": 1647,
+    "coverage": "inventory + text/static scan",
+    "lines": 61,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/mediaService.api.js",
+    "sha256": "0947fc2019b9c69e660531b6e122500a4caa09aa528f52a601715f93482a9fdb",
+    "bytes": 1456,
+    "coverage": "inventory + text/static scan",
+    "lines": 53,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/monitorService.api.js",
+    "sha256": "d9f4e604d7ccbcc0567e603523355cf9465b1cc880b74eedea43bbd57f5175ac",
+    "bytes": 879,
+    "coverage": "inventory + text/static scan",
+    "lines": 42,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/notificationService.api.js",
+    "sha256": "b2ffa0e0b627048c5834b655919a379dc72818518718e97388dd2e75f39aa34a",
+    "bytes": 400,
+    "coverage": "inventory + text/static scan",
+    "lines": 21,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/playbookService.api.js",
+    "sha256": "9008332085baa91f7ed28a3d23ed8a53d27711d51dc47477c51af5416afa085d",
+    "bytes": 562,
+    "coverage": "inventory + text/static scan",
+    "lines": 25,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/scoutService.api.js",
+    "sha256": "6e17f18efed8ff208b08450ca3fa03f75e47cff16b6b07eeecbda5a840ccb838",
+    "bytes": 1899,
+    "coverage": "inventory + text/static scan",
+    "lines": 73,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/simulationService.api.js",
+    "sha256": "f1c12f28196b74f77c0293bbcd7b4ba43260bfa67c5404b3f37c627b115d38fd",
+    "bytes": 655,
+    "coverage": "inventory + text/static scan",
+    "lines": 23,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/supportService.api.js",
+    "sha256": "50cf5931292df99589dca13a6b649b133cf412638b767b760184d17b1af5a15e",
+    "bytes": 626,
+    "coverage": "inventory + text/static scan",
+    "lines": 31,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/api/updatesService.api.js",
+    "sha256": "bf4c478aca8468c90d45d167f5d4bb3f1b10c3bae8c43ef82e7793c8970253d3",
+    "bytes": 1133,
+    "coverage": "inventory + text/static scan",
+    "lines": 62,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/config.js",
+    "sha256": "6e31cc8c8b0ed898faa210c73e8756011b9d2c544e598d8ee50c88d6b31acf33",
+    "bytes": 1148,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 33,
+    "finding_ids": [
+      "F68",
+      "F75"
+    ]
+  },
+  {
+    "path": "src/services/contracts.js",
+    "sha256": "78630970eee5947fd985d8e00a7aa42d8d3aa40728d7642a4845638c350200f3",
+    "bytes": 14042,
+    "coverage": "inventory + text/static scan",
+    "lines": 397,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/http.js",
+    "sha256": "878fa5ea8b5333e1dd08e9a3b37bceb7c93ff4b96d59b74458af6443b0e14c7b",
+    "bytes": 6151,
+    "coverage": "semantic finding trace + text/static scan",
+    "lines": 189,
+    "finding_ids": [
+      "F10",
+      "F51",
+      "F57"
+    ]
+  },
+  {
+    "path": "src/services/index.js",
+    "sha256": "174f857cf25c60183b2ad97d471140b1ad364bc047021341429f8da09c8d2552",
+    "bytes": 3064,
+    "coverage": "inventory + text/static scan",
+    "lines": 62,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/accountService.mock.js",
+    "sha256": "beceb4aa08f093270267aad8fc31445726c04d1f822b20cf3690460fc3d10401",
+    "bytes": 2374,
+    "coverage": "inventory + text/static scan",
+    "lines": 75,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/adminService.mock.js",
+    "sha256": "3222442ea7bf4d1d92e7324ce7501b212084d64c04f34489f7aa742917d3646b",
+    "bytes": 9712,
+    "coverage": "inventory + text/static scan",
+    "lines": 292,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/analysisService.mock.js",
+    "sha256": "9b14e60386d880d0d0bc2f7e9ada027e03cea2218729afe309310bc88c82a9d1",
+    "bytes": 1210,
+    "coverage": "inventory + text/static scan",
+    "lines": 45,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/authService.mock.js",
+    "sha256": "b054f0819c20516a9a14f4a2f4e690cc3689cf4c837178ff64a5b79b99b4f699",
+    "bytes": 5976,
+    "coverage": "inventory + text/static scan",
+    "lines": 203,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/creativeService.mock.js",
+    "sha256": "c3b3ee54efd64b7be7337eef56ba50bf1a1a20d6c58ccb8f8d2d2bbbdb8d8534",
+    "bytes": 2982,
+    "coverage": "inventory + text/static scan",
+    "lines": 118,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/dashboardService.mock.js",
+    "sha256": "4e630890f706ae7c43b17b4366a28d4ac34e2aa1ffa7132004156dba34267a71",
+    "bytes": 211,
+    "coverage": "inventory + text/static scan",
+    "lines": 12,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/discoverService.mock.js",
+    "sha256": "db916b625e22f4a47b9b413ce86871543e8aa8916c78106ff64317a9b701eafd",
+    "bytes": 10071,
+    "coverage": "inventory + text/static scan",
+    "lines": 320,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/latency.js",
+    "sha256": "f4a2d094787e13f46e0d93aba58465758c60983b57be4edb50e0e4b633e48bd5",
+    "bytes": 885,
+    "coverage": "inventory + text/static scan",
+    "lines": 26,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/mapsScoutService.mock.js",
+    "sha256": "7f4552dbbea0ea7363561f395518823f8fcaa1903edfafae0cf9ea01dd24415d",
+    "bytes": 6735,
+    "coverage": "inventory + text/static scan",
+    "lines": 206,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/mediaService.mock.js",
+    "sha256": "3312a04b460f758e0dec2c53b805cfcb03e5eb286ae56f69a7375127e54b00cd",
+    "bytes": 2594,
+    "coverage": "inventory + text/static scan",
+    "lines": 95,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/notificationService.mock.js",
+    "sha256": "776399ba847aa8542f08badd64bc41754a2303d3b2f9bcdf6257669b761f3814",
+    "bytes": 656,
+    "coverage": "inventory + text/static scan",
+    "lines": 32,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/scoutService.mock.js",
+    "sha256": "2ded6a38508b0622bf69549775de981033c93e0353d46b8f221e98ee87e69cb7",
+    "bytes": 7129,
+    "coverage": "inventory + text/static scan",
+    "lines": 221,
+    "finding_ids": []
+  },
+  {
+    "path": "src/services/mock/simulationService.mock.js",
+    "sha256": "bb604612cf8c4be572462a483702f5545a0a3123bdeceb68f569b9769ae372d0",
+    "bytes": 4407,
+    "coverage": "inventory + text/static scan",
+    "lines": 117,
+    "finding_ids": []
+  },
+  {
+    "path": "src/styles/globals.css",
+    "sha256": "22da813645b8294b1c44efba16b21b920dc02f051915762dace429ff150d7029",
+    "bytes": 6523,
+    "coverage": "inventory + text/static scan",
+    "lines": 266,
+    "finding_ids": []
+  },
+  {
+    "path": "test_cors.py",
+    "sha256": "6546710c845a46936d2c3e163e26ba2de8dfd36db70d53b20932537ddac91bbc",
+    "bytes": 680,
+    "coverage": "inventory + text/static scan",
+    "lines": 19,
+    "finding_ids": []
+  },
+  {
+    "path": "test_render.py",
+    "sha256": "f84d419ac45726b8e6eedd5cb9030048efd918b8b2146b3d03b93d796e0fe4a1",
+    "bytes": 2466,
+    "coverage": "inventory + text/static scan",
+    "lines": 67,
+    "finding_ids": []
+  },
+  {
+    "path": "updates.md",
+    "sha256": "5e65b185259dcfba098f0a8c7a3280a1d637803f95e9683e6b06dc242378f20a",
+    "bytes": 7721,
+    "coverage": "inventory + text/static scan",
+    "lines": 145,
+    "finding_ids": []
+  },
+  {
+    "path": "vercel.json",
+    "sha256": "c7f52b3d639a10c8073e87734c5e2900e208d17dcd82b41bb041c0607f607720",
+    "bytes": 600,
+    "coverage": "inventory + text/static scan",
+    "lines": 32,
+    "finding_ids": []
+  },
+  {
+    "path": "vite.config.js",
+    "sha256": "776ee0a1603ff72f5e749cbf36428a15dc6b6a9c9531fc142731c873528928fa",
+    "bytes": 596,
+    "coverage": "inventory + text/static scan",
+    "lines": 28,
+    "finding_ids": []
+  }
+]

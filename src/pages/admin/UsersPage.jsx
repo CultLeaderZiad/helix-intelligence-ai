@@ -122,7 +122,9 @@ export function UsersPage() {
     try {
       const res = await adminService.impersonateUser(impersonateTargetUser.id)
       if (res?.access_token) {
+        localStorage.setItem("helix_access_token", res.access_token)
         localStorage.setItem("helix_auth_token", res.access_token)
+        localStorage.removeItem("helix_cached_user")
         showToast(`Impersonating ${impersonateTargetUser.email}... Redirecting to Discovery.`)
         setTimeout(() => {
           window.location.href = "/discover"

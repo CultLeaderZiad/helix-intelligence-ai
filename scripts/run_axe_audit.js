@@ -71,6 +71,8 @@ const ROUTES = [
   { name: "Docs Overview (/docs)", path: "/docs", auth: false },
   { name: "Docs Detail (/docs/user-guide/quickstart-account-and-trial)", path: "/docs/user-guide/quickstart-account-and-trial", auth: false },
   { name: "Public Playbook (/public-playbook)", path: "/public-playbook", auth: false },
+  { name: "Privacy Policy (/privacy)", path: "/privacy", auth: false },
+  { name: "Terms of Service (/terms)", path: "/terms", auth: false },
   { name: "Discover (/discover)", path: "/discover", auth: true },
   { name: "Intelligence (/intelligence)", path: "/intelligence", auth: true },
   { name: "Create Studio (/create)", path: "/create", auth: true },

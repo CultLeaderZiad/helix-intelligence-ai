@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
@@ -13,27 +13,27 @@ from app.schemas.admin import (
     AdminUsageLogsFilterResponse
 )
 from app.services import admin_service, support_service
-from app.core.deps import get_db, get_current_admin, get_current_full_admin
+from app.core.deps import get_db, get_current_full_admin, require_admin_permission
 from app.models.user import User
 
 router = APIRouter()
 
 # --- System & Overview ---
 @router.get("/overview/stats", response_model=AdminOverviewStats)
-async def get_overview(db: AsyncSession = Depends(get_db), current_admin: User = Depends(get_current_admin)):
+async def get_overview(db: AsyncSession = Depends(get_db), current_admin: User = Depends(require_admin_permission("overview"))):
     return await admin_service.get_overview(db)
 
 @router.get("/jobs", response_model=List[AdminJobRow])
-async def list_jobs(db: AsyncSession = Depends(get_db), current_admin: User = Depends(get_current_admin)):
+async def list_jobs(db: AsyncSession = Depends(get_db), current_admin: User = Depends(require_admin_permission("jobs"))):
     return await admin_service.list_jobs(db)
 
 @router.get("/system/health", response_model=AdminSystemHealth)
-async def get_health(db: AsyncSession = Depends(get_db), current_admin: User = Depends(get_current_admin)):
+async def get_health(db: AsyncSession = Depends(get_db), current_admin: User = Depends(require_admin_permission("system"))):
     return await admin_service.get_health(db)
 
 # --- Plans Management ---
 @router.get("/plans", response_model=List[PlanSchema])
-async def list_plans(db: AsyncSession = Depends(get_db), current_admin: User = Depends(get_current_admin)):
+async def list_plans(db: AsyncSession = Depends(get_db), current_admin: User = Depends(require_admin_permission("plans"))):
     return await admin_service.list_plans(db)
 
 @router.post("/plans", response_model=PlanSchema)
@@ -63,7 +63,7 @@ async def delete_plan(
 
 # --- Organizations & Quota Controls ---
 @router.get("/organizations", response_model=List[AdminOrganizationRow])
-async def list_organizations(db: AsyncSession = Depends(get_db), current_admin: User = Depends(get_current_admin)):
+async def list_organizations(db: AsyncSession = Depends(get_db), current_admin: User = Depends(require_admin_permission("organizations"))):
     return await admin_service.list_organizations(db)
 
 @router.post("/organizations/{org_id}/grant-credits")
@@ -95,7 +95,7 @@ async def update_feature_flags(
 
 # --- Usage & Provider Cost Breakdown ---
 @router.get("/usage", response_model=AdminUsageSummary)
-async def get_usage_summary(db: AsyncSession = Depends(get_db), current_admin: User = Depends(get_current_admin)):
+async def get_usage_summary(db: AsyncSession = Depends(get_db), current_admin: User = Depends(require_admin_permission("usage"))):
     return await admin_service.get_usage_summary(db)
 
 @router.get("/usage/logs", response_model=AdminUsageLogsFilterResponse)
@@ -107,7 +107,7 @@ async def get_usage_logs_filtered(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_admin: User = Depends(require_admin_permission("usage"))
 ):
     return await admin_service.get_usage_logs_filtered(
         db=db,
@@ -121,7 +121,7 @@ async def get_usage_logs_filtered(
 
 # --- User Management & Impersonation ---
 @router.get("/users", response_model=List[AdminUserRow])
-async def list_users(db: AsyncSession = Depends(get_db), current_admin: User = Depends(get_current_admin)):
+async def list_users(db: AsyncSession = Depends(get_db), current_admin: User = Depends(require_admin_permission("users"))):
     return await admin_service.list_users(db)
 
 @router.post("/users/{user_id}/status", response_model=Dict[str, Any])
@@ -200,7 +200,7 @@ async def list_admin_tickets(
     status: Optional[str] = Query(None),
     type: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_admin: User = Depends(require_admin_permission("support"))
 ):
     return await support_service.list_admin_tickets(db, status_filter=status, type_filter=type)
 
@@ -212,7 +212,7 @@ async def reply_admin_ticket(
     ticket_id: str,
     body: TicketReplyBody,
     db: AsyncSession = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_admin: User = Depends(require_admin_permission("support"))
 ):
     return await support_service.add_reply(db, ticket_id, current_admin, body.message)
 
@@ -224,6 +224,6 @@ async def update_admin_ticket_status(
     ticket_id: str,
     body: TicketStatusBody,
     db: AsyncSession = Depends(get_db),
-    current_admin: User = Depends(get_current_admin)
+    current_admin: User = Depends(require_admin_permission("support"))
 ):
     return await support_service.update_ticket_status(db, ticket_id, body.status)

@@ -267,11 +267,11 @@ async def trigger_search(
         elapsed_ms=100,
         record_count=0
     )
-    db.add(new_job)
     try:
-        await db.commit()
+        async with db.begin_nested():
+            db.add(new_job)
+            await db.flush()
     except IntegrityError:
-        await db.rollback()
         winner_result = await db.execute(
             select(ScrapeJob)
             .where(ScrapeJob.org_id == org_id)
@@ -293,7 +293,6 @@ async def trigger_search(
                 "message": "A search for this query is already in progress or was just completed. Please retry in a moment.",
             },
         )
-    await db.refresh(new_job)
 
     # 5. Upfront Base Charge (2.0 Credits)
     await charge(
@@ -481,8 +480,39 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
         provider_used = ad_lib_provider.last_provider_used
         sources_tried = ad_lib_provider.sources_tried
             
-        # Zero Results Handling (Honest reporting with Entity Intelligence)
+        # Zero Results vs Provider Outage Handling (F29)
         if not raw_creatives:
+            if getattr(ad_lib_provider, "provider_outage", False):
+                async with async_session_maker() as db:
+                    result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
+                    job = result.scalar_one_or_none()
+                    if job:
+                        sources_str = ", ".join(sources_tried) if sources_tried else "all providers"
+                        job.status = "failed"
+                        job.failure_kind = "provider_outage"
+                        job.error_msg = f"All ad discovery providers are temporarily unavailable or unconfigured: [{sources_str}]"
+                        job.stage = "failed"
+                        job.stage_label = "Provider Outage"
+                        job.progress = 1.0
+                        job.record_count = 0
+                        job.elapsed_ms = int((time.time() - start_time) * 1000)
+                        job.completed_at = _utcnow()
+                        await db.commit()
+
+                    # Refund base search charge
+                    org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+                    if org:
+                        await refund(
+                            db=db,
+                            org=org,
+                            user_id=user_id,
+                            amount=DISCOVER_SEARCH_CREDIT_COST,
+                            reason="provider_outage",
+                            job_id=job_id,
+                            metadata={"sources_tried": sources_tried, "query": query}
+                        )
+                return
+
             async with async_session_maker() as db:
                 result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
                 job = result.scalar_one_or_none()

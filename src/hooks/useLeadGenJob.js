@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { leadgenService } from "@/services"
 
 /**
@@ -52,8 +52,9 @@ export function useLeadGenJob() {
       setLeads(items)
       setSelectedLead((prev) => items.find((l) => l.id === prev?.id) || items[0] || null)
       return items
-    } catch {
-      return []
+    } catch (err) {
+      setError(err?.message || "Failed to load generated leads")
+      throw err
     }
   }, [])
 
@@ -67,18 +68,29 @@ export function useLeadGenJob() {
 
           if (updated.status === "succeeded") {
             stopPolling()
-            await fetchLeads(jobId)
-            setPhase(LEADGEN_PHASE.READY)
+            try {
+              await fetchLeads(jobId)
+              setPhase(LEADGEN_PHASE.READY)
+            } catch (err) {
+              setError(err?.message || "Job succeeded but failed to load generated leads")
+              setPhase(LEADGEN_PHASE.FAILED)
+            }
             setIsBusy(false)
           } else if (updated.status === "failed") {
             stopPolling()
             setError(updated.error_msg || "Lead Generation job failed")
-            await fetchLeads(jobId) // partial leads + honest failure logs stay visible
+            try {
+              await fetchLeads(jobId) // partial leads + honest failure logs stay visible
+            } catch {
+              // ignore partial lead fetch failure if main job already failed
+            }
             setPhase(LEADGEN_PHASE.FAILED)
             setIsBusy(false)
           } else {
             // queued | running | paused - refresh leads so far (real rows only)
-            if ((updated.leads_count || 0) > 0) fetchLeads(jobId)
+            if ((updated.leads_count || 0) > 0) {
+              fetchLeads(jobId).catch(() => {})
+            }
             if (updated.status === "paused" && pollTimerRef.current) {
               clearInterval(pollTimerRef.current)
               pollTimerRef.current = setInterval(tick, PAUSED_POLL_MS)

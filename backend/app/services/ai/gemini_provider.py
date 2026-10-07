@@ -85,6 +85,8 @@ class GeminiProvider(AIProvider):
         reference_images: Optional[List[str]] = None,
         aspect_ratio: str = "1:1",
         image_size: Optional[str] = None,
+        seed: Optional[int] = None,
+        **kwargs: Any,
     ) -> Dict[str, Any]:
         """
         Generate image using Google's official Gemini/Imagen API.

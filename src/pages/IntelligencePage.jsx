@@ -344,36 +344,8 @@ export function IntelligencePage() {
         setInsights((prev) => ({ ...prev, [selectedCreativeId]: result }))
       }
     } catch (err) {
-      console.warn("Server insight generation warning:", err)
-      // Resilient Client Fallback: Build calibrated teardown directly so the user is never blocked by network glitch
-      const c = selectedCreative || creatives.find((x) => x.id === selectedCreativeId)
-      if (c) {
-        const headline = (c.headline || "").trim()
-        const body = (c.body || "").trim()
-        const cta = (c.cta || "Shop Now").trim()
-        const days = c.days_active || 1
-        const sentences = body.replace(/\n/g, ". ").split(".").map((s) => s.trim()).filter((s) => s.length > 8)
-
-        const hook_preview = headline || (sentences[0] || "Pattern Interrupt Hook")
-        const problem_preview = sentences[1] || "Core customer frustration or misconception"
-        const solution_preview = sentences[2] || "Unique mechanism and transformation promise"
-        const durability_tier = days >= 14 ? "High Durability Evergreen" : "Active Testing Phase"
-
-        const fallbackInsight = {
-          id: `insight_${Date.now()}`,
-          creative_id: selectedCreativeId,
-          kind: "opportunity",
-          title: `Contrarian Paradigm Shift (${durability_tier})`,
-          summary: `Hooks viewers by challenging conventional assumptions ("${hook_preview.slice(0, 70)}..."), isolating the root cause before presenting the proprietary solution.`,
-          confidence: 0.94,
-          emotional_resonance: "Taps into frustration and skepticism reversal. By declaring that the audience's prior failures were not their fault, it disarms defensive resistance and establishes instant trust.",
-          script_teardown: `• [0-3s Hook / Disruption]: ${hook_preview}\n• [3-12s Agitation / Pivot]: Challenges common beliefs: "${problem_preview}". Validates audience frustration.\n• [12-24s Mechanism / Proof]: Introduces unique mechanism: "${solution_preview}". Establishes authority credentials.\n• [24s+ Conversion Direct]: Friction-free call to action with risk-reversal guarantee: "${cta}".`,
-          fatigue_prediction: `Active for ${days} days on ${c.platform || "Meta"}. Sustained runtime demonstrates proven unit economics. Recommended iteration: test 3 new 0-3s visual hooks while keeping this proven core offer script intact.`
-        }
-        setInsights((prev) => ({ ...prev, [selectedCreativeId]: fallbackInsight }))
-      } else {
-        setAnalysisError(err?.message || "Analysis is temporarily unavailable. Please try again.")
-      }
+      console.error("Server insight generation failed:", err)
+      setAnalysisError(err?.message || "Analysis is temporarily unavailable. Please try again.")
     } finally {
       setGeneratingInsight(false)
     }
@@ -404,7 +376,7 @@ export function IntelligencePage() {
       const res = await playbookService.compilePlaybook({
         brand_name: brand,
         query: brand,
-        job_id: latestSearch?.job_id || null
+        job_id: latestSearch?.job_id || latestSearch?.jobId || null
       })
       if (res?.public_id) {
         navigate(`/playbook/${res.public_id}`)

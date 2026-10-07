@@ -15,7 +15,7 @@ const analysisService = {
   generateInsight(creativeId, { byok_key = null, byok_provider = null } = {}) {
     return request(`/creatives/${creativeId}/generate-insights`, {
       method: "POST",
-      params: { byok_key, byok_provider },
+      body: { byok_key, byok_provider },
     })
   },
 
@@ -26,7 +26,7 @@ const analysisService = {
   generatePatterns({ byok_key = null, byok_provider = null } = {}) {
     return request("/patterns/generate", {
       method: "POST",
-      params: { byok_key, byok_provider },
+      body: { byok_key, byok_provider },
     })
   },
 }
