@@ -182,12 +182,31 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
                         **video_kwargs
                     )
             else:
-                gen_result = await provider_instance.generate_image(
-                    prompt=job.prompt,
-                    reference_images=reference_images,
-                    aspect_ratio=aspect_ratio,
-                    seed=params.get("seed"),
-                )
+                try:
+                    gen_result = await provider_instance.generate_image(
+                        prompt=job.prompt,
+                        reference_images=reference_images,
+                        aspect_ratio=aspect_ratio,
+                        seed=params.get("seed"),
+                    )
+                except Exception as img_err:
+                    err_str = str(img_err).lower()
+                    from app.services.ai.pollinations_provider import PollinationsProvider
+                    if ("quota" in err_str or "rate limit" in err_str or "429" in err_str or "resourceexhausted" in err_str) and not isinstance(provider_instance, PollinationsProvider):
+                        logger.warning(
+                            "Primary image provider failed due to quota/rate limit: %s. Transparently falling back to Pollinations FLUX.",
+                            img_err
+                        )
+                        fallback_provider = PollinationsProvider()
+                        gen_result = await fallback_provider.generate_image(
+                            prompt=job.prompt,
+                            reference_images=reference_images,
+                            aspect_ratio=aspect_ratio,
+                            seed=params.get("seed"),
+                            model="flux",
+                        )
+                    else:
+                        raise
 
             # Store binary media
             media_bytes = gen_result.get("data")

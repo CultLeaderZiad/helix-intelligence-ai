@@ -73,13 +73,14 @@ class PollinationsProvider:
             width, height = 1024, 1024
             
         seed = kwargs.get("seed") or random.randint(1, 1000000000)
+        model = kwargs.get("model") or "flux"
 
         headers = {}
         if settings.POLLINATIONS_API_KEY:
-            url = f"https://gen.pollinations.ai/image/{encoded_prompt}?width={width}&height={height}&seed={seed}&nologo=true"
+            url = f"https://gen.pollinations.ai/image/{encoded_prompt}?model={model}&width={width}&height={height}&seed={seed}&nologo=true"
             headers["Authorization"] = f"Bearer {settings.POLLINATIONS_API_KEY}"
         else:
-            url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width={width}&height={height}&seed={seed}&nologo=true&nofeed=true"
+            url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?model={model}&width={width}&height={height}&seed={seed}&nologo=true&nofeed=true"
         
         if reference_images and len(reference_images) > 0:
             first_ref = str(reference_images[0])
