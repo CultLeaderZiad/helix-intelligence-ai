@@ -192,7 +192,7 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
                 except Exception as img_err:
                     err_str = str(img_err).lower()
                     from app.services.ai.pollinations_provider import PollinationsProvider
-                    if ("quota" in err_str or "rate limit" in err_str or "429" in err_str or "resourceexhausted" in err_str) and not isinstance(provider_instance, PollinationsProvider):
+                    if ("quota" in err_str or "rate limit" in err_str or "429" in err_str or "resourceexhausted" in err_str or "unavailable" in err_str or "503" in err_str) and not isinstance(provider_instance, PollinationsProvider):
                         logger.warning(
                             "Primary image provider failed due to quota/rate limit: %s. Transparently falling back to Pollinations FLUX.",
                             img_err
@@ -244,13 +244,20 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             job.status = "failed"
             job.failure_kind = "error"
             err_msg = str(e)
+            err_str = err_msg.lower()
             
             if credential_mode == "byok":
                 # Explicit error for customer BYOK key — NO SILENT FALLBACK
                 job.error_message = "Your connected Gemini account is unavailable. Check your API key or Google quota."
-            elif "provider_rate_limited" in err_msg or "429" in err_msg:
-                job.error_message = "Gemini provider is currently rate-limited. Please try again shortly."
-            elif "API key" in err_msg:
+            elif "quota" in err_str or "resourceexhausted" in err_str:
+                job.error_message = "Gemini API quota exceeded. Please check your Google AI Studio quota or configure a custom API key in Settings."
+            elif "provider_rate_limited" in err_str or "429" in err_str or "rate limit" in err_str:
+                job.error_message = "Image generation provider is currently rate-limited. Please wait a moment and retry."
+            elif "404" in err_str:
+                job.error_message = "Image generation model is temporarily unavailable. Please retry shortly."
+            elif "402" in err_str or "payment" in err_str or "demand" in err_str or "insufficient pollen" in err_str:
+                job.error_message = "Generation service is experiencing peak demand. Please retry shortly or configure a custom Gemini key."
+            elif "api key" in err_str or "unauthorized" in err_str:
                 job.error_message = "Gemini API key is invalid or unauthorized."
             else:
                 import re
