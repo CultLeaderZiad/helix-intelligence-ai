@@ -28,12 +28,12 @@
     "commitHash": "fa81649"
   },
   "compliance/LEGAL_DOCS.md": {
-    "lastUpdated": "2026-10-01",
-    "commitHash": "local"
+    "lastUpdated": "2026-10-07",
+    "commitHash": "5749508"
   },
   "production-readiness/remediation-status.md": {
     "lastUpdated": "2026-10-07",
-    "commitHash": "local"
+    "commitHash": "5749508"
   },
   "user-guide/concept-audience-simulation.md": {
     "lastUpdated": "2026-09-14",
