@@ -28,6 +28,14 @@ class InviteMemberRequest(BaseModel):
 class AcceptInviteRequest(BaseModel):
     token: str
 
+class AccessRequestBody(BaseModel):
+    features: List[str]
+    note: Optional[str] = None
+    org_id: Optional[str] = None
+
+class WorkspaceSelectBody(BaseModel):
+    org_id: str
+
 class ProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
@@ -242,6 +250,78 @@ async def complete_onboarding(
     current_user.has_completed_onboarding = True
     await db.commit()
     return {"status": "ok"}
+
+@router.get("/access")
+async def get_access_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    org = await billing_service.get_or_create_default_org(db, current_user)
+    state = await billing_service.access_status_for_org(db, org.id)
+    state["org_id"] = org.id
+    state["org_name"] = org.name
+    return state
+
+
+@router.post("/access-requests")
+async def create_access_request(
+    body: AccessRequestBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    org_id = body.org_id
+    if not org_id:
+        org = await billing_service.get_or_create_default_org(db, current_user)
+        org_id = org.id
+    return await admin_service_submit(db, current_user, org_id, body.features, body.note)
+
+
+def admin_service_submit(db, user, org_id, features, note):
+    from app.services.admin_service import submit_access_request
+    return submit_access_request(db, user, org_id, features, note)
+
+
+@router.post("/access-grants")
+async def reject_self_grant(current_user: User = Depends(get_current_user)):
+    """Owners cannot grant themselves. Platform admins use the admin API."""
+    del current_user
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "code": "self_grant_denied",
+            "message": "Only a platform admin can grant workspace access.",
+        },
+    )
+
+
+@router.post("/workspace")
+async def select_workspace(
+    body: WorkspaceSelectBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.models.organization_member import OrganizationMember
+    from sqlalchemy import select as _select
+    org = (await db.execute(_select(Organization).where(Organization.id == body.org_id))).scalar_one_or_none()
+    if org is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    member = (
+        await db.execute(
+            _select(OrganizationMember).where(
+                OrganizationMember.org_id == org.id,
+                OrganizationMember.user_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if org.owner_id != current_user.id and member is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    metadata = dict(current_user.signup_metadata or {})
+    metadata["active_org_id"] = org.id
+    current_user.signup_metadata = metadata
+    await db.commit()
+    from app.api.routers.auth import build_session_response
+    return await build_session_response(db, current_user)
+
 
 @router.get("/billing")
 async def get_billing(

@@ -58,6 +58,97 @@ def _merged_flags(plan: Plan, org: Organization) -> Dict[str, Any]:
     return flags
 
 
+def is_platform_admin(user: User) -> bool:
+    """Platform admin is an explicit flag or the existing admin role.
+
+    Organization owners and assistant-admins are not platform admins.
+    There is no email allowlist.
+    """
+    return bool(getattr(user, "is_platform_admin", False)) or getattr(user, "role", None) == "admin"
+
+
+async def _latest_grant(db: AsyncSession, org_id: str):
+    from app.models.access_grant import OrganizationAccessGrant
+
+    return (
+        await db.execute(
+            select(OrganizationAccessGrant)
+            .where(OrganizationAccessGrant.org_id == org_id)
+            .order_by(OrganizationAccessGrant.granted_at.desc())
+        )
+    ).scalars().first()
+
+
+async def access_status_for_org(db: AsyncSession, org_id: str) -> Dict[str, Any]:
+    """Honest access state. No grant is pending, not approved."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    grant = await _latest_grant(db, org_id)
+    if grant is not None and grant.revoked_at is None:
+        expires = grant.expires_at
+        if expires is not None and expires.tzinfo is None:
+            expires = expires.replace(tzinfo=datetime.timezone.utc)
+        if expires is None or expires > now:
+            return {
+                "status": "approved",
+                "code": None,
+                "message": "Access is approved.",
+                "expires_at": expires.isoformat() if expires else None,
+                "granted_at": grant.granted_at.isoformat() if grant.granted_at else None,
+                "granted_by_user_id": grant.granted_by_user_id,
+                "feature_flags": grant.feature_flags or {},
+                "plan_id": grant.plan_id,
+            }
+        return {
+            "status": "expired",
+            "code": "access_expired",
+            "message": "Approved access has expired. Submit a new access request.",
+            "expires_at": expires.isoformat() if expires else None,
+        }
+    if grant is not None and grant.revoked_at is not None:
+        return {
+            "status": "revoked",
+            "code": "access_revoked",
+            "message": "Access was revoked. Workspace data is retained. Submit a new request if you still need access.",
+        }
+    from app.models.access_grant import AccessRequest
+
+    request_row = (
+        await db.execute(
+            select(AccessRequest)
+            .where(AccessRequest.org_id == org_id)
+            .order_by(AccessRequest.created_at.desc())
+        )
+    ).scalars().first()
+    if request_row is not None and request_row.status == "rejected":
+        return {
+            "status": "rejected",
+            "code": "access_rejected",
+            "message": "The latest access request was rejected.",
+        }
+    return {
+        "status": "pending",
+        "code": "access_pending_approval",
+        "message": "Access is pending approval by a platform admin.",
+    }
+
+
+async def _require_active_grant(db: AsyncSession, org: Organization, user: User):
+    """Platform admins operate without a workspace grant. Everyone else needs one."""
+    if is_platform_admin(user) and not getattr(user, "_scoped_org_id", None):
+        return None
+    state = await access_status_for_org(db, org.id)
+    if state["status"] != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": state["code"],
+                "message": state["message"],
+                "access_status": state["status"],
+            },
+        )
+    return await _latest_grant(db, org.id)
+
+
 def _explicit_limit(value, fallback: int) -> int:
     """None means 'use the documented fallback'. Zero is a real limit."""
     if value is None:
@@ -302,7 +393,7 @@ async def assert_can_spend(
     # API-key scope is applied by get_or_create_default_org before this bypass.
     scoped_org_id = getattr(user, "_scoped_org_id", None)
     # 0. Administrator bypass: unrestricted features, unlimited credits
-    if getattr(user, "role", None) == "admin" and not scoped_org_id:
+    if is_platform_admin(user) and not scoped_org_id:
         admin_plan = Plan(
             id="plan_admin",
             name="Helix Administrator",
@@ -318,6 +409,9 @@ async def assert_can_spend(
                 "swipe_files": True,
                 "team_accounts": True,
                 "public_api": True,
+                "scout": True,
+                "leadgen": True,
+                "monitors": True,
                 "ai_insights": True,
                 "create_media": True,
                 "deep_search": True,
@@ -364,21 +458,19 @@ async def assert_can_spend(
                 status_code=403,
                 detail={
                     "code": "trial_expired",
-                    "message": "Your 7-day free trial has expired. Upgrade your plan to continue using Helix Intelligence.",
+                    "message": "The trial window has ended. A platform admin has to approve access before this workspace can continue.",
                     "trial_expires_at": _format_iso(user.trial_expires_at),
                     "credit_balance": round(float(org.credit_balance), 2)
                 }
             )
 
-    # 3. Check Feature Flags. A missing flag is denied.
+    grant = await _require_active_grant(db, org, user)
+    # 3. Check Feature Flags. A missing or empty flag is denied.
     if feature_name:
         active_flags = _merged_flags(plan, org)
-        # An empty flag map has not declared a contract. Real seeded plans
-        # declare explicit flags, and a missing key on those maps is denied.
-        declared = bool(plan.feature_flags) or any(
-            not _is_secret_flag(key) for key in (org.custom_feature_flags or {})
-        )
-        if declared and active_flags.get(feature_name) is not True:
+        if grant is not None:
+            active_flags.update(grant.feature_flags or {})
+        if active_flags.get(feature_name) is not True:
             raise HTTPException(
                 status_code=403,
                 detail={
@@ -822,6 +914,7 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
         "credit_balance": round(float(org.credit_balance), 2),
         "credits_used": round(float(org.credits_used), 2),
         "status": org.status,
+        "access": await access_status_for_org(db, org.id),
         "subscription_lifecycle": "metered" if plan.type == "pay_as_you_go" else ("trial" if plan.type == "trial" else "admin_allocated"),
         "renews_at": None,
         "trial_expires_at": _format_iso(user.trial_expires_at),
@@ -991,6 +1084,7 @@ async def assert_can_generate_image(
                 "plan_id": org.plan_id,
             },
         )
+    await _require_active_grant(db, org, user)
     is_trial = (plan.type == "trial") or (org.plan == "trial")
 
     days_remaining = get_trial_days_remaining(user)

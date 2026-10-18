@@ -29,7 +29,7 @@ export function Sidebar({ onOpenCommand, className }) {
   }
 
   const flags = user?.feature_flags || {}
-  const showSwipeFiles = flags.swipe_files !== false
+  const showSwipeFiles = flags.swipe_files === true
   const showTeam = flags.team_accounts === true
   const showApiKeys = flags.public_api === true
 

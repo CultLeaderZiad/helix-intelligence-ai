@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { creativeService } from "@/services"
 import { useAuth } from "@/context/AuthContext"
 import { useSearchContext } from "@/context/SearchContext"
@@ -51,7 +52,7 @@ export function SwipeFilesPage() {
   const [isUploading, setIsUploading] = useState(false)
 
   // Check if swipe_files feature flag is enabled
-  const isFeatureEnabled = user?.feature_flags?.swipe_files !== false
+  const isFeatureEnabled = user?.feature_flags?.swipe_files === true
 
   const fetchSaved = async () => {
     if (!isFeatureEnabled) {
@@ -189,8 +190,9 @@ export function SwipeFilesPage() {
         <Bookmark className="w-12 h-12 text-slate-500 mx-auto" />
         <h2 className="text-xl font-bold text-text">Swipe Files Feature Locked</h2>
         <p className="text-sm text-text-muted max-w-md mx-auto">
-          Your current organization plan does not have the Swipe Files & Saved Collections feature enabled. Upgrade your plan or contact your workspace admin to unlock it.
+          Swipe files stay off until a platform admin grants that feature for this workspace.
         </p>
+        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">Request access</Link>
       </div>
     )
   }

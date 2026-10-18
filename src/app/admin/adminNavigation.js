@@ -12,6 +12,7 @@ import {
   Bell,
   BookOpen,
   MessageSquareCheck,
+  ShieldCheck,
 } from "lucide-react"
 
 /**
@@ -49,6 +50,13 @@ export const ADMIN_NAV_GROUPS = [
         path: "/admin/organizations",
         label: "Organizations",
         icon: Building2,
+        built: true,
+      },
+      {
+        key: "access-requests",
+        path: "/admin/access-requests",
+        label: "Access Requests",
+        icon: ShieldCheck,
         built: true,
       },
       {

@@ -18,6 +18,49 @@ from app.services.billing_service import (
     _ensure_daily_image_reset,
 )
 from app.services.ai.gemini_provider import GeminiProvider
+
+
+def _gate_result(query):
+    text = str(query).lower()
+
+    class Res:
+        def __init__(self, item):
+            self._item = item
+
+        def scalar_one_or_none(self):
+            return self._item
+
+        def scalars(self):
+            return self
+
+        def first(self):
+            return self._item
+
+    if "organization_access_grants" in text:
+        return Res(type("Grant", (), {
+            "revoked_at": None,
+            "expires_at": None,
+            "granted_at": datetime.datetime.now(datetime.timezone.utc),
+            "feature_flags": {"create": True, "discover": True, "intelligence": True, "swipe_files": True},
+            "granted_by_user_id": "admin",
+            "plan_id": "plan_trial_default",
+        })())
+    if "access_requests" in text:
+        return Res(None)
+    return Res(Plan(
+        id="plan_trial_default",
+        type="trial",
+        name="Trial",
+        feature_flags={
+            "discover": True,
+            "intelligence": True,
+            "create": True,
+            "swipe_files": True,
+            "scout": False,
+            "leadgen": False,
+            "monitors": False,
+        },
+    ))
 from app.core.config import settings
 
 def test_trial_lifecycle():
@@ -76,10 +119,7 @@ def test_trial_gatekeeper_video_blocked():
     # J. Video on trial must be rejected with 402 video_not_allowed
     class MockDB:
         async def execute(self, q):
-            class Res:
-                def scalar_one_or_none(self):
-                    return Plan(id="plan_trial_default", type="trial", name="Trial")
-            return Res()
+            return _gate_result(q)
         async def flush(self): pass
         async def commit(self): pass
 
@@ -105,10 +145,7 @@ def test_trial_daily_limit_and_total_cap():
 
     class MockDB:
         async def execute(self, q):
-            class Res:
-                def scalar_one_or_none(self):
-                    return Plan(id="plan_trial_default", type="trial", name="Trial")
-            return Res()
+            return _gate_result(q)
         async def flush(self): pass
         async def commit(self): pass
 

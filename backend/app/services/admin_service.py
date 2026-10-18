@@ -21,6 +21,26 @@ from app.models.api_usage import ExternalApiUsage
 from app.models.notification import Notification
 from app.core.config import settings
 from app.core.security import create_access_token
+from app.services.billing_service import is_platform_admin
+
+
+def _limit_or_fallback(value, fallback):
+    """None means the column was never set. Zero is a real limit."""
+    return fallback if value is None else value
+
+
+GRANTABLE_FEATURES = frozenset({
+    "discover",
+    "intelligence",
+    "create",
+    "performance",
+    "swipe_files",
+    "team_accounts",
+    "public_api",
+    "scout",
+    "leadgen",
+    "monitors",
+})
 
 # Credential-bearing keys live in organizations.custom_feature_flags (Hunter
 # keys, LinkedIn cookies) and must never leave the server.
@@ -223,8 +243,8 @@ async def list_plans(db: AsyncSession) -> List[PlanSchema]:
             type=p.type,
             credit_allowance=p.credit_allowance,
             daily_credit_limit=p.daily_credit_limit,
-            daily_image_limit=getattr(p, "daily_image_limit", 5) or 5,
-            daily_video_limit=getattr(p, "daily_video_limit", 3) or 3,
+            daily_image_limit=_limit_or_fallback(getattr(p, "daily_image_limit", None), 5),
+            daily_video_limit=_limit_or_fallback(getattr(p, "daily_video_limit", None), 3),
             price_monthly=getattr(p, "price_monthly", 0.0) or 0.0,
             price_per_credit=p.price_per_credit,
             feature_flags=p.feature_flags or {},
@@ -242,8 +262,8 @@ async def create_plan(db: AsyncSession, plan_in: PlanCreate, admin_id: str) -> P
         type=plan_in.type,
         credit_allowance=plan_in.credit_allowance,
         daily_credit_limit=plan_in.daily_credit_limit,
-        daily_image_limit=plan_in.daily_image_limit or 5,
-        daily_video_limit=plan_in.daily_video_limit or 3,
+        daily_image_limit=_limit_or_fallback(plan_in.daily_image_limit, 5),
+        daily_video_limit=_limit_or_fallback(plan_in.daily_video_limit, 3),
         price_monthly=plan_in.price_monthly or 0.0,
         price_per_credit=plan_in.price_per_credit,
         feature_flags=plan_in.feature_flags,
@@ -760,3 +780,257 @@ async def impersonate_user(db: AsyncSession, target_user_id: str, actor: Optiona
         email=user.email,
         role=user.role
     )
+
+
+def _require_platform_admin(actor: User) -> None:
+    if not is_platform_admin(actor):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "self_grant_denied",
+                "message": "Only a platform admin can grant, approve, or revoke workspace access.",
+            },
+        )
+
+
+def _clean_flags(flags: Dict[str, Any]) -> Dict[str, bool]:
+    if not isinstance(flags, dict) or not flags:
+        raise HTTPException(status_code=422, detail={"code": "flags_required", "message": "Choose at least one feature flag."})
+    cleaned = {}
+    for key, value in flags.items():
+        if key not in GRANTABLE_FEATURES:
+            raise HTTPException(status_code=422, detail={"code": "unknown_feature", "message": f"Unknown feature '{key}'."})
+        cleaned[key] = value is True
+    if not any(cleaned.values()):
+        raise HTTPException(status_code=422, detail={"code": "flags_required", "message": "Approve at least one feature."})
+    return cleaned
+
+
+def _request_payload(row) -> Dict[str, Any]:
+    return {
+        "id": row.id,
+        "org_id": row.org_id,
+        "user_id": row.user_id,
+        "requested_features": row.requested_features or [],
+        "note": row.note,
+        "status": row.status,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "decided_by_user_id": row.decided_by_user_id,
+        "decided_at": row.decided_at.isoformat() if row.decided_at else None,
+        "decision_note": row.decision_note,
+    }
+
+
+async def submit_access_request(db: AsyncSession, user: User, org_id: str, features: List[str], note: Optional[str] = None) -> Dict[str, Any]:
+    from app.models.access_grant import AccessRequest
+    from app.models.organization_member import OrganizationMember
+
+    org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+    if org is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    member = (
+        await db.execute(
+            select(OrganizationMember).where(
+                OrganizationMember.org_id == org_id,
+                OrganizationMember.user_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if org.owner_id != user.id and member is None and not is_platform_admin(user):
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    requested = []
+    for feature in features or []:
+        if feature not in GRANTABLE_FEATURES:
+            raise HTTPException(status_code=422, detail={"code": "unknown_feature", "message": f"Unknown feature '{feature}'."})
+        if feature not in requested:
+            requested.append(feature)
+    if not requested:
+        raise HTTPException(status_code=422, detail={"code": "features_required", "message": "Choose at least one feature."})
+    existing = (
+        await db.execute(
+            select(AccessRequest).where(
+                AccessRequest.org_id == org_id,
+                AccessRequest.user_id == user.id,
+                AccessRequest.status == "pending",
+            )
+        )
+    ).scalars().first()
+    if existing is not None:
+        existing.requested_features = requested
+        existing.note = note
+        await db.commit()
+        await db.refresh(existing)
+        return _request_payload(existing)
+    row = AccessRequest(
+        org_id=org_id,
+        user_id=user.id,
+        requested_features=requested,
+        note=(note or "")[:500] or None,
+        status="pending",
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return _request_payload(row)
+
+
+async def list_access_requests(db: AsyncSession, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    from app.models.access_grant import AccessRequest
+
+    stmt = select(AccessRequest).order_by(AccessRequest.created_at.desc())
+    if status:
+        stmt = stmt.where(AccessRequest.status == status)
+    rows = (await db.execute(stmt)).scalars().all()
+    return [_request_payload(row) for row in rows]
+
+
+async def grant_organization_access(
+    db: AsyncSession,
+    actor: User,
+    org_id: str,
+    plan_id: str,
+    feature_flags: Dict[str, Any],
+    expires_at: Optional[datetime.datetime] = None,
+    request_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Record who granted which flags. Does not delete workspace data."""
+    from app.models.access_grant import OrganizationAccessGrant
+
+    _require_platform_admin(actor)
+    org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+    if org is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    plan = (await db.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
+    if plan is None:
+        raise HTTPException(status_code=404, detail={"code": "plan_unavailable", "message": "Plan not found."})
+    flags = _clean_flags(feature_flags)
+    if expires_at is not None and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=datetime.timezone.utc)
+    grant = OrganizationAccessGrant(
+        org_id=org.id,
+        plan_id=plan.id,
+        feature_flags=flags,
+        granted_by_user_id=actor.id,
+        expires_at=expires_at,
+        request_id=request_id,
+    )
+    org.plan_id = plan.id
+    org.plan = plan.type
+    if org.status in ("suspended",):
+        pass
+    elif org.status != "active":
+        org.status = "active"
+    preserved = {
+        key: value
+        for key, value in (org.custom_feature_flags or {}).items()
+        if key not in GRANTABLE_FEATURES
+    }
+    preserved.update(flags)
+    org.custom_feature_flags = preserved
+    db.add(grant)
+    db.add(UsageLog(
+        org_id=org.id,
+        user_id=actor.id,
+        provider="admin",
+        operation="access_granted",
+        units=1.0,
+        cost_usd=0.0,
+        credits_deducted=0.0,
+        requests_used=0,
+        metadata_json={
+            "granted_by_user_id": actor.id,
+            "plan_id": plan.id,
+            "feature_flags": flags,
+            "expires_at": expires_at.isoformat() if expires_at else None,
+            "request_id": request_id,
+        },
+    ))
+    await db.commit()
+    await db.refresh(grant)
+    return {
+        "id": grant.id,
+        "org_id": org.id,
+        "plan_id": plan.id,
+        "feature_flags": flags,
+        "granted_by_user_id": actor.id,
+        "granted_at": grant.granted_at.isoformat() if grant.granted_at else None,
+        "expires_at": expires_at.isoformat() if expires_at else None,
+        "status": "approved",
+    }
+
+
+async def approve_access_request(
+    db: AsyncSession,
+    actor: User,
+    request_id: str,
+    plan_id: str,
+    feature_flags: Dict[str, Any],
+    expires_at: Optional[datetime.datetime] = None,
+    note: Optional[str] = None,
+) -> Dict[str, Any]:
+    from app.models.access_grant import AccessRequest
+
+    _require_platform_admin(actor)
+    row = (await db.execute(select(AccessRequest).where(AccessRequest.id == request_id))).scalar_one_or_none()
+    if row is None or row.status != "pending":
+        raise HTTPException(status_code=404, detail="Pending access request not found")
+    granted = await grant_organization_access(
+        db, actor, row.org_id, plan_id, feature_flags, expires_at=expires_at, request_id=row.id,
+    )
+    row = (await db.execute(select(AccessRequest).where(AccessRequest.id == request_id))).scalar_one()
+    row.status = "approved"
+    row.decided_by_user_id = actor.id
+    row.decided_at = datetime.datetime.now(datetime.timezone.utc)
+    row.decision_note = note
+    await db.commit()
+    payload = _request_payload(row)
+    payload["grant"] = granted
+    return payload
+
+
+async def reject_access_request(db: AsyncSession, actor: User, request_id: str, note: Optional[str] = None) -> Dict[str, Any]:
+    from app.models.access_grant import AccessRequest
+
+    _require_platform_admin(actor)
+    row = (await db.execute(select(AccessRequest).where(AccessRequest.id == request_id))).scalar_one_or_none()
+    if row is None or row.status != "pending":
+        raise HTTPException(status_code=404, detail="Pending access request not found")
+    row.status = "rejected"
+    row.decided_by_user_id = actor.id
+    row.decided_at = datetime.datetime.now(datetime.timezone.utc)
+    row.decision_note = note
+    await db.commit()
+    return _request_payload(row)
+
+
+async def revoke_organization_access(db: AsyncSession, actor: User, org_id: str, note: Optional[str] = None) -> Dict[str, Any]:
+    """Revoke the active grant. Workspace rows stay in the database."""
+    from app.services.billing_service import _latest_grant
+
+    _require_platform_admin(actor)
+    grant = await _latest_grant(db, org_id)
+    if grant is None or grant.revoked_at is not None:
+        raise HTTPException(status_code=404, detail={"code": "grant_not_found", "message": "No active grant to revoke."})
+    now = datetime.datetime.now(datetime.timezone.utc)
+    grant.revoked_at = now
+    grant.revoked_by_user_id = actor.id
+    db.add(UsageLog(
+        org_id=org_id,
+        user_id=actor.id,
+        provider="admin",
+        operation="access_revoked",
+        units=1.0,
+        cost_usd=0.0,
+        credits_deducted=0.0,
+        requests_used=0,
+        metadata_json={"note": note, "grant_id": grant.id},
+    ))
+    await db.commit()
+    return {
+        "org_id": org_id,
+        "grant_id": grant.id,
+        "status": "revoked",
+        "revoked_at": now.isoformat(),
+        "revoked_by_user_id": actor.id,
+        "data_retained": True,
+    }

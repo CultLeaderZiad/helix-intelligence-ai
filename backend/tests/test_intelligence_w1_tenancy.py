@@ -62,7 +62,8 @@ def test_assistant_without_explicit_permission_is_denied():
     asyncio.run(_run())
 
 
-def test_zero_video_limit_is_not_replaced_with_three():
+@pytest.mark.asyncio
+async def test_zero_video_limit_is_not_replaced_with_three():
     now = datetime.now(timezone.utc)
     user = User(
         id="u_zero",
@@ -83,11 +84,26 @@ def test_zero_video_limit_is_not_replaced_with_three():
     plan = Plan(id="plan_zero", name="Zero Video", type="pay_as_you_go", daily_video_limit=0, feature_flags={"create": True})
 
     class DB:
-        async def execute(self, _query):
+        async def execute(self, query):
             class Result:
+                def __init__(self, item):
+                    self._item = item
                 def scalar_one_or_none(self):
-                    return plan
-            return Result()
+                    return self._item
+                def scalars(self):
+                    return self
+                def first(self):
+                    return self._item
+            if "organization_access_grants" in str(query).lower():
+                return Result(type("Grant", (), {
+                    "revoked_at": None,
+                    "expires_at": None,
+                    "feature_flags": {"create": True},
+                    "granted_at": now,
+                    "granted_by_user_id": user.id,
+                    "plan_id": plan.id,
+                })())
+            return Result(plan)
 
         async def scalar(self, _query):
             return 0
@@ -98,14 +114,11 @@ def test_zero_video_limit_is_not_replaced_with_three():
         async def commit(self):
             return None
 
-    async def _run():
-        with pytest.raises(HTTPException) as exc:
-            await assert_can_generate_image(DB(), user, org, media_type="video")
-        assert exc.value.status_code == 402
-        assert exc.value.detail["code"] == "daily_video_limit"
-        assert exc.value.detail["daily_video_limit"] == 0
-
-    asyncio.run(_run())
+    with pytest.raises(HTTPException) as exc:
+        await assert_can_generate_image(DB(), user, org, media_type="video")
+    assert exc.value.status_code == 402
+    assert exc.value.detail["code"] == "daily_video_limit"
+    assert exc.value.detail["daily_video_limit"] == 0
 
 
 def test_capability_urls_expire_and_reject_permanent_signatures():
@@ -260,6 +273,14 @@ async def test_missing_plan_and_unknown_feature_fail_closed():
         )
         db.add(plan)
         org.plan_id = plan.id
+        await db.commit()
+        from app.models.access_grant import OrganizationAccessGrant
+        db.add(OrganizationAccessGrant(
+            org_id=org.id,
+            plan_id=plan.id,
+            feature_flags={"discover": True},
+            granted_by_user_id=user.id,
+        ))
         await db.commit()
         with pytest.raises(HTTPException) as unknown:
             await assert_can_spend(db, user, required_credits=0, feature_name="not_a_real_feature", lock_row=False)

@@ -377,7 +377,7 @@ export function DiscoverPage() {
               <ErrorState
                 error={error}
                 onRetry={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
-                description={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? "Upgrade your account or add credits to continue using Discover." : undefined}
+                description={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? "This workspace cannot run Discover until a platform admin approves access, or until it has enough credits. Request access from Billing." : undefined}
               />
             ) : null}
 

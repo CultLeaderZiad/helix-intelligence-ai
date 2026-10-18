@@ -178,7 +178,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
     { enabled: Boolean(creativeId) },
   )
 
-  const showSwipeOption = user?.feature_flags?.swipe_files !== false
+  const showSwipeOption = user?.feature_flags?.swipe_files === true
 
   const handleToggleSave = async () => {
     if (!creativeId || saving) return

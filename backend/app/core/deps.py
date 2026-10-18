@@ -246,8 +246,10 @@ def require_feature(feature_name: str):
 async def _bind_request_tenant(db: AsyncSession, user: User) -> None:
     from app.core.tenancy import apply_tenant_context, bind_tenant, get_user_org_ids
 
+    from app.services.billing_service import is_platform_admin
+
     scoped = getattr(user, "_scoped_org_id", None)
     org_ids = await get_user_org_ids(db, user)
-    platform_admin = getattr(user, "role", None) == "admin" and not scoped
+    platform_admin = is_platform_admin(user) and not scoped
     bind_tenant(org_ids, user.id, platform_admin=platform_admin, enforce=True)
     await apply_tenant_context(db)

@@ -266,6 +266,26 @@ async def run_leadgen_job(job_id: str) -> None:
         if job.status == "running" and job.owner_boot_id and not str(job.owner_boot_id).startswith("claimed:"):
             return  # another active run owns it
 
+        from app.services.billing_service import assert_can_spend
+        from fastapi import HTTPException
+        from app.models.user import User
+        owner = (await db.execute(select(User).where(User.id == (job.user_id or "")))).scalar_one_or_none()
+        if owner is None and job.org_id:
+            from app.models.organization import Organization
+            org_row = (await db.execute(select(Organization).where(Organization.id == job.org_id))).scalar_one_or_none()
+            if org_row is not None:
+                owner = (await db.execute(select(User).where(User.id == org_row.owner_id))).scalar_one_or_none()
+        try:
+            if owner is None:
+                raise HTTPException(status_code=403, detail={"code": "access_pending_approval", "message": "Access is pending approval by a platform admin."})
+            await assert_can_spend(db, owner, required_credits=0.0, feature_name="leadgen", lock_row=False)
+        except HTTPException as exc:
+            detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
+            job.status = "failed"
+            job.error_msg = detail.get("message") or "Access is pending approval by a platform admin."
+            await db.commit()
+            return
+
         resume_checkpoint = job.status == "paused" or bool(job.checkpoint_path)
         job.status = "running"
         job.owner_boot_id = boot_id

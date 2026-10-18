@@ -105,14 +105,24 @@ async def authenticate_api_key(db: AsyncSession, raw_key: str) -> Tuple[User, Or
     if org.plan_id:
         plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
 
-    effective_flags = dict(plan.feature_flags or {}) if (plan and plan.feature_flags) else {}
-    if org.custom_feature_flags:
-        effective_flags.update(org.custom_feature_flags)
+    # A key is scoped to its organization, so a platform-admin owner does not
+    # bypass the grant. Empty or missing public_api stays off.
+    user._scoped_org_id = org.id
+    from app.services.billing_service import _merged_flags, _require_active_grant
 
-    if not effective_flags.get("public_api", False):
+    grant = await _require_active_grant(db, org, user)
+    effective_flags = _merged_flags(plan, org) if plan is not None else {}
+    if grant is not None:
+        effective_flags.update(grant.feature_flags or {})
+
+    if effective_flags.get("public_api") is not True:
         raise HTTPException(
             status_code=403,
-            detail="The organization associated with this API key does not have the 'public_api' entitlement enabled."
+            detail={
+                "code": "feature_disabled",
+                "message": "The organization associated with this API key does not have the 'public_api' entitlement enabled.",
+                "feature": "public_api",
+            },
         )
 
     api_key.last_used_at = datetime.datetime.now(datetime.timezone.utc)

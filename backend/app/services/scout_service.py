@@ -160,6 +160,25 @@ async def run_scout_job_worker(job_id: str):
         if not job:
             return
 
+        from app.services.billing_service import assert_can_spend
+        from fastapi import HTTPException
+        owner = None
+        if org_id_holder := job.org_id:
+            org_for_gate = (await db.execute(select(Organization).where(Organization.id == org_id_holder))).scalars().first()
+            if org_for_gate is not None:
+                from app.models.user import User
+                owner = (await db.execute(select(User).where(User.id == (job.user_id or org_for_gate.owner_id)))).scalar_one_or_none()
+        try:
+            if owner is None:
+                raise HTTPException(status_code=403, detail={"code": "access_pending_approval", "message": "Access is pending approval by a platform admin."})
+            await assert_can_spend(db, owner, required_credits=0.0, feature_name="scout", lock_row=False)
+        except HTTPException as exc:
+            detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
+            job.status = "failed"
+            job.error_msg = detail.get("message") or "Access is pending approval by a platform admin."
+            await db.commit()
+            return
+
         # Fetch organization for BYOK keys
         org_res = await db.execute(select(Organization).where(Organization.id == job.org_id))
         org = org_res.scalars().first()

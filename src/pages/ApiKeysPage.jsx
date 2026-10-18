@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { accountService } from "@/services"
 import { API_BASE_URL } from "@/services/config"
 import { getAccessToken } from "@/services/sessionStore"
@@ -48,7 +49,7 @@ export function ApiKeysPage() {
   const [name, setName] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  const isFeatureEnabled = user?.feature_flags?.public_api === true || true
+  const isFeatureEnabled = user?.feature_flags?.public_api === true
 
   const fetchProviders = async () => {
     try {
@@ -227,6 +228,19 @@ export function ApiKeysPage() {
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text)
     showToast("Copied to clipboard!")
+  }
+
+  if (!isFeatureEnabled) {
+    return (
+      <div className="p-12 max-w-4xl mx-auto text-center space-y-4 font-sans">
+        <Lock className="w-12 h-12 text-slate-500 mx-auto" />
+        <h2 className="text-xl font-bold text-slate-100">API access is off</h2>
+        <p className="text-sm text-slate-400 max-w-md mx-auto">
+          Public API keys stay off until a platform admin grants that feature for this workspace.
+        </p>
+        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">Request access</Link>
+      </div>
+    )
   }
 
   return (

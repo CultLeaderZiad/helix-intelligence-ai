@@ -15,6 +15,7 @@ from app.schemas.admin import (
 from app.services import admin_service, support_service
 from app.core.deps import get_db, get_current_full_admin, require_admin_permission
 from app.models.user import User
+from datetime import datetime as _datetime
 
 router = APIRouter()
 
@@ -227,3 +228,68 @@ async def update_admin_ticket_status(
     current_admin: User = Depends(require_admin_permission("support"))
 ):
     return await support_service.update_ticket_status(db, ticket_id, body.status)
+
+
+class AccessDecisionBody(BaseModel):
+    plan_id: str
+    feature_flags: Dict[str, bool]
+    expires_at: Optional[_datetime] = None
+    note: Optional[str] = None
+
+
+class AccessRejectBody(BaseModel):
+    note: Optional[str] = None
+
+
+@router.get("/access-requests")
+async def list_access_requests(
+    status: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin),
+):
+    del current_admin
+    return await admin_service.list_access_requests(db, status)
+
+
+@router.post("/access-requests/{request_id}/approve")
+async def approve_access_request(
+    request_id: str,
+    body: AccessDecisionBody,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin),
+):
+    return await admin_service.approve_access_request(
+        db, current_admin, request_id, body.plan_id, body.feature_flags, body.expires_at, body.note,
+    )
+
+
+@router.post("/access-requests/{request_id}/reject")
+async def reject_access_request(
+    request_id: str,
+    body: AccessRejectBody,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin),
+):
+    return await admin_service.reject_access_request(db, current_admin, request_id, body.note)
+
+
+@router.post("/organizations/{org_id}/access-grant")
+async def grant_organization_access(
+    org_id: str,
+    body: AccessDecisionBody,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin),
+):
+    return await admin_service.grant_organization_access(
+        db, current_admin, org_id, body.plan_id, body.feature_flags, body.expires_at,
+    )
+
+
+@router.post("/organizations/{org_id}/access-revoke")
+async def revoke_organization_access(
+    org_id: str,
+    body: AccessRejectBody,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin),
+):
+    return await admin_service.revoke_organization_access(db, current_admin, org_id, body.note)

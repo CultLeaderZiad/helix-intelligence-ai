@@ -23,6 +23,10 @@ export function BillingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
+  const [access, setAccess] = useState(null)
+  const [requestFeatures, setRequestFeatures] = useState(["discover"])
+  const [requestNote, setRequestNote] = useState("")
+  const [requestState, setRequestState] = useState(null)
 
   const formatLogTime = (val) => {
     if (!val) return "—"
@@ -66,10 +70,17 @@ export function BillingPage() {
     try {
       const [billingData, usageData] = await Promise.all([
         accountService.getBilling(),
-        accountService.getTodayUsage()
+        accountService.getTodayUsage(),
       ])
+      let accessData = billingData?.access || null
+      try {
+        accessData = await accountService.getAccess()
+      } catch {
+        accessData = billingData?.access || null
+      }
       setBilling(billingData)
       setTodayUsage(usageData)
+      setAccess(accessData)
     } catch (err) {
       setError(err.message || "Failed to load billing information")
     } finally {
@@ -163,22 +174,60 @@ export function BillingPage() {
 
         <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-xl space-y-2">
           <div className="flex items-center justify-between text-xs font-mono text-slate-400 uppercase tracking-wider">
-            <span>Subscription Status</span>
+            <span>Access</span>
             <Clock className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-xl font-bold text-slate-100">
-            {billing?.plan_type === "trial" || !billing?.plan_type
-              ? (billing?.trial_days_remaining !== null && billing?.trial_days_remaining !== undefined
-                  ? `${billing.trial_days_remaining} days left`
-                  : "7 days trial")
-              : billing?.plan_type === "pay_as_you_go"
-                ? "Metered Balance"
-                : "Active Allocation"}
+          <div className="text-xl font-bold text-slate-100 capitalize">
+            {(access?.status || billing?.access?.status || "pending").replaceAll("_", " ")}
           </div>
           <p className="text-xs text-slate-500">
             {formatPlanLifecycle(billing)}
           </p>
         </div>
+      </div>
+
+      <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-xl space-y-3">
+        <h2 className="text-sm font-semibold text-slate-100">Request access</h2>
+        <p className="text-xs text-slate-400">
+          {access?.message || "A platform admin approves features for this workspace. There is no checkout."}
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {["discover", "intelligence", "create", "scout", "leadgen", "monitors"].map((feature) => (
+            <label key={feature} className="text-xs text-slate-300 flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={requestFeatures.includes(feature)}
+                onChange={() => setRequestFeatures((current) => current.includes(feature) ? current.filter((item) => item !== feature) : [...current, feature])}
+              />
+              {feature}
+            </label>
+          ))}
+        </div>
+        <textarea
+          value={requestNote}
+          onChange={(event) => setRequestNote(event.target.value)}
+          placeholder="What do you need this workspace to do?"
+          className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-slate-100"
+          rows={3}
+        />
+        <button
+          type="button"
+          onClick={async () => {
+            setRequestState(null)
+            try {
+              const created = await accountService.createAccessRequest(requestFeatures, requestNote, access?.org_id || billing?.org_id)
+              setRequestState(created?.status || "pending")
+              const next = await accountService.getAccess()
+              setAccess(next)
+            } catch (err) {
+              setRequestState(err?.message || "Request failed")
+            }
+          }}
+          className="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white"
+        >
+          Submit access request
+        </button>
+        {requestState && <p className="text-xs text-slate-300">Request status: {requestState}</p>}
       </div>
 
       {/* Real Daily Usage View Widget */}

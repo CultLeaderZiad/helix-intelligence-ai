@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { accountService } from "@/services"
 import { useAuth } from "@/context/AuthContext"
 import { 
@@ -121,8 +121,9 @@ export function TeamPage() {
         <Users className="w-12 h-12 text-slate-600 mx-auto" />
         <h2 className="text-xl font-bold text-slate-200">Team Accounts Locked</h2>
         <p className="text-sm text-slate-400 max-w-md mx-auto">
-          Your current organization plan is limited to a single user seat. Upgrade your plan or enable the Team Accounts feature flag to invite colleagues.
+          Team accounts stay off until a platform admin grants that feature. Request access for this workspace.
         </p>
+        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">Request access</Link>
       </div>
     )
   }

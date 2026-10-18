@@ -55,6 +55,7 @@ const NotFoundPage = safeLazy(() => import("@/pages/NotFoundPage").then(m => ({ 
 const OverviewPage = safeLazy(() => import("@/pages/admin/OverviewPage").then(m => ({ default: m.OverviewPage })))
 const AdminPendingPage = safeLazy(() => import("@/pages/admin/AdminPendingPage").then(m => ({ default: m.AdminPendingPage })))
 const OrganizationsPage = safeLazy(() => import("@/pages/admin/OrganizationsPage").then(m => ({ default: m.OrganizationsPage })))
+const AccessRequestsPage = safeLazy(() => import("@/pages/admin/AccessRequestsPage").then(m => ({ default: m.AccessRequestsPage })))
 const SubscriptionsPlansPage = safeLazy(() => import("@/pages/admin/SubscriptionsPlansPage").then(m => ({ default: m.SubscriptionsPlansPage })))
 const UsagePage = safeLazy(() => import("@/pages/admin/UsagePage").then(m => ({ default: m.UsagePage })))
 const FeatureFlagsPage = safeLazy(() => import("@/pages/admin/FeatureFlagsPage").then(m => ({ default: m.FeatureFlagsPage })))
@@ -194,6 +195,7 @@ export default function App() {
                       <Route path="/admin" element={<OverviewPage />} />
                       <Route path="/admin/guide" element={<GuidePage />} />
                       <Route path="/admin/organizations" element={<OrganizationsPage />} />
+                      <Route path="/admin/access-requests" element={<AccessRequestsPage />} />
                       <Route path="/admin/subscriptions" element={<SubscriptionsPlansPage />} />
                       <Route path="/admin/usage" element={<UsagePage />} />
                       <Route path="/admin/feature-flags" element={<FeatureFlagsPage />} />

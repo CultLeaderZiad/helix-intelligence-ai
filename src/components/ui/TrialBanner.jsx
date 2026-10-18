@@ -24,13 +24,13 @@ export function TrialBanner() {
       <div className="bg-destructive/15 border-b border-destructive/30 px-4 py-2 flex items-center justify-between text-sm shrink-0 z-20">
         <div className="flex items-center gap-2 text-destructive-foreground font-medium">
           <AlertCircle className="w-4 h-4 text-destructive" />
-          <span>Trial ended — select a plan to continue creating AI creatives.</span>
+          <span>Trial ended — request access to keep using this workspace.</span>
         </div>
         <Link 
           to="/billing" 
           className="flex items-center gap-1.5 font-semibold text-destructive hover:underline transition-colors"
         >
-          Select Plan
+          Request access
           <ArrowRight className="w-4 h-4" />
         </Link>
       </div>
@@ -49,7 +49,7 @@ export function TrialBanner() {
         to="/billing" 
         className="flex items-center gap-1.5 font-medium text-primary hover:text-primary-light transition-colors"
       >
-        Upgrade Plan
+        Request access
         <ArrowRight className="w-4 h-4" />
       </Link>
     </div>

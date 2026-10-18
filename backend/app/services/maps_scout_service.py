@@ -335,6 +335,25 @@ async def run_maps_scout_worker(job_id: str):
         if not job:
             return
 
+        from app.services.billing_service import assert_can_spend
+        from fastapi import HTTPException
+        from app.models.organization import Organization
+        from app.models.user import User
+        org_for_gate = (await db.execute(select(Organization).where(Organization.id == job.org_id))).scalar_one_or_none()
+        owner = None
+        if org_for_gate is not None:
+            owner = (await db.execute(select(User).where(User.id == (job.user_id or org_for_gate.owner_id)))).scalar_one_or_none()
+        try:
+            if owner is None:
+                raise HTTPException(status_code=403, detail={"code": "access_pending_approval", "message": "Access is pending approval by a platform admin."})
+            await assert_can_spend(db, owner, required_credits=0.0, feature_name="scout", lock_row=False)
+        except HTTPException as exc:
+            detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
+            job.status = "failed"
+            job.error_msg = detail.get("message") or "Access is pending approval by a platform admin."
+            await db.commit()
+            return
+
         sg_key = get_scrapegraph_key()
 
         job.status = "running"
