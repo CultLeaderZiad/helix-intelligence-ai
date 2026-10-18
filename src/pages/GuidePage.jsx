@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
+import { useLanguage } from "@/context/LanguageContext"
 import { Button } from "@/components/ui/Button"
 import {
   Radar,
@@ -101,7 +102,7 @@ const GUIDE_STEPS = [
         text: "Helix synthesizes recurring formulas across your discovered ad corpus:",
         bulletPoints: [
           "Hook Formulas: Identifies first-3-seconds hooks (Problem Agitation, Curiosity Gap, Shock Stat).",
-          "Lift is not measured. Pattern cards show how often a formula appears in the supplied ads, not platform performance.",
+          "liftNotMeasured",
           "Emotional Resonance: Maps psychological triggers (Urgency, Social Proof, Fear of Missing Out, Authority)."
         ]
       },
@@ -183,6 +184,7 @@ const GUIDE_STEPS = [
 
 export function GuidePage() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
   const [activeStepId, setActiveStepId] = useState("overview")
 
   const currentStep = GUIDE_STEPS.find((s) => s.id === activeStepId) || GUIDE_STEPS[0]
@@ -312,7 +314,7 @@ export function GuidePage() {
                       {sec.bulletPoints.map((bp, bidx) => (
                         <li key={bidx} className="flex items-start gap-2 text-xs text-text-muted leading-relaxed">
                           <span className="font-mono text-accent text-[11px] font-bold">›</span>
-                          <span>{bp}</span>
+                          <span dir="auto">{bp === "liftNotMeasured" ? t("liftNotMeasured") : bp}</span>
                         </li>
                       ))}
                     </ul>
