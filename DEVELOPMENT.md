@@ -455,9 +455,13 @@ Policies are forced on tenant tables. A superuser or a role with `BYPASSRLS`
 refuses to boot when `current_user` is one of those roles. Other environments
 log a warning and continue.
 
-`helix_app` and `helix_worker` are `NOLOGIN` group roles created by the W1
-migration. Create one login for the API and one for the worker. Set the
-password in the Neon or Render dashboard, not in this repository.
+`helix_app` and `helix_worker` are `NOLOGIN` group roles. Migration
+`e7c1a9b4d2f0` creates them only after its schema statements succeed.
+PostgreSQL refuses `CREATE ROLE` inside a transaction, so that step commits
+the schema work and then creates the roles. A schema error rolls back and
+does not leave the roles behind. Create one login for the API and one for
+the worker. Set the password in the Neon or Render dashboard, not in this
+repository.
 
 ```sql
 CREATE ROLE helix_api_login LOGIN NOSUPERUSER NOBYPASSRLS INHERIT;

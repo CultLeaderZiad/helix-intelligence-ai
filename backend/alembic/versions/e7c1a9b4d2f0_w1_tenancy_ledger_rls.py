@@ -155,7 +155,10 @@ def _disable_policy(table: str) -> None:
 
 
 def _create_roles() -> None:
-    # CREATE ROLE is not allowed inside Alembic's transaction.
+    # CREATE ROLE cannot run inside a transaction. This is called only after
+    # the schema statements succeed, so a failure above rolls back without
+    # leaving these roles behind. Entering this block commits that schema work,
+    # then creates the roles. The statements are idempotent.
     with op.get_context().autocommit_block():
         op.execute(
             """
@@ -210,9 +213,15 @@ def _drop_roles() -> None:
         )
 
 
-def upgrade() -> None:
-    _create_roles()
+def _usage_log_columns() -> set[str]:
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if not insp.has_table("usage_logs"):
+        return set()
+    return {col["name"] for col in insp.get_columns("usage_logs")}
 
+
+def upgrade() -> None:
     op.create_table(
         "pattern_quarantine",
         sa.Column("id", sa.String(), nullable=False),
@@ -272,34 +281,42 @@ def upgrade() -> None:
         """
     )
 
-    op.add_column("usage_logs", sa.Column("idempotency_key", sa.String(), nullable=True))
-    op.add_column("usage_logs", sa.Column("payload_hash", sa.String(), nullable=True))
-    op.add_column("usage_logs", sa.Column("reservation_id", sa.String(), nullable=True))
-    op.add_column("usage_logs", sa.Column("ledger_id", sa.String(), nullable=True))
-    op.execute(
-        """
-        WITH ranked AS (
-            SELECT id,
-                   row_number() OVER (
-                       PARTITION BY org_id, operation, (metadata_json::jsonb ->> 'idempotency_key')
-                       ORDER BY created_at ASC NULLS LAST, id ASC
-                   ) AS n,
-                   metadata_json::jsonb ->> 'idempotency_key' AS idem_key
-            FROM usage_logs
-            WHERE metadata_json IS NOT NULL
-              AND (metadata_json::jsonb ->> 'idempotency_key') IS NOT NULL
+    usage_cols = _usage_log_columns()
+    for name in ("idempotency_key", "payload_hash", "reservation_id", "ledger_id"):
+        if name not in usage_cols:
+            op.add_column("usage_logs", sa.Column(name, sa.String(), nullable=True))
+    usage_cols = _usage_log_columns()
+    # Older production rows stored the key inside metadata, not metadata_json.
+    # Skip the copy when that column was never created instead of aborting
+    # after a role commit.
+    if {"metadata_json", "operation", "id"} <= usage_cols:
+        op.execute(
+            """
+            WITH ranked AS (
+                SELECT id,
+                       row_number() OVER (
+                           PARTITION BY org_id, operation, (metadata_json::jsonb ->> 'idempotency_key')
+                           ORDER BY created_at ASC NULLS LAST, id ASC
+                       ) AS n,
+                       metadata_json::jsonb ->> 'idempotency_key' AS idem_key
+                FROM usage_logs
+                WHERE metadata_json IS NOT NULL
+                  AND (metadata_json::jsonb ->> 'idempotency_key') IS NOT NULL
+            )
+            UPDATE usage_logs AS u
+            SET idempotency_key = CASE WHEN ranked.n = 1 THEN ranked.idem_key ELSE NULL END
+            FROM ranked
+            WHERE u.id = ranked.id
+            """
         )
-        UPDATE usage_logs AS u
-        SET idempotency_key = CASE WHEN ranked.n = 1 THEN ranked.idem_key ELSE NULL END
-        FROM ranked
-        WHERE u.id = ranked.id
-        """
-    )
-    op.create_unique_constraint(
-        "uq_usage_logs_org_operation_idempotency_key",
-        "usage_logs",
-        ["org_id", "operation", "idempotency_key"],
-    )
+    bind = op.get_bind()
+    existing_uniques = {item["name"] for item in sa.inspect(bind).get_unique_constraints("usage_logs")}
+    if "uq_usage_logs_org_operation_idempotency_key" not in existing_uniques:
+        op.create_unique_constraint(
+            "uq_usage_logs_org_operation_idempotency_key",
+            "usage_logs",
+            ["org_id", "operation", "idempotency_key"],
+        )
 
     op.create_table(
         "operation_idempotency",
@@ -393,6 +410,7 @@ def upgrade() -> None:
     for table, predicate in _INDIRECT_PREDICATES.items():
         _enable_policy(table, predicate)
 
+    _create_roles()
     op.execute("GRANT USAGE ON SCHEMA public TO helix_app, helix_worker")
     op.execute(
         "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO helix_app, helix_worker"
