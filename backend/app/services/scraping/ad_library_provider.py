@@ -1,7 +1,6 @@
 import os
 import re
 import asyncio
-import httpx
 import logging
 from typing import List, Optional
 from datetime import datetime, timezone
@@ -248,15 +247,16 @@ class AdLibraryProvider(ScraperProvider):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=25.0) as client:
-                resp = await client.get(url, params=params)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    ads_data = data.get("data", [])
-                    return self._parse_meta_ads(ads_data, query)
-                else:
-                    logger.warning(f"Meta Ad Library API returned status {resp.status_code}: {resp.text[:250]}")
-                    return []
+            from app.services.safe_fetch import safe_request_async
+            resp = await safe_request_async(
+                "GET", url, params=params, timeout=25.0, allowed_hosts={"graph.facebook.com"}
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                ads_data = data.get("data", [])
+                return self._parse_meta_ads(ads_data, query)
+            logger.warning(f"Meta Ad Library API returned status {resp.status_code}: {resp.text[:250]}")
+            return []
         except Exception as e:
             logger.error(f"Meta Ad Library API request failed: {e}")
             return []
@@ -276,14 +276,16 @@ class AdLibraryProvider(ScraperProvider):
         }
 
         try:
-            async with httpx.AsyncClient(timeout=45.0) as client:
-                resp = await client.post(url, json=payload)
-                if resp.status_code in [200, 201]:
-                    items = resp.json()
-                    if isinstance(items, list) and items:
-                        return self._parse_apify_ads(items, query)
-                else:
-                    logger.warning(f"Apify Actor returned status {resp.status_code}: {resp.text[:250]}")
+            from app.services.safe_fetch import safe_request_async
+            resp = await safe_request_async(
+                "POST", url, json=payload, timeout=45.0, allowed_hosts={"api.apify.com"}
+            )
+            if resp.status_code in [200, 201]:
+                items = resp.json()
+                if isinstance(items, list) and items:
+                    return self._parse_apify_ads(items, query)
+            else:
+                logger.warning(f"Apify Actor returned status {resp.status_code}: {resp.text[:250]}")
         except Exception as e:
             logger.error(f"Apify scraper request failed: {e}")
 

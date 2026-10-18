@@ -1,6 +1,5 @@
 import os
 import asyncio
-import httpx
 import logging
 from typing import List
 from datetime import datetime
@@ -68,54 +67,73 @@ class MetapiProvider(ScraperProvider):
             await progress_callback(0, "Initiating Domain Trace via Metapi...")
 
         try:
-            async with httpx.AsyncClient(timeout=45.0) as client:
-                # 1. Create Task
-                task_resp = await client.post("https://api.metapi.io/v1/tasks", json=payload, headers=headers)
-                if task_resp.status_code != 202 and task_resp.status_code != 200:
-                    logger.warning(f"Metapi task creation failed: {task_resp.status_code} {task_resp.text[:250]}")
-                    return []
-                
-                task_data = task_resp.json()
-                task_id = task_data.get("task_id")
-                if not task_id:
-                    logger.warning(f"Metapi did not return a task_id: {task_data}")
-                    return []
+            from app.services.safe_fetch import safe_request_async
+            metapi_hosts = {"api.metapi.io"}
+            # 1. Create Task. Redirects off api.metapi.io are rejected.
+            task_resp = await safe_request_async(
+                "POST",
+                "https://api.metapi.io/v1/tasks",
+                json=payload,
+                headers=headers,
+                timeout=45.0,
+                allowed_hosts=metapi_hosts,
+            )
+            if task_resp.status_code != 202 and task_resp.status_code != 200:
+                logger.warning(f"Metapi task creation failed: {task_resp.status_code} {task_resp.text[:250]}")
+                return []
 
-                # 2. Poll Task Status
-                max_attempts = 25
-                for attempt in range(max_attempts):
-                    await asyncio.sleep(1.5)
-                    if progress_callback:
-                        await progress_callback(int(attempt * 1.5), "Scraping live Meta Ad Library via Metapi...")
-                        
-                    status_resp = await client.get(f"https://api.metapi.io/v1/tasks/{task_id}/status", headers=headers)
-                    if status_resp.status_code == 200:
-                        status_data = status_resp.json()
-                        status = status_data.get("status")
-                        if status == "succeeded":
-                            break
-                        elif status in ("failed", "error"):
-                            logger.error(f"Metapi task failed: {status_data}")
-                            return []
-                    
-                # 3. Get Results
-                results_resp = await client.get(f"https://api.metapi.io/v1/tasks/{task_id}/results", headers=headers)
-                if results_resp.status_code == 200:
-                    results_data = results_resp.json()
-                    if isinstance(results_data, dict):
-                        results = results_data.get("data") or results_data.get("results") or []
-                    elif isinstance(results_data, list):
-                        results = results_data
-                    else:
-                        results = []
-                    
-                    if len(results) > max_records:
-                        results = results[:max_records]
-                        
-                    return self._parse_metapi_ads(results, domain)
+            task_data = task_resp.json()
+            task_id = task_data.get("task_id")
+            if not task_id:
+                logger.warning(f"Metapi did not return a task_id: {task_data}")
+                return []
+
+            # 2. Poll Task Status
+            max_attempts = 25
+            for attempt in range(max_attempts):
+                await asyncio.sleep(1.5)
+                if progress_callback:
+                    await progress_callback(int(attempt * 1.5), "Scraping live Meta Ad Library via Metapi...")
+
+                status_resp = await safe_request_async(
+                    "GET",
+                    f"https://api.metapi.io/v1/tasks/{task_id}/status",
+                    headers=headers,
+                    timeout=45.0,
+                    allowed_hosts=metapi_hosts,
+                )
+                if status_resp.status_code == 200:
+                    status_data = status_resp.json()
+                    status = status_data.get("status")
+                    if status == "succeeded":
+                        break
+                    elif status in ("failed", "error"):
+                        logger.error(f"Metapi task failed: {status_data}")
+                        return []
+
+            # 3. Get Results
+            results_resp = await safe_request_async(
+                "GET",
+                f"https://api.metapi.io/v1/tasks/{task_id}/results",
+                headers=headers,
+                timeout=45.0,
+                allowed_hosts=metapi_hosts,
+            )
+            if results_resp.status_code == 200:
+                results_data = results_resp.json()
+                if isinstance(results_data, dict):
+                    results = results_data.get("data") or results_data.get("results") or []
+                elif isinstance(results_data, list):
+                    results = results_data
                 else:
-                    logger.warning(f"Metapi results API returned status {results_resp.status_code}: {results_resp.text[:250]}")
-                    return []
+                    results = []
+
+                if len(results) > max_records:
+                    results = results[:max_records]
+
+                return self._parse_metapi_ads(results, domain)
+            logger.warning(f"Metapi results API returned status {results_resp.status_code}: {results_resp.text[:250]}")
+            return []
                     
         except Exception as e:
             logger.error(f"Metapi API request failed: {e}")

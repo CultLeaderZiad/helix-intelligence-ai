@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { API_BASE_URL } from "@/services/config"
+import { getAccessToken } from "@/services/sessionStore"
 import { 
   Bookmark, 
   Trash2, 
@@ -113,7 +114,7 @@ export function SwipeFilesPage() {
     formData.append("file", file)
 
     try {
-      const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
+      const token = getAccessToken()
       const response = await fetch(`${API_BASE_URL}/media/upload`, {
         method: "POST",
         headers: {

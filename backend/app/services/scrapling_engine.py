@@ -64,18 +64,18 @@ def robots_allowed(url: str) -> bool:
             _ROBOTS_CACHE[origin] = False
             return True
 
-        import urllib.request
-        req = urllib.request.Request(
+        from app.services.safe_fetch import safe_request
+        resp = safe_request(
+            "GET",
             robots_url,
-            headers={"User-Agent": "HelixBot/1.0 (Mozilla/5.0 Compatible)"}
+            timeout=5.0,
+            max_bytes=500 * 1024,
+            headers={"User-Agent": "HelixBot/1.0 (Mozilla/5.0 Compatible)"},
         )
-        with urllib.request.urlopen(req, timeout=5.0) as resp:
-            # 500KB read ceiling
-            content_bytes = resp.read(500 * 1024)
-            lines = content_bytes.decode("utf-8", errors="replace").splitlines()
-            rp.parse(lines)
-            _ROBOTS_CACHE[origin] = rp
-            return bool(rp.can_fetch("*", url))
+        lines = resp.content.decode("utf-8", errors="replace").splitlines()
+        rp.parse(lines)
+        _ROBOTS_CACHE[origin] = rp
+        return bool(rp.can_fetch("*", url))
     except Exception:
         _ROBOTS_CACHE[origin] = False
         return True
@@ -103,6 +103,13 @@ def fetch(
     """
     if robots_obey and not robots_allowed(url):
         return {"fetch_status": "blocked", "status_code": 0, "html": None, "url": url, "reason": "robots_disallow"}
+    # Scrapling's Fetcher/StealthyFetcher/DynamicFetcher open their own browser
+    # or HTTP stack. Pinning that connection is not available from here, so the
+    # initial URL must already be a public http(s) address. Redirects inside
+    # the SDK are not revalidated; XHR subrequests below still use safe_http_get.
+    from app.services.security_service import is_safe_public_url
+    if not is_safe_public_url(url):
+        return {"fetch_status": "error", "status_code": 0, "html": None, "url": url, "reason": "unsafe_url"}
     if not is_available():
         return {"fetch_status": "error", "status_code": 0, "html": None, "url": url, "reason": "scrapling_unavailable"}
 

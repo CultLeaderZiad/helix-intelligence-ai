@@ -11,8 +11,6 @@ from __future__ import annotations
 import logging
 import re
 
-import httpx
-
 from app.core.config import settings
 from app.core.credentials import env_secret
 
@@ -48,14 +46,17 @@ async def translate_search_query(query: str, target: str) -> str:
 
     language_name = "Arabic" if lang == "ar" else "English"
     try:
-        async with httpx.AsyncClient(timeout=12.0) as client:
-            response = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
+        from app.services.safe_fetch import safe_request_async
+        response = await safe_request_async(
+            "POST",
+            "https://api.groq.com/openai/v1/chat/completions",
+            timeout=12.0,
+            allowed_hosts={"api.groq.com"},
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
                     "model": "llama-3.1-8b-instant",
                     "temperature": 0,
                     "messages": [

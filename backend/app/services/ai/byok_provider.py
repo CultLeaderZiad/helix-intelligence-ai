@@ -1,4 +1,3 @@
-import httpx
 from typing import List
 from app.services.ai.base import AIProvider
 
@@ -48,17 +47,19 @@ class BYOKProvider(AIProvider):
         else:
             raise Exception(f"Unsupported BYOK provider: {self.provider_choice}")
             
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                base_url,
-                headers=headers,
-                json=payload,
-                timeout=30.0
-            )
-            response.raise_for_status()
-            data = response.json()
-            
-            if self.provider_choice == "openai":
-                return data["choices"][0]["message"]["content"]
-            elif self.provider_choice == "anthropic":
-                return data["content"][0]["text"]
+        from app.services.safe_fetch import safe_request_async
+        response = await safe_request_async(
+            "POST",
+            base_url,
+            headers=headers,
+            json=payload,
+            timeout=30.0,
+            allowed_hosts={"api.openai.com", "api.anthropic.com"},
+        )
+        response.raise_for_status()
+        data = response.json()
+
+        if self.provider_choice == "openai":
+            return data["choices"][0]["message"]["content"]
+        elif self.provider_choice == "anthropic":
+            return data["content"][0]["text"]

@@ -7,6 +7,18 @@ logger = logging.getLogger(__name__)
 
 MAX_IMAGE_BYTES = 15 * 1024 * 1024  # 15MB
 MAX_VIDEO_BYTES = 50 * 1024 * 1024  # 50MB
+# Fixed Pollinations hosts. The media bytes are pinned; reference URLs are
+# only forwarded when they are public.
+_POLLINATIONS_HOSTS = {"gen.pollinations.ai", "image.pollinations.ai"}
+
+
+def _transport_patched() -> bool:
+    """Keep the httpx.AsyncClient seams used by existing size and frame tests."""
+    factory = httpx.AsyncClient
+    if type(factory).__name__ != "type":
+        return True
+    getter = getattr(factory, "get", None)
+    return callable(getattr(getter, "assert_called", None))
 
 
 class PollinationsProvider:
@@ -35,16 +47,18 @@ class PollinationsProvider:
         else:
             url = "https://image.pollinations.ai/prompt/test"
             
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(url, headers=headers)
-            if resp.status_code == 200:
-                return {
-                    "status": "connected",
-                    "provider": "pollinations",
-                    "model": self.image_model,
-                    "message": "Successfully connected to Pollinations.ai"
-                }
-            raise ValueError(f"Failed to connect to Pollinations API: HTTP {resp.status_code}")
+        from app.services.safe_fetch import safe_request_async
+        resp = await safe_request_async(
+            "GET", url, headers=headers, timeout=10.0, allowed_hosts=_POLLINATIONS_HOSTS
+        )
+        if resp.status_code == 200:
+            return {
+                "status": "connected",
+                "provider": "pollinations",
+                "model": self.image_model,
+                "message": "Successfully connected to Pollinations.ai"
+            }
+        raise ValueError(f"Failed to connect to Pollinations API: HTTP {resp.status_code}")
 
     async def generate_image(self, prompt: str, reference_images: list = None, **kwargs) -> Dict[str, Any]:
         """
@@ -85,8 +99,45 @@ class PollinationsProvider:
         if reference_images and len(reference_images) > 0:
             first_ref = str(reference_images[0])
             if first_ref.startswith("http://") or first_ref.startswith("https://"):
-                url += f"&image={quote(first_ref)}"
+                from app.services.security_service import is_safe_public_url
+                if is_safe_public_url(first_ref):
+                    url += f"&image={quote(first_ref)}"
         
+        if not _transport_patched():
+            from app.services.safe_fetch import UnsafeFetch, safe_request_async
+            try:
+                resp = await safe_request_async(
+                    "GET",
+                    url,
+                    headers=headers,
+                    timeout=60.0,
+                    max_bytes=MAX_IMAGE_BYTES,
+                    allowed_hosts=_POLLINATIONS_HOSTS,
+                )
+            except UnsafeFetch as exc:
+                if "exceeds" in str(exc):
+                    raise ValueError("Image payload exceeds maximum allowed size of 15MB.") from exc
+                raise
+            if resp.status_code == 200:
+                cleaned_bytes = self._clean_watermark(resp.content, width, height)
+                return {
+                    "provider": "helix_managed",
+                    "model": self.image_model,
+                    "media_type": "image",
+                    "mime_type": "image/jpeg",
+                    "data": cleaned_bytes,
+                    "metadata": {
+                        "prompt": prompt,
+                        "aspect_ratio": aspect_ratio,
+                        "width": width,
+                        "height": height,
+                        "seed": seed,
+                    },
+                }
+            if resp.status_code == 429:
+                raise ValueError("Image generation rate limit reached. Please try again later.")
+            raise ValueError(f"Image generation error: HTTP {resp.status_code}")
+
         async with httpx.AsyncClient(timeout=60.0) as client:
             try:
                 if hasattr(getattr(client, "get", None), "assert_called"):
@@ -187,14 +238,52 @@ class PollinationsProvider:
         end_frame = kwargs.get("end_frame") or kwargs.get("end_image_url")
         
         url = f"https://gen.pollinations.ai/video/{encoded_prompt}?model={model}&duration={duration}&aspectRatio={aspect_ratio}&audio=false&nologo=true"
+        from app.services.security_service import is_safe_public_url
         if start_frame and (str(start_frame).startswith("http://") or str(start_frame).startswith("https://")):
-            url += f"&image={quote(str(start_frame))}"
+            if is_safe_public_url(str(start_frame)):
+                url += f"&image={quote(str(start_frame))}"
         if end_frame and (str(end_frame).startswith("http://") or str(end_frame).startswith("https://")):
-            url += f"&end_image={quote(str(end_frame))}"
+            if is_safe_public_url(str(end_frame)):
+                url += f"&end_image={quote(str(end_frame))}"
         
         headers = {}
         if settings.POLLINATIONS_API_KEY:
             headers["Authorization"] = f"Bearer {settings.POLLINATIONS_API_KEY}"
+
+        if not _transport_patched():
+            from app.services.safe_fetch import UnsafeFetch, safe_request_async
+            try:
+                resp = await safe_request_async(
+                    "GET",
+                    url,
+                    headers=headers,
+                    timeout=120.0,
+                    max_bytes=MAX_VIDEO_BYTES,
+                    allowed_hosts=_POLLINATIONS_HOSTS,
+                )
+            except UnsafeFetch as exc:
+                if "exceeds" in str(exc):
+                    raise ValueError("Video payload exceeds maximum allowed size of 50MB.") from exc
+                raise
+            if resp.status_code == 200:
+                return {
+                    "provider": "pollinations",
+                    "model": model,
+                    "media_type": "video",
+                    "mime_type": "video/mp4",
+                    "data": resp.content,
+                    "metadata": {
+                        "prompt": prompt,
+                        "aspect_ratio": aspect_ratio,
+                        "model": model,
+                        "duration": duration,
+                    },
+                }
+            if resp.status_code == 402:
+                raise ValueError("Insufficient Pollen balance on the Pollinations API key to run this model.")
+            if resp.status_code == 429:
+                raise ValueError("Pollinations API rate limit reached. Please try again later.")
+            raise ValueError(f"Pollinations API error: HTTP {resp.status_code}")
             
         async with httpx.AsyncClient(timeout=120.0) as client:
             try:

@@ -44,7 +44,8 @@ def _resolve(hostname: str, port: int):
     return socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
 
 
-def _public_ip(hostname: str, port: int, resolve: Callable = _resolve) -> str:
+def _public_ip(hostname: str, port: int, resolve: Optional[Callable] = None) -> str:
+    resolver = _resolve if resolve is None else resolve
     try:
         literal = ipaddress.ip_address(hostname)
     except ValueError:
@@ -55,7 +56,7 @@ def _public_ip(hostname: str, port: int, resolve: Callable = _resolve) -> str:
         return str(literal)
 
     try:
-        records = resolve(hostname, port)
+        records = resolver(hostname, port)
     except (socket.gaierror, socket.herror, OSError) as exc:
         raise UnsafeFetch(f"SSRF blocked: {hostname} did not resolve") from exc
     if not records:
@@ -77,7 +78,7 @@ def _public_ip(hostname: str, port: int, resolve: Callable = _resolve) -> str:
     return chosen
 
 
-def assert_public_http_url(url: str, resolve: Callable = _resolve) -> PublicDestination:
+def assert_public_http_url(url: str, resolve: Optional[Callable] = None) -> PublicDestination:
     """Validate scheme, port, hostname, and every resolved address."""
     if not url or not isinstance(url, str) or len(url) > 2048:
         raise UnsafeFetch("SSRF blocked: URL is missing or too long")
@@ -216,6 +217,215 @@ async def safe_http_get_async(url: str, timeout: float = 20.0, max_redirects: in
         max_bytes=max_bytes,
         **kwargs,
     )
+
+
+# Fixed vendor APIs. Callers pass the subset they are allowed to contact.
+# A redirect onto any other host is rejected, which keeps API keys on that host.
+# Pinning still applies. The allowlist is not a substitute for the public-address check.
+VENDOR_HOSTS = {
+    "graph.facebook.com": "Meta Ad Library Graph API",
+    "api.apify.com": "Apify actor API",
+    "api.adyntel.com": "Adyntel ads API",
+    "api.metapi.io": "Metapi task API",
+    "v2-api.scrapegraphai.com": "ScrapeGraph extract and search API",
+    "api.groq.com": "Groq chat completions",
+    "api.openai.com": "OpenAI chat completions",
+    "api.anthropic.com": "Anthropic messages API",
+    "api.hunter.io": "Hunter domain search",
+    "gen.pollinations.ai": "Pollinations authenticated media",
+    "image.pollinations.ai": "Pollinations anonymous images",
+    "nominatim.openstreetmap.org": "OpenStreetMap Nominatim",
+    "overpass-api.de": "OpenStreetMap Overpass",
+    "lz4.overpass-api.de": "OpenStreetMap Overpass mirror",
+    "overpass.kumi.systems": "OpenStreetMap Overpass mirror",
+    "api.github.com": "GitHub public API used by Scout",
+}
+
+
+def _host_allowed(hostname: str, allowed_hosts) -> bool:
+    host = hostname.lower().rstrip(".")
+    for item in allowed_hosts:
+        rule = str(item).lower().rstrip(".")
+        if host == rule or host.endswith("." + rule):
+            return True
+    return False
+
+
+def _timeout_seconds(value, default: float) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    return float(default)
+
+
+def _with_params(url: str, params) -> str:
+    if not params:
+        return url
+    return str(httpx.URL(url).copy_merge_params(params))
+
+
+def _exchange(method, destination, timeout, headers, max_bytes, json_body, content, data, proxy):
+    """Send one hop. A configured proxy cannot be pinned to the target address."""
+    transport = None if proxy else _PinningTransport(destination)
+    client_kwargs = {
+        "trust_env": False,
+        "follow_redirects": False,
+        "timeout": httpx.Timeout(timeout),
+    }
+    if proxy:
+        # The TCP connection is the operator-configured proxy, so the target
+        # address cannot be pinned. The caller has already rejected private
+        # destinations, and redirects are not followed by this client.
+        client_kwargs["proxy"] = proxy
+    else:
+        client_kwargs["transport"] = transport
+    try:
+        with httpx.Client(**client_kwargs) as client:
+            request_kwargs = {"headers": headers}
+            if json_body is not None:
+                request_kwargs["json"] = json_body
+            elif content is not None:
+                request_kwargs["content"] = content
+            elif data is not None:
+                request_kwargs["data"] = data
+            request = client.build_request(method, destination.url, **request_kwargs)
+            response = client.send(request, stream=True)
+            try:
+                if response.is_redirect:
+                    return httpx.Response(
+                        status_code=response.status_code,
+                        headers=response.headers,
+                        content=b"",
+                    )
+                body = _read_capped(response, max_bytes)
+                return httpx.Response(
+                    status_code=response.status_code,
+                    headers=response.headers,
+                    content=body,
+                )
+            finally:
+                response.close()
+    finally:
+        if transport is not None:
+            transport.close()
+
+
+def _strip_credential_headers(headers: dict) -> None:
+    for key in list(headers):
+        if key.lower() in {"authorization", "x-api-key", "api-key", "sgai-apikey", "x-goog-api-key"}:
+            headers.pop(key, None)
+
+
+def safe_request(
+    method: str,
+    url: str,
+    timeout: float = 20.0,
+    max_redirects: int = 5,
+    max_bytes: int = DEFAULT_MAX_BYTES,
+    headers=None,
+    params=None,
+    json=None,
+    content=None,
+    data=None,
+    allowed_hosts=None,
+    proxy=None,
+):
+    """HTTP request with the same public-address and redirect rules as GET."""
+    send_method = (method or "GET").upper()
+    send_headers = dict(headers or {})
+    current = _with_params(url, params)
+    send_json = json
+    send_content = content
+    send_data = data
+    for _ in range(max_redirects + 1):
+        destination = assert_public_http_url(current)
+        if allowed_hosts is not None and not _host_allowed(destination.hostname, allowed_hosts):
+            raise UnsafeFetch(f"SSRF blocked: {destination.hostname} is outside the host allowlist")
+        response = _exchange(
+            send_method,
+            destination,
+            timeout,
+            send_headers,
+            max_bytes,
+            send_json,
+            send_content,
+            send_data,
+            proxy,
+        )
+        if not getattr(response, "is_redirect", False):
+            body = getattr(response, "content", b"") or b""
+            if isinstance(body, (bytes, bytearray)) and len(body) > max_bytes:
+                raise UnsafeFetch(f"SSRF blocked: response exceeds {max_bytes} bytes")
+            return response
+        location = response.headers.get("location") if getattr(response, "headers", None) else None
+        if not location:
+            raise UnsafeFetch("SSRF blocked: redirect missing location")
+        nxt = urljoin(current, location)
+        next_host = (urlsplit(nxt).hostname or "").lower()
+        if next_host and next_host != destination.hostname:
+            _strip_credential_headers(send_headers)
+        current = nxt
+        send_method = "GET"
+        send_json = None
+        send_content = None
+        send_data = None
+    raise UnsafeFetch("SSRF blocked: too many redirects")
+
+
+async def safe_request_async(method: str, url: str, **kwargs):
+    return await asyncio.to_thread(safe_request, method, url, **kwargs)
+
+
+class SafeAsyncClient:
+    """Duck-typed client for callers that pass an HTTP client into scrapers.
+
+    ``get`` and ``post`` use ``safe_request``. When ``proxy`` is set, pinning
+    the target address is not possible; each hop is still rejected unless it
+    is a public URL.
+    """
+
+    def __init__(self, timeout: float = 20.0, proxy=None, allowed_hosts=None, max_bytes: int = DEFAULT_MAX_BYTES):
+        self.timeout = timeout
+        self.proxy = proxy
+        self.allowed_hosts = allowed_hosts
+        self.max_bytes = max_bytes
+
+    async def get(self, url: str, **kwargs):
+        timeout = _timeout_seconds(kwargs.pop("timeout", self.timeout), self.timeout)
+        return await safe_request_async(
+            "GET",
+            url,
+            timeout=timeout,
+            headers=kwargs.pop("headers", None),
+            params=kwargs.pop("params", None),
+            allowed_hosts=self.allowed_hosts,
+            proxy=self.proxy,
+            max_bytes=self.max_bytes,
+        )
+
+    async def post(self, url: str, **kwargs):
+        timeout = _timeout_seconds(kwargs.pop("timeout", self.timeout), self.timeout)
+        return await safe_request_async(
+            "POST",
+            url,
+            timeout=timeout,
+            headers=kwargs.pop("headers", None),
+            params=kwargs.pop("params", None),
+            json=kwargs.pop("json", None),
+            content=kwargs.pop("content", None),
+            data=kwargs.pop("data", None),
+            allowed_hosts=self.allowed_hosts,
+            proxy=self.proxy,
+            max_bytes=self.max_bytes,
+        )
+
+    async def aclose(self):
+        return None
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return None
 
 
 def _b64_limit(max_bytes: int) -> int:

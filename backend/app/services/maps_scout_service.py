@@ -80,7 +80,14 @@ async def geocode_city(city: str, client: httpx.AsyncClient) -> Optional[Tuple[f
 
     try:
         url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(clean_city)}&format=json&limit=1"
-        resp = await client.get(url, headers={"User-Agent": "Helix-Intelligence-Scout/2.0"}, timeout=5.0)
+        from app.services.safe_fetch import safe_request_async
+        resp = await safe_request_async(
+            "GET",
+            url,
+            headers={"User-Agent": "Helix-Intelligence-Scout/2.0"},
+            timeout=5.0,
+            allowed_hosts={"nominatim.openstreetmap.org"},
+        )
         if resp.status_code == 200:
             data = resp.json()
             if data and isinstance(data, list) and len(data) > 0:
@@ -127,11 +134,16 @@ async def scrape_maps_places(
     if maps_worker_url and len(places) < limit:
         try:
             auth_headers = {"Authorization": f"Bearer {maps_worker_key}"} if maps_worker_key else {}
-            resp = await client.post(
-                f"{maps_worker_url.rstrip('/')}/v1/scrape",
+            from app.services.safe_fetch import safe_request_async
+            from urllib.parse import urlsplit
+            worker_root = maps_worker_url.rstrip("/")
+            resp = await safe_request_async(
+                "POST",
+                f"{worker_root}/v1/scrape",
                 headers=auth_headers,
                 json={"query": f"{keyword} in {city}", "depth": limit},
                 timeout=25.0,
+                allowed_hosts={urlsplit(worker_root).hostname or ""},
             )
             if resp.status_code == 200:
                 results = resp.json().get("data", [])
@@ -220,10 +232,13 @@ async def scrape_maps_places(
                 for ep in endpoints:
                     try:
                         overpass_url = f"{ep}?data={urllib.parse.quote(overpass_q)}"
-                        op_resp = await client.get(
+                        from app.services.safe_fetch import safe_request_async
+                        op_resp = await safe_request_async(
+                            "GET",
                             overpass_url,
                             headers={"User-Agent": "HelixScout/2.0 (info@helixintelligence.ai)"},
-                            timeout=12.0
+                            timeout=12.0,
+                            allowed_hosts={"overpass-api.de", "lz4.overpass-api.de", "overpass.kumi.systems"},
                         )
                         if op_resp.status_code == 200:
                             elements = op_resp.json().get("elements", [])
@@ -269,10 +284,13 @@ async def scrape_maps_places(
             ]
             for q in queries:
                 nom_url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(q)}&format=json&addressdetails=1&extratags=1&limit={limit}"
-                nom_resp = await client.get(
+                from app.services.safe_fetch import safe_request_async
+                nom_resp = await safe_request_async(
+                    "GET",
                     nom_url,
                     headers={"User-Agent": "HelixScoutLeadGen/2.0 (contact@helixintelligence.ai)"},
-                    timeout=7.0
+                    timeout=7.0,
+                    allowed_hosts={"nominatim.openstreetmap.org"},
                 )
                 if nom_resp.status_code == 200:
                     items = nom_resp.json()
@@ -336,7 +354,10 @@ async def run_maps_scout_worker(job_id: str):
         logs = list(job.logs)
 
         try:
-            async with httpx.AsyncClient(timeout=25.0, follow_redirects=True) as client:
+            # Nominatim, Overpass, ScrapeGraph, and the maps worker call
+            # safe_request_async. A private MAPS_SCRAPER_BASE_URL is rejected.
+            from app.services.safe_fetch import SafeAsyncClient
+            async with SafeAsyncClient(timeout=25.0) as client:
                 # 1. Geocode
                 lat_lon = await geocode_city(job.city, client)
                 if lat_lon:
