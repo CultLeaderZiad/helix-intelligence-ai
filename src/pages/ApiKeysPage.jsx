@@ -4,6 +4,7 @@ import { accountService } from "@/services"
 import { API_BASE_URL } from "@/services/config"
 import { getAccessToken } from "@/services/sessionStore"
 import { useAuth } from "@/context/AuthContext"
+import { useLanguage } from "@/context/LanguageContext"
 import { 
   Key, 
   PlusCircle, 
@@ -28,6 +29,7 @@ function getAuthToken() {
 
 export function ApiKeysPage() {
   const { user } = useAuth()
+  const { t } = useLanguage()
   const [keys, setKeys] = useState([])
   const [loading, setLoading] = useState(true)
   const [toast, setToast] = useState(null)
@@ -238,7 +240,7 @@ export function ApiKeysPage() {
         <p className="text-sm text-slate-400 max-w-md mx-auto">
           Public API keys stay off until a platform admin grants that feature for this workspace.
         </p>
-        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">Request access</Link>
+        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">{t("requestAccess")}</Link>
       </div>
     )
   }

@@ -30,7 +30,7 @@ from app.services.billing_service import (
     release_reservation,
     reserve_credits,
 )
-from app.services.maps_scout_service import _optional_float, _optional_int, persist_place_metrics
+from app.services.maps_scout_service import _optional_float, _optional_int
 from app.services.safe_fetch import UnsafeFetch, safe_http_get
 from app.services.work_outbox import claim_next_work_item, enqueue_work, requeue_expired_leases
 from app.schemas.creative import Creative as CreativeSchema
@@ -152,8 +152,9 @@ async def test_missing_rating_persists_as_null():
                 "reviews_count": {"value": None, "provider": "overpass", "source_url": "https://overpass-api.de/api/interpreter", "fetched_at": "2026-10-18T00:00:00+00:00"},
             },
         )
+        lead.rating = _optional_float(None)
+        lead.reviews_count = _optional_int(None)
         db.add(lead)
-        await persist_place_metrics(db, lead, _optional_float(None), _optional_int(None))
         await db.commit()
         stored = await db.get(ScoutMapsLead, lead.id)
         assert stored.rating is None

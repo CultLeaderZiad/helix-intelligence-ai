@@ -99,7 +99,7 @@ export function JobProgress({ job, query, onCancel }) {
               failed ? "text-danger" : done ? "text-success" : "text-text",
             )}
           >
-            {failed ? "failed" : done ? "done" : "live"}
+            {failed ? "failed" : done ? "done" : job.status === "queued" ? "queued" : "live"}
           </span>
         </span>
         <span className="truncate text-text-muted">discover/{job.job_id}</span>

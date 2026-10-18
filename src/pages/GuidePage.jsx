@@ -101,7 +101,7 @@ const GUIDE_STEPS = [
         text: "Helix synthesizes recurring formulas across your discovered ad corpus:",
         bulletPoints: [
           "Hook Formulas: Identifies first-3-seconds hooks (Problem Agitation, Curiosity Gap, Shock Stat).",
-          "Lift Index (+2.4x): Measures how much longer ads with this pattern survive compared to baseline.",
+          "Lift is not measured. Pattern cards show how often a formula appears in the supplied ads, not platform performance.",
           "Emotional Resonance: Maps psychological triggers (Urgency, Social Proof, Fear of Missing Out, Authority)."
         ]
       },

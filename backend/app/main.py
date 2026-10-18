@@ -37,6 +37,9 @@ from app.api.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.core.rls_role import assert_rls_role
+    async with engine.begin() as conn:
+        await assert_rls_role(conn)
     # Startup reconciliation. Jobs still marked active from a dead process lifetime
     # are reconciled. We check heartbeat_at < cutoff (or created_at < cutoff if no heartbeat
     # was recorded) to avoid terminating live jobs on other active workers.

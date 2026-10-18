@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { accountService } from "@/services"
 import { useAuth } from "@/context/AuthContext"
+import { useLanguage } from "@/context/LanguageContext"
 import { 
   Users, 
   UserPlus, 
@@ -17,6 +18,7 @@ import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 export function TeamPage() {
+  const { t } = useLanguage()
   const { user } = useAuth()
   const [team, setTeam] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -121,9 +123,9 @@ export function TeamPage() {
         <Users className="w-12 h-12 text-slate-600 mx-auto" />
         <h2 className="text-xl font-bold text-slate-200">Team Accounts Locked</h2>
         <p className="text-sm text-slate-400 max-w-md mx-auto">
-          Team accounts stay off until a platform admin grants that feature. Request access for this workspace.
+          {t("teamNeedsAccess")}
         </p>
-        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">Request access</Link>
+        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">{t("requestAccess")}</Link>
       </div>
     )
   }

@@ -40,25 +40,6 @@ def _optional_int(value):
         return None
 
 
-async def persist_place_metrics(db, lead, rating, reviews_count) -> None:
-    """Store missing ratings as NULL.
-
-    The mapped default is 0, and assigning None is inserted as that default.
-    A follow-up update is the way to keep a genuine absence.
-    """
-    from sqlalchemy import text
-
-    lead.rating = rating
-    lead.reviews_count = 0 if reviews_count is None else reviews_count
-    await db.flush()
-    if rating is None or reviews_count is None:
-        await db.execute(
-            text(
-                "UPDATE scout_maps_leads SET rating = :rating, reviews_count = :reviews WHERE id = :id"
-            ),
-            {"rating": rating, "reviews": reviews_count, "id": lead.id},
-        )
-        await db.refresh(lead)
 
 
 HEADERS = {
@@ -552,12 +533,8 @@ async def execute_maps_scout(job_id: str):
                         )
                         # Assign after init. The column default is 0, and passing
                         # None into the constructor is stored as that default.
-                        await persist_place_metrics(
-                            db,
-                            lead,
-                            _optional_float(p.get("rating")),
-                            _optional_int(p.get("reviews_count")),
-                        )
+                        lead.rating = _optional_float(p.get("rating"))
+                        lead.reviews_count = _optional_int(p.get("reviews_count"))
                         lead.metadata_raw = {
                             "rating": {
                                 "value": lead.rating,

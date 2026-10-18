@@ -19,7 +19,8 @@ class Pattern(Base):
     label = Column(String, nullable=False)
     family = Column(String, nullable=False)
     prevalence = Column(Float, nullable=False, default=0.0)
-    lift_index = Column(Float, nullable=False, default=1.0)
+    # Null means this pattern has no measured performance lift.
+    lift_index = Column(Float, nullable=True)
 
 
 # Register the quarantine table on Base.metadata for Alembic.

@@ -240,26 +240,24 @@ class MetapiProvider(ScraperProvider):
                     first_seen=start_date,
                     last_seen=end_date,
                     days_active=days_active,
+                    days_known=days_known,
                     variant_count=1,
                     impressions_est=None,
                     spend_band=None,
                     data_source="ad_library_scrape",
                     is_estimated=True,
                     media_url=media_url,
-                    thumbnail_url=thumbnail_url
+                    thumbnail_url=thumbnail_url,
+                    source_ad_id=item.get("id") or item.get("ad_archive_id"),
+                    permalink=item.get("ad_snapshot_url") or item.get("permalink"),
+                    fetched_at=datetime.now(timezone.utc).isoformat(),
+                    provider="metapi",
+                    raw={
+                        "id": item.get("id") or item.get("ad_archive_id"),
+                        "permalink": item.get("ad_snapshot_url") or item.get("permalink"),
+                        "metrics_observed": False,
+                    },
                 )
-            fetched_at = datetime.now(timezone.utc).isoformat()
-            object.__setattr__(raw, "_source_ad_id", item.get("id") or item.get("ad_archive_id"))
-            object.__setattr__(raw, "_permalink", item.get("ad_snapshot_url") or item.get("permalink"))
-            object.__setattr__(raw, "_fetched_at", fetched_at)
-            object.__setattr__(raw, "_days_known", days_known)
-            object.__setattr__(raw, "_provenance", {
-                "provider": "metapi",
-                "source_ad_id": item.get("id") or item.get("ad_archive_id"),
-                "permalink": item.get("ad_snapshot_url") or item.get("permalink"),
-                "fetched_at": fetched_at,
-                "metrics_observed": False,
-            })
             creatives.append(raw)
 
         return creatives

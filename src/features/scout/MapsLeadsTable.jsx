@@ -1,9 +1,29 @@
 import React from "react"
 import { ExternalLink, Mail, Phone, MapPin, Star, Share2, Check, Copy } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useLanguage } from "@/context/LanguageContext"
+
+function missingMetric(value) {
+  return value === null || value === undefined || value === ""
+}
+
+function formatRating(value, unavailable) {
+  if (missingMetric(value)) return unavailable
+  const number = Number(value)
+  if (!Number.isFinite(number)) return unavailable
+  return Number.isInteger(number) ? String(number) : number.toFixed(1)
+}
+
+function formatCount(value, unavailable) {
+  if (missingMetric(value)) return unavailable
+  const number = Number(value)
+  if (!Number.isFinite(number)) return unavailable
+  return String(number)
+}
 
 export function MapsLeadsTable({ leads = [], selectedLead, onSelectLead }) {
   const [copiedId, setCopiedId] = React.useState(null)
+  const { t } = useLanguage()
 
   const handleCopy = (e, text, id) => {
     e.stopPropagation()
@@ -134,17 +154,15 @@ export function MapsLeadsTable({ leads = [], selectedLead, onSelectLead }) {
 
                   {/* Rating */}
                   <td className="py-2.5 px-3 whitespace-nowrap">
-                    {lead.rating ? (
-                      <div className="flex items-center gap-1 text-[10px]">
-                        <Star className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
-                        <span className="font-bold text-white">{lead.rating.toFixed(1)}</span>
-                        {lead.reviews_count ? (
-                          <span className="text-text-faint">({lead.reviews_count})</span>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <span className="text-text-faint">—</span>
-                    )}
+                    <div className="flex items-center gap-1 text-[10px]" dir="auto">
+                      <Star className="h-2.5 w-2.5 text-amber-400 fill-amber-400" />
+                      <span className="font-bold text-white">{formatRating(lead.rating, t("unavailable"))}</span>
+                      <span className="text-text-faint">
+                        ({missingMetric(lead.reviews_count)
+                          ? t("unavailable")
+                          : formatCount(lead.reviews_count, t("unavailable"))})
+                      </span>
+                    </div>
                   </td>
 
                   {/* Socials */}

@@ -163,6 +163,18 @@ def main() -> None:
     os.environ.setdefault("SCRAPLING_WORKER_ENABLED", "true")
     os.environ.setdefault("SCRAPLING_ROBOTS_OBEY", "true")
 
+    async def _check_rls_role() -> None:
+        from app.core.rls_role import assert_rls_role
+        from app.db.session import worker_engine
+        async with worker_engine.connect() as conn:
+            await assert_rls_role(conn)
+
+    try:
+        asyncio.run(_check_rls_role())
+    except RuntimeError as exc:
+        print(f"FATAL: {exc}", file=sys.stderr)
+        sys.exit(1)
+
     # Deferred: app imports happen only here, never in the API boot path.
     from app.services import scrapling_engine as engine
     from app.services.leadgen_pipeline import run_leadgen_job

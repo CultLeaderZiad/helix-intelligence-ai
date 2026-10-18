@@ -350,7 +350,7 @@ async def generate_patterns_for_recent_creatives(
                     label=p_schema.label,
                     family=p_schema.family,
                     prevalence=p_schema.prevalence,
-                    lift_index=0.0,
+                    lift_index=None,
                     job_id=job_id,
                     org_id=job.org_id,
                 )

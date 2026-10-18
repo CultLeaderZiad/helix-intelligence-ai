@@ -386,26 +386,23 @@ class AdLibraryProvider(ScraperProvider):
                     first_seen=first_seen,
                     last_seen=last_seen,
                     days_active=days_active,
+                    days_known=bool(first_seen),
                     variant_count=1,
                     impressions_est=impressions_est,
                     spend_band=spend_band,
                     data_source="meta_official",
-                    is_estimated=False
+                    is_estimated=False,
+                    source_ad_id=ad.get("id"),
+                    permalink=ad.get("ad_snapshot_url"),
+                    fetched_at=now.isoformat(),
+                    provider="meta_graph",
+                    raw={
+                        "id": ad.get("id"),
+                        "permalink": ad.get("ad_snapshot_url"),
+                        "metrics_observed": impressions_est is not None or spend_band is not None,
+                    },
                 )
             )
-            fetched_at = now.isoformat()
-            raw = creatives[-1]
-            object.__setattr__(raw, "_source_ad_id", ad.get("id"))
-            object.__setattr__(raw, "_permalink", ad.get("ad_snapshot_url"))
-            object.__setattr__(raw, "_fetched_at", fetched_at)
-            object.__setattr__(raw, "_days_known", bool(ad.get("ad_delivery_start_time") or ad.get("ad_creation_time")))
-            object.__setattr__(raw, "_provenance", {
-                "provider": "meta_graph",
-                "source_ad_id": ad.get("id"),
-                "permalink": ad.get("ad_snapshot_url"),
-                "fetched_at": fetched_at,
-                "metrics_observed": impressions_est is not None or spend_band is not None,
-            })
 
         return creatives
 
@@ -458,25 +455,22 @@ class AdLibraryProvider(ScraperProvider):
                     first_seen=item.get("start_date"),
                     last_seen=item.get("end_date"),
                     days_active=item.get("days_active") or 1,
+                    days_known=item.get("days_active") is not None or bool(item.get("start_date")),
                     variant_count=1,
                     impressions_est=None,
                     spend_band=None,
                     data_source="ad_library_scrape",
-                    is_estimated=True
+                    is_estimated=True,
+                    source_ad_id=item.get("ad_archive_id") or item.get("id"),
+                    permalink=item.get("ad_snapshot_url") or item.get("url"),
+                    fetched_at=now.isoformat(),
+                    provider="apify",
+                    raw={
+                        "id": item.get("ad_archive_id") or item.get("id"),
+                        "permalink": item.get("ad_snapshot_url") or item.get("url"),
+                        "metrics_observed": False,
+                    },
                 )
             )
-            fetched_at = now.isoformat()
-            raw = creatives[-1]
-            object.__setattr__(raw, "_source_ad_id", item.get("ad_archive_id") or item.get("id"))
-            object.__setattr__(raw, "_permalink", item.get("ad_snapshot_url") or item.get("url"))
-            object.__setattr__(raw, "_fetched_at", fetched_at)
-            object.__setattr__(raw, "_days_known", item.get("days_active") is not None or bool(item.get("start_date")))
-            object.__setattr__(raw, "_provenance", {
-                "provider": "apify",
-                "source_ad_id": item.get("ad_archive_id") or item.get("id"),
-                "permalink": item.get("ad_snapshot_url") or item.get("url"),
-                "fetched_at": fetched_at,
-                "metrics_observed": False,
-            })
 
         return creatives

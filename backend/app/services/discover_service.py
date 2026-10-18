@@ -244,17 +244,19 @@ async def trigger_search(
     # duplicate active job structurally impossible: if a concurrent identical
     # request won the insert race, we roll back and return its job — before
     # any credits are charged.
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
+    inline = inline_execution_enabled()
     new_job = ScrapeJob(
         org_id=org_id,
         query=scrape_query,
-        status="running",
+        status="running" if inline else "queued",
         created_at=_utcnow(),
-        progress=0.1,
-        stage="init",
-        stage_label="Initializing Search",
+        progress=0.1 if inline else 0.0,
+        stage="init" if inline else "queued",
+        stage_label="Initializing Search" if inline else "Queued",
         stage_index=0,
         stages_total=5,
-        elapsed_ms=100,
+        elapsed_ms=100 if inline else 0,
         record_count=0
     )
     try:
@@ -298,7 +300,6 @@ async def trigger_search(
         metadata={"query": scrape_query, "original_query": clean_query}
     )
 
-    from app.services.work_outbox import enqueue_work, inline_execution_enabled
     try:
         await enqueue_work(
             db,
@@ -449,6 +450,10 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
                 job.stage_label = "Workspace is not entitled to run this search"
                 await db.commit()
                 return
+        job.status = "running"
+        job.stage = "init"
+        job.stage_label = "Initializing Search"
+        await db.commit()
         
     usage_log_id = None
     sources_tried: List[str] = []
@@ -574,6 +579,8 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
         for rc in raw_creatives:
             if rc.landing_url and scrapegraph_calls < 2:
                 extra_data = await scrapegraph.extract_landing_page(rc.landing_url)
+                if not isinstance(extra_data, dict) or extra_data.get("status") in ("failure", "skipped", "empty"):
+                    extra_data = None
                 enriched_creatives.append((rc, extra_data))
                 scrapegraph_calls += 1
             else:

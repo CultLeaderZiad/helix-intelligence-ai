@@ -7,6 +7,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
 
+def csv_metric(value):
+    """Unknown metrics export as an empty cell. A real zero stays 0."""
+    if value is None:
+        return ""
+    return value
+
+
 from datetime import datetime, timezone
 from app.core.runtime import BOOT_ID
 from app.core.deps import get_db, get_current_user, require_feature
@@ -729,8 +736,8 @@ async def export_maps_leads_csv(
             l.category or "",
             l.address or "",
             l.city or "",
-            l.rating or "",
-            l.reviews_count or 0,
+            csv_metric(l.rating),
+            csv_metric(l.reviews_count),
             l.instagram or "",
             l.facebook or "",
             l.linkedin or "",

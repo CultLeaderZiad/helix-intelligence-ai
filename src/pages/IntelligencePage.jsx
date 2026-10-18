@@ -559,15 +559,11 @@ export function IntelligencePage() {
                         </span>
                       </div>
                       <div className="flex flex-col items-end shrink-0 font-mono text-[10px]">
-                        <span className="flex items-center text-accent font-bold">
-                          +{typeof p.lift_index === "number" ? p.lift_index.toFixed(1) : "2.4"}x Lift
-                          <InfoTip
-                            text="How much more often this pattern appears in strong-performing ads compared to average ones."
-                            label="What does Lift mean?"
-                          />
+                        <span className="flex items-center text-text-muted font-bold" dir="auto">
+                          {t("notMeasured")}
                         </span>
                         <span className="flex items-center text-text-faint">
-                          {p.prevalence ? `${(p.prevalence * 100).toFixed(0)}% prev` : "High"}
+                          {p.prevalence === null || p.prevalence === undefined ? t("unavailable") : `${(Number(p.prevalence) * 100).toFixed(0)}%`}
                           <InfoTip
                             text="The share of ads in this search that use this pattern."
                             label="What does prevalence mean?"

@@ -112,7 +112,7 @@ def normalize_creative(
         duration_seconds=raw.duration_seconds,
         first_seen=raw.first_seen,
         last_seen=raw.last_seen,
-        days_active=raw.days_active if getattr(raw, "_days_known", True) else None,
+        days_active=raw.days_active if raw.days_known else None,
         variant_count=raw.variant_count,
         impressions_est=impressions_est,
         is_estimated=is_estimated if impressions_est is not None else None,
@@ -120,15 +120,21 @@ def normalize_creative(
         spend_band=spend_band,
         engagement_rate=engagement_rate,
         ctr_est=ctr_est,
-        source_ad_id=getattr(raw, "_source_ad_id", None),
-        permalink=getattr(raw, "_permalink", None),
+        source_ad_id=raw.source_ad_id,
+        permalink=raw.permalink,
         fetched_at=None,
-        provenance_json=getattr(raw, "_provenance", None),
+        provenance_json={
+            "provider": raw.provider,
+            "source_ad_id": raw.source_ad_id,
+            "permalink": raw.permalink,
+            "fetched_at": raw.fetched_at,
+            "raw": raw.raw,
+        } if raw.provider or raw.source_ad_id or raw.permalink or raw.raw else None,
         score_basis="heuristic",
         score_scale=HEURISTIC_SCALE,
         heuristic_version=HEURISTIC_VERSION,
     )
-    fetched = getattr(raw, "_fetched_at", None)
+    fetched = raw.fetched_at
     if fetched:
         from datetime import datetime
         try:
@@ -160,7 +166,7 @@ def normalize_creative(
     retention_score = 0.0
     if raw.format == "video":
         retention_score += 4.0
-    if getattr(raw, "_days_known", False) and (raw.days_active or 0) > 7:
+    if raw.days_known and (raw.days_active or 0) > 7:
         retention_score += 3.0
     retention_score = min(10.0, round(retention_score, 1))
 

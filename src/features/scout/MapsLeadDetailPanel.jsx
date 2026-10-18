@@ -2,9 +2,29 @@ import React, { useState } from "react"
 import { Building2, Phone, Mail, Globe, MapPin, Star, Share2, Copy, Check, ExternalLink, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
+import { useLanguage } from "@/context/LanguageContext"
+
+function missingMetric(value) {
+  return value === null || value === undefined || value === ""
+}
+
+function formatRating(value, unavailable) {
+  if (missingMetric(value)) return unavailable
+  const number = Number(value)
+  if (!Number.isFinite(number)) return unavailable
+  return Number.isInteger(number) ? String(number) : number.toFixed(1)
+}
+
+function formatCount(value, unavailable) {
+  if (missingMetric(value)) return unavailable
+  const number = Number(value)
+  if (!Number.isFinite(number)) return unavailable
+  return String(number)
+}
 
 export function MapsLeadDetailPanel({ lead, onQueueSocials }) {
   const [copiedKey, setCopiedKey] = useState(null)
+  const { t } = useLanguage()
 
   if (!lead) {
     return (
@@ -36,15 +56,15 @@ export function MapsLeadDetailPanel({ lead, onQueueSocials }) {
           <span className="text-[10px] text-text-faint uppercase tracking-wider">
             Business Profile
           </span>
-          {lead.rating ? (
-            <div className="flex items-center gap-1 text-[11px] bg-[#1a1a24] px-2 py-0.5 rounded border border-border">
-              <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
-              <span className="font-bold text-white">{lead.rating.toFixed(1)}</span>
-              {lead.reviews_count ? (
-                <span className="text-text-faint">({lead.reviews_count} reviews)</span>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="flex items-center gap-1 text-[11px] bg-[#1a1a24] px-2 py-0.5 rounded border border-border" dir="auto">
+            <Star className="h-3 w-3 text-amber-400 fill-amber-400" />
+            <span className="font-bold text-white">{formatRating(lead.rating, t("unavailable"))}</span>
+            <span className="text-text-faint">
+              ({missingMetric(lead.reviews_count)
+                ? t("unavailable")
+                : `${formatCount(lead.reviews_count, t("unavailable"))} ${t("reviews")}`})
+            </span>
+          </div>
         </div>
         <h3 className="text-base font-bold text-white leading-tight">
           {lead.title}

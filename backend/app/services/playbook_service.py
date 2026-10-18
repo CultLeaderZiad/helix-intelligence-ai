@@ -106,14 +106,14 @@ async def compile_playbook(
 
         for p in patterns_res:
             prevalence = float(getattr(p, "prevalence", 0.0) or 0.0)
-            lift_index = float(getattr(p, "lift_index", 1.0) or 1.0)
             formatted_patterns.append({
                 "id": p.id,
                 "name": getattr(p, "label", None) or "Unnamed pattern",
                 "category": getattr(p, "family", None) or "unclassified",
                 "description": f"Detected in {prevalence * 100:.0f}% of the analyzed creatives.",
                 "confidence_score": round(prevalence, 2),
-                "estimated_lift_percent": int((lift_index - 1.0) * 100) if lift_index > 1.0 else None,
+                # lift_index is not a measured outcome.
+                "estimated_lift_percent": None,
                 "visual_structure": None,
             })
 

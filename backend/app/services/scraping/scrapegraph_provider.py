@@ -18,17 +18,13 @@ class ScrapeGraphProvider:
         self.endpoint = "https://v2-api.scrapegraphai.com/api/extract"
 
     async def extract_landing_page(self, url: str) -> Dict[str, Any]:
-        """
-        Extracts marketing details from the landing page:
-        headline, offer, positioning, cta.
-        Returns empty dict if URL is invalid, API key missing, or extraction fails.
-        """
+        """Extract landing-page fields. Failures are status=failure, never an empty dict."""
         if not url:
-            return {}
+            return {"status": "skipped", "provider": "scrapegraph", "error": "missing_url"}
 
         if not self.api_key:
             logger.info("SCRAPEGRAPH_API_KEY not configured. Skipping landing page extraction.")
-            return {}
+            return {"status": "skipped", "provider": "scrapegraph", "error": "not_configured"}
 
         prompt = (
             "Extract the main marketing headline, the core offer or value proposition, "
@@ -59,14 +55,25 @@ class ScrapeGraphProvider:
             response.raise_for_status()
             data = response.json()
             extracted = data.get("json") or data.get("result") or {}
-            if isinstance(extracted, dict) and extracted:
+            if isinstance(extracted, dict) and any(extracted.get(key) for key in ("headline", "offer", "positioning", "cta")):
                 return {
+                    "status": "success",
+                    "provider": "scrapegraph",
                     "headline": extracted.get("headline"),
                     "offer": extracted.get("offer"),
                     "positioning": extracted.get("positioning"),
-                    "cta": extracted.get("cta")
+                    "cta": extracted.get("cta"),
+                    "error": None,
                 }
-            return {}
+            return {"status": "empty", "provider": "scrapegraph", "error": None}
         except Exception as e:
-            logger.error(f"ScrapeGraphAI extraction failed for {url}: {e}")
-            return {}
+            logger.error("ScrapeGraphAI extraction failed for %s: %s", url, e)
+            return {
+                "status": "failure",
+                "provider": "scrapegraph",
+                "headline": None,
+                "offer": None,
+                "positioning": None,
+                "cta": None,
+                "error": str(e)[:300],
+            }

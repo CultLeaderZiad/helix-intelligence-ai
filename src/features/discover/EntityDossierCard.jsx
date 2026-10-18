@@ -69,142 +69,115 @@ export function TikTokLogo({ className = "size-4" }) {
   )
 }
 
-// Helper to determine platform metadata, logo, styling, and real verified channel & search URLs
-export function getPlatformMeta(platformName = "", entityName = "", query = "", profile = {}) {
+const PLATFORM_STYLES = {
+  kick: {
+    name: "Kick",
+    label: "Kick",
+    Icon: KickLogo,
+    badgeClass: "bg-[#0e1f0e] text-[#53fc18] border-[#53fc18]/40",
+    color: "#53fc18",
+  },
+  rumble: {
+    name: "Rumble",
+    label: "Rumble",
+    Icon: RumbleLogo,
+    badgeClass: "bg-[#112211] text-[#85c742] border-[#85c742]/40",
+    color: "#85c742",
+  },
+  youtube: {
+    name: "YouTube",
+    label: "YouTube",
+    Icon: YouTubeLogo,
+    badgeClass: "bg-[#250d0d] text-[#ff4444] border-[#ff4444]/40",
+    color: "#ff4444",
+  },
+  x: {
+    name: "X",
+    label: "X (Twitter)",
+    Icon: XLogo,
+    badgeClass: "bg-[#1a1c23] text-white border-white/30",
+    color: "#ffffff",
+  },
+  instagram: {
+    name: "Instagram",
+    label: "Instagram",
+    Icon: InstagramLogo,
+    badgeClass: "bg-[#250d18] text-[#ff4da6] border-[#ff4da6]/40",
+    color: "#ff4da6",
+  },
+  tiktok: {
+    name: "TikTok",
+    label: "TikTok",
+    Icon: TikTokLogo,
+    badgeClass: "bg-[#0b1f24] text-[#25f4ee] border-[#25f4ee]/40",
+    color: "#25f4ee",
+  },
+}
+
+function platformKey(platformName = "") {
   const p = platformName.toLowerCase()
-  const cleanQ = (entityName || query || "").trim()
-  const handle = cleanQ.split(" ")[0].toLowerCase().replace(/[^a-z0-9_]/g, "")
-  const isTate = /tate/i.test(cleanQ)
-  const isSneako = /sneako/i.test(cleanQ)
-  const isAdin = /adin/i.test(cleanQ)
-  const isKai = /kai/i.test(cleanQ)
+  if (p.includes("kick")) return "kick"
+  if (p.includes("rumble")) return "rumble"
+  if (p.includes("youtube")) return "youtube"
+  if (p.includes("twitter") || p === "x" || p.includes("x (")) return "x"
+  if (p.includes("instagram") || p.includes("insta")) return "instagram"
+  if (p.includes("tiktok")) return "tiktok"
+  return null
+}
 
-  const links = profile?.social_links || {}
-
-  if (p.includes("kick")) {
-    const keyData = links.kick || {}
-    const profile_url = keyData.profile_url || (isSneako ? "https://kick.com/sneako" : isTate ? "https://kick.com/tatespeech" : isAdin ? "https://kick.com/adinross" : `https://kick.com/${handle || "explore"}`)
-    const search_url = keyData.search_url || `https://kick.com/search?q=${encodeURIComponent(cleanQ)}`
-    const profileHandle = keyData.handle || (isSneako ? "sneako" : isTate ? "tatespeech" : isAdin ? "adinross" : handle)
-
-    return {
-      name: "Kick",
-      label: "Kick",
-      handle: profileHandle,
-      url: profile_url,
-      profile_url,
-      search_url,
-      Icon: KickLogo,
-      badgeClass: "bg-[#0e1f0e] text-[#53fc18] border-[#53fc18]/40 hover:bg-[#53fc18] hover:text-black hover:border-[#53fc18]",
-      color: "#53fc18"
-    }
+function httpUrl(value) {
+  if (typeof value !== "string" || !value.trim()) return null
+  try {
+    const url = new URL(value.trim())
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null
+    return url.toString()
+  } catch {
+    return null
   }
+}
 
-  if (p.includes("rumble")) {
-    const keyData = links.rumble || {}
-    const profile_url = keyData.profile_url || (isSneako ? "https://rumble.com/c/Sneako" : isTate ? "https://rumble.com/c/TateSpeech" : `https://rumble.com/search/all?q=${encodeURIComponent(cleanQ)}`)
-    const search_url = keyData.search_url || `https://rumble.com/search/all?q=${encodeURIComponent(cleanQ)}`
-    const profileHandle = keyData.handle || (isSneako ? "Sneako" : isTate ? "TateSpeech" : handle.toUpperCase())
-
-    return {
-      name: "Rumble",
-      label: "Rumble",
-      handle: profileHandle,
-      url: profile_url,
-      profile_url,
-      search_url,
-      Icon: RumbleLogo,
-      badgeClass: "bg-[#112211] text-[#85c742] border-[#85c742]/40 hover:bg-[#85c742] hover:text-black hover:border-[#85c742]",
-      color: "#85c742"
-    }
+function evidenceText(profile, t) {
+  const labels = {
+    curated_unverified: "evidenceCurated",
+    model_hypothesis: "evidenceHypothesis",
+    unverified_heuristic: "evidenceHeuristic",
+    fetched: "evidenceFetched",
   }
+  const key = labels[profile?.evidence_status]
+  return key ? t(key) : null
+}
 
-  if (p.includes("youtube")) {
-    const keyData = links.youtube || {}
-    const profile_url = keyData.profile_url || (isSneako ? "https://www.youtube.com/results?search_query=sneako" : isTate ? "https://www.youtube.com/results?search_query=andrew+tate" : `https://www.youtube.com/results?search_query=${encodeURIComponent(cleanQ)}`)
-    const search_url = keyData.search_url || `https://www.youtube.com/results?search_query=${encodeURIComponent(cleanQ)}`
-    const profileHandle = keyData.handle || (isSneako ? "@TheUnfiltered" : isTate ? "TateSpeech" : `@${handle}`)
-
-    return {
-      name: "YouTube",
-      label: "YouTube",
-      handle: profileHandle,
-      url: profile_url,
-      profile_url,
-      search_url,
-      Icon: YouTubeLogo,
-      badgeClass: "bg-[#250d0d] text-[#ff4444] border-[#ff4444]/40 hover:bg-[#ff0000] hover:text-white hover:border-[#ff0000]",
-      color: "#ff4444"
-    }
-  }
-
-  if (p.includes("twitter") || p.includes("x")) {
-    const keyData = links.x || {}
-    const profile_url = keyData.profile_url || (isSneako ? "https://x.com/TheSneako" : isTate ? "https://x.com/Cobratate" : isAdin ? "https://x.com/adinross" : isKai ? "https://x.com/KaiCenat" : `https://x.com/${handle}`)
-    const search_url = keyData.search_url || `https://x.com/search?q=${encodeURIComponent(cleanQ)}&src=typeahead_click`
-    const profileHandle = keyData.handle || (isSneako ? "@TheSneako" : isTate ? "@Cobratate" : isAdin ? "@adinross" : isKai ? "@KaiCenat" : `@${handle}`)
-
-    return {
-      name: "X",
-      label: "X (Twitter)",
-      handle: profileHandle,
-      url: profile_url,
-      profile_url,
-      search_url,
-      Icon: XLogo,
-      badgeClass: "bg-[#1a1c23] text-white border-white/30 hover:bg-white hover:text-black hover:border-white",
-      color: "#ffffff"
-    }
-  }
-
-  if (p.includes("instagram") || p.includes("insta")) {
-    const keyData = links.instagram || {}
-    const profile_url = keyData.profile_url || (isSneako ? "https://instagram.com/sneako" : isTate ? "https://instagram.com/cobratate" : isKai ? "https://instagram.com/kaicenat" : `https://instagram.com/${handle}`)
-    const search_url = keyData.search_url || `https://www.instagram.com/explore/search/keyword/?q=${encodeURIComponent(cleanQ)}`
-    const profileHandle = keyData.handle || (isSneako ? "@sneako" : isTate ? "@cobratate" : isKai ? "@kaicenat" : `@${handle}`)
-
-    return {
-      name: "Instagram",
-      label: "Instagram",
-      handle: profileHandle,
-      url: profile_url,
-      profile_url,
-      search_url,
-      Icon: InstagramLogo,
-      badgeClass: "bg-[#250d18] text-[#ff4da6] border-[#ff4da6]/40 hover:bg-[#ff4da6] hover:text-black hover:border-[#ff4da6]",
-      color: "#ff4da6"
-    }
-  }
-
-  if (p.includes("tiktok")) {
-    const keyData = links.tiktok || {}
-    const profile_url = keyData.profile_url || (isSneako ? "https://www.tiktok.com/tag/sneako" : isTate ? "https://www.tiktok.com/tag/andrewtate" : `https://www.tiktok.com/search?q=${encodeURIComponent(cleanQ)}`)
-    const search_url = keyData.search_url || `https://www.tiktok.com/search?q=${encodeURIComponent(cleanQ)}`
-    const profileHandle = keyData.handle || (isSneako ? "@sneako" : isTate ? "@cobratate" : `@${handle}`)
-
-    return {
-      name: "TikTok",
-      label: "TikTok",
-      handle: profileHandle,
-      url: profile_url,
-      profile_url,
-      search_url,
-      Icon: TikTokLogo,
-      badgeClass: "bg-[#0b1f24] text-[#25f4ee] border-[#25f4ee]/40 hover:bg-[#25f4ee] hover:text-black hover:border-[#25f4ee]",
-      color: "#25f4ee"
-    }
-  }
+// Styling only. A profile or search URL is used when that social link was fetched.
+export function getPlatformMeta(platformName = "", _entityName = "", _query = "", profile = {}) {
+  const key = platformKey(platformName)
+  const style = key
+    ? PLATFORM_STYLES[key]
+    : {
+        name: platformName || "Profile",
+        label: platformName || "Profile",
+        Icon: ExternalLink,
+        badgeClass: "bg-surface-elevated text-text border-border",
+        color: "#a3e635",
+      }
+  const entry = key && profile?.social_links?.[key] && typeof profile.social_links[key] === "object"
+    ? profile.social_links[key]
+    : null
+  const fetched = entry?.fetched === true
+  const profileUrl = fetched ? httpUrl(entry.profile_url) : null
+  const searchUrl = fetched ? httpUrl(entry.search_url) : null
+  const handle = typeof entry?.handle === "string" ? entry.handle : ""
 
   return {
-    name: platformName,
-    label: platformName,
-    handle: `@${handle}`,
-    url: `https://www.google.com/search?q=${encodeURIComponent(cleanQ + " " + platformName)}`,
-    profile_url: `https://www.google.com/search?q=${encodeURIComponent(cleanQ + " " + platformName)}`,
-    search_url: `https://www.google.com/search?q=${encodeURIComponent(cleanQ + " " + platformName)}`,
-    Icon: ExternalLink,
-    badgeClass: "bg-surface-elevated text-text border-border hover:border-accent hover:text-accent",
-    color: "#a3e635"
+    name: style.name,
+    label: style.label,
+    handle,
+    fetched: Boolean(profileUrl),
+    url: profileUrl,
+    profile_url: profileUrl,
+    search_url: searchUrl,
+    Icon: style.Icon,
+    badgeClass: style.badgeClass,
+    color: style.color,
   }
 }
 
@@ -216,7 +189,6 @@ export function EntityDossierCard({ profile, query, isZeroResults = false }) {
 
   const {
     entity_name = query,
-    entity_type = "general",
     category_label = "Entity Intelligence",
     primary_platforms = ["Kick", "Rumble", "YouTube", "X (Twitter)"],
     summary = "",
@@ -228,14 +200,22 @@ export function EntityDossierCard({ profile, query, isZeroResults = false }) {
     similar_entities = []
   } = profile
 
-  const isCreator = entity_type === "creator_streamer" || entity_type === "influencer"
   const hasDisambiguation = disambiguation?.has_confusion
-
-  // Ensure standard streaming / social platforms exist for creator entities
-  const defaultPlatforms = ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"]
-  const platformsToRender = primary_platforms.length > 0
-    ? Array.from(new Set([...primary_platforms, ...defaultPlatforms]))
-    : defaultPlatforms
+  const note = evidenceText(profile, t)
+  const listed = (Array.isArray(primary_platforms) ? primary_platforms : []).filter(
+    (name) => typeof name === "string" && name.trim()
+  )
+  const fromLinks = Object.entries(profile?.social_links || {})
+    .filter(([, entry]) => entry && typeof entry === "object")
+    .map(([key, entry]) => (typeof entry.name === "string" && entry.name.trim() ? entry.name : key))
+  const platformsToRender = []
+  const seenPlatforms = new Set()
+  for (const name of [...listed, ...fromLinks]) {
+    const id = platformKey(name) || name.toLowerCase()
+    if (seenPlatforms.has(id)) continue
+    seenPlatforms.add(id)
+    platformsToRender.push(name)
+  }
 
   return (
     <div className="border-b border-border bg-gradient-to-b from-[#14161f] via-[#0f1016] to-[#0a0b0e] px-4 py-3.5 transition-all text-text">
@@ -259,17 +239,32 @@ export function EntityDossierCard({ profile, query, isZeroResults = false }) {
         <div className="flex flex-wrap items-center gap-2">
           {/* Prominent Branded Platform Links with Official Logos */}
           <div className="flex flex-wrap items-center gap-2">
-            {platformsToRender.map((platform) => {
+            {platformsToRender.length === 0 ? (
+              <span className="text-xs text-text-muted" dir="auto">{t("profileUnavailable")}</span>
+            ) : platformsToRender.map((platform) => {
               const meta = getPlatformMeta(platform, entity_name, query, profile)
               const { Icon } = meta
+              if (!meta.profile_url) {
+                return (
+                  <span
+                    key={platform}
+                    dir="auto"
+                    className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold ${meta.badgeClass}`}
+                  >
+                    <Icon className="size-3.5 shrink-0" />
+                    <span>{meta.label}</span>
+                    <span className="font-normal opacity-80">{t("profileUnavailable")}</span>
+                  </span>
+                )
+              }
               return (
                 <a
                   key={platform}
-                  href={meta.url}
+                  href={meta.profile_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   title={`${t("openOnPlatform")} ${meta.label}`}
-                  className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-all shadow-sm transform hover:scale-105 ${meta.badgeClass}`}
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-bold transition-all shadow-sm ${meta.badgeClass}`}
                 >
                   <Icon className="size-3.5 shrink-0" />
                   <span>{meta.label}</span>
@@ -322,9 +317,15 @@ export function EntityDossierCard({ profile, query, isZeroResults = false }) {
         </div>
       )}
 
+      {note ? (
+        <p className="mt-2 text-[11px] leading-relaxed text-text-muted" dir="auto">
+          {note}
+        </p>
+      ) : null}
+
       {/* Summary Line */}
       {summary && (
-        <p className="mt-2.5 text-xs leading-relaxed text-text-muted font-sans max-w-5xl">
+        <p className="mt-2.5 text-xs leading-relaxed text-text-muted font-sans max-w-5xl" dir="auto">
           {summary}
         </p>
       )}
@@ -345,24 +346,24 @@ export function EntityDossierCard({ profile, query, isZeroResults = false }) {
                   <span className="font-mono text-[10px] uppercase font-bold text-text-faint block mb-0.5">
                     {t("reachModel")}
                   </span>
-                  <p className="text-text leading-relaxed font-sans">
-                    {online_presence.reach_overview || "Hundreds of thousands of live viewers & syndicated short clips."}
+                  <p className="text-text leading-relaxed font-sans" dir="auto">
+                    {online_presence.reach_overview || t("unavailable")}
                   </p>
                 </div>
                 <div>
                   <span className="font-mono text-[10px] uppercase font-bold text-text-faint block mb-0.5">
                     {t("viralSyndicate")}
                   </span>
-                  <p className="text-text leading-relaxed font-sans">
-                    {online_presence.viral_engine || "Decentralized fan clipping & social syndication."}
+                  <p className="text-text leading-relaxed font-sans" dir="auto">
+                    {online_presence.viral_engine || t("unavailable")}
                   </p>
                 </div>
                 <div>
                   <span className="font-mono text-[10px] uppercase font-bold text-text-faint block mb-0.5">
                     {t("communityEpicenters")}
                   </span>
-                  <p className="text-text leading-relaxed font-sans">
-                    {online_presence.community_hubs || "Livestream live chat, X Spaces, Discord/Telegram subscriber groups."}
+                  <p className="text-text leading-relaxed font-sans" dir="auto">
+                    {online_presence.community_hubs || t("unavailable")}
                   </p>
                 </div>
               </div>
@@ -379,26 +380,23 @@ export function EntityDossierCard({ profile, query, isZeroResults = false }) {
                   <span className="font-mono text-[10px] uppercase font-bold text-text-faint block mb-0.5">
                     {t("adStrategy")}
                   </span>
-                  <p className="text-text leading-relaxed font-sans">
-                    {ad_and_monetization_footprint.strategy ||
-                      (isCreator
-                        ? "Does not run self-serve Meta product feed ads. Growth is driven entirely by organic syndication."
-                        : "Runs multi-channel performance ads.")}
+                  <p className="text-text leading-relaxed font-sans" dir="auto">
+                    {ad_and_monetization_footprint.strategy || t("unavailable")}
                   </p>
                 </div>
                 <div>
                   <span className="font-mono text-[10px] uppercase font-bold text-text-faint block mb-0.5">
                     {t("monetizationChannels")}
                   </span>
-                  <ul className="list-disc pl-4 space-y-1 text-text font-sans">
-                    {(ad_and_monetization_footprint.primary_monetization || [
-                      "Exclusive multi-million streaming contracts (Kick, Rumble)",
-                      "In-stream native sponsor reads & brand integrations",
-                      "Affiliate creator links and exclusive merchandise drops"
-                    ]).map((m, idx) => (
-                      <li key={idx} className="leading-snug">{m}</li>
-                    ))}
-                  </ul>
+                  {(ad_and_monetization_footprint.primary_monetization || []).length === 0 ? (
+                    <p className="text-text font-sans" dir="auto">{t("unavailable")}</p>
+                  ) : (
+                    <ul className="list-disc pl-4 space-y-1 text-text font-sans">
+                      {ad_and_monetization_footprint.primary_monetization.map((m, idx) => (
+                        <li key={idx} className="leading-snug" dir="auto">{m}</li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               </div>
             </div>
@@ -410,19 +408,12 @@ export function EntityDossierCard({ profile, query, isZeroResults = false }) {
                 <span>{t("marketingTakeaways")}</span>
               </div>
               <div className="space-y-2.5 text-xs text-text-muted">
-                {(playbook_and_takeaways.length > 0 ? playbook_and_takeaways : [
-                  {
-                    title: "Decentralized Clipping Syndicates",
-                    detail: "Instead of paying Meta $40-$60 CPMs, incentivize third-party clippers to generate tens of millions of views organically."
-                  },
-                  {
-                    title: "Native In-Stream Sponsor Reads",
-                    detail: "Live stream reviews achieve 5-10x higher conversion than standard display ads through unscripted authentic demonstrations."
-                  }
-                ]).map((item, idx) => (
+                {playbook_and_takeaways.length === 0 ? (
+                  <p className="text-text font-sans" dir="auto">{t("unavailable")}</p>
+                ) : playbook_and_takeaways.map((item, idx) => (
                   <div key={idx} className="border-b border-border/30 pb-2 last:border-b-0 last:pb-0">
                     <span className="font-bold text-text block mb-0.5 font-mono">{item.title}</span>
-                    <p className="text-[11px] text-text-muted leading-relaxed font-sans">{item.detail}</p>
+                    <p className="text-[11px] text-text-muted leading-relaxed font-sans" dir="auto">{item.detail}</p>
                   </div>
                 ))}
                 {similar_entities.length > 0 && (
@@ -445,57 +436,63 @@ export function EntityDossierCard({ profile, query, isZeroResults = false }) {
                   <Radio className="size-3.5 text-accent animate-pulse" />
                   {t("creatorHubTitle")}
                 </h3>
-                <p className="text-[11px] text-text-muted font-sans mt-0.5">
-                  Direct Verified Account Profiles & Platform Search Feeds
+                <p className="text-[11px] text-text-muted font-sans mt-0.5" dir="auto">
+                  {t("creatorHubSubtitle")}
                 </p>
               </div>
-              <span className="text-[10px] font-mono text-accent bg-accent/10 border border-accent/30 rounded px-2 py-0.5">
-                Multi-Platform Intelligence Active
-              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {platformsToRender.map((platform) => {
+              {platformsToRender.length === 0 ? (
+                <p className="text-xs text-text-muted" dir="auto">{t("profileUnavailable")}</p>
+              ) : platformsToRender.map((platform) => {
                 const meta = getPlatformMeta(platform, entity_name, query, profile)
                 const { Icon } = meta
+                const handleLabel = meta.handle || t("profileUnavailable")
                 return (
                   <div
                     key={platform}
-                    className="flex flex-col justify-between p-3 rounded-md bg-surface border border-border hover:border-accent/60 transition-all shadow-sm group"
+                    className="flex flex-col justify-between p-3 rounded-md bg-surface border border-border shadow-sm"
                   >
                     <div className="flex items-center gap-2.5 min-w-0 mb-2.5">
                       <div className={`p-2 rounded-md ${meta.badgeClass.split(" ")[0]} border ${meta.badgeClass.split(" ")[2]}`}>
                         <Icon className="size-4 shrink-0" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <span className="text-xs font-bold text-white block group-hover:text-accent transition-colors truncate">
+                        <span className="text-xs font-bold text-white block truncate">
                           {meta.label}
                         </span>
-                        <span className="text-[10px] text-accent font-mono block truncate">
-                          {meta.handle || "Official"}
+                        <span className="text-[10px] text-text-muted font-mono block truncate" dir="auto">
+                          {handleLabel}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-                      <a
-                        href={meta.profile_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 inline-flex items-center justify-center gap-1 rounded bg-surface-2 px-2 py-1.5 text-[11px] font-mono font-medium text-text hover:bg-accent hover:text-black transition-colors"
-                        title={`Open official profile for ${entity_name} on ${meta.label}`}
-                      >
-                        Profile ↗
-                      </a>
-                      <a
-                        href={meta.search_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 inline-flex items-center justify-center gap-1 rounded bg-surface-2 px-2 py-1.5 text-[11px] font-mono font-medium text-text-muted hover:text-white hover:bg-surface-elevated transition-colors"
-                        title={`Search for "${query || entity_name}" on ${meta.label}`}
-                      >
-                        Search ↗
-                      </a>
+                      {meta.profile_url ? (
+                        <a
+                          href={meta.profile_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 inline-flex items-center justify-center gap-1 rounded bg-surface-2 px-2 py-1.5 text-[11px] font-mono font-medium text-text hover:bg-accent hover:text-black transition-colors"
+                        >
+                          {t("openOnPlatform")} ↗
+                        </a>
+                      ) : (
+                        <span className="flex-1 inline-flex items-center justify-center rounded bg-surface-2 px-2 py-1.5 text-[11px] font-mono text-text-muted" dir="auto">
+                          {t("profileUnavailable")}
+                        </span>
+                      )}
+                      {meta.search_url ? (
+                        <a
+                          href={meta.search_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 inline-flex items-center justify-center gap-1 rounded bg-surface-2 px-2 py-1.5 text-[11px] font-mono font-medium text-text-muted hover:text-white hover:bg-surface-elevated transition-colors"
+                        >
+                          {t("searchLabel")} ↗
+                        </a>
+                      ) : null}
                     </div>
                   </div>
                 )
