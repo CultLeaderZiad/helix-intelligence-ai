@@ -1,3 +1,4 @@
+import math
 from datetime import datetime, timezone
 from typing import AsyncGenerator, Optional
 
@@ -31,14 +32,28 @@ def _parse_revoked_at(value) -> Optional[float]:
 
 
 def session_is_revoked(user: User, payload: dict) -> bool:
-    """True when the token is outside the accepted class or behind the revocation boundary."""
+    """True when the token is outside the accepted class or behind the revocation boundary.
+
+    Local and impersonation tokens carry ``ver``. Reset, logout, and ban increment
+    ``token_version`` in the same write as ``sessions_revoked_at``, so a token
+    minted earlier in that UTC second still has the old version and is rejected
+    here. JWT ``iat`` is a whole second, so a fresh sign-in in that same second
+    must not be rejected by the timestamp: its version already matches.
+    External Neon tokens have no ``ver``. Their ``iat`` is still compared with
+    ``<=`` against the full boundary.
+    """
     metadata = getattr(user, "signup_metadata", None) or {}
     token_class = payload.get("_token_class")
-    if token_class != "external":
+    local = token_class != "external"
+    token_ver = None
+    current_ver = None
+    if local:
         try:
-            if int(payload.get("ver")) < int(metadata.get("token_version", 1)):
-                return True
+            token_ver = int(payload.get("ver"))
+            current_ver = int(metadata.get("token_version", 1))
         except (TypeError, ValueError):
+            return True
+        if token_ver < current_ver:
             return True
     revoked_at = _parse_revoked_at(metadata.get("sessions_revoked_at"))
     if revoked_at is None:
@@ -47,6 +62,8 @@ def session_is_revoked(user: User, payload: dict) -> bool:
         issued_at = float(payload.get("iat"))
     except (TypeError, ValueError):
         return True
+    if local and token_ver == current_ver:
+        return issued_at < math.floor(revoked_at)
     return issued_at <= revoked_at
 
 
