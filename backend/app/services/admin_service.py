@@ -605,8 +605,12 @@ async def ban_user(db: AsyncSession, target_user_id: str, is_banned: bool) -> Di
         raise HTTPException(status_code=404, detail="User not found")
         
     user.is_banned = is_banned
-    await db.commit()
-    await db.refresh(user)
+    if is_banned:
+        from app.services import auth_service
+        await auth_service.revoke_user_sessions(db, user)
+    else:
+        await db.commit()
+        await db.refresh(user)
     
     return {
         "success": True,
@@ -708,31 +712,48 @@ async def impersonate_user(db: AsyncSession, target_user_id: str, actor: Optiona
     if user.role == "admin":
         raise HTTPException(status_code=403, detail="Impersonating an administrator is not permitted")
 
-    token = create_access_token(subject=user.id, role=user.role)
+    metadata = getattr(user, "signup_metadata", None) or {}
+    token_version = int(metadata.get("token_version", 1) or 1)
+    expires = datetime.timedelta(minutes=int(getattr(settings, "IMPERSONATION_TOKEN_EXPIRE_MINUTES", 15)))
+    token = create_access_token(
+        subject=user.id,
+        role=user.role,
+        token_version=token_version,
+        expires_delta=expires,
+        extra_claims={
+            "token_use": "impersonation",
+            "scope": "impersonation",
+            "act": actor.id if actor else None,
+            "actor_role": actor.role if actor else None,
+        },
+    )
 
     # Audit trail: privileged action must be attributable (surfaces in the
     # admin Audit Log, which reads UsageLog).
     target_org = (await db.execute(
         select(Organization.id).where(Organization.owner_id == user.id)
     )).scalar_one_or_none()
-    if target_org:
-        db.add(UsageLog(
-            org_id=target_org,
-            user_id=actor.id if actor else None,
-            provider="admin",
-            operation="admin_impersonation",
-            units=1.0,
-            cost_usd=0.0,
-            credits_deducted=0.0,
-            requests_used=0,
-            metadata_json={
-                "actor_id": actor.id if actor else None,
-                "actor_email": actor.email if actor else None,
-                "target_user_id": user.id,
-                "target_email": user.email,
-            },
-        ))
-        await db.commit()
+    db.add(UsageLog(
+        org_id=target_org,
+        user_id=actor.id if actor else user.id,
+        provider="admin",
+        operation="admin_impersonation",
+        units=1.0,
+        cost_usd=0.0,
+        credits_deducted=0.0,
+        requests_used=0,
+        metadata_json={
+            "actor_id": actor.id if actor else None,
+            "actor_email": actor.email if actor else None,
+            "target_user_id": user.id,
+            "target_email": user.email,
+            "scope": "impersonation",
+            "token_use": "impersonation",
+            "target_token_version": token_version,
+            "expires_in_seconds": int(expires.total_seconds()),
+        },
+    ))
+    await db.commit()
     return ImpersonateResponse(
         access_token=token,
         user_id=user.id,

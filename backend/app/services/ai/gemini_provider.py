@@ -13,8 +13,8 @@ class GeminiProvider(AIProvider):
     def __init__(self, api_key: Optional[str] = None):
         raw_key = api_key or getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GEMINI_API_KEY", "")
         self.api_key = raw_key.strip().strip('"\'') if raw_key else ""
-        self.model = "gemini-flash-latest"
-        self.image_model = getattr(settings, "GEMINI_IMAGE_MODEL", "gemini-2.0-flash-lite-preview-02-05")
+        self.model = getattr(settings, "GEMINI_TEXT_MODEL", None) or "gemini-flash-latest"
+        self.image_model = getattr(settings, "GEMINI_IMAGE_MODEL", None) or "gemini-2.0-flash-lite-preview-02-05"
         self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
         
     @property
@@ -94,7 +94,7 @@ class GeminiProvider(AIProvider):
         Returns normalized provider dictionary with raw binary bytes in ['data'].
         """
         if not self.is_configured:
-            raise ValueError("GEMINI_API_KEY is not configured on this server")
+            raise ValueError("Missing required integration key: GEMINI_API_KEY")
 
         aspect_ratio_map = {
             "1:1": "1:1",
@@ -112,31 +112,35 @@ class GeminiProvider(AIProvider):
         # Add reference images if provided (URLs or base64)
         if reference_images:
             for ref_url in reference_images[:2]: # Capped to at most 2 references
-                if ref_url.startswith("data:image/") and ";base64," in ref_url:
-                    header, b64_data = ref_url.split(";base64,", 1)
-                    mime = header.replace("data:", "")
-                    parts.append({
-                        "inline_data": {
-                            "mime_type": mime,
-                            "data": b64_data
-                        }
-                    })
-                elif ref_url.startswith("http://") or ref_url.startswith("https://"):
-                    # Download image bytes safely
+                if ref_url.startswith("data:"):
                     try:
-                        async with httpx.AsyncClient(timeout=10.0) as img_client:
-                            img_resp = await img_client.get(ref_url)
-                            if img_resp.status_code == 200:
-                                mime = img_resp.headers.get("content-type", "image/jpeg").split(";")[0]
-                                b64_data = base64.b64encode(img_resp.content).decode("utf-8")
+                        from app.services.safe_fetch import MAX_INLINE_IMAGE_BYTES, decode_image_data_url
+                        raw, mime = decode_image_data_url(ref_url, max_bytes=MAX_INLINE_IMAGE_BYTES)
+                        parts.append({
+                            "inline_data": {
+                                "mime_type": mime,
+                                "data": base64.b64encode(raw).decode("utf-8")
+                            }
+                        })
+                    except Exception as err:
+                        logger.warning("Rejected inline reference image: %s", err)
+                elif ref_url.startswith("http://") or ref_url.startswith("https://"):
+                    try:
+                        from app.services.safe_fetch import MAX_INLINE_IMAGE_BYTES, safe_http_get_async
+                        img_resp = await safe_http_get_async(ref_url, timeout=10.0, max_bytes=MAX_INLINE_IMAGE_BYTES)
+                        if img_resp.status_code == 200:
+                            mime = img_resp.headers.get("content-type", "image/jpeg").split(";")[0]
+                            if mime not in {"image/png", "image/jpeg", "image/webp", "image/gif"}:
+                                logger.warning("Rejected reference image with content type %s", mime)
+                            else:
                                 parts.append({
                                     "inline_data": {
                                         "mime_type": mime,
-                                        "data": b64_data
+                                        "data": base64.b64encode(img_resp.content).decode("utf-8")
                                     }
                                 })
                     except Exception as err:
-                        logger.warning("Failed to fetch reference image %s: %s", ref_url, err)
+                        logger.warning("Failed to fetch reference image: %s", err)
 
         # Primary attempt using Imagen endpoint (:predict) if the model is an imagen model
         predict_payload = {

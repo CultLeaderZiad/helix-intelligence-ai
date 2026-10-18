@@ -184,8 +184,9 @@ def test_f05_brands_and_patterns_tenant_scoping():
     assert "scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))" in code
     assert "query.where(Creative.job_id.in_(scoped_jobs))" in code
 
-    # Verify list_patterns scopes by user_org_ids or global patterns (job_id is None)
-    assert "filters.append(or_(Pattern.job_id.in_(scoped_jobs), Pattern.job_id.is_(None)))" in code
+    # Null-job patterns are not globally readable.
+    assert "Pattern.job_id.is_not(None)" in code
+    assert "or_(Pattern.job_id.in_(scoped_jobs), Pattern.job_id.is_(None))" not in code
 
 
 # ---------------------------------------------------------------------------

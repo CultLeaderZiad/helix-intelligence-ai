@@ -18,7 +18,7 @@ def call(url):
     except Exception as e:
         return 0, str(e)
 
-print(f"Token: {token[:20]}...{token[-10:]}")
+print("Token: [redacted]")
 
 # 1. Inspect /me
 status, body = call(f"https://graph.facebook.com/v22.0/me?access_token={token}")

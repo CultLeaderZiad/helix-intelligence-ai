@@ -1,4 +1,12 @@
 import { request, ServiceError } from "../http"
+import {
+  clearCachedUser,
+  clearSession,
+  getAccessToken,
+  getCachedUser as readCachedUser,
+  setAccessToken,
+  setCachedUser,
+} from "../sessionStore"
 
 /**
  * FastAPI-backed auth service.
@@ -10,72 +18,25 @@ import { request, ServiceError } from "../http"
  * every page works unchanged regardless of VITE_DATA_SOURCE.
  */
 
-const TOKEN_KEY = "helix_access_token"
-const CACHED_USER_KEY = "helix_cached_user"
-
-let inMemoryToken = null
-
 export function getStoredToken() {
-  if (typeof window === "undefined") return null
-  if (inMemoryToken) return inMemoryToken
-  const token = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || localStorage.getItem("helix_auth_token")
-  if (token) {
-    inMemoryToken = token
-  }
-  return token
+  return getAccessToken()
 }
 
 export function getCachedUser() {
-  if (typeof window === "undefined") return null
-  try {
-    const raw = sessionStorage.getItem(CACHED_USER_KEY) || localStorage.getItem(CACHED_USER_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
+  return readCachedUser()
 }
 
 function storeUser(user) {
-  if (typeof window === "undefined" || !user) return
-  try {
-    const raw = JSON.stringify(user)
-    sessionStorage.setItem(CACHED_USER_KEY, raw)
-    localStorage.setItem(CACHED_USER_KEY, raw)
-  } catch {}
+  setCachedUser(user)
 }
 
 function storeToken(token) {
-  if (typeof window === "undefined") return
-  inMemoryToken = token || null
-  if (token) {
-    try {
-      sessionStorage.setItem(TOKEN_KEY, token)
-      localStorage.setItem(TOKEN_KEY, token)
-    } catch {}
-  }
+  setAccessToken(token)
 }
 
 export function clearAllTenantStorage() {
-  if (typeof window === "undefined") return
-  inMemoryToken = null
-  const keysToRemove = [
-    TOKEN_KEY,
-    "helix_auth_token",
-    CACHED_USER_KEY,
-    "helix_latest_search",
-    "helix_search_history",
-    "helix_active_creative",
-    "helix_saved_drafts",
-    "helix_admin_token",
-    "helix_impersonation",
-    "helix_impersonated_user"
-  ]
-  for (const k of keysToRemove) {
-    try {
-      localStorage.removeItem(k)
-      sessionStorage.removeItem(k)
-    } catch {}
-  }
+  clearSession()
+  clearCachedUser()
 }
 
 function clearToken() {
@@ -221,8 +182,7 @@ const authService = {
   /**
    * Start a password reset. Always resolves with the same generic shape
    * whether or not the account exists (no account enumeration). Returns
-   * `reset_url` when the backend runs in dev-delivery mode (no mail
-   * provider configured) so the UI can surface it.
+   * The backend does not return a reset URL. Delivery is email-only.
    */
   async requestPasswordReset({ email } = {}) {
     const payload = await request("/auth/forgot-password", {

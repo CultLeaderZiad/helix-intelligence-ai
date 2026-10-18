@@ -129,8 +129,8 @@ def test_scout_credentials_encryption():
     from app.services.security_service import safe_decrypt_secret
     assert safe_decrypt_secret(enc_hunter) == raw_hunter
     assert safe_decrypt_secret(enc_linkedin) == raw_linkedin
-    # Legacy unencrypted fallback
-    assert safe_decrypt_secret(raw_hunter) == raw_hunter
+    # Plaintext values are not treated as already-decrypted secrets.
+    assert safe_decrypt_secret(raw_hunter) == ""
     print("[PASS] Test 5 (F21): Scout credentials encrypted at rest and safely decrypted")
 
 

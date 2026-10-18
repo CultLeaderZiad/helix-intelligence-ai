@@ -28,10 +28,10 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_db
+from app.core.deps import authenticate_bearer, get_db
 from app.models.media_job import MediaGenerationJob
 from app.models.user import User
-from app.services.storage_service import UPLOAD_DIR, verify_local_signature
+from app.services.storage_service import UPLOAD_DIR, media_response_headers, verify_local_signature
 
 router = APIRouter()
 
@@ -52,27 +52,25 @@ async def _authenticated_user(request: Request, token: Optional[str], db: AsyncS
     if not raw:
         return None
 
-    from app.core.security import verify_neon_token
-
     try:
-        payload = await verify_neon_token(raw)
-    except Exception:
+        return await authenticate_bearer(db, raw)
+    except HTTPException as exc:
+        if exc.status_code == 403:
+            raise NOT_FOUND
         return None
-    if not payload:
-        return None
-    user_id = payload.get("sub")
-    if not user_id:
-        return None
-    return (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
 
 
 async def _user_owns_file(db: AsyncSession, user: User, filename: str) -> bool:
-    if getattr(user, "role", None) in ("admin", "assistant-admin"):
+    from app.core.tenancy import get_user_org_ids
+
+    org_ids = await get_user_org_ids(db, user)
+    # API-key scope is applied before the admin bypass inside get_user_org_ids.
+    if org_ids is None:
         return True
     job = (
         await db.execute(
             select(MediaGenerationJob).where(
-                MediaGenerationJob.user_id == user.id,
+                MediaGenerationJob.org_id.in_(org_ids),
                 MediaGenerationJob.result_url.like(f"%/{filename}%"),
             )
         )
@@ -103,4 +101,5 @@ async def get_upload(
         if not user or not await _user_owns_file(db, user, filename):
             raise NOT_FOUND
 
-    return FileResponse(file_path)
+    media_type, headers = media_response_headers(filename)
+    return FileResponse(file_path, media_type=media_type, headers=headers)

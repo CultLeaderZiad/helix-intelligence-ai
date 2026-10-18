@@ -189,6 +189,7 @@ async def signout(
     token: Optional[str] = Depends(oauth2_scheme)
 ):
     """Revoke active user sessions and sign out."""
+    import logging
     if token:
         try:
             from app.core.security import verify_neon_token
@@ -199,7 +200,7 @@ async def signout(
                 if user:
                     await auth_service.revoke_user_sessions(db, user)
         except Exception:
-            pass
+            logging.getLogger(__name__).exception("Session revocation failed during sign-out")
     return {"message": "Successfully signed out"}
 
 @router.post("/forgot-password")
@@ -242,8 +243,6 @@ async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(
             except Exception as mail_err:
                 logger.error("Failed to deliver reset email to %s: %s", user.email, mail_err)
 
-        if getattr(settings, "AUTH_DEV_RESET_RETURN", False):
-            return {"ok": True, "reset_url": reset_url, "expires_in_minutes": settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES}
         return {"ok": True}
     return {"ok": True}
 
@@ -278,71 +277,33 @@ async def complete_onboarding(current_user: User = Depends(get_current_user), db
 
 from fastapi import Request
 import hmac
-import hashlib
+import logging
 
 @router.post("/webhook")
 async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     body = await request.body()
-    
+
     # SECURITY: this endpoint creates users and organizations, so the caller MUST
-    # be authenticated. Fail CLOSED: no secret configured -> refuse (503);
-    # missing/invalid signature -> 401. Previously the expected digest was only
-    # computed and logged, so anyone could forge user.created events.
-    if not settings.NEON_WEBHOOK_SECRET:
+    # be authenticated. Fail CLOSED: Neon Auth URL missing -> refuse (503);
+    # missing/invalid signature -> 401.
+    if not (settings.NEON_AUTH_URL or "").strip():
         raise HTTPException(status_code=503, detail="Auth webhook is not configured")
-    supplied = (
-        request.headers.get("better-auth-signature")
-        or request.headers.get("x-signature")
-        or ""
-    ).strip()
-    if supplied.lower().startswith("sha256="):
-        supplied = supplied[7:]
-    expected_signature = hmac.new(
-        settings.NEON_WEBHOOK_SECRET.encode(), body, hashlib.sha256
-    ).hexdigest()
-    if not supplied or not hmac.compare_digest(expected_signature, supplied):
-        import logging
-        logging.getLogger(__name__).warning("Rejected auth webhook with invalid signature")
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    from app.services.neon_webhook import process_auth_webhook, verify_and_parse
 
     try:
-        import json
-        payload = json.loads(body.decode())
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
-    event = payload.get("event")
-    data = payload.get("data", {})
-    user_data = data.get("user", {})
-    
-    if event == "user.created" and user_data:
-        user_id = user_data.get("id")
-        email = user_data.get("email")
-        name = user_data.get("name", "")
-        
-        if not user_id or not email:
-            raise HTTPException(status_code=400, detail="Missing user_id or email")
-            
-        result = await db.execute(select(User).where(User.id == user_id))
-        existing_user = result.scalar_one_or_none()
-        
-        if not existing_user:
-            now = datetime.datetime.now(datetime.timezone.utc)
-            trial_expires = now + datetime.timedelta(days=14)
-
-            new_user = User(
-                id=user_id,
-                email=email,
-                password_hash="EXTERNAL_AUTH_MANAGED",
-                role="customer",
-                trial_started_at=now,
-                trial_expires_at=trial_expires
-            )
-            db.add(new_user)
-            await db.commit()
-            
-            await billing_service.get_or_create_default_org(db, new_user)
-            
-            return {"message": "User synchronized successfully"}
-            
-    return {"message": "Webhook received"}
+        payload = await verify_and_parse(body, request.headers)
+    except HTTPException:
+        raise
+    header_event_id = (request.headers.get("x-neon-event-id") or "").strip()
+    body_event_id = str(payload.get("event_id") or "")
+    if not header_event_id or not body_event_id or not hmac.compare_digest(header_event_id, body_event_id):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+    try:
+        return await process_auth_webhook(db, payload)
+    except HTTPException:
+        raise
+    except Exception:
+        await db.rollback()
+        logging.getLogger(__name__).exception("Auth webhook processing failed")
+        raise HTTPException(status_code=500, detail="Webhook processing failed")

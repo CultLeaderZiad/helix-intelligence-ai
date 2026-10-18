@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./config"
+import { getAccessToken } from "./sessionStore"
 
 /**
  * Normalized service error. Both the mock and HTTP layers throw this,
@@ -72,8 +73,7 @@ export async function request(path, options = {}, retryCount = 0) {
   const { method = "GET", params, body, signal, headers: extraHeaders } = options
   const url = `${API_BASE_URL}${path}${buildQuery(params)}`
 
-  // Attach JWT from localStorage if present
-  const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
+  const token = getAccessToken()
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
 
   const upperMethod = (method || "GET").toUpperCase()
@@ -179,7 +179,7 @@ export async function request(path, options = {}, retryCount = 0) {
 
 export async function uploadFile(path, formData, options = {}) {
   const url = `${API_BASE_URL}${path}`
-  const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
+  const token = getAccessToken()
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
 
   let res

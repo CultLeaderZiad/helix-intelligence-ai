@@ -27,7 +27,6 @@ async def compile_playbook(
     from app.services.billing_service import get_or_create_default_org
     from app.core.tenancy import get_user_org_ids
     from app.models.scrape_job import ScrapeJob
-    from sqlalchemy import or_
 
     # 1. Fetch user's org & tenant scope
     org = await get_or_create_default_org(db, user)
@@ -94,9 +93,10 @@ async def compile_playbook(
         if job_id:
             patterns_stmt = patterns_stmt.where(Pattern.job_id == job_id)
         else:
+            patterns_stmt = patterns_stmt.where(Pattern.job_id.is_not(None))
             if user_org_ids is not None:
                 scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
-                patterns_stmt = patterns_stmt.where(or_(Pattern.job_id.in_(scoped_jobs), Pattern.job_id.is_(None)))
+                patterns_stmt = patterns_stmt.where(Pattern.job_id.in_(scoped_jobs))
         patterns_stmt = patterns_stmt.limit(5)
         patterns_res = (await db.execute(patterns_stmt)).scalars().all()
 
@@ -181,12 +181,19 @@ async def compile_playbook(
     await db.refresh(playbook)
     return playbook
 
-async def get_public_playbook(db: AsyncSession, public_id: str) -> Dict[str, Any]:
+async def get_public_playbook(db: AsyncSession, public_id: str, user: Optional[User] = None) -> Dict[str, Any]:
+    if user is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     playbook = (await db.execute(
         select(Playbook).where(Playbook.public_id == public_id)
     )).scalar_one_or_none()
 
     if not playbook:
+        raise HTTPException(status_code=404, detail="Playbook not found or expired")
+
+    from app.core.tenancy import get_user_org_ids
+    org_ids = await get_user_org_ids(db, user)
+    if org_ids is not None and playbook.user_id != user.id and playbook.org_id not in org_ids:
         raise HTTPException(status_code=404, detail="Playbook not found or expired")
 
     return {

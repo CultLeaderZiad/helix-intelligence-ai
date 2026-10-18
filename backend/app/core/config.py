@@ -10,8 +10,18 @@ class Settings(BaseSettings):
 
     # SECURITY — must be set via env var; no hardcoded fallback
     SECRET_KEY: str = os.getenv("SECRET_KEY", "")
+    # Versioned Fernet key for BYOK credentials. Never reuse SECRET_KEY.
+    CREDENTIAL_ENCRYPTION_KEY: str = os.getenv("CREDENTIAL_ENCRYPTION_KEY", "")
+    CREDENTIAL_ENCRYPTION_KEY_PREVIOUS: str = os.getenv("CREDENTIAL_ENCRYPTION_KEY_PREVIOUS", "")
+    CREDENTIAL_ENCRYPTION_KEY_VERSION: int = int(os.getenv("CREDENTIAL_ENCRYPTION_KEY_VERSION", "1"))
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    IMPERSONATION_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("IMPERSONATION_TOKEN_EXPIRE_MINUTES", "15"))
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "30"))
+    # development | test | staging | production. Unset means development,
+    # except a Render process with no explicit class, which is production.
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    JWT_ISSUER: str = os.getenv("JWT_ISSUER", "helix")
+    JWT_AUDIENCE: str = os.getenv("JWT_AUDIENCE", "helix-api")
 
     # Password reset delivery. The app has no mail provider bundled, so the
     # reset link is logged server-side on every request. Set to true to also
@@ -51,7 +61,23 @@ class Settings(BaseSettings):
         "NEON_AUTH_BASE_URL",
         "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth"
     )
+    NEON_JWT_ISSUER: str = os.getenv(
+        "NEON_JWT_ISSUER",
+        os.getenv(
+            "NEON_AUTH_BASE_URL",
+            "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth",
+        ),
+    )
+    NEON_JWT_AUDIENCE: str = os.getenv(
+        "NEON_JWT_AUDIENCE",
+        os.getenv(
+            "NEON_AUTH_BASE_URL",
+            "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth",
+        ),
+    )
     NEON_WEBHOOK_SECRET: str = os.getenv("NEON_WEBHOOK_SECRET", "")
+    JWKS_REFRESH_LIMIT: int = int(os.getenv("JWKS_REFRESH_LIMIT", "8"))
+    JWKS_REFRESH_WINDOW_S: int = int(os.getenv("JWKS_REFRESH_WINDOW_S", "60"))
 
     # RATE LIMITING (in-memory, per-process token buckets)
     # Protects credential endpoints (brute force / account enumeration) and
@@ -65,6 +91,9 @@ class Settings(BaseSettings):
     AUTH_RATE_LIMIT_WINDOW_S: int = int(os.getenv("AUTH_RATE_LIMIT_WINDOW_S", "60"))
     EXPENSIVE_RATE_LIMIT: int = int(os.getenv("EXPENSIVE_RATE_LIMIT", "20"))  # per IP per window
     EXPENSIVE_RATE_LIMIT_WINDOW_S: int = int(os.getenv("EXPENSIVE_RATE_LIMIT_WINDOW_S", "60"))
+    # Comma-separated IPs or CIDRs of reverse proxies allowed to supply a client IP.
+    # Empty means forwarding headers are ignored and the TCP peer is used.
+    TRUSTED_PROXY_CIDRS: str = os.getenv("TRUSTED_PROXY_CIDRS", "")
 
 
     def __init__(self, **values):
@@ -74,6 +103,7 @@ class Settings(BaseSettings):
                 "SECRET_KEY environment variable is not set. "
                 "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
+        validate_boot_invariants(self)
 
     @property
     def async_database_url(self) -> str:
@@ -95,8 +125,10 @@ class Settings(BaseSettings):
 
     # API KEYS
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GEMINI_TEXT_MODEL: str = os.getenv("GEMINI_TEXT_MODEL", "gemini-flash-latest")
     POLLINATIONS_API_KEY: str = os.getenv("POLLINATIONS_API_KEY", "")
     GEMINI_IMAGE_MODEL: str = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
     SCRAPEGRAPH_API_KEY: str = os.getenv("SCRAPEGRAPH_API_KEY", "")
@@ -237,6 +269,67 @@ def _parse_cors_origins() -> List[str]:
         origins = json.loads(raw)
         return [o.rstrip("/") for o in origins]
     return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+
+
+_ENVIRONMENT_ALIASES = {
+    "production": "production",
+    "prod": "production",
+    "staging": "staging",
+    "stage": "staging",
+    "test": "test",
+    "testing": "test",
+    "development": "development",
+    "dev": "development",
+    "local": "development",
+    "": "development",
+}
+
+
+def classified_environment(cfg=None) -> str:
+    """Return development, test, staging, or production."""
+    source = settings if cfg is None else cfg
+    raw = (getattr(source, "ENVIRONMENT", "") or "").strip().lower()
+    if raw not in _ENVIRONMENT_ALIASES:
+        raise RuntimeError(
+            f"ENVIRONMENT={raw!r} is not a recognized class. "
+            "Use development, test, staging, or production."
+        )
+    env = _ENVIRONMENT_ALIASES[raw]
+    if env == "development" and os.getenv("RENDER"):
+        return "production"
+    return env
+
+
+def validate_boot_invariants(cfg) -> None:
+    """Refuse to serve when production configuration is unsafe or incomplete."""
+    env = classified_environment(cfg)
+    if env != "production":
+        return
+    errors = []
+    if getattr(cfg, "USE_MOCKS", False):
+        errors.append("USE_MOCKS must be false when ENVIRONMENT=production")
+    if getattr(cfg, "AUTH_DEV_RESET_RETURN", False):
+        errors.append("AUTH_DEV_RESET_RETURN must be false when ENVIRONMENT=production")
+    secret = getattr(cfg, "SECRET_KEY", "") or ""
+    if len(secret) < 32:
+        errors.append("Missing or short SECRET_KEY: production requires at least 32 characters")
+    encryption_key = (getattr(cfg, "CREDENTIAL_ENCRYPTION_KEY", "") or "").strip()
+    if not encryption_key:
+        errors.append("Missing required integration key: CREDENTIAL_ENCRYPTION_KEY")
+    elif encryption_key == secret:
+        errors.append("CREDENTIAL_ENCRYPTION_KEY must not equal SECRET_KEY")
+    if not (getattr(cfg, "RESEND_API_KEY", "") or "").strip() or not (getattr(cfg, "RESEND_FROM", "") or "").strip():
+        errors.append("Missing required delivery configuration: RESEND_API_KEY and RESEND_FROM")
+    app_url = (getattr(cfg, "PUBLIC_APP_BASE_URL", "") or "").strip()
+    if not app_url.startswith("https://"):
+        errors.append("PUBLIC_APP_BASE_URL must be an https origin in production")
+    if getattr(cfg, "APIFY_ENABLED", False) and not (getattr(cfg, "APIFY_API_TOKEN", "") or "").strip():
+        errors.append("Missing required integration key: APIFY_API_TOKEN (APIFY_ENABLED is true)")
+    for model_name in ("GROQ_MODEL", "GEMINI_TEXT_MODEL", "GEMINI_IMAGE_MODEL"):
+        if not (getattr(cfg, model_name, "") or "").strip():
+            errors.append(f"Missing required model setting: {model_name}")
+    if errors:
+        raise RuntimeError("Refusing to serve production traffic: " + "; ".join(errors))
 
 
 settings = Settings()

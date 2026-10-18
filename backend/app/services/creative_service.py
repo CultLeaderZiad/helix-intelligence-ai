@@ -282,11 +282,11 @@ async def list_patterns(
             has_more=False
         )
 
-    filters = []
+    # Unowned null-job patterns are not readable by any tenant.
+    filters = [Pattern.job_id.is_not(None)]
     if user_org_ids is not None:
-        from sqlalchemy import or_
         scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
-        filters.append(or_(Pattern.job_id.in_(scoped_jobs), Pattern.job_id.is_(None)))
+        filters.append(Pattern.job_id.in_(scoped_jobs))
 
     count_query = select(func.count(Pattern.id))
     if filters:
@@ -409,17 +409,19 @@ async def generate_patterns_for_recent_creatives(
         else:
             await AIRouter.log_usage(db, user.id, provider_name, org_id=org.id, tokens=0)
         
-        # Save patterns to DB
-        for p_schema in patterns:
-            new_pattern = Pattern(
-                id=p_schema.id,
-                label=p_schema.label,
-                family=p_schema.family,
-                prevalence=p_schema.prevalence,
-                lift_index=p_schema.lift_index,
-                job_id=job_id
-            )
-            db.add(new_pattern)
+        # Persist only patterns tied to a job the caller already proved they own.
+        # A missing job id used to write a globally readable null-job row.
+        if job_id:
+            for p_schema in patterns:
+                new_pattern = Pattern(
+                    id=p_schema.id,
+                    label=p_schema.label,
+                    family=p_schema.family,
+                    prevalence=p_schema.prevalence,
+                    lift_index=p_schema.lift_index,
+                    job_id=job_id
+                )
+                db.add(new_pattern)
         
         await db.commit()
         return patterns

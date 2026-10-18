@@ -38,28 +38,96 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# path-prefix -> (max_requests, window_seconds). First match wins, so list the
-# most specific prefixes first.
-def _rules() -> list[Tuple[str, int, int]]:
+# Paid AI routes share one bucket so a caller cannot rotate paths to multiply
+# the budget. Auth routes keep their own buckets.
+PAID_AI_BUCKET = "paid-ai"
+
+
+def _rules() -> list[Tuple[str, int, int, str]]:
+    auth_limit = settings.AUTH_RATE_LIMIT
+    auth_window = settings.AUTH_RATE_LIMIT_WINDOW_S
+    paid_limit = settings.EXPENSIVE_RATE_LIMIT
+    paid_window = settings.EXPENSIVE_RATE_LIMIT_WINDOW_S
     return [
-        ("/api/auth/sign-in", settings.AUTH_RATE_LIMIT, settings.AUTH_RATE_LIMIT_WINDOW_S),
-        ("/api/auth/sign-up", settings.AUTH_RATE_LIMIT, settings.AUTH_RATE_LIMIT_WINDOW_S),
-        ("/api/auth/forgot-password", settings.AUTH_RATE_LIMIT, settings.AUTH_RATE_LIMIT_WINDOW_S),
-        ("/api/auth/reset-password", settings.AUTH_RATE_LIMIT, settings.AUTH_RATE_LIMIT_WINDOW_S),
-        ("/api/discovery/jobs", settings.EXPENSIVE_RATE_LIMIT, settings.EXPENSIVE_RATE_LIMIT_WINDOW_S),
-        ("/api/media/jobs", settings.EXPENSIVE_RATE_LIMIT, settings.EXPENSIVE_RATE_LIMIT_WINDOW_S),
-        ("/api/scout/jobs", settings.EXPENSIVE_RATE_LIMIT, settings.EXPENSIVE_RATE_LIMIT_WINDOW_S),
-        ("/api/scout/maps/jobs", settings.EXPENSIVE_RATE_LIMIT, settings.EXPENSIVE_RATE_LIMIT_WINDOW_S),
-        ("/api/leadgen/jobs", settings.EXPENSIVE_RATE_LIMIT, settings.EXPENSIVE_RATE_LIMIT_WINDOW_S),
+        ("/api/auth/sign-in", auth_limit, auth_window, "auth-sign-in"),
+        ("/api/auth/sign-up", auth_limit, auth_window, "auth-sign-up"),
+        ("/api/auth/forgot-password", auth_limit, auth_window, "auth-forgot"),
+        ("/api/auth/reset-password", auth_limit, auth_window, "auth-reset"),
+        ("/api/discovery/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/media/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/patterns/generate", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/creatives/", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/simulation/", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/insights/", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/scout/maps/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/scout/leadgen/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/scout/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/leadgen/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/playbooks", paid_limit, paid_window, PAID_AI_BUCKET),
     ]
 
 
+def _trusted_networks():
+    networks = []
+    raw = getattr(settings, "TRUSTED_PROXY_CIDRS", "") or ""
+    for part in raw.split(","):
+        item = part.strip()
+        if not item:
+            continue
+        if "/" not in item:
+            ip = ipaddress.ip_address(item)
+            item = f"{item}/32" if ip.version == 4 else f"{item}/128"
+        networks.append(ipaddress.ip_network(item, strict=False))
+    return networks
+
+
 def _is_valid_public_ip(ip_str: str) -> bool:
+    """True for a globally routable address. Not used to trust forwarding headers."""
     try:
         ip = ipaddress.ip_address(ip_str)
-        return not (ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local or ip.is_multicast or ip.is_unspecified)
     except ValueError:
         return False
+    return not (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_reserved
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
+
+
+def _is_ip(value: str) -> bool:
+    try:
+        ipaddress.ip_address(value)
+        return True
+    except ValueError:
+        return False
+
+
+def _is_trusted_proxy(value: str) -> bool:
+    if not _is_ip(value):
+        return False
+    ip = ipaddress.ip_address(value)
+    return any(ip in network for network in _trusted_networks())
+
+
+def client_ip(request: Request) -> str:
+    """Return the client IP from the TCP peer unless that peer is a trusted proxy."""
+    peer = request.client.host if request.client and request.client.host else ""
+    if not peer:
+        return "unknown"
+    if not _is_trusted_proxy(peer):
+        return peer
+    for header_name in ("cf-connecting-ip", "true-client-ip"):
+        forwarded = (request.headers.get(header_name) or "").strip()
+        if forwarded and _is_ip(forwarded) and not _is_trusted_proxy(forwarded):
+            return forwarded
+    hops = [hop.strip() for hop in (request.headers.get("x-forwarded-for") or "").split(",") if hop.strip()]
+    for hop in reversed(hops):
+        if _is_ip(hop) and not _is_trusted_proxy(hop):
+            return hop
+    return peer
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
@@ -69,28 +137,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._buckets: Dict[str, Deque[float]] = defaultdict(deque)
 
     def _client_ip(self, request: Request) -> str:
-        # 1. Cloudflare single-hop client IP
-        cf_ip = request.headers.get("cf-connecting-ip")
-        if cf_ip and cf_ip.strip():
-            return cf_ip.strip()
-
-        # 2. Akamai / Cloudflare enterprise True-Client-IP
-        true_ip = request.headers.get("true-client-ip")
-        if true_ip and true_ip.strip():
-            return true_ip.strip()
-
-        # 3. X-Forwarded-For: reverse-traverse to find the rightmost non-private/valid public IP
-        # to prevent client spoofing via prepended header values.
-        fwd = request.headers.get("x-forwarded-for")
-        if fwd:
-            hops = [h.strip() for h in fwd.split(",") if h.strip()]
-            for hop in reversed(hops):
-                if _is_valid_public_ip(hop):
-                    return hop
-            if hops:
-                return hops[-1]
-
-        return request.client.host if request.client else "unknown"
+        return client_ip(request)
 
     async def dispatch(self, request: Request, call_next):
         if not settings.RATE_LIMIT_ENABLED:
@@ -103,14 +150,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if rule is None:
             return await call_next(request)
 
-        prefix, limit, window = rule
+        prefix, limit, window, bucket = rule
         # Only rate-limit state-changing methods on these endpoints.
         if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
             return await call_next(request)
 
         try:
             client_ip = self._client_ip(request)
-            key = f"{prefix}:{client_ip}"
+            key = f"{bucket}:{client_ip}"
             now = time.monotonic()
             bucket = self._buckets[key]
 

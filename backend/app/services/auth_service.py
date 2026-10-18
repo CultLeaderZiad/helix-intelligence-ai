@@ -235,6 +235,7 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Use
     metadata = dict(user.signup_metadata or {})
     metadata["token_version"] = int(metadata.get("token_version", 1)) + 1
     metadata["password_reset_at"] = now.isoformat()
+    metadata["sessions_revoked_at"] = now.isoformat()
     user.signup_metadata = metadata
 
     await db.commit()
