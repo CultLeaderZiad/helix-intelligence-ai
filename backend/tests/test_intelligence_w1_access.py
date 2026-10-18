@@ -17,10 +17,11 @@ from app.models.user import User
 from app.services.admin_service import (
     approve_access_request,
     grant_organization_access,
+    reject_access_request,
     revoke_organization_access,
     submit_access_request,
 )
-from app.services.billing_service import assert_can_spend
+from app.services.billing_service import access_status_for_org, assert_can_spend
 from app.services.leadgen_pipeline import run_leadgen_job
 from app.services.maps_scout_service import run_maps_scout_worker
 from app.services.scout_service import run_scout_job_worker
@@ -174,3 +175,24 @@ async def test_leadgen_and_maps_workers_recheck_entitlement_before_running():
         assert maps.status == "failed"
         assert "pending approval" in (lead.error_msg or "").lower()
         assert "pending approval" in (maps.error_msg or "").lower()
+
+
+@pytest.mark.asyncio
+async def test_reject_after_revoke_reports_rejected_and_keeps_the_org():
+    suffix = _suffix()
+    async with worker_session_maker() as db:
+        admin, owner, org, plan = await _people(db, suffix)
+        await grant_organization_access(
+            db, admin, org.id, plan.id, {"discover": True},
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        )
+        await revoke_organization_access(db, admin, org.id, "stop")
+        revoked = await access_status_for_org(db, org.id)
+        assert revoked["status"] == "revoked"
+        request = await submit_access_request(db, owner, org.id, ["discover"], "again")
+        pending = await access_status_for_org(db, org.id)
+        assert pending["status"] == "pending"
+        await reject_access_request(db, admin, request["id"], "no")
+        rejected = await access_status_for_org(db, org.id)
+        assert rejected["code"] == "access_rejected"
+        assert await db.get(Organization, org.id) is not None

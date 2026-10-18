@@ -24,6 +24,8 @@ export function AccessRequestsPage() {
   const [planId, setPlanId] = useState("")
   const [expiry, setExpiry] = useState("")
   const [flags, setFlags] = useState(() => Object.fromEntries(FEATURES.map((key) => [key, false])))
+  const [revokeOrgId, setRevokeOrgId] = useState("")
+  const [revokeState, setRevokeState] = useState(null)
 
   const load = async () => {
     setLoading(true)
@@ -33,7 +35,9 @@ export function AccessRequestsPage() {
         adminService.listAccessRequests("pending"),
         adminService.listPlans(),
       ])
-      setRequests(Array.isArray(rows) ? rows : [])
+      const listRows = Array.isArray(rows) ? rows : []
+      setRequests(listRows)
+      if (listRows[0]?.org_id) setRevokeOrgId((current) => current || listRows[0].org_id)
       const list = Array.isArray(planRows) ? planRows : []
       setPlans(list)
       if (!planId && list[0]?.id) setPlanId(list[0].id)
@@ -68,6 +72,22 @@ export function AccessRequestsPage() {
     }
   }
 
+  const revoke = async () => {
+    if (!revokeOrgId) return
+    setBusyId(revokeOrgId)
+    setError(null)
+    setRevokeState(null)
+    try {
+      const result = await adminService.revokeOrganizationAccess(revokeOrgId, "Revoked from the access console")
+      setRevokeState(result?.status || "revoked")
+      await load()
+    } catch (err) {
+      setError(err?.message || "Revoke failed")
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const reject = async (requestId) => {
     setBusyId(requestId)
     setError(null)
@@ -89,7 +109,7 @@ export function AccessRequestsPage() {
             <ShieldCheck className="w-5 h-5 text-indigo-400" />
             Access requests
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p dir="auto" className="text-sm text-slate-400 mt-1">
             Approve a workspace by choosing a plan, the features to turn on, and an optional expiry. Rejection and revocation keep the workspace data.
           </p>
         </div>
@@ -124,10 +144,19 @@ export function AccessRequestsPage() {
         </div>
       </div>
 
+      <div className="border border-slate-800 rounded-xl p-4 space-y-2 bg-slate-900/60">
+        <label className="block text-xs text-slate-400">
+          Revoke workspace access
+          <input value={revokeOrgId} onChange={(event) => setRevokeOrgId(event.target.value)} placeholder="Workspace id" className="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-100 font-mono" />
+        </label>
+        <button type="button" disabled={!revokeOrgId || busyId === revokeOrgId} onClick={revoke} className="text-xs px-3 py-1.5 rounded border border-rose-800 text-rose-200 disabled:opacity-50">Revoke access</button>
+        {revokeState && <p className="text-xs text-slate-300">Revoke status: {revokeState}. Workspace data is kept.</p>}
+      </div>
+
       {loading ? (
         <p className="text-sm text-slate-400">Loading requests…</p>
       ) : requests.length === 0 ? (
-        <p className="text-sm text-slate-400">No pending access requests.</p>
+        <p dir="auto" className="text-sm text-slate-400">No pending access requests.</p>
       ) : (
         <ul className="space-y-3">
           {requests.map((row) => (

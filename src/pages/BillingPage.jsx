@@ -188,7 +188,7 @@ export function BillingPage() {
 
       <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-xl space-y-3">
         <h2 className="text-sm font-semibold text-slate-100">Request access</h2>
-        <p className="text-xs text-slate-400">
+        <p dir="auto" className="text-xs text-slate-400">
           {access?.message || "A platform admin approves features for this workspace. There is no checkout."}
         </p>
         <div className="flex flex-wrap gap-3">

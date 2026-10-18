@@ -79,37 +79,18 @@ async def _latest_grant(db: AsyncSession, org_id: str):
     ).scalars().first()
 
 
+def _aware(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=datetime.timezone.utc)
+    return dt
+
+
 async def access_status_for_org(db: AsyncSession, org_id: str) -> Dict[str, Any]:
     """Honest access state. No grant is pending, not approved."""
     now = datetime.datetime.now(datetime.timezone.utc)
     grant = await _latest_grant(db, org_id)
-    if grant is not None and grant.revoked_at is None:
-        expires = grant.expires_at
-        if expires is not None and expires.tzinfo is None:
-            expires = expires.replace(tzinfo=datetime.timezone.utc)
-        if expires is None or expires > now:
-            return {
-                "status": "approved",
-                "code": None,
-                "message": "Access is approved.",
-                "expires_at": expires.isoformat() if expires else None,
-                "granted_at": grant.granted_at.isoformat() if grant.granted_at else None,
-                "granted_by_user_id": grant.granted_by_user_id,
-                "feature_flags": grant.feature_flags or {},
-                "plan_id": grant.plan_id,
-            }
-        return {
-            "status": "expired",
-            "code": "access_expired",
-            "message": "Approved access has expired. Submit a new access request.",
-            "expires_at": expires.isoformat() if expires else None,
-        }
-    if grant is not None and grant.revoked_at is not None:
-        return {
-            "status": "revoked",
-            "code": "access_revoked",
-            "message": "Access was revoked. Workspace data is retained. Submit a new request if you still need access.",
-        }
     from app.models.access_grant import AccessRequest
 
     request_row = (
@@ -119,6 +100,67 @@ async def access_status_for_org(db: AsyncSession, org_id: str) -> Dict[str, Any]
             .order_by(AccessRequest.created_at.desc())
         )
     ).scalars().first()
+    decision_at = None
+    if grant is not None:
+        # A future expiry is not a decision yet. Compare a later request to
+        # the moment the grant actually stopped, or to when it was granted.
+        if grant.revoked_at is not None:
+            decision_at = _aware(grant.revoked_at)
+        else:
+            expires_at = _aware(grant.expires_at)
+            if expires_at is not None and expires_at <= now:
+                decision_at = expires_at
+            else:
+                decision_at = _aware(grant.granted_at)
+    expires = _aware(grant.expires_at) if grant is not None else None
+    grant_is_active = (
+        grant is not None
+        and grant.revoked_at is None
+        and (expires is None or expires > now)
+    )
+    if grant_is_active:
+        return {
+            "status": "approved",
+            "code": None,
+            "message": "Access is approved.",
+            "expires_at": expires.isoformat() if expires else None,
+            "granted_at": grant.granted_at.isoformat() if grant.granted_at else None,
+            "granted_by_user_id": grant.granted_by_user_id,
+            "feature_flags": grant.feature_flags or {},
+            "plan_id": grant.plan_id,
+        }
+    request_at = _aware(request_row.created_at) if request_row is not None else None
+    request_is_later = (
+        request_row is not None
+        and request_at is not None
+        and (decision_at is None or request_at > decision_at)
+        and request_row.status in ("pending", "rejected")
+    )
+    if request_is_later and request_row.status == "rejected":
+        return {
+            "status": "rejected",
+            "code": "access_rejected",
+            "message": "The latest access request was rejected.",
+        }
+    if request_is_later and request_row.status == "pending":
+        return {
+            "status": "pending",
+            "code": "access_pending_approval",
+            "message": "Access is pending approval by a platform admin.",
+        }
+    if grant is not None and grant.revoked_at is None and expires is not None and expires <= now:
+        return {
+            "status": "expired",
+            "code": "access_expired",
+            "message": "Approved access has expired. Submit a new access request.",
+            "expires_at": expires.isoformat(),
+        }
+    if grant is not None and grant.revoked_at is not None:
+        return {
+            "status": "revoked",
+            "code": "access_revoked",
+            "message": "Access was revoked. Workspace data is retained. Submit a new request if you still need access.",
+        }
     if request_row is not None and request_row.status == "rejected":
         return {
             "status": "rejected",
