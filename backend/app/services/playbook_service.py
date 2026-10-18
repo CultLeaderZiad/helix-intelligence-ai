@@ -87,15 +87,19 @@ async def compile_playbook(
     # 3. Collect top patterns or use pre-provided
     formatted_patterns = []
     if pre_patterns and len(pre_patterns) > 0:
-        formatted_patterns = pre_patterns
+        from app.schemas.media import strip_secret_fields
+        formatted_patterns = strip_secret_fields(pre_patterns)
     else:
-        patterns_stmt = select(Pattern)
+        patterns_stmt = select(Pattern).where(Pattern.org_id.is_not(None), Pattern.job_id.is_not(None))
         if job_id:
             patterns_stmt = patterns_stmt.where(Pattern.job_id == job_id)
+            if user_org_ids is not None:
+                patterns_stmt = patterns_stmt.where(Pattern.org_id.in_(user_org_ids))
         else:
             patterns_stmt = patterns_stmt.where(Pattern.job_id.is_not(None))
             if user_org_ids is not None:
                 scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
+                patterns_stmt = patterns_stmt.where(Pattern.org_id.in_(user_org_ids))
                 patterns_stmt = patterns_stmt.where(Pattern.job_id.in_(scoped_jobs))
         patterns_stmt = patterns_stmt.limit(5)
         patterns_res = (await db.execute(patterns_stmt)).scalars().all()

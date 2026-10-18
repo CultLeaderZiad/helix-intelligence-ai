@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react"
+import { useSearchParams } from "react-router-dom"
 import { accountService } from "@/services"
 import { useAuth } from "@/context/AuthContext"
 import { 
@@ -109,7 +110,7 @@ export function TeamPage() {
   }
 
   const copyInviteLink = (token) => {
-    const link = `${window.location.origin}/sign-up?invite=${token}`
+    const link = `${window.location.origin}/team/accept?token=${token}`
     navigator.clipboard.writeText(link)
     showToast("Invite link copied to clipboard!")
   }
@@ -352,6 +353,63 @@ export function TeamPage() {
       />
 
       </div>
+    </div>
+  )
+}
+
+export function TeamAcceptPage() {
+  const [params] = useSearchParams()
+  const storedSearch = (() => {
+    try {
+      return sessionStorage.getItem("helix.invite_search") || ""
+    } catch {
+      return ""
+    }
+  })()
+  const token = params.get("token") || new URLSearchParams(storedSearch).get("token")
+  const [state, setState] = useState(token ? "working" : "missing")
+  const [message, setMessage] = useState("")
+
+  useEffect(() => {
+    if (!token) return undefined
+    let cancelled = false
+    accountService.acceptTeamInvite(token)
+      .then((res) => {
+        if (cancelled) return
+        try {
+          sessionStorage.removeItem("helix.invite_search")
+        } catch {
+          // Ignore storage failures after a successful accept.
+        }
+        setState("accepted")
+        setMessage(res?.message || "Invitation accepted")
+      })
+      .catch((err) => {
+        if (cancelled) return
+        const detail = err?.response?.data?.detail || err?.message || "Invitation could not be accepted"
+        setState("error")
+        setMessage(typeof detail === "string" ? detail : "Invitation could not be accepted")
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  return (
+    <div className="p-12 max-w-xl mx-auto font-sans space-y-4">
+      <h1 className="text-xl font-bold text-slate-100">Workspace invitation</h1>
+      {state === "missing" && (
+        <p className="text-sm text-slate-400">This invitation link is missing its token.</p>
+      )}
+      {state === "working" && (
+        <p className="text-sm text-slate-400">Accepting invitation…</p>
+      )}
+      {state === "accepted" && (
+        <p className="text-sm text-slate-200">{message}</p>
+      )}
+      {state === "error" && (
+        <p className="text-sm text-rose-300">{message}</p>
+      )}
     </div>
   )
 }

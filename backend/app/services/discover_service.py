@@ -205,6 +205,16 @@ async def trigger_search(
     clean_query = (search_params.query or "").strip()
     scrape_query = await translate_search_query(clean_query, search_params.query_language or "en")
 
+    # Entitlement runs before any cached or in-flight result is returned.
+    org, _plan = await assert_can_spend(
+        db,
+        user=user,
+        required_credits=DISCOVER_SEARCH_CREDIT_COST,
+        feature_name="discover",
+        lock_row=True
+    )
+    org_id = org.id
+
     # 2. Duplicate-search guards.
     # 2a. Active guard: an identical query is already queued/running in this
     #     org -> return that job, so the second request polls the first
@@ -239,15 +249,6 @@ async def trigger_search(
     duplicate_job = duplicate_job_result.scalar_one_or_none()
     if duplicate_job:
         return _job_response(duplicate_job)
-
-    # 3. Server-side Quota & Feature Gatekeeper (with row-level locking)
-    org, plan = await assert_can_spend(
-        db,
-        user=user,
-        required_credits=DISCOVER_SEARCH_CREDIT_COST,
-        feature_name="discover",
-        lock_row=True
-    )
 
     # 4. Create new ScrapeJob. A partial unique index on
     # (org_id, lower(query)) WHERE status IN ('queued','running') makes a
@@ -432,6 +433,20 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
         if not job:
             return
         org_id = job.org_id
+        org_row = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+        owner = None
+        if org_row is not None:
+            owner = (await db.execute(select(User).where(User.id == org_row.owner_id))).scalar_one_or_none()
+        if owner is not None:
+            from app.services.billing_service import assert_can_spend as _recheck
+            try:
+                await _recheck(db, owner, required_credits=0.0, feature_name="discover", lock_row=False)
+            except HTTPException:
+                job.status = "failed"
+                job.failure_kind = "entitlement"
+                job.stage_label = "Workspace is not entitled to run this search"
+                await db.commit()
+                return
         
     usage_log_id = None
     sources_tried: List[str] = []

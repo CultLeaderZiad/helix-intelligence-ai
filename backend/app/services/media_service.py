@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import Optional
+from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
@@ -116,6 +117,23 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
         # Check if job was already canceled before starting (F40)
         if job.status == "canceled":
             logger.info("Media job %s was canceled prior to start, aborting", job_id)
+            return
+
+        media_category = "image"
+        params_preview = dict(job.parameters or {})
+        mode_value = str(params_preview.get("mode") or params_preview.get("kind") or "")
+        if "video" in mode_value.lower():
+            media_category = "video"
+        try:
+            await assert_can_generate_image(db, user, org, media_type=media_category, lock_row=True)
+            from app.services.billing_service import assert_can_spend
+            await assert_can_spend(db, user, required_credits=0.0, feature_name="create", lock_row=False)
+        except HTTPException as entitlement_error:
+            job.status = "failed"
+            job.failure_kind = "entitlement"
+            detail = entitlement_error.detail
+            job.error_message = detail.get("message") if isinstance(detail, dict) else "Workspace is not entitled to generate media"
+            await db.commit()
             return
 
         credential_mode = "managed"

@@ -4,10 +4,10 @@ from app.schemas.discover import SearchParams, Job
 from app.schemas.creative import Creative
 from app.schemas.common import Paginated
 from app.services import discover_service, creative_service
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_feature("discover"))])
 
 @router.post("/jobs", response_model=Job)
 async def search(

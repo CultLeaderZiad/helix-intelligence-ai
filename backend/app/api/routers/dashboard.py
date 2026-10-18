@@ -2,11 +2,11 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 from app.services import dashboard_service
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_feature("discover"))])
 
 @router.get("/metrics", response_model=Dict[str, Any])
 async def get_metrics(

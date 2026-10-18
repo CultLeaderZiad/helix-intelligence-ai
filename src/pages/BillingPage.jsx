@@ -259,14 +259,14 @@ export function BillingPage() {
                     Loading deduction history...
                   </td>
                 </tr>
-              ) : (billing?.recent_logs || []).length === 0 ? (
+              ) : (billing?.recent_usage || []).length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-12 text-center text-slate-500 font-mono">
                     No usage deductions logged yet.
                   </td>
                 </tr>
               ) : (
-                (billing?.recent_logs || []).map((log) => (
+                (billing?.recent_usage || []).map((log) => (
                   <tr key={log.id} className="hover:bg-slate-800/30 transition font-mono">
                     <td className="py-3 px-4 text-slate-400">{formatLogTime(log.created_at)}</td>
                     <td className="py-3 px-4 text-slate-300">{log.provider}</td>

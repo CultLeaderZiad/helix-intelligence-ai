@@ -103,9 +103,14 @@ async def _check_team_management_permission(db: AsyncSession, org: Organization,
         )
 
 
+INVITE_ROLES = {"member", "admin"}
+
+
 async def invite_member(db: AsyncSession, user: User, email: str, role: str = "member") -> Dict[str, Any]:
     # 1. Check feature flag 'team_accounts'
     await check_quota_and_feature(db, user, feature_name="team_accounts", required_credits=0.0)
+    if role not in INVITE_ROLES:
+        raise HTTPException(status_code=422, detail="Invited role must be member or admin")
 
     org = await get_or_create_default_org(db, user)
     await _check_team_management_permission(db, org, user)
@@ -139,32 +144,45 @@ async def invite_member(db: AsyncSession, user: User, email: str, role: str = "m
     # Send transactional invitation email (F46)
     from app.services.email_service import send_email
     from app.core.config import settings
-    frontend_url = getattr(settings, "FRONTEND_URL", "https://app.helixintelligence.ai")
+    import html
+    frontend_url = settings.APP_BASE_URL or settings.PUBLIC_APP_BASE_URL
     invite_url = f"{frontend_url}/team/accept?token={token}"
-    email_body = f"""Hello,
-
-You have been invited to join the team '{org.name}' on Helix Intelligence.
-
-Click the link below to accept the invitation and access the shared workspace:
-{invite_url}
-
-This invitation will expire in 7 days.
-"""
-    try:
-        await send_email(
-            to_email=email,
-            subject=f"Invitation to join {org.name} on Helix Intelligence",
-            body_text=email_body
-        )
-    except Exception as email_err:
+    safe_name = html.escape(org.name or "a workspace")
+    email_body = (
+        f"Hello,\n\nYou have been invited to join the team '{org.name}' on Helix Intelligence.\n\n"
+        f"Open this link to accept the invitation:\n{invite_url}\n\n"
+        "This invitation will expire in 7 days.\n"
+    )
+    html_body = (
+        f"<p>Hello,</p><p>You have been invited to join <strong>{safe_name}</strong> on Helix Intelligence.</p>"
+        f"<p><a href=\"{html.escape(invite_url, quote=True)}\">Accept invitation</a></p>"
+        "<p>This invitation will expire in 7 days.</p>"
+    )
+    delivery = await send_email(
+        to=email,
+        subject=f"Invitation to join {org.name} on Helix Intelligence",
+        html=html_body,
+        text=email_body,
+    )
+    delivered = bool(delivery and getattr(delivery, "accepted", False))
+    if not delivered:
         import logging
-        logging.getLogger(__name__).warning(f"Failed to dispatch team invite email to {email}: {email_err}")
+        logging.getLogger(__name__).warning(
+            "Team invite email was not accepted for %s: %s",
+            email,
+            getattr(delivery, "error", None),
+        )
 
     return {
         "success": True,
-        "message": f"Invitation sent to {email}",
+        "email_dispatched": delivered,
+        "message": (
+            f"Invitation email accepted for {email}" if delivered
+            else f"Invitation created for {email}, but email delivery was not accepted"
+        ),
         "invite_id": invite.id,
-        "token": token
+        "token": token,
+        "accept_url": invite_url,
     }
 
 async def cancel_invite(db: AsyncSession, user: User, invite_id: str) -> Dict[str, Any]:
@@ -232,11 +250,17 @@ async def accept_invite(db: AsyncSession, token: str, user: User) -> Dict[str, A
         return {"success": True, "message": "Already a member of this organization", "org_id": invite.org_id}
 
     # 4. Atomically insert member and mark invite accepted
+    invited_role = invite.role if invite.role in INVITE_ROLES else None
+    if invited_role is None:
+        raise HTTPException(status_code=422, detail="Invitation role is not allowed")
     new_member = OrganizationMember(
         org_id=invite.org_id,
         user_id=user.id,
-        role=invite.role or "member"
+        role=invited_role,
     )
+    metadata = dict(getattr(user, "signup_metadata", None) or {})
+    metadata["active_org_id"] = invite.org_id
+    user.signup_metadata = metadata
     db.add(new_member)
     invite.status = "accepted"
     await db.commit()

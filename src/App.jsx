@@ -49,6 +49,7 @@ const SwipeFilesPage = safeLazy(() => import("@/pages/SwipeFilesPage").then(m =>
 const BillingPage = safeLazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
 const ApiKeysPage = safeLazy(() => import("@/pages/ApiKeysPage").then(m => ({ default: m.ApiKeysPage })))
 const TeamPage = safeLazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamPage })))
+const TeamAcceptPage = safeLazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamAcceptPage })))
 const PendingLoopPage = safeLazy(() => import("@/pages/PendingLoopPage").then(m => ({ default: m.PendingLoopPage })))
 const NotFoundPage = safeLazy(() => import("@/pages/NotFoundPage").then(m => ({ default: m.NotFoundPage })))
 const OverviewPage = safeLazy(() => import("@/pages/admin/OverviewPage").then(m => ({ default: m.OverviewPage })))
@@ -230,6 +231,7 @@ export default function App() {
                       <Route path="/billing" element={<BillingPage />} />
                       <Route path="/api-keys" element={<ApiKeysPage />} />
                       <Route path="/team" element={<TeamPage />} />
+                      <Route path="/team/accept" element={<TeamAcceptPage />} />
                       <Route path="/settings" element={<ProfileSettingsPage />} />
                       <Route path="/support" element={<SupportPage />} />
                       <Route path="/notifications" element={<NotificationsPage />} />

@@ -1,8 +1,11 @@
 import datetime
+import hashlib
+import json
 import logging
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, cast, String, func
+from sqlalchemy import select, func
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
@@ -11,7 +14,55 @@ from app.models.user import User
 from app.models.organization import Organization
 from app.models.plan import Plan
 from app.models.usage_log import UsageLog
+from app.models.credit_ledger import CreditLedgerEntry, CreditReservation, OperationIdempotency
 from app.core.config import settings
+
+_MONEY = Decimal("0.000001")
+_ACTIVE_ORG_STATUSES = {"active", "quota_exhausted", "daily_limit_reached"}
+_SECRET_FLAG_PARTS = ("api_key", "secret", "token", "password", "cookie")
+
+
+def _decimal_amount(amount) -> Decimal:
+    quantized = Decimal(str(amount if amount is not None else 0)).quantize(_MONEY, rounding=ROUND_HALF_UP)
+    return quantized
+
+
+def _payload_hash(operation: str, amount, job_id: Optional[str], metadata: Optional[Dict[str, Any]]) -> str:
+    body = {
+        "operation": operation,
+        "amount": str(_decimal_amount(amount)),
+        "job_id": job_id,
+        "metadata": metadata or {},
+    }
+    encoded = json.dumps(body, sort_keys=True, default=str, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _org_is_trial(org: Organization) -> bool:
+    plan_name = (getattr(org, "plan", None) or "").lower()
+    plan_id = getattr(org, "plan_id", None) or ""
+    return plan_name == "trial" or plan_id.startswith("plan_trial")
+
+
+def _is_secret_flag(name: str) -> bool:
+    lowered = str(name or "").lower().replace("-", "_")
+    return any(part in lowered for part in _SECRET_FLAG_PARTS)
+
+
+def _merged_flags(plan: Plan, org: Organization) -> Dict[str, Any]:
+    flags = dict(plan.feature_flags or {})
+    for key, value in (org.custom_feature_flags or {}).items():
+        if _is_secret_flag(key):
+            continue
+        flags[key] = value
+    return flags
+
+
+def _explicit_limit(value, fallback: int) -> int:
+    """None means 'use the documented fallback'. Zero is a real limit."""
+    if value is None:
+        return fallback
+    return int(value)
 
 # Centralized Credit Costs
 DISCOVER_SEARCH_CREDIT_COST = 1.0
@@ -77,6 +128,60 @@ async def _ensure_daily_reset(db: AsyncSession, org: Organization) -> None:
 from sqlalchemy.exc import IntegrityError
 
 
+async def resolve_active_org(db: AsyncSession, user: User) -> Optional[Organization]:
+    """Pick the verified workspace for this caller.
+
+    Order: API-key organization, explicit active workspace stored when an
+    invite is accepted, a single paid membership when the caller's own
+    organization is still a trial, then the owned organization, then the
+    earliest membership. Several paid memberships and no explicit selection
+    stay on the owned organization. Selecting among them needs the session
+    organization id, which this wave cannot add.
+    """
+    scoped_org_id = getattr(user, "_scoped_org_id", None)
+    if scoped_org_id:
+        return (
+            await db.execute(select(Organization).where(Organization.id == scoped_org_id))
+        ).scalar_one_or_none()
+
+    owned = (
+        await db.execute(select(Organization).where(Organization.owner_id == user.id))
+    ).scalars().first()
+
+    from app.models.organization_member import OrganizationMember
+
+    member_orgs = (
+        await db.execute(
+            select(Organization)
+            .join(OrganizationMember, Organization.id == OrganizationMember.org_id)
+            .where(OrganizationMember.user_id == user.id)
+            .order_by(OrganizationMember.created_at.asc())
+        )
+    ).scalars().all()
+
+    by_id: Dict[str, Organization] = {}
+    if owned is not None:
+        by_id[owned.id] = owned
+    for org in member_orgs:
+        by_id.setdefault(org.id, org)
+
+    metadata = getattr(user, "signup_metadata", None) or {}
+    active_id = metadata.get("active_org_id") if isinstance(metadata, dict) else None
+    if active_id and active_id in by_id:
+        return by_id[active_id]
+
+    if owned is not None and _org_is_trial(owned):
+        paid_memberships = [
+            org for org in member_orgs
+            if org.id != owned.id and not _org_is_trial(org) and (org.status or "active") == "active"
+        ]
+        if len(paid_memberships) == 1:
+            return paid_memberships[0]
+    if owned is not None:
+        return owned
+    return member_orgs[0] if member_orgs else None
+
+
 async def get_or_create_default_org(
     db: AsyncSession,
     user: User,
@@ -89,18 +194,24 @@ async def get_or_create_default_org(
     API-key callers are pinned to the key's organization before any owner lookup.
     """
     scoped_org_id = getattr(user, "_scoped_org_id", None)
-    if scoped_org_id:
-        scoped_query = select(Organization).where(Organization.id == scoped_org_id)
+    resolved = await resolve_active_org(db, user)
+    if scoped_org_id and resolved is None:
+        raise HTTPException(
+            status_code=403,
+            detail={"code": "api_key_org_unavailable", "message": "API key organization is not available."},
+        )
+    if resolved is not None:
         if lock_row:
-            scoped_query = scoped_query.with_for_update().execution_options(populate_existing=True)
-        scoped_org = (await db.execute(scoped_query)).scalar_one_or_none()
-        if scoped_org is None:
-            raise HTTPException(
-                status_code=403,
-                detail={"code": "api_key_org_unavailable", "message": "API key organization is not available."},
-            )
-        await _ensure_daily_reset(db, scoped_org)
-        return scoped_org
+            resolved = (
+                await db.execute(
+                    select(Organization)
+                    .where(Organization.id == resolved.id)
+                    .with_for_update()
+                    .execution_options(populate_existing=True)
+                )
+            ).scalar_one()
+        await _ensure_daily_reset(db, resolved)
+        return resolved
 
     query = select(Organization).where(Organization.owner_id == user.id)
     if lock_row:
@@ -188,8 +299,10 @@ async def assert_can_spend(
 
     org = await get_or_create_default_org(db, user, lock_row=lock_row)
 
+    # API-key scope is applied by get_or_create_default_org before this bypass.
+    scoped_org_id = getattr(user, "_scoped_org_id", None)
     # 0. Administrator bypass: unrestricted features, unlimited credits
-    if getattr(user, "role", None) == "admin":
+    if getattr(user, "role", None) == "admin" and not scoped_org_id:
         admin_plan = Plan(
             id="plan_admin",
             name="Helix Administrator",
@@ -215,32 +328,27 @@ async def assert_can_spend(
         )
         return org, admin_plan
 
-    # 1. Fetch Plan
+    # 1. Fetch Plan. A missing row is not a trial.
     plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
     plan = plan_result.scalar_one_or_none()
     if not plan:
-        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
-    if not plan:
-        from app.models.plan import Plan as PlanModel
-        plan = PlanModel(
-            id="plan_trial_default",
-            name="7-Day Free Trial",
-            type="trial",
-            credit_allowance=50,
-            daily_credit_limit=15.0,
-            price_per_credit=0.0,
-            feature_flags={
-                "discover": True,
-                "intelligence": True,
-                "create": True,
-                "performance": True,
-                "swipe_files": True,
-                "team_accounts": False,
-                "public_api": False,
-                "ai_insights": True,
-                "create_media": True,
-                "deep_search": True,
-            }
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_unavailable",
+                "message": "This workspace has no plan record. Access is closed until a plan is assigned.",
+                "plan_id": org.plan_id,
+            },
+        )
+
+    if (org.status or "active") not in _ACTIVE_ORG_STATUSES:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "subscription_inactive",
+                "message": "This workspace subscription is not active.",
+                "status": org.status,
+            },
         )
 
     # 2. Check 7-Day Trial Expiration
@@ -262,18 +370,20 @@ async def assert_can_spend(
                 }
             )
 
-    # 3. Check Feature Flags
+    # 3. Check Feature Flags. A missing flag is denied.
     if feature_name:
-        active_flags = dict(plan.feature_flags or {})
-        if org.custom_feature_flags:
-            active_flags.update(org.custom_feature_flags)
-
-        if not active_flags.get(feature_name, True):
+        active_flags = _merged_flags(plan, org)
+        # An empty flag map has not declared a contract. Real seeded plans
+        # declare explicit flags, and a missing key on those maps is denied.
+        declared = bool(plan.feature_flags) or any(
+            not _is_secret_flag(key) for key in (org.custom_feature_flags or {})
+        )
+        if declared and active_flags.get(feature_name) is not True:
             raise HTTPException(
                 status_code=403,
                 detail={
                     "code": "feature_disabled",
-                    "message": f"The '{feature_name}' feature is disabled for your current plan.",
+                    "message": f"The '{feature_name}' feature is not enabled for your current plan.",
                     "feature": feature_name,
                     "plan_name": plan.name
                 }
@@ -337,23 +447,44 @@ async def check_quota_and_feature(
     )
 
 
+def _idempotency_key(value) -> Optional[str]:
+    """Ignore unresolved header defaults when a route function is called directly."""
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
 async def get_idempotent_operation(
     db: AsyncSession,
     org_id: str,
     idempotency_key: str,
     operation: Optional[str] = None
 ) -> Optional[UsageLog]:
-    """Look up an existing operation by idempotency key to prevent double debiting (F10)."""
+    """Exact-match lookup. The key is a column, not a JSON substring."""
+    idempotency_key = _idempotency_key(idempotency_key)
     if not idempotency_key or not org_id:
         return None
     stmt = select(UsageLog).where(
         UsageLog.org_id == org_id,
-        cast(UsageLog.metadata_json, String).like(f'%"{idempotency_key}"%')
+        UsageLog.idempotency_key == idempotency_key,
     )
     if operation:
         stmt = stmt.where(UsageLog.operation == operation)
     result = await db.execute(stmt)
     return result.scalars().first()
+
+
+def _reject_payload_mismatch(existing: UsageLog, payload_hash: str) -> None:
+    existing_hash = getattr(existing, "payload_hash", None) or (existing.metadata_json or {}).get("payload_hash")
+    if existing_hash and existing_hash != payload_hash:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "idempotency_payload_mismatch",
+                "message": "This idempotency key was already used for a different payload.",
+            },
+        )
 
 
 async def charge(
@@ -375,12 +506,14 @@ async def charge(
     Locks and refreshes the organization row to avoid stale identity-map overwrites (F07).
     Idempotent: short-circuits if idempotency_key has already been charged (F10).
     """
+    idempotency_key = _idempotency_key(idempotency_key)
+    payload_hash = _payload_hash(operation, amount, job_id, metadata)
+    meta = dict(metadata or {})
     if idempotency_key:
-        existing = await get_idempotent_operation(db, org.id, idempotency_key, operation)
-        if existing:
-            return existing
+        meta["idempotency_key"] = idempotency_key
+    meta["payload_hash"] = payload_hash
 
-    # 1. Row-lock and refresh the org with populate_existing=True
+    # 1. Row-lock the org before the idempotency read so concurrent retries serialize.
     lock_query = (
         select(Organization)
         .where(Organization.id == org.id)
@@ -389,14 +522,18 @@ async def charge(
     )
     locked_org = (await db.execute(lock_query)).scalar_one_or_none() or org
 
-    meta = dict(metadata or {})
     if idempotency_key:
-        meta["idempotency_key"] = idempotency_key
+        existing = await get_idempotent_operation(db, locked_org.id, idempotency_key, operation)
+        if existing:
+            _reject_payload_mismatch(existing, payload_hash)
+            return existing
 
     if amount > 0:
         if locked_org.credit_balance < amount:
             locked_org.status = "quota_exhausted"
-            await db.commit()
+            rollback = getattr(db, "rollback", None)
+            if rollback:
+                await rollback()
             raise HTTPException(
                 status_code=402,
                 detail={
@@ -413,7 +550,13 @@ async def charge(
         if locked_org.credit_balance <= 0.0:
             locked_org.status = "quota_exhausted"
 
+    from app.models.usage_log import generate_uuid as _new_id
+    log_id = _new_id()
+    reservation_id = _new_id()
+    ledger_id = _new_id()
+    decimal_amount = _decimal_amount(amount)
     log_entry = UsageLog(
+        id=log_id,
         org_id=locked_org.id,
         user_id=user_id or locked_org.owner_id,
         job_id=job_id,
@@ -421,14 +564,67 @@ async def charge(
         operation=operation,
         units=units,
         cost_usd=cost_usd,
-        credits_deducted=amount,
+        credits_deducted=float(decimal_amount),
         tokens_used=int(units) if "token" in operation else 0,
         requests_used=1,
-        metadata_json=meta
+        metadata_json=meta,
+        idempotency_key=idempotency_key,
+        payload_hash=payload_hash,
+        reservation_id=reservation_id,
+        ledger_id=ledger_id,
+    )
+    reservation = CreditReservation(
+        id=reservation_id,
+        org_id=locked_org.id,
+        user_id=user_id or locked_org.owner_id,
+        operation=operation,
+        amount=decimal_amount,
+        status="settled",
+        job_id=job_id,
+        idempotency_key=idempotency_key,
+        payload_hash=payload_hash,
+        usage_log_id=log_id,
+        settled_at=datetime.datetime.now(datetime.timezone.utc),
+    )
+    ledger = CreditLedgerEntry(
+        id=ledger_id,
+        org_id=locked_org.id,
+        usage_log_id=log_id,
+        reservation_id=reservation_id,
+        entry_kind="debit",
+        amount=decimal_amount,
+        operation=operation,
+        job_id=job_id,
     )
     db.add(log_entry)
-    await db.commit()
-    await db.refresh(log_entry)
+    if hasattr(db, "flush"):
+        await db.flush()
+    db.add(reservation)
+    db.add(ledger)
+    if idempotency_key:
+        db.add(OperationIdempotency(
+            org_id=locked_org.id,
+            operation=operation,
+            idempotency_key=idempotency_key,
+            payload_hash=payload_hash,
+            job_id=job_id,
+            usage_log_id=log_id,
+            reservation_id=reservation_id,
+        ))
+    try:
+        await db.commit()
+    except IntegrityError:
+        rollback = getattr(db, "rollback", None)
+        if rollback:
+            await rollback()
+        existing = await get_idempotent_operation(db, locked_org.id, idempotency_key or "", operation)
+        if existing:
+            _reject_payload_mismatch(existing, payload_hash)
+            return existing
+        raise
+    refresh = getattr(db, "refresh", None)
+    if refresh:
+        await refresh(log_entry)
     return log_entry
 
 
@@ -459,6 +655,7 @@ async def refund(
         return False
 
     # 2. Idempotency check: if job_id was already refunded, do not refund again (F08)
+    reservation = None
     if job_id:
         existing_refund = (await db.execute(
             select(UsageLog).where(
@@ -469,14 +666,31 @@ async def refund(
         if existing_refund:
             logger.warning(f"Job {job_id} already has a refund recorded ({existing_refund.id}). Skipping duplicate refund.")
             return False
+        reservation = (
+            await db.execute(
+                select(CreditReservation)
+                .where(CreditReservation.job_id == job_id)
+                .order_by(CreditReservation.created_at.desc())
+            )
+        ).scalars().first()
+        if reservation is not None:
+            if reservation.status == "refunded":
+                return False
+            if reservation.status == "settled":
+                amount = float(reservation.amount)
 
-    org.credit_balance += amount
-    org.credits_used = max(0.0, org.credits_used - amount)
-    org.daily_credits_used_today = max(0.0, org.daily_credits_used_today - amount)
+    decimal_amount = _decimal_amount(amount)
+    org.credit_balance += float(decimal_amount)
+    org.credits_used = max(0.0, org.credits_used - float(decimal_amount))
+    org.daily_credits_used_today = max(0.0, org.daily_credits_used_today - float(decimal_amount))
     if org.status == "quota_exhausted" and org.credit_balance > 0:
         org.status = "active"
 
+    from app.models.usage_log import generate_uuid as _new_id
+    refund_id = _new_id()
+    ledger_id = _new_id()
     refund_log = UsageLog(
+        id=refund_id,
         org_id=org.id,
         user_id=org.owner_id,
         job_id=job_id,
@@ -484,12 +698,29 @@ async def refund(
         operation=f"refund_{reason}",
         units=1.0,
         cost_usd=0.0,
-        credits_deducted=-amount,
+        credits_deducted=-float(decimal_amount),
         tokens_used=0,
         requests_used=0,
-        metadata_json={"refund_reason": reason, "amount": amount}
+        metadata_json={"refund_reason": reason, "amount": float(decimal_amount)},
+        ledger_id=ledger_id,
+        reservation_id=reservation.id if reservation is not None else None,
     )
     db.add(refund_log)
+    if hasattr(db, "flush"):
+        await db.flush()
+    db.add(CreditLedgerEntry(
+        id=ledger_id,
+        org_id=org.id,
+        usage_log_id=refund_id,
+        reservation_id=reservation.id if reservation is not None else None,
+        entry_kind="refund",
+        amount=decimal_amount,
+        operation=f"refund_{reason}",
+        job_id=job_id,
+    ))
+    if reservation is not None and reservation.status != "refunded":
+        reservation.status = "refunded"
+        reservation.settled_at = datetime.datetime.now(datetime.timezone.utc)
     await db.commit()
     return True
 
@@ -538,29 +769,22 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
     plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
     plan = plan_result.scalar_one_or_none()
     if not plan:
-        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
-    if not plan:
-        from app.models.plan import Plan as PlanModel
-        plan = PlanModel(
-            id="plan_trial_default",
-            name="7-Day Free Trial",
-            type="trial",
-            credit_allowance=25,
-            daily_credit_limit=3.5,
-            price_per_credit=0.0,
-            feature_flags={
-                "discover": True,
-                "intelligence": True,
-                "create": True,
-                "performance": True,
-                "swipe_files": True,
-                "team_accounts": False,
-                "public_api": False,
-                "ai_insights": True,
-                "create_media": True,
-                "deep_search": True,
-            }
-        )
+        return {
+            "org_id": org.id,
+            "org_name": org.name,
+            "plan_id": org.plan_id,
+            "plan_name": None,
+            "plan_type": None,
+            "plan_unavailable": True,
+            "credit_balance": round(float(org.credit_balance), 2),
+            "credits_used": round(float(org.credits_used), 2),
+            "status": org.status,
+            "subscription_lifecycle": "unconfigured",
+            "renews_at": None,
+            "feature_flags": {},
+            "recent_usage": [],
+            "billing_contract": "missing",
+        }
 
     # Recent usage logs for this org
     logs_result = await db.execute(
@@ -690,10 +914,16 @@ async def get_trial_usage_summary(db: AsyncSession, user: User, org: Optional[Or
     total_used = int(getattr(org, "images_trial_total", 0) or 0)
     requires_plan = (not is_admin) and is_trial and (not active or total_used >= settings.TRIAL_IMAGES_TOTAL)
 
-    # Video limits
-    video_daily_limit = 3 if is_trial else 50
+    # Video limits. Trial video is disabled. Zero on a plan stays zero.
+    plan_row = None
+    if org.plan_id:
+        plan_row = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
     if is_admin:
         video_daily_limit = 99999
+    elif is_trial:
+        video_daily_limit = 0
+    else:
+        video_daily_limit = _explicit_limit(getattr(plan_row, "daily_video_limit", None) if plan_row else None, 0)
     videos_used_today = int(getattr(org, "videos_generated_today", 0) or 0)
     videos_remaining_today = max(0, video_daily_limit - videos_used_today)
 
@@ -734,15 +964,34 @@ async def assert_can_generate_image(
     else:
         await _ensure_daily_image_reset(db, org)
 
-    # 0. Administrator bypass
-    if getattr(user, "role", None) == "admin":
+    # API-key scope wins before the administrator bypass.
+    if getattr(user, "role", None) == "admin" and not getattr(user, "_scoped_org_id", None):
         admin_plan = Plan(id="plan_admin", name="Admin", type="admin", credit_allowance=999999)
         return org, admin_plan
 
-    # Fetch user plan
+    if (org.status or "active") not in _ACTIVE_ORG_STATUSES:
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "subscription_inactive",
+                "message": "This workspace subscription is not active.",
+                "status": org.status,
+            },
+        )
+
+    # Fetch user plan. A missing plan is not treated as a trial.
     plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
     plan = plan_result.scalar_one_or_none()
-    is_trial = (plan is None) or (plan.type == "trial") or (org.plan == "trial")
+    if plan is None:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_unavailable",
+                "message": "This workspace has no plan record. Media generation is closed.",
+                "plan_id": org.plan_id,
+            },
+        )
+    is_trial = (plan.type == "trial") or (org.plan == "trial")
 
     days_remaining = get_trial_days_remaining(user)
     used_today = int(getattr(org, "images_generated_today", 0) or 0)
@@ -799,8 +1048,8 @@ async def assert_can_generate_image(
             }
         )
 
-    # 3. Check 25-image total trial cap
-    if is_trial and not is_video and total_used >= settings.TRIAL_IMAGES_TOTAL:
+    # 3. Check 25-image total trial cap, including jobs that are not finished yet.
+    if is_trial and not is_video and (total_used + in_flight_count) >= settings.TRIAL_IMAGES_TOTAL:
         org.status = "quota_exhausted"
         await db.commit()
         raise HTTPException(
@@ -815,9 +1064,9 @@ async def assert_can_generate_image(
             }
         )
 
-    # 4. Check Daily Video Limit on Paid Plans (F55)
+    # 4. Check Daily Video Limit on Paid Plans (F55). Zero stays zero.
     if is_video:
-        daily_video_limit = (getattr(plan, "daily_video_limit", None) if plan else None) or 3
+        daily_video_limit = _explicit_limit(getattr(plan, "daily_video_limit", None), 0)
         videos_used_today = int(getattr(org, "videos_generated_today", 0) or 0)
         if (videos_used_today + in_flight_count) >= daily_video_limit:
             raise HTTPException(
@@ -830,7 +1079,7 @@ async def assert_can_generate_image(
                     "daily_video_limit": daily_video_limit
                 }
             )
-        return org, plan or Plan(id="plan_paid_default", name="Paid Plan", type="pay_as_you_go")
+        return org, plan
 
     # 5. Check Daily Image Limit (F55, F11)
     daily_limit = getattr(plan, "daily_image_limit", None) if plan else None
@@ -851,7 +1100,7 @@ async def assert_can_generate_image(
             }
         )
 
-    return org, plan or Plan(id="plan_trial_default", name="7-Day Free Trial", type="trial")
+    return org, plan
 
 
 async def record_image_generated(

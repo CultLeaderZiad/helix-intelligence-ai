@@ -4,7 +4,7 @@ from typing import List
 
 from app.schemas.simulation import SimulationRequest, SimulationReport, PersonaSegment, PRESET_SEGMENTS
 from app.services import simulation_service
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 
 router = APIRouter()
@@ -16,7 +16,11 @@ async def list_audience_segments():
     return PRESET_SEGMENTS
 
 
-@router.post("/creatives/{creative_id}/simulate", response_model=SimulationReport)
+@router.post(
+    "/creatives/{creative_id}/simulate",
+    response_model=SimulationReport,
+    dependencies=[Depends(require_feature("intelligence"))],
+)
 async def simulate_creative(
     creative_id: str,
     request: SimulationRequest,

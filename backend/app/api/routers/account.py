@@ -50,7 +50,7 @@ async def get_profile(current_user: User = Depends(get_current_user)):
         "id": current_user.id,
         "email": current_user.email,
         "full_name": getattr(current_user, "full_name", "") or "",
-        "avatar_url": getattr(current_user, "avatar_url", "") or "",
+        "avatar_url": storage_service.resolve_stored_url(getattr(current_user, "avatar_url", "") or "") or "",
         "role": current_user.role,
         "has_completed_onboarding": getattr(current_user, "has_completed_onboarding", False),
         "trial_expires_at": current_user.trial_expires_at.isoformat() if current_user.trial_expires_at else None,
@@ -249,6 +249,16 @@ async def get_billing(
     current_user: User = Depends(get_current_user)
 ):
     return await billing_service.get_org_billing_summary(db, current_user)
+
+
+@router.post("/billing/provider-events")
+async def billing_provider_events(
+    current_user: User = Depends(get_current_user),
+):
+    """Refuse provider billing events until the main-Helix contract exists."""
+    del current_user
+    from app.services.billing_contract import refuse_billing_provider_event
+    refuse_billing_provider_event(None)
 
 # --- Public API Keys (Gated by 'public_api') ---
 @router.get("/api-keys")

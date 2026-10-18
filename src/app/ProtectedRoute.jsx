@@ -19,6 +19,13 @@ export function ProtectedRoute({ requireRole = null }) {
   }
 
   if (status === AUTH_STATUS.UNAUTHENTICATED) {
+    if (location.pathname === "/team/accept" && location.search) {
+      try {
+        sessionStorage.setItem("helix.invite_search", location.search)
+      } catch {
+        // Storage can be blocked. The accept page still reads the query when it is present.
+      }
+    }
     return <Navigate to="/sign-in" replace state={{ from: location }} />
   }
 

@@ -20,9 +20,11 @@ import hmac
 import logging
 import mimetypes
 import os
+import time
 import uuid
 from functools import lru_cache
 from typing import Optional
+from urllib.parse import quote
 
 from app.core.config import settings
 
@@ -152,7 +154,7 @@ def _r2_put(key: str, data: bytes, mime_type: str, content_disposition: Optional
         ContentType=mime_type or "application/octet-stream",
         # Media is immutable: the key contains a fresh random component on
         # every write, so it can be cached indefinitely.
-        CacheControl="public, max-age=31536000, immutable",
+        CacheControl="private, max-age=0, no-store",
         **extra,
     )
 
@@ -167,18 +169,111 @@ def _r2_put(key: str, data: bytes, mime_type: str, content_disposition: Optional
 # removes the "predictable filename, no owner check" hole.
 # ---------------------------------------------------------------------------
 
-def sign_local_filename(filename: str) -> str:
+# Short-lived capability. Full JWTs are not accepted as query parameters.
+CAPABILITY_TTL_SECONDS = 900
+
+
+def sign_capability(
+    filename: str,
+    exp: int,
+    org_id: str = "",
+    user_id: str = "",
+    token_version: str = "",
+) -> str:
+    message = f"{filename}|{int(exp)}|{org_id}|{user_id}|{token_version}"
     return hmac.new(
         settings.SECRET_KEY.encode("utf-8"),
-        filename.encode("utf-8"),
+        message.encode("utf-8"),
         hashlib.sha256,
-    ).hexdigest()[:32]
+    ).hexdigest()
+
+
+def sign_local_filename(filename: str) -> str:
+    """Mac fragment for a default-lifetime capability. Not a permanent signature."""
+    return sign_capability(filename, int(time.time()) + CAPABILITY_TTL_SECONDS)
 
 
 def verify_local_signature(filename: str, signature: Optional[str]) -> bool:
-    if not signature:
+    """Permanent filename-only signatures are rejected."""
+    del filename, signature
+    return False
+
+
+def verify_capability(
+    filename: str,
+    signature: Optional[str],
+    exp: Optional[str],
+    org_id: str = "",
+    user_id: str = "",
+    token_version: str = "",
+) -> bool:
+    if not signature or exp is None or exp == "":
         return False
-    return hmac.compare_digest(sign_local_filename(filename), signature)
+    try:
+        expires = int(exp)
+    except (TypeError, ValueError):
+        return False
+    if expires < int(time.time()):
+        return False
+    expected = sign_capability(filename, expires, org_id or "", user_id or "", str(token_version or ""))
+    return hmac.compare_digest(expected, signature)
+
+
+def issue_local_url(
+    filename: str,
+    *,
+    org_id: str = "",
+    user_id: str = "",
+    token_version: str = "",
+    ttl_seconds: int = CAPABILITY_TTL_SECONDS,
+) -> str:
+    exp = int(time.time()) + int(ttl_seconds)
+    signature = sign_capability(filename, exp, org_id or "", user_id or "", str(token_version or ""))
+    query = (
+        f"exp={exp}&org={quote(org_id or '')}&uid={quote(user_id or '')}"
+        f"&ver={quote(str(token_version or ''))}&sig={signature}"
+    )
+    return f"{_public_api_origin()}/uploads/{filename}?{query}"
+
+
+def _presign_r2_key(key: str, ttl_seconds: int = CAPABILITY_TTL_SECONDS) -> str:
+    if not r2_enabled():
+        raise RuntimeError("R2 is not configured")
+    return _r2_client().generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.R2_BUCKET, "Key": key},
+        ExpiresIn=int(ttl_seconds),
+    )
+
+
+def resolve_stored_url(
+    url: Optional[str],
+    *,
+    org_id: str = "",
+    user_id: str = "",
+    token_version: str = "",
+    ttl_seconds: int = CAPABILITY_TTL_SECONDS,
+) -> Optional[str]:
+    """Turn a stored reference into a short-lived URL after the caller is authorized."""
+    if not url:
+        return url
+    if url.startswith("r2://"):
+        return _presign_r2_key(url[len("r2://"):], ttl_seconds)
+    public = (settings.R2_PUBLIC_BASE_URL or "").rstrip("/")
+    if public and (url == public or url.startswith(public + "/")):
+        key = url[len(public):].lstrip("/")
+        return _presign_r2_key(key, ttl_seconds)
+    marker = "/uploads/"
+    if marker in url:
+        filename = url.split(marker, 1)[1].split("?", 1)[0]
+        return issue_local_url(
+            filename,
+            org_id=org_id,
+            user_id=user_id,
+            token_version=token_version,
+            ttl_seconds=ttl_seconds,
+        )
+    return url
 
 
 def _public_api_origin() -> str:
@@ -199,7 +294,7 @@ def _store_local(filename: str, data: bytes) -> str:
         "This file will be lost on the next restart or deploy.",
         filename,
     )
-    return f"{_public_api_origin()}/uploads/{filename}?sig={sign_local_filename(filename)}"
+    return issue_local_url(filename)
 
 
 async def store_media_bytes(job_id: str, data: bytes, mime_type: str = "image/png") -> str:
@@ -215,9 +310,8 @@ async def store_media_bytes(job_id: str, data: bytes, mime_type: str = "image/pn
     if r2_enabled():
         key = f"media/{filename}"
         await asyncio.to_thread(_r2_put, key, data, mime_type)
-        url = f"{settings.R2_PUBLIC_BASE_URL}/{key}"
-        logger.info("Stored media for job %s in R2: %s", job_id, key)
-        return url
+        logger.info("Stored media for job %s in private R2: %s", job_id, key)
+        return f"r2://{key}"
 
     return _store_local(filename, data)
 
@@ -261,9 +355,8 @@ async def save_file(data: bytes, filename: str, content_type: Optional[str] = No
     if r2_enabled():
         key = f"uploads/{unique_filename}"
         await asyncio.to_thread(_r2_put, key, data, mime, f'inline; filename="{unique_filename}"')
-        url = f"{settings.R2_PUBLIC_BASE_URL}/{key}"
-        logger.info("Saved file in R2: %s", key)
-        return url
+        logger.info("Saved file in private R2: %s", key)
+        return _presign_r2_key(key)
 
     return _store_local(unique_filename, data)
 
@@ -277,6 +370,6 @@ async def save_avatar(data: bytes, mime_type: str, extension: str, user_id: str)
     if r2_enabled():
         key = f"avatars/{filename}"
         await asyncio.to_thread(_r2_put, key, data, mime_type, disposition)
-        return f"{settings.R2_PUBLIC_BASE_URL}/{key}"
-    return _store_local(filename, data)
+        return f"r2://{key}"
+    return issue_local_url(filename, user_id=user_id, ttl_seconds=12 * 60 * 60)
 

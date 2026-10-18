@@ -6,12 +6,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 from app.services import monitor_service
 from app.services.billing_service import get_or_create_default_org
 
 router = APIRouter()
+_monitor_access = [Depends(require_feature("monitors"))]
 
 
 class MonitorCreate(BaseModel):
@@ -36,8 +37,8 @@ async def _org_id(db: AsyncSession, user: User) -> str:
     return org.id
 
 
-@router.get("")
-@router.get("/")
+@router.get("", dependencies=_monitor_access)
+@router.get("/", dependencies=_monitor_access)
 async def list_monitors(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -45,8 +46,8 @@ async def list_monitors(
     return await monitor_service.list_monitors(db, await _org_id(db, current_user))
 
 
-@router.post("", status_code=201)
-@router.post("/", status_code=201)
+@router.post("", status_code=201, dependencies=_monitor_access)
+@router.post("/", status_code=201, dependencies=_monitor_access)
 async def create_monitor(
     payload: MonitorCreate,
     db: AsyncSession = Depends(get_db),
@@ -65,7 +66,7 @@ async def create_monitor(
     )
 
 
-@router.get("/events")
+@router.get("/events", dependencies=_monitor_access)
 async def list_events(
     monitor_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
@@ -77,7 +78,7 @@ async def list_events(
     )
 
 
-@router.patch("/{monitor_id}")
+@router.patch("/{monitor_id}", dependencies=_monitor_access)
 async def update_monitor(
     monitor_id: str,
     payload: MonitorUpdate,
@@ -89,7 +90,7 @@ async def update_monitor(
     )
 
 
-@router.delete("/{monitor_id}")
+@router.delete("/{monitor_id}", dependencies=_monitor_access)
 async def delete_monitor(
     monitor_id: str,
     db: AsyncSession = Depends(get_db),
@@ -98,7 +99,7 @@ async def delete_monitor(
     return await monitor_service.delete_monitor(db, monitor_id, await _org_id(db, current_user))
 
 
-@router.post("/{monitor_id}/run")
+@router.post("/{monitor_id}/run", dependencies=_monitor_access)
 async def run_monitor_now(
     monitor_id: str,
     db: AsyncSession = Depends(get_db),
