@@ -82,6 +82,12 @@ async def _sweep_table(
         status IN ({placeholders})
         AND (owner_boot_id IS NULL OR owner_boot_id <> :boot)
         AND COALESCE(heartbeat_at, created_at) < :cutoff
+        AND NOT EXISTS (
+            SELECT 1 FROM work_items wi
+            WHERE wi.job_id = {table}.id
+              AND wi.status IN ('queued', 'leased')
+              AND wi.attempt_count < wi.max_attempts
+        )
     """
     params = {"boot": BOOT_ID, "cutoff": cutoff}
 
@@ -194,6 +200,11 @@ async def _sweep_monitor_runs() -> int:
 async def reconcile_once() -> Dict[str, int]:
     """One reconciliation pass. Safe to call repeatedly."""
     swept = {"discover": 0, "media": 0, "refunded": 0, "monitor_runs": 0}
+    try:
+        from app.services.work_outbox import requeue_expired_leases
+        swept["requeued"] = await requeue_expired_leases()
+    except Exception as exc:
+        logger.error("Work lease requeue failed: %s", exc)
 
     try:
         discover_rows = await _sweep_table(

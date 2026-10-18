@@ -1,27 +1,36 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from fastapi import HTTPException
-import datetime
 import logging
+import uuid
 from typing import List, Optional
 
 from app.schemas.analysis import Insight
 from app.models.ai_insight import AIInsight
 from app.models.creative import Creative
 from app.models.scrape_job import ScrapeJob
-from app.core.config import settings
 from app.schemas.common import Paginated
 from app.services.ai.ai_router import AIRouter
 from app.models.user import User
 from app.services.billing_service import (
     assert_can_spend,
-    charge,
-    refund,
     ANALYSIS_PATTERN_CREDIT_COST,
-    ESTIMATED_PROVIDER_COSTS
 )
 
 logger = logging.getLogger(__name__)
+
+
+async def _release_insight_hold(db, reservation, org) -> None:
+    if reservation is None:
+        return
+    from app.services.billing_service import release_reservation
+    try:
+        released = await release_reservation(db, reservation.id, "insight_provider_failed")
+    except Exception:
+        released = False
+    if not released and getattr(reservation, "status", None) != "refunded":
+        if org is not None and getattr(org, "credit_balance", None) is not None:
+            org.credit_balance = float(org.credit_balance) + float(reservation.amount)
 
 async def generate_insight_for_creative(
     db: AsyncSession,
@@ -45,7 +54,9 @@ async def generate_insight_for_creative(
         if job_org not in user_org_ids:
             raise HTTPException(status_code=404, detail="Creative not found")
 
-    # 2. Server-side credit & feature gate (if not using BYOK)
+    # 2. Server-side credit & feature gate (if not using BYOK).
+    # The pre-check does not hold the org row. reserve_credits commits the hold
+    # before the provider call so the lock is gone during network I/O.
     cost = 0.0 if (byok_key and byok_provider) else ANALYSIS_PATTERN_CREDIT_COST
     org, plan = await assert_can_spend(
         db,
@@ -54,9 +65,7 @@ async def generate_insight_for_creative(
         feature_name="intelligence",
         lock_row=False
     )
-        
     provider = await AIRouter.get_provider_for_user(db, user, byok_key, byok_provider)
-    
     from app.schemas.creative import Creative as CreativeSchema, Scores, CreativeMetrics
     creative_schema = CreativeSchema(
         id=creative_model.id,
@@ -74,30 +83,35 @@ async def generate_insight_for_creative(
         metrics=CreativeMetrics(),
         pattern_ids=[]
     )
-    
+    reservation = None
+    if cost > 0:
+        from app.services.billing_service import reserve_credits
+        reservation = await reserve_credits(
+            db,
+            org=org,
+            user_id=user.id,
+            amount=cost,
+            operation="ai_insight",
+            idempotency_key=f"ai_insight:{creative_id}:{uuid.uuid4().hex}",
+            metadata={"creative_id": creative_id},
+            provider="pending",
+        )
+
     try:
         insight_schema = await provider.generate_insight(creative_schema)
-        provider_name = getattr(provider, "model", "unknown")
-        
-        # 3. Deduct credit and log usage (only after a real insight exists)
-        if cost > 0:
-            await charge(
-                db=db,
-                org=org,
-                user_id=user.id,
-                amount=cost,
-                provider=provider_name,
-                operation="ai_insight",
-                units=1.0,
-                cost_usd=ESTIMATED_PROVIDER_COSTS.get("groq_tokens", 0.0006) * 1000,
-                job_id=None,
-                metadata={"creative_id": creative_id, "kind": insight_schema.kind}
-            )
-        else:
-            await AIRouter.log_usage(db, user.id, provider_name, org_id=org.id, tokens=0)
-        
-        # 4. Save to DB. If persistence fails after a charge, refund —
-        # the user must never pay for an insight they did not receive.
+        provider_name = getattr(provider, "model", None) or "unknown"
+        if not isinstance(provider_name, str):
+            provider_name = "unknown"
+        usage = getattr(provider, "last_usage", None)
+        from app.services.ai.call_policy import ChatResult, usage_metadata
+        if not isinstance(usage, ChatResult):
+            usage = None
+        from app.services.ai.prompts import PROMPT_INSIGHT
+        meta = usage_metadata(usage, prompt_version=PROMPT_INSIGHT)
+        meta["creative_id"] = creative_id
+        meta["kind"] = insight_schema.kind
+
+        # 4. Persist the validated insight and settle the hold in one commit.
         try:
             reasons_payload = {
                 "emotional_resonance": getattr(insight_schema, "emotional_resonance", None),
@@ -105,6 +119,7 @@ async def generate_insight_for_creative(
                 "fatigue_prediction": getattr(insight_schema, "fatigue_prediction", None),
                 "key_elements": getattr(insight_schema, "key_elements", None),
                 "recommendations": getattr(insight_schema, "recommendations", None),
+                "usage": meta,
             }
             new_insight = AIInsight(
                 id=insight_schema.id,
@@ -118,16 +133,41 @@ async def generate_insight_for_creative(
                 model_version=insight_schema.model_version
             )
             db.add(new_insight)
+            if reservation is not None:
+                from app.services.billing_service import settle_reservation
+                await settle_reservation(
+                    db,
+                    reservation.id,
+                    provider=getattr(usage, "provider", None) or provider_name,
+                    model=getattr(usage, "model", None) or provider_name,
+                    tokens=getattr(usage, "total_tokens", None),
+                    cost_usd=getattr(usage, "cost_usd", None),
+                    latency_ms=getattr(usage, "latency_ms", None),
+                    metadata=meta,
+                    commit=False,
+                )
+            else:
+                await AIRouter.log_usage(
+                    db,
+                    user.id,
+                    provider_name,
+                    org_id=org.id,
+                    tokens=int(getattr(usage, "total_tokens", 0) or 0),
+                )
             await db.commit()
         except Exception:
-            if cost > 0:
-                await refund(db, org.id, cost, "analysis_persist_failed", None)
+            await db.rollback()
+            if reservation is not None:
+                from app.services.billing_service import release_reservation
+                await release_reservation(db, reservation.id, "analysis_persist_failed")
             raise
-        
+
         return insight_schema
     except HTTPException:
+        await _release_insight_hold(db, reservation, org)
         raise
     except Exception as e:
+        await _release_insight_hold(db, reservation, org)
         logger.error(
             "AI insight generation provider failed (creative=%s user=%s): %s",
             creative_id, user.id, e,
@@ -149,26 +189,6 @@ async def scoped_creative_ids(db: AsyncSession, user_org_ids: List[str]) -> List
 
 
 async def get_creative_insight(db: AsyncSession, creative_id: str, user_org_ids: Optional[List[str]] = None) -> Paginated[Insight]:
-    if settings.USE_MOCKS:
-        mock_insight = Insight(
-            id="mock-insight-1",
-            creative_id=creative_id,
-            kind="opportunity",
-            title="High Hook Potential",
-            summary="The first 3 seconds are highly engaging and likely to retain viewers.",
-            confidence=0.9,
-            evidence_creative_ids=[creative_id],
-            generated_at=datetime.datetime.utcnow().isoformat() + "Z",
-            model_version="v1.0"
-        )
-        return Paginated(
-            items=[mock_insight],
-            total=1,
-            page=1,
-            page_size=1,
-            has_more=False
-        )
-        
     # Tenant isolation: insights hang off creatives, which hang off jobs.
     if user_org_ids is not None:
         if creative_id not in await scoped_creative_ids(db, user_org_ids):
@@ -207,26 +227,6 @@ async def get_creative_insight(db: AsyncSession, creative_id: str, user_org_ids:
     )
 
 async def list_insights(db: AsyncSession, page: int = 1, page_size: int = 20, user_org_ids: Optional[List[str]] = None) -> Paginated[Insight]:
-    if settings.USE_MOCKS:
-        mock_insight = Insight(
-            id="mock-insight-1",
-            creative_id="mock-creative-1",
-            kind="opportunity",
-            title="High Hook Potential",
-            summary="The first 3 seconds are highly engaging and likely to retain viewers.",
-            confidence=0.9,
-            evidence_creative_ids=["mock-creative-1"],
-            generated_at=datetime.datetime.utcnow().isoformat() + "Z",
-            model_version="v1.0"
-        )
-        return Paginated(
-            items=[mock_insight],
-            total=1,
-            page=page,
-            page_size=page_size,
-            has_more=False
-        )
-
     count_query = select(func.count(AIInsight.id))
     offset = (page - 1) * page_size
     query = select(AIInsight).offset(offset).limit(page_size)

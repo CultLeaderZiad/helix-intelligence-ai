@@ -10,6 +10,8 @@ from app.services.scraping.base import RawCreative
 _MACRO_RE = re.compile(r"\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}")
 
 _BRAND_MACROS = {"product.brand", "brand", "page.name", "page_name", "brand.name"}
+HEURISTIC_VERSION = "copy-heuristics-v2"
+HEURISTIC_SCALE = "0-10"
 
 
 def clean_template_macros(text: Optional[str], brand_label: str = "") -> str:
@@ -110,45 +112,57 @@ def normalize_creative(
         duration_seconds=raw.duration_seconds,
         first_seen=raw.first_seen,
         last_seen=raw.last_seen,
-        days_active=raw.days_active,
+        days_active=raw.days_active if getattr(raw, "_days_known", True) else None,
         variant_count=raw.variant_count,
         impressions_est=impressions_est,
-        is_estimated=is_estimated,
+        is_estimated=is_estimated if impressions_est is not None else None,
         data_source=data_source,
         spend_band=spend_band,
         engagement_rate=engagement_rate,
-        ctr_est=ctr_est
+        ctr_est=ctr_est,
+        source_ad_id=getattr(raw, "_source_ad_id", None),
+        permalink=getattr(raw, "_permalink", None),
+        fetched_at=None,
+        provenance_json=getattr(raw, "_provenance", None),
+        score_basis="heuristic",
+        score_scale=HEURISTIC_SCALE,
+        heuristic_version=HEURISTIC_VERSION,
     )
-    
-    # Calculate baseline heuristic scores [0.0 - 10.0] so creatives are immediately actionable
-    # Hook: based on curiosity triggers, brevity, emotional polarity, or numbers in headline
-    hook_score = 6.0
-    hl_lower = headline.lower()
+    fetched = getattr(raw, "_fetched_at", None)
+    if fetched:
+        from datetime import datetime
+        try:
+            creative.fetched_at = datetime.fromisoformat(fetched.replace("Z", "+00:00"))
+        except Exception:
+            creative.fetched_at = None
+
+    # Rubric only. Points are added for text features that are present.
+    # A zero means the rubric saw no signal, not a measured performance score.
+    hl_lower = (headline or "").lower()
+    hook_score = 0.0
     if any(trigger in hl_lower for trigger in ["how", "why", "secret", "never", "stop", "unlock", "discover", "reveal", "?"]):
-        hook_score += 1.8
-    if any(char.isdigit() for char in headline):
-        hook_score += 0.8
-    if 10 < len(headline) < 80:
-        hook_score += 0.6
-    hook_score = min(9.5, max(4.0, round(hook_score, 1)))
+        hook_score += 4.0
+    if any(char.isdigit() for char in (headline or "")):
+        hook_score += 2.0
+    if headline and 10 < len(headline) < 80:
+        hook_score += 2.0
+    hook_score = min(10.0, round(hook_score, 1))
 
-    # Clarity: based on body readability, formatting, and clear CTA
-    clarity_score = 6.5
+    clarity_score = 0.0
     if cta and cta.lower() not in ("none", ""):
-        clarity_score += 1.0
-    if len(body) > 40:
-        clarity_score += 0.8
-    if "\n" in body or "•" in body or "-" in body:
-        clarity_score += 0.7
-    clarity_score = min(9.6, max(4.5, round(clarity_score, 1)))
+        clarity_score += 4.0
+    if len(body or "") > 40:
+        clarity_score += 3.0
+    if body and ("\n" in body or "•" in body or "-" in body):
+        clarity_score += 2.0
+    clarity_score = min(10.0, round(clarity_score, 1))
 
-    # Retention: format and fatigue resistance
-    retention_score = 6.0
+    retention_score = 0.0
     if raw.format == "video":
-        retention_score += 1.5
-    if (raw.days_active or 1) > 7:
-        retention_score += 1.0
-    retention_score = min(9.4, max(4.0, round(retention_score, 1)))
+        retention_score += 4.0
+    if getattr(raw, "_days_known", False) and (raw.days_active or 0) > 7:
+        retention_score += 3.0
+    retention_score = min(10.0, round(retention_score, 1))
 
     composite_score = round(0.4 * hook_score + 0.3 * clarity_score + 0.3 * retention_score, 1)
 

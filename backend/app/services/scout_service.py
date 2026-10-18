@@ -149,6 +149,29 @@ async def enrich_from_website(website_url: str, client: httpx.AsyncClient) -> Di
 
 
 async def run_scout_job_worker(job_id: str):
+    """Enqueue durable work, then run inline only in tests or an explicit local override."""
+    from app.db.session import async_session_maker
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
+    from sqlalchemy import select as _select
+    async with async_session_maker() as db:
+        job = (await db.execute(_select(ScoutJob).where(ScoutJob.id == job_id))).scalars().first()
+        if job is not None:
+            try:
+                await enqueue_work(
+                    db,
+                    kind="scout",
+                    job_id=job_id,
+                    org_id=job.org_id,
+                    user_id=job.user_id,
+                    payload={"platforms": job.platforms, "handles": job.handles},
+                )
+            except Exception:
+                pass
+    if inline_execution_enabled():
+        await execute_scout_job(job_id)
+
+
+async def execute_scout_job(job_id: str):
     """
     Background worker for Social Scout Atlas jobs.
     Runs: parse -> scrape (vendored Scout + ScrapeGraph) -> enrich (LeadEnricher + ScrapeGraph) -> atlas (classify+score) -> outreach (LLM).

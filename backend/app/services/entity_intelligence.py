@@ -416,7 +416,10 @@ async def analyze_entity_intent(query: str, raw_creatives: Optional[List[Any]] =
     # If in curated list, return immediately with highest precision
     low_q = clean_q.lower()
     if low_q in KNOWN_ENTITIES:
-        return KNOWN_ENTITIES[low_q]
+        profile = dict(KNOWN_ENTITIES[low_q])
+        profile["evidence_status"] = "curated_unverified"
+        profile["evidence_label"] = "Curated profile. Not fetched from an ad library for this search."
+        return profile
 
     # Check Groq LLM for dynamic classification
     api_key = env_secret("GROQ_API_KEY", fallback=settings.GROQ_API_KEY)
@@ -497,10 +500,20 @@ Respond ONLY with valid JSON matching this schema:
                 content = data["choices"][0]["message"]["content"]
                 parsed = json.loads(content)
                 if isinstance(parsed, dict) and "entity_name" in parsed:
-                    if not parsed.get("social_links"):
-                        parsed["social_links"] = build_social_links(clean_q)
-                    return parsed
+                    from app.services.ai.structured import InvalidModelOutput, parse_entity
+                    try:
+                        labeled = parse_entity(parsed)
+                    except InvalidModelOutput:
+                        labeled = None
+                    if labeled:
+                        labeled["prompt_version"] = "entity-dossier-v2"
+                        labeled["model"] = "llama-3.1-8b-instant"
+                        return labeled
     except Exception as exc:
         logger.warning("Groq entity intelligence call failed or timed out: %s. Using heuristic fallback.", exc)
 
-    return _heuristic_entity_classification(clean_q)
+    heuristic = dict(_heuristic_entity_classification(clean_q))
+    heuristic["evidence_status"] = "unverified_heuristic"
+    heuristic["evidence_label"] = "Heuristic hypothesis. Not fetched from an ad library."
+    heuristic["social_links"] = {}
+    return heuristic

@@ -151,11 +151,14 @@ class TranslateCopyRequest(BaseModel):
 @router.post("/translate-copy")
 async def translate_copy(
     payload: TranslateCopyRequest,
-    current_user: User = Depends(get_current_user)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_feature("intelligence")),
 ):
     return await creative_service.translate_ad_copy(
         text=payload.text,
         target_lang=payload.target_lang,
-        breakdown=payload.breakdown
+        breakdown=payload.breakdown,
+        db=db,
+        user=current_user,
     )
 

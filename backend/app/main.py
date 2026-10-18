@@ -45,13 +45,22 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             try:
                 reconcile_cutoff = datetime.datetime.utcnow() - datetime.timedelta(minutes=10)
-                stuck_discover_jobs = (await conn.execute(text("""
+                reclaimable = """
+                      AND NOT EXISTS (
+                          SELECT 1 FROM work_items wi
+                          WHERE wi.job_id = scrape_jobs.id
+                            AND wi.status IN ('queued', 'leased')
+                            AND wi.attempt_count < wi.max_attempts
+                      )
+                """
+                stuck_discover_jobs = (await conn.execute(text(f"""
                     SELECT id, org_id FROM scrape_jobs
                     WHERE status IN ('queued', 'running')
                       AND (
                           (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
                           OR (heartbeat_at IS NULL AND created_at < :cutoff)
                       )
+                      {reclaimable}
                 """), {"cutoff": reconcile_cutoff})).mappings().all()
                 if stuck_discover_jobs:
                     await conn.execute(text("""
@@ -64,6 +73,12 @@ async def lifespan(app: FastAPI):
                               (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
                               OR (heartbeat_at IS NULL AND created_at < :cutoff)
                           )
+                          AND NOT EXISTS (
+                              SELECT 1 FROM work_items wi
+                              WHERE wi.job_id = scrape_jobs.id
+                                AND wi.status IN ('queued', 'leased')
+                                AND wi.attempt_count < wi.max_attempts
+                          )
                     """), {"cutoff": reconcile_cutoff})
                     print(f"Startup reconciliation: {len(stuck_discover_jobs)} stuck discover job(s) marked failed and refunded.")
                 stuck_media_jobs = (await conn.execute(text("""
@@ -72,6 +87,12 @@ async def lifespan(app: FastAPI):
                       AND (
                           (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
                           OR (heartbeat_at IS NULL AND created_at < :cutoff)
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1 FROM work_items wi
+                          WHERE wi.job_id = media_jobs.id
+                            AND wi.status IN ('queued', 'leased')
+                            AND wi.attempt_count < wi.max_attempts
                       )
                 """), {"cutoff": reconcile_cutoff})).all()
                 if stuck_media_jobs:
@@ -84,6 +105,12 @@ async def lifespan(app: FastAPI):
                           AND (
                               (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
                               OR (heartbeat_at IS NULL AND created_at < :cutoff)
+                          )
+                          AND NOT EXISTS (
+                              SELECT 1 FROM work_items wi
+                              WHERE wi.job_id = media_jobs.id
+                                AND wi.status IN ('queued', 'leased')
+                                AND wi.attempt_count < wi.max_attempts
                           )
                     """), {"cutoff": reconcile_cutoff})
                     print(f"Startup reconciliation: {len(stuck_media_jobs)} stuck media job(s) marked failed.")

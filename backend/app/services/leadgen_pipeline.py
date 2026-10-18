@@ -787,26 +787,24 @@ async def _final_stages(job_id: str, started_ts: float) -> None:
                     lead.outreach = {"reason": "skipped_router_unavailable"}
                     errored += 1
                     continue
-                prompt = (
-                    "You are a B2B outreach writer. Draft outreach for this lead as STRICT JSON with keys "
-                    "subject (string), body (<=120 words), dm (<=50 words social DM), personalization_points (string[]). "
-                    "No placeholders, no invented facts beyond the provided fields. "
-                    f"ICP: {brief.get('icp')} | Lead: {lead.company_name or lead.domain} | site: {lead.website} | "
-                    f"known contacts: {', '.join((lead.emails or [])[:2]) or 'phone only'} | score: {lead.lead_score}. "
-                    "Return ONLY the JSON."
+                from app.services.ai.prompts import PROMPT_OUTREACH, outreach_messages
+                from app.services.ai.structured import InvalidModelOutput, parse_outreach
+                lead_fields = (
+                    f"company={lead.company_name or lead.domain}; site={lead.website}; "
+                    f"contacts={', '.join((lead.emails or [])[:2]) or 'phone only'}; score={lead.lead_score}"
                 )
                 try:
-                    raw = await provider._call_api([{"role": "user", "content": prompt}])
+                    raw = await provider._call_api(outreach_messages(str(brief.get("icp") or ""), lead_fields))
                     m = re.search(r"\{.*\}", raw or "", re.S)
                     parsed = json.loads(m.group(0)) if m else None
-                    if isinstance(parsed, dict) and parsed.get("subject") and parsed.get("body"):
-                        lead.outreach = {
-                            "subject": str(parsed.get("subject"))[:200],
-                            "body": str(parsed.get("body"))[:2000],
-                            "dm": str(parsed.get("dm") or "")[:500],
-                            "personalization_points": [str(x) for x in (parsed.get("personalization_points") or [])[:6]],
-                            "sent": False,  # drafts only - never auto-send
-                        }
+                    try:
+                        draft = parse_outreach(parsed)
+                    except InvalidModelOutput:
+                        draft = None
+                    if draft:
+                        draft["prompt_version"] = PROMPT_OUTREACH
+                        draft["model"] = getattr(getattr(provider, "last_usage", None), "model", None) or getattr(provider, "model", None)
+                        lead.outreach = draft
                         generated += 1
                     else:
                         lead.outreach = {"reason": "skipped_parse_error"}

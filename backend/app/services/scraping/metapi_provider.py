@@ -2,7 +2,7 @@ import os
 import asyncio
 import logging
 from typing import List
-from datetime import datetime
+from datetime import datetime, timezone
 from app.services.scraping.base import ScraperProvider, RawCreative
 from app.core.config import settings
 from app.core.credentials import env_secret
@@ -32,11 +32,13 @@ class MetapiProvider(ScraperProvider):
     async def search(self, query: str, max_records: int, filters: dict = None, progress_callback=None) -> List[RawCreative]:
         assert max_records and max_records > 0, "Safety Violation: max_records missing or invalid"
         
+        self.last_outcome = "failure"
         if not self.metapi_api_key:
             logger.warning("Metapi credentials missing. Skipping Metapi fallback.")
             return []
             
         if not query or not query.strip():
+            self.last_outcome = "empty"
             return []
 
         clean_brand = query.strip().lower()
@@ -131,7 +133,9 @@ class MetapiProvider(ScraperProvider):
                 if len(results) > max_records:
                     results = results[:max_records]
 
-                return self._parse_metapi_ads(results, domain)
+                parsed = self._parse_metapi_ads(results, domain)
+                self.last_outcome = "success" if parsed else "empty"
+                return parsed
             logger.warning(f"Metapi results API returned status {results_resp.status_code}: {results_resp.text[:250]}")
             return []
                     
@@ -176,25 +180,28 @@ class MetapiProvider(ScraperProvider):
             elif captions and len(captions) > 0 and captions[0].strip():
                 headline = captions[0].strip()
             else:
-                headline = f"{page_name} Ad"
+                headline = None
             
             landing_url = item.get("query_params")
             if not landing_url and captions and len(captions) > 0:
                 cap = captions[0]
                 landing_url = f"https://{cap}" if not cap.startswith("http") else cap
             
-            cta = item.get("cta_text") or "Shop Now"
+            cta = item.get("cta_text") or None
             
-            start_date = item.get("creation_time") or item.get("delivery_start_time") or now.isoformat()
-            end_date = item.get("delivery_stop_time") or now.isoformat()
+            start_date = item.get("creation_time") or item.get("delivery_start_time")
+            end_date = item.get("delivery_stop_time")
             
             days_active = 1
-            try:
-                dt_clean = start_date.replace("Z", "+00:00").split("+")[0]
-                dt_start = datetime.fromisoformat(dt_clean)
-                days_active = max(1, (now - dt_start).days)
-            except Exception:
-                days_active = 1
+            days_known = False
+            if start_date:
+                try:
+                    dt_clean = start_date.replace("Z", "+00:00").split("+")[0]
+                    dt_start = datetime.fromisoformat(dt_clean)
+                    days_active = max(1, (now - dt_start).days)
+                    days_known = True
+                except Exception:
+                    days_active = 1
 
             # Pick best media URL
             media_url = None
@@ -221,8 +228,7 @@ class MetapiProvider(ScraperProvider):
             if not landing_domain and domain and "." in domain and " " not in domain:
                 landing_domain = domain.lower().replace("www.", "")
 
-            creatives.append(
-                RawCreative(
+            raw = RawCreative(
                     platform="meta",
                     format=format_type,
                     brand_name=page_name,
@@ -235,13 +241,25 @@ class MetapiProvider(ScraperProvider):
                     last_seen=end_date,
                     days_active=days_active,
                     variant_count=1,
-                    impressions_est=item.get("page_like_count"),
+                    impressions_est=None,
                     spend_band=None,
                     data_source="ad_library_scrape",
                     is_estimated=True,
                     media_url=media_url,
                     thumbnail_url=thumbnail_url
                 )
-            )
+            fetched_at = datetime.now(timezone.utc).isoformat()
+            object.__setattr__(raw, "_source_ad_id", item.get("id") or item.get("ad_archive_id"))
+            object.__setattr__(raw, "_permalink", item.get("ad_snapshot_url") or item.get("permalink"))
+            object.__setattr__(raw, "_fetched_at", fetched_at)
+            object.__setattr__(raw, "_days_known", days_known)
+            object.__setattr__(raw, "_provenance", {
+                "provider": "metapi",
+                "source_ad_id": item.get("id") or item.get("ad_archive_id"),
+                "permalink": item.get("ad_snapshot_url") or item.get("permalink"),
+                "fetched_at": fetched_at,
+                "metrics_observed": False,
+            })
+            creatives.append(raw)
 
         return creatives

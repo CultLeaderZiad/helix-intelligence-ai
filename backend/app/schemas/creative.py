@@ -6,6 +6,10 @@ class Scores(BaseModel):
     clarity: Optional[float] = None
     retention: Optional[float] = None
     composite: Optional[float] = None
+    # Heuristic rubric metadata. Observed platform performance is not this object.
+    basis: Optional[str] = None
+    scale: Optional[str] = None
+    version: Optional[str] = None
 
 class CreativeMetrics(BaseModel):
     impressions_est: Optional[int] = None
@@ -23,15 +27,18 @@ class Creative(BaseModel):
     source_type: Optional[str] = "ad" # 'ad' | 'organic_content_proxy'
     headline: str
     body: str
-    cta: str
+    cta: Optional[str] = None
     landing_domain: Optional[str] = None
     media_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
     thumbnail_ratio: Optional[str] = None
     duration_seconds: Optional[int] = None
-    first_seen: str
-    last_seen: str
-    days_active: int
+    first_seen: Optional[str] = None
+    last_seen: Optional[str] = None
+    days_active: Optional[int] = None
+    source_ad_id: Optional[str] = None
+    permalink: Optional[str] = None
+    fetched_at: Optional[str] = None
     variant_count: int
     scores: Scores
     metrics: CreativeMetrics

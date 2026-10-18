@@ -859,6 +859,273 @@ async def refund(
     return True
 
 
+async def reserve_credits(
+    db: AsyncSession,
+    org: Organization,
+    user_id: Optional[str],
+    amount: float,
+    operation: str,
+    job_id: Optional[str] = None,
+    idempotency_key: Optional[str] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    provider: str = "pending",
+) -> CreditReservation:
+    """Hold credits, commit, and release the org row lock before any network call.
+
+    A repeated idempotency key returns the existing reservation and does not
+    debit again. The hold is a ledger debit that settle keeps or release refunds.
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    idempotency_key = _idempotency_key(idempotency_key)
+    payload_hash = _payload_hash(operation, amount, job_id, metadata)
+    org_id = org.id
+    locked_org = (
+        await db.execute(
+            select(Organization)
+            .where(Organization.id == org_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one_or_none() or org
+
+    if idempotency_key:
+        existing = (
+            await db.execute(
+                select(CreditReservation).where(
+                    CreditReservation.org_id == locked_org.id,
+                    CreditReservation.operation == operation,
+                    CreditReservation.idempotency_key == idempotency_key,
+                )
+            )
+        ).scalars().first()
+        if existing is not None:
+            if existing.payload_hash and existing.payload_hash != payload_hash:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "idempotency_payload_mismatch",
+                        "message": "This idempotency key was already used for a different payload.",
+                    },
+                )
+            return existing
+
+    decimal_amount = _decimal_amount(amount)
+    available = float(locked_org.credit_balance)
+    if amount > 0 and available < amount:
+        locked_org.status = "quota_exhausted"
+        await db.rollback()
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "insufficient_credits",
+                "message": f"Not enough credits for this action ({available:.1f} available, {amount:.1f} required).",
+                "credit_balance": round(available, 2),
+                "required": amount,
+            },
+        )
+    if amount > 0:
+        locked_org.credit_balance = max(0.0, locked_org.credit_balance - float(decimal_amount))
+        locked_org.credits_used = float(locked_org.credits_used or 0) + float(decimal_amount)
+        await _ensure_daily_reset(db, locked_org)
+        locked_org.daily_credits_used_today = float(locked_org.daily_credits_used_today or 0) + float(decimal_amount)
+        if locked_org.credit_balance <= 0.0:
+            locked_org.status = "quota_exhausted"
+
+    from app.models.usage_log import generate_uuid as _new_id
+    reservation_id = _new_id()
+    ledger_id = _new_id()
+    reservation = CreditReservation(
+        id=reservation_id,
+        org_id=locked_org.id,
+        user_id=user_id or locked_org.owner_id,
+        operation=operation,
+        amount=decimal_amount,
+        status="pending",
+        job_id=job_id,
+        idempotency_key=idempotency_key,
+        payload_hash=payload_hash,
+    )
+    db.add(reservation)
+    if hasattr(db, "flush"):
+        await db.flush()
+    db.add(CreditLedgerEntry(
+        id=ledger_id,
+        org_id=locked_org.id,
+        reservation_id=reservation_id,
+        entry_kind="debit",
+        amount=decimal_amount,
+        operation=operation,
+        job_id=job_id,
+    ))
+    if idempotency_key:
+        db.add(OperationIdempotency(
+            org_id=locked_org.id,
+            operation=operation,
+            idempotency_key=idempotency_key,
+            payload_hash=payload_hash,
+            job_id=job_id,
+            reservation_id=reservation_id,
+        ))
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        if idempotency_key:
+            existing = (
+                await db.execute(
+                    select(CreditReservation).where(
+                        CreditReservation.org_id == org_id,
+                        CreditReservation.operation == operation,
+                        CreditReservation.idempotency_key == idempotency_key,
+                    )
+                )
+            ).scalars().first()
+            if existing is not None:
+                return existing
+        raise
+    return reservation
+
+
+async def settle_reservation(
+    db: AsyncSession,
+    reservation_id: str,
+    *,
+    provider: str,
+    model: Optional[str] = None,
+    tokens: Optional[int] = None,
+    cost_usd: Optional[float] = None,
+    latency_ms: Optional[int] = None,
+    metadata: Optional[Dict[str, Any]] = None,
+    commit: bool = True,
+) -> UsageLog:
+    """Record observed usage against a hold. Does not debit a second time."""
+    reservation = (
+        await db.execute(
+            select(CreditReservation)
+            .where(CreditReservation.id == reservation_id)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if reservation is None:
+        raise ValueError(f"reservation {reservation_id} not found")
+    if reservation.usage_log_id:
+        existing = await db.get(UsageLog, reservation.usage_log_id)
+        if existing is not None:
+            return existing
+    if reservation.status == "refunded":
+        raise ValueError("reservation was already released")
+
+    from app.models.usage_log import generate_uuid as _new_id
+    log_id = _new_id()
+    observed = tokens is not None
+    meta = dict(metadata or {})
+    meta.update({
+        "model": model,
+        "tokens_observed": observed,
+        "latency_ms": latency_ms,
+        "cost_usd": cost_usd,
+        "provider": provider,
+    })
+    log_entry = UsageLog(
+        id=log_id,
+        org_id=reservation.org_id,
+        user_id=reservation.user_id,
+        job_id=reservation.job_id,
+        provider=provider,
+        operation=reservation.operation,
+        units=float(tokens) if observed else 1.0,
+        cost_usd=float(cost_usd or 0.0),
+        credits_deducted=float(reservation.amount),
+        tokens_used=int(tokens) if observed else 0,
+        requests_used=1,
+        metadata_json=meta,
+        idempotency_key=reservation.idempotency_key,
+        payload_hash=reservation.payload_hash,
+        reservation_id=reservation.id,
+    )
+    db.add(log_entry)
+    if hasattr(db, "flush"):
+        await db.flush()
+    reservation.status = "settled"
+    reservation.usage_log_id = log_id
+    reservation.settled_at = datetime.datetime.now(datetime.timezone.utc)
+    if commit:
+        await db.commit()
+    return log_entry
+
+
+async def release_reservation(db: AsyncSession, reservation_id: str, reason: str) -> bool:
+    """Idempotent compensation for a hold. Rolls back a failed session first.
+
+    The org row is locked before the reservation, matching reserve_credits.
+    """
+    rollback = getattr(db, "rollback", None)
+    if rollback:
+        await rollback()
+    peek = await db.get(CreditReservation, reservation_id)
+    if peek is None or peek.status == "refunded":
+        return False
+    org = (
+        await db.execute(
+            select(Organization)
+            .where(Organization.id == peek.org_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalar_one_or_none()
+    reservation = (
+        await db.execute(
+            select(CreditReservation)
+            .where(CreditReservation.id == reservation_id)
+            .with_for_update()
+        )
+    ).scalar_one_or_none()
+    if org is None or reservation is None or reservation.status == "refunded":
+        return False
+    decimal_amount = _decimal_amount(reservation.amount)
+    org.credit_balance += float(decimal_amount)
+    org.credits_used = max(0.0, org.credits_used - float(decimal_amount))
+    org.daily_credits_used_today = max(0.0, org.daily_credits_used_today - float(decimal_amount))
+    if org.status == "quota_exhausted" and org.credit_balance > 0:
+        org.status = "active"
+    from app.models.usage_log import generate_uuid as _new_id
+    refund_id = _new_id()
+    ledger_id = _new_id()
+    db.add(UsageLog(
+        id=refund_id,
+        org_id=org.id,
+        user_id=reservation.user_id or org.owner_id,
+        job_id=reservation.job_id,
+        provider="system",
+        operation=f"refund_{reason}",
+        units=1.0,
+        cost_usd=0.0,
+        credits_deducted=-float(decimal_amount),
+        tokens_used=0,
+        requests_used=0,
+        metadata_json={"refund_reason": reason, "reservation_id": reservation.id},
+        ledger_id=ledger_id,
+        reservation_id=reservation.id,
+    ))
+    if hasattr(db, "flush"):
+        await db.flush()
+    db.add(CreditLedgerEntry(
+        id=ledger_id,
+        org_id=org.id,
+        usage_log_id=refund_id,
+        reservation_id=reservation.id,
+        entry_kind="refund",
+        amount=decimal_amount,
+        operation=f"refund_{reason}",
+        job_id=reservation.job_id,
+    ))
+    reservation.status = "refunded"
+    reservation.settled_at = datetime.datetime.now(datetime.timezone.utc)
+    await db.commit()
+    return True
+
+
 async def meter_and_deduct(
     db: AsyncSession,
     org_id: str,
@@ -1244,7 +1511,11 @@ async def record_image_generated(
     user: User,
     org: Organization,
     job_id: Optional[str] = None,
-    cost_usd: float = 0.00
+    cost_usd: float = 0.00,
+    provider: str = "gemini",
+    model: Optional[str] = None,
+    latency_ms: Optional[int] = None,
+    commit: bool = True,
 ) -> UsageLog:
     """
     Increments daily and total image counters and logs usage under row-lock (F11).
@@ -1264,7 +1535,7 @@ async def record_image_generated(
         org_id=locked_org.id,
         user_id=user.id,
         job_id=job_id,
-        provider="gemini",
+        provider=provider,
         operation="media_generate_image",
         units=1.0,
         cost_usd=cost_usd,
@@ -1272,12 +1543,16 @@ async def record_image_generated(
         requests_used=1,
         metadata_json={
             "images_generated_today": int(locked_org.images_generated_today),
-            "images_trial_total": int(locked_org.images_trial_total)
+            "images_trial_total": int(locked_org.images_trial_total),
+            "model": model,
+            "latency_ms": latency_ms,
+            "tokens_observed": False,
         }
     )
     db.add(log)
-    await db.commit()
-    await db.refresh(locked_org)
+    if commit:
+        await db.commit()
+        await db.refresh(locked_org)
     return log
 
 
@@ -1286,7 +1561,11 @@ async def record_video_generated(
     user: User,
     org: Organization,
     job_id: Optional[str] = None,
-    cost_usd: float = 0.00
+    cost_usd: float = 0.00,
+    provider: str = "pollinations",
+    model: Optional[str] = None,
+    latency_ms: Optional[int] = None,
+    commit: bool = True,
 ) -> UsageLog:
     """
     Increments daily video counter and logs usage under row-lock (F11).
@@ -1305,7 +1584,7 @@ async def record_video_generated(
         org_id=locked_org.id,
         user_id=user.id,
         job_id=job_id,
-        provider="pollinations",
+        provider=provider,
         operation="media_generate_video",
         units=1.0,
         cost_usd=cost_usd,
@@ -1313,10 +1592,14 @@ async def record_video_generated(
         requests_used=1,
         metadata_json={
             "videos_generated_today": int(locked_org.videos_generated_today),
+            "model": model,
+            "latency_ms": latency_ms,
+            "tokens_observed": False,
         }
     )
     db.add(log)
-    await db.commit()
-    await db.refresh(locked_org)
+    if commit:
+        await db.commit()
+        await db.refresh(locked_org)
     return log
 

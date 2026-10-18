@@ -39,49 +39,53 @@ async def translate_search_query(query: str, target: str) -> str:
     if lang == "ar" and _looks_arabic(original) and not _looks_latin(original):
         return original
 
+    result = await translate_search_query_result(original, target)
+    return result.text
+
+
+async def translate_search_query_result(query: str, target: str):
+    """Return the original query when the provider is unavailable. Never invent a translation."""
+    from app.services.ai.call_policy import complete_chat
+    from app.services.ai.prompts import PROMPT_QUERY, query_messages
+
+    original = (query or "").strip()
+    lang = "ar" if (target or "").lower().startswith("ar") else "en"
+
+    class _QueryResult:
+        def __init__(self, text, status, model="", prompt_version=PROMPT_QUERY):
+            self.text = text
+            self.status = status
+            self.model = model
+            self.prompt_version = prompt_version
+
+    if not original:
+        return _QueryResult(original, "empty")
+    if lang == "en" and not _looks_arabic(original):
+        return _QueryResult(original, "not_needed")
+    if lang == "ar" and _looks_arabic(original) and not _looks_latin(original):
+        return _QueryResult(original, "not_needed")
+
     api_key = env_secret("GROQ_API_KEY", fallback=settings.GROQ_API_KEY)
     if not api_key:
         logger.info("Query translation skipped (no GROQ_API_KEY); using original.")
-        return original
+        return _QueryResult(original, "unavailable")
 
     language_name = "Arabic" if lang == "ar" else "English"
     try:
-        from app.services.safe_fetch import safe_request_async
-        response = await safe_request_async(
-            "POST",
-            "https://api.groq.com/openai/v1/chat/completions",
-            timeout=12.0,
+        result = await complete_chat(
+            provider_name="groq",
+            url="https://api.groq.com/openai/v1/chat/completions",
+            api_key=api_key,
+            model="llama-3.1-8b-instant",
+            messages=query_messages(original, language_name),
             allowed_hosts={"api.groq.com"},
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                    "model": "llama-3.1-8b-instant",
-                    "temperature": 0,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                f"Translate the user's ad-library search query into {language_name}. "
-                                "Return only the translated query, no quotes or explanation. "
-                                "Keep brand names and domains recognizable (e.g. nike.com stays nike.com)."
-                            ),
-                        },
-                        {"role": "user", "content": original},
-                    ],
-                },
-            )
-        if response.status_code >= 400:
-            logger.warning("Query translation HTTP %s: %s", response.status_code, response.text[:200])
-            return original
-        text = (
-            ((response.json() or {}).get("choices") or [{}])[0]
-            .get("message", {})
-            .get("content")
-            or ""
-        ).strip().strip('"').strip("'")
-        return text or original
+            response_format=None,
+            max_retries=0,
+        )
+        text = (result.text or "").strip().strip('"').strip("'")
+        if not text:
+            return _QueryResult(original, "unavailable")
+        return _QueryResult(text, "ok", model=result.model)
     except Exception as exc:
         logger.warning("Query translation failed: %s", exc)
-        return original
+        return _QueryResult(original, "unavailable")

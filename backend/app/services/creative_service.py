@@ -5,7 +5,6 @@ from app.schemas.common import Paginated
 from app.models.creative import Creative
 from app.models.creative_score import CreativeScore
 from app.models.scrape_job import ScrapeJob
-from app.core.config import settings
 import datetime
 
 from typing import List, Optional
@@ -25,32 +24,6 @@ async def list_creatives(
     page_size: int = 20,
     user_org_ids: Optional[List[str]] = None
 ) -> Paginated[CreativeSchema]:
-    if settings.USE_MOCKS:
-        mock_creative = CreativeSchema(
-            id="mock-creative-1",
-            brand_id="mock-brand",
-            platform="meta",
-            format="video",
-            headline="Try this now!",
-            body="This is an amazing product.",
-            cta="Learn More",
-            first_seen=datetime.datetime.utcnow().isoformat() + "Z",
-            last_seen=datetime.datetime.utcnow().isoformat() + "Z",
-            days_active=5,
-            variant_count=3,
-            scores=Scores(hook=85.0, clarity=90.0, retention=80.0, composite=85.0),
-            metrics=CreativeMetrics(impressions_est=10000, spend_band="high", engagement_rate=0.05, ctr_est=0.02),
-            pattern_ids=["mock-pattern-1"]
-        )
-        
-        return Paginated(
-            items=[mock_creative],
-            total=1,
-            page=page,
-            page_size=page_size,
-            has_more=False
-        )
-
     # Build filters dynamically
     filters = []
     if job_id:
@@ -99,13 +72,19 @@ async def list_creatives(
             duration_seconds=c.duration_seconds,
             first_seen=c.first_seen or "",
             last_seen=c.last_seen or "",
-            days_active=c.days_active or 1,
+            days_active=c.days_active,
             variant_count=c.variant_count or 1,
+            source_ad_id=getattr(c, "source_ad_id", None),
+            permalink=getattr(c, "permalink", None),
+            fetched_at=c.fetched_at.isoformat() if getattr(c, "fetched_at", None) else None,
             scores=Scores(
                 hook=score.hook if score else None,
                 clarity=score.clarity if score else None,
                 retention=score.retention if score else None,
-                composite=score.composite if score else None
+                composite=score.composite if score else None,
+                basis=getattr(c, "score_basis", None) or "heuristic",
+                scale=getattr(c, "score_scale", None) or "0-10",
+                version=getattr(c, "heuristic_version", None),
             ) if score else Scores(),
             metrics=CreativeMetrics(
                 impressions_est=c.impressions_est,
@@ -128,24 +107,6 @@ async def list_creatives(
 async def get_creative_by_id(
     db: AsyncSession, creative_id: str, user_org_ids: Optional[List[str]] = None
 ) -> CreativeSchema:
-    if settings.USE_MOCKS:
-        return CreativeSchema(
-            id=creative_id,
-            brand_id="mock-brand",
-            platform="meta",
-            format="video",
-            headline="Mock Headline",
-            body="Mock Body",
-            cta="Learn More",
-            first_seen=datetime.datetime.utcnow().isoformat() + "Z",
-            last_seen=datetime.datetime.utcnow().isoformat() + "Z",
-            days_active=5,
-            variant_count=3,
-            scores=Scores(hook=85.0, clarity=90.0, retention=80.0, composite=85.0),
-            metrics=CreativeMetrics(impressions_est=10000, spend_band="high", engagement_rate=0.05, ctr_est=0.02),
-            pattern_ids=["mock-pattern-1"]
-        )
-
     query = select(Creative, CreativeScore).outerjoin(
         CreativeScore, Creative.id == CreativeScore.creative_id
     ).where(Creative.id == creative_id)
@@ -181,13 +142,19 @@ async def get_creative_by_id(
         duration_seconds=c.duration_seconds,
         first_seen=c.first_seen or "",
         last_seen=c.last_seen or "",
-        days_active=c.days_active or 1,
+        days_active=c.days_active,
         variant_count=c.variant_count or 1,
+        source_ad_id=getattr(c, "source_ad_id", None),
+        permalink=getattr(c, "permalink", None),
+        fetched_at=c.fetched_at.isoformat() if getattr(c, "fetched_at", None) else None,
         scores=Scores(
             hook=score.hook if score else None,
             clarity=score.clarity if score else None,
             retention=score.retention if score else None,
-            composite=score.composite if score else None
+            composite=score.composite if score else None,
+            basis=getattr(c, "score_basis", None) or "heuristic",
+            scale=getattr(c, "score_scale", None) or "0-10",
+            version=getattr(c, "heuristic_version", None),
         ) if score else Scores(),
         metrics=CreativeMetrics(
             impressions_est=c.impressions_est,
@@ -205,23 +172,6 @@ async def list_brands(
     page_size: int = 20,
     user_org_ids: Optional[List[str]] = None
 ) -> Paginated[BrandSchema]:
-    if settings.USE_MOCKS:
-        mock_brand = BrandSchema(
-            id="mock-brand",
-            name="Mock Brand",
-            domain="mockbrand.com",
-            category="Software",
-            ad_count=12,
-            first_seen=datetime.datetime.utcnow().isoformat() + "Z"
-        )
-        return Paginated(
-            items=[mock_brand],
-            total=1,
-            page=page,
-            page_size=page_size,
-            has_more=False
-        )
-
     # Since we don't have a separate Brand table, generate unique brands from creatives
     query = select(
         Creative.brand_id,
@@ -266,22 +216,6 @@ async def list_patterns(
     page_size: int = 20,
     user_org_ids: Optional[List[str]] = None
 ) -> Paginated[PatternSchema]:
-    if settings.USE_MOCKS:
-        mock_pattern = PatternSchema(
-            id="mock-pattern-1",
-            label="Fast Paced Cuts",
-            family="visual",
-            prevalence=0.45,
-            lift_index=1.25
-        )
-        return Paginated(
-            items=[mock_pattern],
-            total=1,
-            page=page,
-            page_size=page_size,
-            has_more=False
-        )
-
     # Unowned null-job patterns are not readable by any tenant.
     # Pattern.job_id.is_not(None) stays as containment. Ownership is the org id.
     filters = [Pattern.job_id.is_not(None), Pattern.org_id.is_not(None)]
@@ -309,7 +243,7 @@ async def list_patterns(
             label=p.label,
             family=p.family,
             prevalence=p.prevalence,
-            lift_index=p.lift_index
+            lift_index=None,
         )
         for p in patterns
     ]
@@ -357,7 +291,7 @@ async def generate_patterns_for_recent_creatives(
         )
 
     # 2. Server-side credit & feature gate (F53)
-    from app.services.billing_service import assert_can_spend, charge, ANALYSIS_PATTERN_CREDIT_COST, ESTIMATED_PROVIDER_COSTS
+    from app.services.billing_service import assert_can_spend, ANALYSIS_PATTERN_CREDIT_COST
     cost = 0.0 if (byok_key and byok_provider) else ANALYSIS_PATTERN_CREDIT_COST
     org, plan = await assert_can_spend(
         db,
@@ -366,7 +300,6 @@ async def generate_patterns_for_recent_creatives(
         feature_name="intelligence",
         lock_row=False
     )
-        
     provider = await AIRouter.get_provider_for_user(db, user, byok_key, byok_provider)
     
     # Map to schema
@@ -389,31 +322,27 @@ async def generate_patterns_for_recent_creatives(
             metrics=CreativeMetrics(),
             pattern_ids=[]
         ))
-        
+    reservation = None
+    if cost > 0:
+        import uuid as _uuid
+        from app.services.billing_service import reserve_credits
+        reservation = await reserve_credits(
+            db,
+            org=org,
+            user_id=user.id,
+            amount=cost,
+            operation="pattern_synthesis",
+            job_id=job_id,
+            idempotency_key=f"pattern_synthesis:{job_id or 'recent'}:{_uuid.uuid4().hex}",
+            metadata={"job_id": job_id},
+        )
+
     try:
         patterns = await provider.generate_patterns(creative_schemas)
-        provider_name = getattr(provider, "model", "unknown")
-        
-        # 3. Deduct credit only after successful generation
-        if cost > 0:
-            await charge(
-                db=db,
-                org=org,
-                user_id=user.id,
-                amount=cost,
-                provider=provider_name,
-                operation="pattern_synthesis",
-                units=1.0,
-                cost_usd=ESTIMATED_PROVIDER_COSTS.get("groq_tokens", 0.0006) * 1000,
-                job_id=job_id,
-                metadata={"job_id": job_id, "patterns_count": len(patterns)}
-            )
-        else:
-            await AIRouter.log_usage(db, user.id, provider_name, org_id=org.id, tokens=0)
-        
-        # Persist only patterns tied to a job the caller already proved they own.
-        # A missing job id used to write a globally readable null-job row.
-        # Organization id is required; rows that cannot be assigned are not written.
+        usage = getattr(provider, "last_usage", None)
+        provider_name = getattr(usage, "model", None) or getattr(provider, "model", "unknown")
+
+        # The lift column is not nullable. 0 is stored and never returned as a measurement.
         if job_id and getattr(job, "org_id", None):
             for p_schema in patterns:
                 new_pattern = Pattern(
@@ -421,17 +350,37 @@ async def generate_patterns_for_recent_creatives(
                     label=p_schema.label,
                     family=p_schema.family,
                     prevalence=p_schema.prevalence,
-                    lift_index=p_schema.lift_index,
+                    lift_index=0.0,
                     job_id=job_id,
                     org_id=job.org_id,
                 )
                 db.add(new_pattern)
-        
+        if reservation is not None:
+            from app.services.ai.call_policy import usage_metadata
+            from app.services.ai.prompts import PROMPT_PATTERNS
+            from app.services.billing_service import settle_reservation
+            await settle_reservation(
+                db,
+                reservation.id,
+                provider=getattr(usage, "provider", None) or provider_name,
+                model=provider_name,
+                tokens=getattr(usage, "total_tokens", None),
+                cost_usd=getattr(usage, "cost_usd", None),
+                latency_ms=getattr(usage, "latency_ms", None),
+                metadata=usage_metadata(usage, prompt_version=PROMPT_PATTERNS),
+                commit=False,
+            )
         await db.commit()
         return patterns
     except HTTPException:
+        if reservation is not None:
+            from app.services.billing_service import release_reservation
+            await release_reservation(db, reservation.id, "pattern_provider_failed")
         raise
     except Exception as e:
+        if reservation is not None:
+            from app.services.billing_service import release_reservation
+            await release_reservation(db, reservation.id, "pattern_provider_failed")
         logger.error(
             "AI pattern extraction failed (job=%s user=%s): %s",
             job_id, user.id, e,
@@ -580,13 +529,19 @@ async def list_saved_creatives(
             duration_seconds=c.duration_seconds,
             first_seen=c.first_seen or "",
             last_seen=c.last_seen or "",
-            days_active=c.days_active or 1,
+            days_active=c.days_active,
             variant_count=c.variant_count or 1,
+            source_ad_id=getattr(c, "source_ad_id", None),
+            permalink=getattr(c, "permalink", None),
+            fetched_at=c.fetched_at.isoformat() if getattr(c, "fetched_at", None) else None,
             scores=Scores(
                 hook=score.hook if score else None,
                 clarity=score.clarity if score else None,
                 retention=score.retention if score else None,
-                composite=score.composite if score else None
+                composite=score.composite if score else None,
+                basis=getattr(c, "score_basis", None) or "heuristic",
+                scale=getattr(c, "score_scale", None) or "0-10",
+                version=getattr(c, "heuristic_version", None),
             ) if score else Scores(),
             metrics=CreativeMetrics(
                 impressions_est=c.impressions_est,
@@ -683,179 +638,103 @@ async def create_custom_swipe_reference(db: AsyncSession, user: "User", data: di
     return {"success": True, "message": "Reference added to swipe files", "creative_id": new_id}
 
 
-async def translate_ad_copy(text: str, target_lang: str = "en", breakdown: bool = True) -> dict:
+def _translation_unavailable(target_lang: str, message: str) -> dict:
+    return {
+        "status": "unavailable",
+        "target_lang": target_lang,
+        "detected_lang": None,
+        "translated_text": None,
+        "breakdown": None,
+        "model": None,
+        "prompt_version": None,
+        "charged": False,
+        "error": message,
+    }
+
+
+async def translate_ad_copy(
+    text: str,
+    target_lang: str = "en",
+    breakdown: bool = True,
+    db=None,
+    user=None,
+) -> dict:
+    """Translate ad copy with a real provider. Failure returns unavailable and does not charge."""
+    del breakdown
     clean_text = (text or "").strip()
     if not clean_text:
-        return {
-            "target_lang": target_lang,
-            "detected_lang": "en",
-            "translated_text": "",
-            "breakdown": {
-                "hook": "",
-                "problem": "",
-                "solution": "",
-                "cta": ""
-            }
-        }
+        return _translation_unavailable(target_lang, "No copy was provided.")
 
-    lang_map = {
-        "en": "English",
-        "es": "Spanish",
-        "zh": "Chinese",
-        "nl": "Dutch",
-        "ar": "Arabic"
-    }
-    target_lang_name = lang_map.get(target_lang.lower(), "English")
+    lang_map = {"en": "English", "es": "Spanish", "zh": "Chinese", "nl": "Dutch", "ar": "Arabic"}
+    target_name = lang_map.get((target_lang or "en").lower(), target_lang or "English")
+    reservation = None
+    org = None
+    if user is not None and db is not None:
+        from app.services.billing_service import assert_can_spend, AI_CHAT_CREDIT_COST, reserve_credits
+        org, _plan = await assert_can_spend(
+            db, user=user, required_credits=AI_CHAT_CREDIT_COST, feature_name="intelligence", lock_row=False
+        )
+        import uuid as _uuid
+        reservation = await reserve_credits(
+            db,
+            org=org,
+            user_id=user.id,
+            amount=AI_CHAT_CREDIT_COST,
+            operation="copy_translation",
+            idempotency_key=f"copy_translation:{_uuid.uuid4().hex}",
+            metadata={"target_lang": target_lang},
+        )
 
+    from app.core.config import settings as _settings
     from app.core.credentials import env_secret
-    import httpx
+    from app.services.ai.call_policy import complete_chat
+    from app.services.ai.prompts import PROMPT_TRANSLATION, translation_messages
+    from app.services.ai.structured import InvalidModelOutput, parse_translation
     import json
 
-    api_key = env_secret("GROQ_API_KEY", fallback=settings.GROQ_API_KEY)
+    api_key = env_secret("GROQ_API_KEY", fallback=_settings.GROQ_API_KEY)
+    if not api_key:
+        if reservation is not None:
+            from app.services.billing_service import release_reservation
+            await release_reservation(db, reservation.id, "translation_unavailable")
+        return _translation_unavailable(target_lang, "Translation is unavailable because no model provider is configured.")
 
-    prompt = f"""You are an elite multilingual advertising copywriter and analyst.
-Analyze the following ad copy, translate it into {target_lang_name}, and deconstruct it into clear, persuasive conversion elements so that a marketer can immediately understand its anatomy.
+    try:
+        result = await complete_chat(
+            provider_name="groq",
+            url="https://api.groq.com/openai/v1/chat/completions",
+            api_key=api_key,
+            model=getattr(_settings, "GROQ_MODEL", None) or "llama-3.3-70b-versatile",
+            fallback_models=["llama-3.1-8b-instant"],
+            messages=translation_messages(clean_text, target_name),
+            allowed_hosts={"api.groq.com"},
+            response_format={"type": "json_object"},
+        )
+        parsed = parse_translation(json.loads(result.text), target_lang=target_lang)
+    except (InvalidModelOutput, Exception) as exc:
+        if reservation is not None:
+            from app.services.billing_service import release_reservation
+            await release_reservation(db, reservation.id, "translation_unavailable")
+        logger.warning("Copy translation failed: %s", exc)
+        return _translation_unavailable(target_lang, "Translation is temporarily unavailable. No credits were charged.")
 
-Ad Copy:
-\"\"\"{clean_text}\"\"\"
-
-Task:
-1. Detect the original language code (e.g. "es", "en", "zh", "nl", "ar", etc.).
-2. Translate the entire ad copy naturally and persuasively into {target_lang_name}.
-3. Deconstruct the copy into 4 distinct marketing components in {target_lang_name}:
-   - "hook": The opening attention-grabber / pattern interrupt (first 1-2 lines).
-   - "problem": The core pain point, friction, agitation, or misconception being addressed.
-   - "solution": The mechanism, product claim, discovery, or transformation offered.
-   - "cta": The closing call to action or invitation.
-
-Return ONLY a JSON object with this exact schema:
-{{
-  "detected_lang": "code",
-  "translated_text": "Full fluent translation in {target_lang_name}",
-  "breakdown": {{
-    "hook": "Concise hook breakdown in {target_lang_name}",
-    "problem": "Clear problem breakdown in {target_lang_name}",
-    "solution": "Clear solution breakdown in {target_lang_name}",
-    "cta": "Clear CTA breakdown in {target_lang_name}"
-  }}
-}}"""
-
-    if api_key:
-        for m in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
-            try:
-                async with httpx.AsyncClient(timeout=15.0) as client:
-                    resp = await client.post(
-                        "https://api.groq.com/openai/v1/chat/completions",
-                        headers={
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json"
-                        },
-                        json={
-                            "model": m,
-                            "temperature": 0.1,
-                            "messages": [
-                                {"role": "system", "content": "You are a professional advertising translator and copy analyst. Return only valid JSON."},
-                                {"role": "user", "content": prompt}
-                            ],
-                            "response_format": {"type": "json_object"}
-                        }
-                    )
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        content = data["choices"][0]["message"]["content"]
-                        parsed = json.loads(content)
-                        return {
-                            "target_lang": target_lang,
-                            "detected_lang": parsed.get("detected_lang", "unknown"),
-                            "translated_text": parsed.get("translated_text", clean_text),
-                            "breakdown": parsed.get("breakdown", {
-                                "hook": clean_text[:80],
-                                "problem": clean_text[80:250],
-                                "solution": clean_text[250:500],
-                                "cta": clean_text[-100:]
-                            })
-                        }
-                    else:
-                        logger.warning(f"Groq {m} translation returned {resp.status_code}")
-            except Exception as e:
-                logger.warning(f"Groq {m} copy translation failed: {e}")
-
-    # Robust Multilingual & Conclusion Fallback
-    # Deconstruct sentences and generate high-clarity translated breakdown
-    sentences = [s.strip() for s in clean_text.replace("\n", ". ").split(".") if len(s.strip()) > 5]
-    raw_hook = sentences[0] if sentences else clean_text[:80]
-    raw_problem = sentences[1] if len(sentences) > 1 else (clean_text[80:220] or "Core customer problem")
-    raw_solution = " ".join(sentences[2:5]) if len(sentences) > 4 else (clean_text[220:450] or "Solution mechanism")
-    raw_cta = sentences[-1] if len(sentences) > 2 else "Learn More"
-
-    # Multilingual localized breakdowns
-    if target_lang == "ar":
-        return {
-            "target_lang": "ar",
-            "detected_lang": "es",
-            "translated_text": (
-                "مضغ الحساسية ليس هو الحل الحقيقي. يعاني حيوانك الأليف من طفيليات تتكاثر خلف درع بيوفيلم معوي. "
-                "تركيبة قطرات ناتوريا المطهرة تستهدف السبب الجذري مباشرة لتنظيف الأمعاء وإيقاف الحكة نهائياً."
-            ),
-            "breakdown": {
-                "hook": "هل يعاني كلبك من الحكة المستمرة رغم تجربة جميع مضغات الحساسية؟ قد تبحث في المكان الخاطئ.",
-                "problem": "الحساسية ليست المشكلة الحقيقية: الطفيليات المعوية تتكاثر خلف دروع حيوية وتسبب الحكة المستمرة.",
-                "solution": "الخلاصة والحل الفعال: قطرات تنظيف الأمعاء الطبيعية تزيل البيوفيلم وتستهدف السبب الجذري. (الكلمات المفتاحية: درع البيوفيلم، تنظيف الطفيليات، علاج الحكة المعوي، توصية بيطرية).",
-                "cta": "ابدأ الحل الآن: اطلب قطرات ناتوريا المطهرة مع ضمان استرداد الأموال."
-            }
-        }
-    elif target_lang == "en":
-        return {
-            "target_lang": "en",
-            "detected_lang": "es",
-            "translated_text": (
-                "Allergy chews are not solving the real problem. Your dog has parasites multiplying behind an intestinal biofilm shield. "
-                "Naturia Parasite Cleansing Drops eliminate the biofilm and eradicate the root cause of chronic itching."
-            ),
-            "breakdown": {
-                "hook": "Going crazy because your dog keeps scratching despite trying every allergy chew on the market?",
-                "problem": "Allergy chews are treating symptoms, not the cause: parasites multiplying behind a hidden biofilm barrier.",
-                "solution": "Core Conclusion & Winning Angle: A targeted holistic parasite cleanse drops formula that destroys the biofilm shield. (Keywords: intestinal biofilm, parasite cleanse, chronic itch relief, vet-formulated).",
-                "cta": "Start solving it here: Shop Naturia Parasite Cleansing Drops now."
-            }
-        }
-    elif target_lang == "zh":
-        return {
-            "target_lang": "zh",
-            "detected_lang": "es",
-            "translated_text": "抗过敏咀嚼片无法解决根本问题。狗狗持续抓挠的真正根源是肠道生物膜下的寄生虫。Naturia净化滴剂直击根源，彻底止痒。",
-            "breakdown": {
-                "hook": "试遍了市面上所有的抗过敏咀嚼片，狗狗依然狂抓不止？",
-                "problem": "过敏不是真凶：寄生虫隐藏在肠道生物膜屏障后不断繁殖导致慢性抓挠。",
-                "solution": "核心结论与制胜点：靶向瓦解肠道生物膜的天然净化滴剂。（核心关键词：肠道生物膜、寄生虫净化、慢性止痒、全科兽医推荐）。",
-                "cta": "立即从根源解决：购买 Naturia 宠物除虫净化滴剂。"
-            }
-        }
-    elif target_lang == "nl":
-        return {
-            "target_lang": "nl",
-            "detected_lang": "es",
-            "translated_text": "Allergiekauwtabletten lossen het echte probleem niet op. Je hond heeft parasieten achter een darambiofilmschild. Naturia reinigingsdruppels pakken de oorzaak direct aan.",
-            "breakdown": {
-                "hook": "Word je gek omdat je hond blijft krabben ondanks alle allergiekauwtabletten?",
-                "problem": "Allergieën zijn niet het echte probleem: parasieten vermenigvuldigen zich achter een darmschild.",
-                "solution": "Kernconclusie & Winningshoek: Doelgerichte natuurlijke reinigingsdruppels die de biofilm afbreken. (Trefwoorden: darambiofilm, parasietenreiniging, chronische jeukverlichting).",
-                "cta": "Los het nu direct op: Bestel Naturia Zuiveringsdruppels."
-            }
-        }
-    else:
-        # Default / Spanish
-        return {
-            "target_lang": "es",
-            "detected_lang": "es",
-            "translated_text": clean_text,
-            "breakdown": {
-                "hook": raw_hook,
-                "problem": raw_problem,
-                "solution": "Conclusión estratégica: Gotas de limpieza holística que eliminan el escudo de biofilm intestinal atacando la causa raíz del rascado. (Palabras clave: biofilm intestinal, gotas antiparasitarias, alivio picor crónico).",
-                "cta": raw_cta
-            }
-        }
-
+    parsed["model"] = result.model
+    parsed["prompt_version"] = PROMPT_TRANSLATION
+    parsed["provider"] = result.provider
+    parsed["charged"] = reservation is not None
+    if reservation is not None:
+        from app.services.ai.call_policy import usage_metadata
+        from app.services.billing_service import settle_reservation
+        await settle_reservation(
+            db,
+            reservation.id,
+            provider=result.provider,
+            model=result.model,
+            tokens=result.total_tokens,
+            cost_usd=result.cost_usd,
+            latency_ms=result.latency_ms,
+            metadata=usage_metadata(result, prompt_version=PROMPT_TRANSLATION),
+        )
+    return parsed
 
 

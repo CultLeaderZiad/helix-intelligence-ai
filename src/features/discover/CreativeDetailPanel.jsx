@@ -16,7 +16,6 @@ import {
   formatDate,
   formatDays,
   formatDuration,
-  formatLift,
   formatPercent,
   formatOrdinal,
   formatPrevalence,
@@ -85,7 +84,7 @@ function MediaFrame({ format, ratio, duration, mediaUrl, thumbnailUrl }) {
  * WHY THIS AD MATTERS — research finding, not marketing copy.
  * Every line is derived from the record (see lib/insight.js).
  */
-function InsightBlock({ creative }) {
+function InsightBlock({ creative, lang }) {
   const insight = deriveInsight(creative)
   if (!insight) return null
 
@@ -115,7 +114,7 @@ function InsightBlock({ creative }) {
               {formatOrdinal(i + 1)}
             </span>
             <span className="min-w-0 flex-1 truncate text-xs text-text">{r.label}</span>
-            <span className="label-mono tnum shrink-0">{formatLift(r.lift)} lift</span>
+            <span className="label-mono tnum shrink-0">{lang === "ar" ? "غير مقاس" : "not measured"}</span>
           </li>
         ))}
       </ol>
@@ -124,7 +123,7 @@ function InsightBlock({ creative }) {
 }
 
 /** Numbered pattern findings — research results, not feature cards. */
-function PatternFindings({ patterns }) {
+function PatternFindings({ patterns, lang }) {
   if (!patterns?.length) {
     return (
       <p className="text-xs text-text-faint">
@@ -147,12 +146,13 @@ function PatternFindings({ patterns }) {
             <span className="label-mono ml-auto">{p.family}</span>
           </div>
           <p className="pl-7 text-[11px] leading-relaxed text-text-muted">
-            Found in{" "}
+            {lang === "ar" ? "ظهرت في" : "Found in"}{" "}
             <span className="tnum font-mono text-text">
               {formatPrevalence(p.prevalence)}
             </span>{" "}
-            of the corpus · lift{" "}
-            <span className="tnum font-mono text-text">{formatLift(p.lift_index)}</span>
+            {lang === "ar"
+              ? "من الإعلانات المعروضة. لا يوجد قياس أداء."
+              : "of the supplied ads. No measured performance."}
           </p>
         </div>
       ))}
@@ -168,7 +168,7 @@ function PatternFindings({ patterns }) {
  */
 export function CreativeDetailPanel({ creativeId, onClose }) {
   const { user } = useAuth()
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -309,26 +309,28 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
               <StatBlock label="Last seen" value={formatDate(data.last_seen)} />
             </div>
 
-            <InsightBlock creative={data} />
+            <InsightBlock creative={data} lang={lang} />
 
             {/* Performance scores */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="label-mono">{t("performanceScores")}</span>
-                {data.scores?.composite !== null && data.scores?.composite !== undefined ? (
-                  <span className="label-mono text-accent">
-                    tier {data.scores.composite >= 80 ? "A" : data.scores.composite >= 60 ? "B" : "C"}
-                  </span>
+                <span className="label-mono">
+                  {lang === "ar" ? "درجات استدلالية 0–10" : "Heuristic scores 0–10"}
+                </span>
+                {data.scores?.version ? (
+                  <span className="label-mono text-text-faint">{data.scores.version}</span>
                 ) : null}
               </div>
               <p className="text-[10px] leading-snug text-text-faint">
-                {t("helixSignalNote")}
+                {lang === "ar"
+                  ? "تقدير نصي داخل Helix على مقياس 0–10. ليس أداءً مقاساً من المنصة، ولا معدل نقر أو تحويلاً."
+                  : "A text rubric inside Helix on a 0–10 scale. Not measured platform performance, CTR, or conversion."}
               </p>
               {[
-                ["Hook", data.scores?.hook, "How strongly the opening grabs attention in the first seconds."],
-                ["Clarity", data.scores?.clarity, "How obvious the offer and message are at a glance."],
-                ["Retention", data.scores?.retention, "How likely people are to keep watching instead of scrolling away."],
-                ["Composite", data.scores?.composite, "One combined 0–100 signal from the three scores above."],
+                ["Hook", data.scores?.hook, lang === "ar" ? "إشارات في العنوان فقط." : "Signals in the headline only."],
+                ["Clarity", data.scores?.clarity, lang === "ar" ? "وجود نص ودعوة للإجراء." : "Presence of body text and a call to action."],
+                ["Retention", data.scores?.retention, lang === "ar" ? "صيغة الفيديو ومدة الظهور المعروفة." : "Video format and a known active duration."],
+                ["Composite", data.scores?.composite, lang === "ar" ? "مزيج 0–10 من الدرجات الثلاث. ليس 0–100." : "A 0–10 blend of the three rubric scores. Not a 0–100 performance tier."],
               ].map(([label, value, tip]) => (
                 <div key={label} className="flex items-center justify-between gap-2">
                   <span className="flex items-center text-xs text-text-muted">
@@ -352,7 +354,11 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                     {data.metrics?.is_impression_estimate && <span className="text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
                   </span>
                 }
-                value={`~${formatCompact(data.metrics?.impressions_est)}`}
+                value={
+                  data.metrics?.impressions_est === null || data.metrics?.impressions_est === undefined
+                    ? (lang === "ar" ? "غير متاح" : "unavailable")
+                    : formatCompact(data.metrics.impressions_est)
+                }
               />
               <StatBlock label="Spend" value={formatSpendBand(data.metrics?.spend_band)} />
               <StatBlock
@@ -365,10 +371,10 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                 }
               />
               <StatBlock
-                label="Est. CTR"
+                label={lang === "ar" ? "النقر" : "CTR"}
                 value={
                   data.metrics?.ctr_est === null || data.metrics?.ctr_est === undefined
-                    ? "—"
+                    ? (lang === "ar" ? "غير متاح" : "unavailable")
                     : formatPercent(data.metrics.ctr_est, 2)
                 }
               />
@@ -376,7 +382,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
             <div className="flex flex-col gap-2 border-t border-border pt-3">
               <span className="label-mono">Pattern findings</span>
-              <PatternFindings patterns={data.patterns} />
+              <PatternFindings patterns={data.patterns} lang={lang} />
             </div>
 
             <p className="label-mono tnum border-t border-border pt-3">{data.id}</p>

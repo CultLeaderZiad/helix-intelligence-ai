@@ -1,6 +1,5 @@
-import os
-import httpx
-from typing import List, Optional
+from typing import List
+from urllib.parse import urlsplit
 from app.services.ai.base import AIProvider
 
 class OpenAICompatibleProvider(AIProvider):
@@ -10,23 +9,15 @@ class OpenAICompatibleProvider(AIProvider):
         self.model = default_model
         
     async def _call_api(self, messages: List[dict]) -> str:
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        data = {
-            "model": self.model,
-            "messages": messages
-        }
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=data
-            )
-            
-            if response.status_code != 200:
-                raise Exception(f"OpenAI-Compatible API error: {response.text}")
-                
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
+        from app.services.ai.call_policy import complete_chat, remember
+        host = (urlsplit(self.base_url).hostname or "").lower()
+        result = await complete_chat(
+            provider_name=host or "openai-compatible",
+            url=f"{self.base_url.rstrip('/')}/chat/completions",
+            api_key=self.api_key,
+            model=self.model,
+            messages=messages,
+            allowed_hosts={host} if host else None,
+        )
+        remember(self, result)
+        return result.text

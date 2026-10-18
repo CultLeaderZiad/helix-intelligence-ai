@@ -347,8 +347,25 @@ async def tick(max_monitors: Optional[int] = None) -> Dict[str, Any]:
     async with async_session_maker() as db:
         monitor_ids = await claim_due_monitors(db, limit)
 
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
     for monitor_id in monitor_ids:
-        asyncio.create_task(run_monitor(monitor_id))
+        async with async_session_maker() as db:
+            monitor = await db.get(Monitor, monitor_id)
+            if monitor is None:
+                continue
+            try:
+                await enqueue_work(
+                    db,
+                    kind="monitor",
+                    job_id=monitor_id,
+                    org_id=monitor.org_id,
+                    user_id=monitor.user_id,
+                    payload={"monitor_id": monitor_id},
+                )
+            except Exception:
+                logger.exception("monitor work item was not enqueued for %s", monitor_id)
+        if inline_execution_enabled():
+            asyncio.create_task(run_monitor(monitor_id))
 
     return {"dispatched": len(monitor_ids), "monitor_ids": monitor_ids}
 
@@ -367,7 +384,20 @@ async def run_now(db: AsyncSession, monitor_id: str, org_id: str) -> Dict[str, A
     monitor.next_run_at = _utcnow() + _interval(monitor.cadence)
     await db.commit()
 
-    asyncio.create_task(run_monitor(monitor.id))
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
+    try:
+        await enqueue_work(
+            db,
+            kind="monitor",
+            job_id=monitor.id,
+            org_id=monitor.org_id,
+            user_id=monitor.user_id,
+            payload={"monitor_id": monitor.id},
+        )
+    except Exception:
+        logger.exception("monitor work item was not enqueued for %s", monitor.id)
+    if inline_execution_enabled():
+        asyncio.create_task(run_monitor(monitor.id))
     return {"success": True, "monitor_id": monitor.id}
 
 

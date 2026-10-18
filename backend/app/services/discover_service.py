@@ -10,8 +10,11 @@ import uuid
 import time
 import os
 import re
+import logging
 
 from app.schemas.discover import SearchParams, Job
+
+logger = logging.getLogger(__name__)
 
 
 def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] = None) -> bool:
@@ -180,20 +183,6 @@ async def trigger_search(
     user_id: str,
     background_tasks: Optional[BackgroundTasks] = None
 ) -> Job:
-    if settings.USE_MOCKS:
-        return Job(
-            job_id="mock-job-id-123",
-            status="running",
-            progress=0.1,
-            stage="init",
-            stage_label="Initializing Search",
-            stage_index=0,
-            stages_total=5,
-            records_found=0,
-            elapsed_ms=100,
-            created_at=datetime.datetime.utcnow().isoformat() + "Z"
-        )
-    
     # 1. Fetch user
     user_result = await db.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
@@ -309,10 +298,23 @@ async def trigger_search(
         metadata={"query": scrape_query, "original_query": clean_query}
     )
 
-    if background_tasks:
-        background_tasks.add_task(run_discovery_pipeline, new_job.id, scrape_query, search_params.filters)
-    else:
-        asyncio.create_task(run_discovery_pipeline(new_job.id, scrape_query, search_params.filters))
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
+    try:
+        await enqueue_work(
+            db,
+            kind="discover",
+            job_id=new_job.id,
+            org_id=org_id,
+            user_id=user.id,
+            payload={"query": scrape_query, "filters": search_params.filters.model_dump() if hasattr(search_params.filters, "model_dump") else (search_params.filters or {})},
+        )
+    except Exception:
+        logger.exception("discover work item was not enqueued for %s", new_job.id)
+    if inline_execution_enabled():
+        if background_tasks:
+            background_tasks.add_task(run_discovery_pipeline, new_job.id, scrape_query, search_params.filters)
+        else:
+            asyncio.create_task(run_discovery_pipeline(new_job.id, scrape_query, search_params.filters))
 
     return Job(
         job_id=new_job.id,
@@ -501,31 +503,42 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
                 async with async_session_maker() as db:
                     result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
                     job = result.scalar_one_or_none()
+                    from app.services.work_outbox import retries_remaining
+                    from app.services.ai.call_policy import RetryableProviderError
+                    will_retry = await retries_remaining(job_id)
                     if job:
                         sources_str = ", ".join(sources_tried) if sources_tried else "all providers"
-                        job.status = "failed"
-                        job.failure_kind = "provider_outage"
-                        job.error_msg = f"All ad discovery providers are temporarily unavailable or unconfigured: [{sources_str}]"
-                        job.stage = "failed"
-                        job.stage_label = "Provider Outage"
-                        job.progress = 1.0
-                        job.record_count = 0
+                        if will_retry:
+                            job.status = "queued"
+                            job.failure_kind = None
+                            job.error_msg = None
+                            job.stage = "queued"
+                            job.stage_label = "Provider unavailable, retry scheduled"
+                        else:
+                            job.status = "failed"
+                            job.failure_kind = "provider_outage"
+                            job.error_msg = f"All ad discovery providers are temporarily unavailable or unconfigured: [{sources_str}]"
+                            job.stage = "failed"
+                            job.stage_label = "Provider Outage"
+                            job.progress = 1.0
+                            job.record_count = 0
+                            job.completed_at = _utcnow()
                         job.elapsed_ms = int((time.time() - start_time) * 1000)
-                        job.completed_at = _utcnow()
                         await db.commit()
-
-                    # Refund base search charge
-                    org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
-                    if org:
+                    if usage_log_id:
+                        await mark_api_usage_status(db, usage_log_id, "failed")
+                    if will_retry:
+                        raise RetryableProviderError("provider_outage")
+                    try:
                         await refund(
-                            db=db,
-                            org=org,
-                            user_id=user_id,
-                            amount=DISCOVER_SEARCH_CREDIT_COST,
-                            reason="provider_outage",
-                            job_id=job_id,
-                            metadata={"sources_tried": sources_tried, "query": query}
+                            db,
+                            org_id,
+                            DISCOVER_SEARCH_CREDIT_COST,
+                            "provider_outage",
+                            job_id,
                         )
+                    except Exception:
+                        logger.exception("provider outage refund failed for %s; failure_kind kept", job_id)
                 return
 
             async with async_session_maker() as db:
@@ -683,11 +696,18 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
             # Refund initial credits on pre-flight block
             await refund(db, org_id, DISCOVER_SEARCH_CREDIT_COST, "api_limit_preflight", job_id)
     except Exception as e:
+        from app.services.ai.call_policy import RetryableProviderError
+        if isinstance(e, RetryableProviderError):
+            raise
         error_msg = f"Pipeline failed: {str(e)}\n{traceback.format_exc()}"
         print(error_msg)
         async with async_session_maker() as db:
             result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
             job = result.scalar_one_or_none()
+            if job and job.failure_kind == "provider_outage":
+                if usage_log_id:
+                    await mark_api_usage_status(db, usage_log_id, "failed")
+                return
             if job:
                 job.status = "failed"
                 job.failure_kind = "error"

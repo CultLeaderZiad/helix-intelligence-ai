@@ -185,6 +185,12 @@ def main() -> None:
     async def _worker_loop():
         while not _stop.is_set():
             try:
+                from app.services.work_outbox import claim_next_work_item, execute_work_item
+                work_id = await claim_next_work_item(BOOT_ID)
+                if work_id:
+                    logger.info("claimed work item %s", work_id)
+                    await execute_work_item(work_id)
+                    continue
                 job_id = await _claim_next_job_async()
                 if job_id:
                     logger.info("claimed job %s", job_id)

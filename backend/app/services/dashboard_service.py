@@ -111,49 +111,45 @@ async def generate_narrative_summary(
 
     diff_str = ", ".join(diff_clauses) if diff_clauses else "no ad removals or copy changes recorded since last check"
     brands_str = ", ".join(brand_names[:3]) if brand_names else "tracked brands"
-    score_str = f"with an ad composite score of {top_score}" if top_score else "leading the leaderboard"
 
-    fallback_summary = (
-        f"Across your tracked brands ({brands_str}), {active_ads_count} active creatives are under analysis with {dominant_format.upper()} as the dominant format. "
-        f"{diff_str.capitalize() if diff_clauses else 'Tracking remains stable'}, and your highest-scoring find is '{top_hl[:65]}' by {top_brand} ({score_str})."
+    score_clause = (
+        f"Highest heuristic composite on a 0-10 rubric is {top_score} for '{top_hl[:65]}' by {top_brand}."
+        if top_score is not None
+        else f"A saved creative is '{top_hl[:65]}' by {top_brand}. No platform performance score is available."
     )
-
+    facts = (
+        f"Tracked brands: {brands_str}. Active creatives: {active_ads_count}. "
+        f"Dominant format: {dominant_format}. Monitor events: {diff_str}. {score_clause}"
+    )
+    factual = {
+        "status": "factual",
+        "summary": facts,
+        "message": "Counted from this workspace. Not a model narrative and not measured ad performance.",
+        "source": "workspace_counts",
+        "model": None,
+    }
     try:
+        from app.services.ai.prompts import PROMPT_NARRATIVE, narrative_messages
+        from app.services.ai.structured import narrative_uses_only_facts
         provider = MultiTierAIProvider()
-        prompt = f"""Write a single concise executive paragraph (2-3 sentences max) summarizing recent competitor movements based strictly on this factual data:
-- Tracked Brands: {brands_str}
-- Total Active Creatives Analyzed: {active_ads_count}
-- Dominant Format: {dominant_format}
-- Monitor Diff Events: {diff_str}
-- Highest-Scoring Creative: "{top_hl[:80]}" by {top_brand} ({score_str})
-
-STRICT HONESTY RULES:
-- Do not invent numbers, brands, or events not present in the data.
-- If there are no monitor diffs, state that tracking is stable without inventing diffs.
-- Plain language only. No marketing buzzwords or exaggeration."""
-
         res = await asyncio.wait_for(
-            provider._call_api([
-                {"role": "system", "content": "You are an objective competitive ad analyst for Helix. Reply with plain text only."},
-                {"role": "user", "content": prompt}
-            ]),
-            timeout=3.5
+            provider._call_api(narrative_messages(facts)),
+            timeout=float(getattr(settings, "AI_CALL_TIMEOUT_S", 20) or 20),
         )
-        clean_res = res.strip().replace('"', '').replace('\n', ' ')
-        if len(clean_res) > 30 and "{" not in clean_res:
+        clean_res = (res or "").strip().replace("\n", " ")
+        usage = getattr(provider, "last_usage", None)
+        if clean_res and narrative_uses_only_facts(clean_res, facts):
             return {
                 "status": "ready",
                 "summary": clean_res,
-                "message": None
+                "message": None,
+                "source": "model",
+                "model": getattr(usage, "model", None) or getattr(provider, "model", None),
+                "prompt_version": PROMPT_NARRATIVE,
             }
     except Exception as e:
-        logger.debug(f"AI narrative summary used deterministic fallback: {e}")
-
-    return {
-        "status": "ready",
-        "summary": fallback_summary,
-        "message": None
-    }
+        logger.info("Dashboard narrative unavailable: %s", e)
+    return factual
 
 
 async def get_dashboard_metrics(db: AsyncSession, user: Optional[User] = None) -> Dict[str, Any]:

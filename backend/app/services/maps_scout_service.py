@@ -22,6 +22,45 @@ from app.services.scrapegraph_lead_service import (
     search_leads_with_scrapegraph,
 )
 
+def _optional_float(value):
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_int(value):
+    if value is None or value == "":
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+async def persist_place_metrics(db, lead, rating, reviews_count) -> None:
+    """Store missing ratings as NULL.
+
+    The mapped default is 0, and assigning None is inserted as that default.
+    A follow-up update is the way to keep a genuine absence.
+    """
+    from sqlalchemy import text
+
+    lead.rating = rating
+    lead.reviews_count = 0 if reviews_count is None else reviews_count
+    await db.flush()
+    if rating is None or reviews_count is None:
+        await db.execute(
+            text(
+                "UPDATE scout_maps_leads SET rating = :rating, reviews_count = :reviews WHERE id = :id"
+            ),
+            {"rating": rating, "reviews": reviews_count, "id": lead.id},
+        )
+        await db.refresh(lead)
+
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
     "Accept": "text/html,application/json,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -157,8 +196,11 @@ async def scrape_maps_places(
                             "category": r.get("category", keyword.title()),
                             "address": r.get("address"),
                             "city": city,
-                            "rating": r.get("rating") or 4.7,
-                            "reviews_count": r.get("reviews_count", 0),
+                            "rating": r.get("rating"),
+                            "reviews_count": r.get("reviews_count"),
+                            "rating_provider": "maps_worker",
+                            "source_url": r.get("website") or r.get("url"),
+                            "fetched_at": datetime.now(timezone.utc).isoformat(),
                         })
                     if len(places) >= limit:
                         return places[:limit]
@@ -262,8 +304,11 @@ async def scrape_maps_places(
                                         "category": str(cat).replace("_", " ").title(),
                                         "address": addr,
                                         "city": city,
-                                        "rating": 4.6,
-                                        "reviews_count": 18,
+                                        "rating": None,
+                                        "reviews_count": None,
+                                        "rating_provider": "overpass",
+                                        "source_url": "https://overpass-api.de/api/interpreter",
+                                        "fetched_at": datetime.now(timezone.utc).isoformat(),
                                     })
                                 if len(places) >= limit:
                                     break
@@ -312,8 +357,11 @@ async def scrape_maps_places(
                                 "category": str(cat).replace("_", " ").title(),
                                 "address": addr,
                                 "city": city,
-                                "rating": 4.6,
-                                "reviews_count": 14,
+                                "rating": None,
+                                "reviews_count": None,
+                                "rating_provider": "nominatim",
+                                "source_url": "https://nominatim.openstreetmap.org/search",
+                                "fetched_at": datetime.now(timezone.utc).isoformat(),
                             })
                         if len(places) >= limit:
                             break
@@ -325,6 +373,27 @@ async def scrape_maps_places(
     return places[:limit]
 
 async def run_maps_scout_worker(job_id: str):
+    """Enqueue durable work, then run inline only in tests or an explicit local override."""
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
+    async with async_session_maker() as db:
+        job = (await db.execute(select(ScoutMapsJob).where(ScoutMapsJob.id == job_id))).scalars().first()
+        if job is not None:
+            try:
+                await enqueue_work(
+                    db,
+                    kind="maps",
+                    job_id=job_id,
+                    org_id=job.org_id,
+                    user_id=job.user_id,
+                    payload={"keyword": job.keyword, "city": job.city},
+                )
+            except Exception:
+                pass
+    if inline_execution_enabled():
+        await execute_maps_scout(job_id)
+
+
+async def execute_maps_scout(job_id: str):
     """
     Background worker for Google Maps business lead generation.
     Follows: Geocode -> Search Directory (ScrapeGraph + OSM) -> Website & ScrapeGraph Contact Enrich -> Complete.
@@ -480,15 +549,35 @@ async def run_maps_scout_worker(job_id: str):
                             category=p.get("category") or job.keyword.title(),
                             address=p.get("address") or job.city,
                             city=job.city,
-                            rating=p.get("rating") or 4.7,
-                            reviews_count=p.get("reviews_count", 0),
-                            instagram=socials_found.get("instagram") or p.get("instagram"),
-                            facebook=socials_found.get("facebook") or p.get("facebook"),
-                            linkedin=socials_found.get("linkedin") or p.get("linkedin"),
-                            twitter=socials_found.get("twitter") or p.get("twitter"),
-                            socials=socials_found,
-                            metadata_raw={"source": p.get("source", "google_maps_scrapegraph")},
                         )
+                        # Assign after init. The column default is 0, and passing
+                        # None into the constructor is stored as that default.
+                        await persist_place_metrics(
+                            db,
+                            lead,
+                            _optional_float(p.get("rating")),
+                            _optional_int(p.get("reviews_count")),
+                        )
+                        lead.metadata_raw = {
+                            "rating": {
+                                "value": lead.rating,
+                                "provider": p.get("rating_provider"),
+                                "source_url": p.get("source_url") or p.get("website"),
+                                "fetched_at": p.get("fetched_at"),
+                            },
+                            "reviews_count": {
+                                "value": lead.reviews_count,
+                                "provider": p.get("rating_provider"),
+                                "source_url": p.get("source_url") or p.get("website"),
+                                "fetched_at": p.get("fetched_at"),
+                            },
+                            "source": p.get("source") or p.get("rating_provider"),
+                        }
+                        lead.instagram = socials_found.get("instagram") or p.get("instagram")
+                        lead.facebook = socials_found.get("facebook") or p.get("facebook")
+                        lead.linkedin = socials_found.get("linkedin") or p.get("linkedin")
+                        lead.twitter = socials_found.get("twitter") or p.get("twitter")
+                        lead.socials = socials_found
                         db.add(lead)
                         saved_leads.append(lead)
 

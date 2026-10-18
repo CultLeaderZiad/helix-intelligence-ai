@@ -1,6 +1,6 @@
 import uuid
 import sqlalchemy as sa
-from sqlalchemy import Column, String, Integer, ForeignKey, Float, Boolean, Index
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Boolean
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -39,4 +39,16 @@ class Creative(Base):
     spend_band = Column(String, nullable=True) # 'low'|'mid'|'high'|'very_high'
     engagement_rate = Column(Float, nullable=True)
     ctr_est = Column(Float, nullable=True)
+    source_ad_id = Column(String, nullable=True)
+    permalink = Column(String, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), nullable=True)
+    provenance_json = Column(JSON, nullable=True)
+    score_basis = Column(String, nullable=True)
+    score_scale = Column(String, nullable=True)
+    heuristic_version = Column(String, nullable=True)
+
+
+from app.models.work_item import WorkItem as _WorkItem
+
+_REGISTERED_WORK_ITEMS = (_WorkItem,)
 
