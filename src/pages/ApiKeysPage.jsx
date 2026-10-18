@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { accountService } from "@/services"
 import { API_BASE_URL } from "@/services/config"
+import { getAccessToken } from "@/services/sessionStore"
 import { useAuth } from "@/context/AuthContext"
 import { 
   Key, 
@@ -21,7 +22,7 @@ import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 function getAuthToken() {
-  return localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token") || localStorage.getItem("token") || ""
+  return getAccessToken() || ""
 }
 
 export function ApiKeysPage() {

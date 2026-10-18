@@ -5,9 +5,19 @@ const { chromium } = require('playwright');
   const context = await browser.newContext();
   const page = await context.newPage();
 
-  console.log("🚀 Starting end-to-end smoke test against LIVE Vercel deployment...");
-  
-  const FRONTEND_URL = process.env.FRONTEND_URL || 'https://helix-intelligence-ai-six.vercel.app';
+  const FRONTEND_URL = process.env.E2E_FRONTEND_URL || process.env.FRONTEND_URL || "";
+  const adminEmail = process.env.E2E_ADMIN_EMAIL || process.env.ADMIN_EMAIL || "";
+  const adminPassword = process.env.E2E_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD || "";
+  if (!FRONTEND_URL || !adminEmail || !adminPassword) {
+    console.error("Refusing to start: set E2E_FRONTEND_URL, E2E_ADMIN_EMAIL, and E2E_ADMIN_PASSWORD from an isolated test environment.");
+    process.exit(1);
+  }
+  const productionHosts = ["helix-intelligence-ai-six.vercel.app", "helix-intelligence-ai.onrender.com"];
+  if (productionHosts.some((host) => FRONTEND_URL.includes(host))) {
+    console.error("Refusing to start: this smoke test must not target the production frontend.");
+    process.exit(1);
+  }
+  console.log("Starting end-to-end smoke test against an isolated frontend...");
   
   try {
     // Add console listener
@@ -19,8 +29,6 @@ const { chromium } = require('playwright');
     console.log("Testing Admin Login...");
     await page.goto(`${FRONTEND_URL}/auth`);
     await page.waitForLoadState('networkidle');
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'password123';
     await page.fill('input[type="email"]', adminEmail);
     await page.fill('input[type="password"]', adminPassword);
     

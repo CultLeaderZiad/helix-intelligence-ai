@@ -1,50 +1,113 @@
 """
-Server-side Encryption and Secrets Management Service for BYOK credentials.
-Ensures customer API keys are encrypted at rest using server environment SECRET_KEY.
-Keys are NEVER logged, NEVER returned in plaintext in API responses, and NEVER exposed to clients.
+Server-side encryption for BYOK credentials.
+
+Ciphertexts are versioned Fernet tokens derived from CREDENTIAL_ENCRYPTION_KEY.
+That key is separate from the JWT signing secret. Plaintext and signing-key
+fallbacks are not accepted.
 """
 
 import base64
 import hashlib
 import logging
+import os
+import secrets
+import threading
 from typing import Optional
-from cryptography.fernet import Fernet
-from app.core.config import settings
+
+from cryptography.fernet import Fernet, InvalidToken
+
+from app.core.config import classified_environment, settings
 
 logger = logging.getLogger(__name__)
 
-def _get_fernet_cipher() -> Fernet:
-    """Derive a deterministic 32-byte urlsafe base64 key from settings.SECRET_KEY."""
-    raw_key = settings.SECRET_KEY or "helix-default-dev-secret-key-32bytes!!"
-    # Use SHA-256 to ensure a 32-byte key
-    derived_bytes = hashlib.sha256(raw_key.encode("utf-8")).digest()
-    urlsafe_key = base64.urlsafe_b64encode(derived_bytes)
-    return Fernet(urlsafe_key)
+_ephemeral_lock = threading.Lock()
+_ephemeral_key: Optional[str] = None
+
+
+def _ephemeral_material() -> str:
+    """Process-local key used only outside production when no key is configured."""
+    global _ephemeral_key
+    with _ephemeral_lock:
+        if _ephemeral_key is None:
+            _ephemeral_key = secrets.token_urlsafe(32)
+            logger.warning(
+                "CREDENTIAL_ENCRYPTION_KEY is unset; using a process-local key. "
+                "Set CREDENTIAL_ENCRYPTION_KEY before storing credentials that must survive a restart."
+            )
+        return _ephemeral_key
+
+
+def _fernet_from_material(material: str) -> Fernet:
+    raw = (material or "").strip()
+    if not raw:
+        raise RuntimeError("Missing required integration key: CREDENTIAL_ENCRYPTION_KEY")
+    try:
+        decoded = base64.urlsafe_b64decode(raw.encode("utf-8"))
+        if len(decoded) == 32:
+            key = raw.encode("utf-8") if len(raw) == 44 else base64.urlsafe_b64encode(decoded)
+            return Fernet(key)
+    except Exception:
+        pass
+    derived = base64.urlsafe_b64encode(hashlib.sha256(raw.encode("utf-8")).digest())
+    return Fernet(derived)
+
+
+def _key_material(version: Optional[int] = None) -> tuple[int, str]:
+    current = int(getattr(settings, "CREDENTIAL_ENCRYPTION_KEY_VERSION", 1) or 1)
+    current_key = (getattr(settings, "CREDENTIAL_ENCRYPTION_KEY", "") or "").strip()
+    previous = (getattr(settings, "CREDENTIAL_ENCRYPTION_KEY_PREVIOUS", "") or "").strip()
+    if current_key and current_key == (settings.SECRET_KEY or ""):
+        raise RuntimeError("CREDENTIAL_ENCRYPTION_KEY must not equal SECRET_KEY")
+    target = current if version is None else version
+    if target == current:
+        if current_key:
+            return target, current_key
+        if classified_environment(settings) == "production" or os.getenv("RENDER"):
+            raise RuntimeError("Missing required integration key: CREDENTIAL_ENCRYPTION_KEY")
+        return target, _ephemeral_material()
+    if previous and target == current - 1:
+        return target, previous
+    raise ValueError("Unknown credential encryption key version")
+
 
 def encrypt_secret(plaintext: str) -> str:
-    """Encrypt a plaintext secret (e.g. BYOK API key) into a Fernet token string."""
+    """Encrypt a secret as ``v<version>:<fernet>`` using the current encryption key."""
     if not plaintext:
         return ""
-    cipher = _get_fernet_cipher()
-    encrypted_bytes = cipher.encrypt(plaintext.strip().encode("utf-8"))
-    return encrypted_bytes.decode("utf-8")
+    version, material = _key_material()
+    token = _fernet_from_material(material).encrypt(plaintext.strip().encode("utf-8"))
+    return f"v{version}:{token.decode('utf-8')}"
+
 
 def decrypt_secret(encrypted_token: str) -> str:
-    """Decrypt a Fernet token string back into plaintext secret."""
+    """Decrypt a versioned Fernet token. Unversioned or foreign values raise."""
     if not encrypted_token:
         return ""
-    cipher = _get_fernet_cipher()
-    decrypted_bytes = cipher.decrypt(encrypted_token.strip().encode("utf-8"))
-    return decrypted_bytes.decode("utf-8")
+    token = encrypted_token.strip()
+    if not token.startswith("v") or ":" not in token:
+        raise ValueError("Ciphertext is not a versioned credential")
+    version_text, fernet_token = token.split(":", 1)
+    try:
+        version = int(version_text[1:])
+    except ValueError as exc:
+        raise ValueError("Ciphertext is not a versioned credential") from exc
+    _version, material = _key_material(version)
+    try:
+        decrypted = _fernet_from_material(material).decrypt(fernet_token.encode("utf-8"))
+    except InvalidToken as exc:
+        raise ValueError("Credential ciphertext could not be decrypted") from exc
+    return decrypted.decode("utf-8")
+
 
 def safe_decrypt_secret(value: Optional[str]) -> str:
-    """Safely decrypt a secret token. If decryption fails (e.g. unencrypted legacy string), returns value."""
+    """Decrypt a versioned secret. Returns an empty string instead of plaintext."""
     if not value:
         return ""
     try:
         return decrypt_secret(value)
     except Exception:
-        return str(value)
+        logger.warning("Rejected a credential value that is not a versioned ciphertext")
+        return ""
 
 def mask_api_key(key: str) -> str:
     """Mask an API key for safe display (e.g. ••••••••abcd)."""
@@ -59,8 +122,6 @@ def mask_api_key(key: str) -> str:
 # --- SSRF Protection ---
 
 import ipaddress
-import socket
-from urllib.parse import urlparse
 
 BLOCKED_NETWORKS = [
     ipaddress.ip_network("0.0.0.0/8"),
@@ -111,80 +172,18 @@ def is_ip_blocked(ip: ipaddress._BaseAddress) -> bool:
 
 
 def is_safe_public_url(url: str) -> bool:
-    """
-    Validates that a URL is a legitimate public web destination.
-    Rejects private IPs, loopback, AWS/GCP/Azure metadata services, IPv4-mapped IPv6, and internal hostnames.
-    Prevents Server-Side Request Forgery (SSRF).
-    """
-    if not url or not isinstance(url, str):
-        return False
+    """True when ``url`` passes the shared public-fetch policy, including DNS."""
     try:
-        parsed = urlparse(url.strip())
-        if parsed.scheme.lower() not in ("http", "https"):
-            return False
-        hostname = parsed.hostname
-        if not hostname:
-            return False
-        hostname_clean = hostname.strip("[]").lower().strip(".")
-        if (
-            hostname_clean in BLOCKED_HOSTNAMES
-            or hostname_clean.endswith(".local")
-            or hostname_clean.endswith(".internal")
-            or hostname_clean.endswith(".localhost")
-            or hostname_clean.endswith(".lan")
-        ):
-            return False
-
-        # If hostname is direct IP literal
-        try:
-            ip = ipaddress.ip_address(hostname_clean)
-            if is_ip_blocked(ip):
-                return False
-            return True
-        except ValueError:
-            pass
-
-        # Resolve DNS to check resulting IPs
-        try:
-            addr_info = socket.getaddrinfo(hostname_clean, None)
-        except (socket.gaierror, socket.herror, OSError):
-            return False
-
-        if not addr_info:
-            return False
-
-        for _, _, _, _, sockaddr in addr_info:
-            ip_str = sockaddr[0]
-            try:
-                ip = ipaddress.ip_address(ip_str)
-                if is_ip_blocked(ip):
-                    return False
-            except ValueError:
-                return False
+        from app.services.safe_fetch import assert_public_http_url
+        assert_public_http_url(url)
         return True
     except Exception:
         return False
 
 
 def safe_http_get(url: str, timeout: float = 20.0, max_redirects: int = 5, **kwargs):
-    """
-    Safely executes an HTTP GET request preventing SSRF on initial URL and on all redirect hops.
-    """
-    import httpx
-    from urllib.parse import urljoin
-
-    current_url = url
-    for _ in range(max_redirects + 1):
-        if not is_safe_public_url(current_url):
-            raise ValueError(f"SSRF blocked: Destination {current_url} is not a safe public URL")
-        resp = httpx.get(current_url, timeout=timeout, follow_redirects=False, **kwargs)
-        if resp.is_redirect:
-            next_loc = resp.headers.get("location")
-            if not next_loc:
-                break
-            current_url = urljoin(current_url, next_loc)
-        else:
-            return resp
-    return resp
+    """GET a public URL, pinning the connection and rechecking every redirect."""
+    from app.services.safe_fetch import safe_http_get as _safe_http_get
+    return _safe_http_get(url, timeout=timeout, max_redirects=max_redirects, **kwargs)
 
 

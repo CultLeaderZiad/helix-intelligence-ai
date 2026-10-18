@@ -7,6 +7,7 @@ import {
   useState,
 } from "react"
 import { authService } from "@/services"
+import { getAccessToken, getCachedUser } from "@/services/sessionStore"
 
 /**
  * ============================================================
@@ -37,8 +38,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem("helix_cached_user")
-        return raw ? JSON.parse(raw) : null
+        return getCachedUser()
       } catch {
         return null
       }
@@ -48,8 +48,8 @@ export function AuthProvider({ children }) {
 
   const [status, setStatus] = useState(() => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
-      const cached = localStorage.getItem("helix_cached_user")
+      const token = getAccessToken()
+      const cached = getCachedUser()
       if (token && cached) return AUTH_STATUS.AUTHENTICATED
       if (token) return AUTH_STATUS.LOADING
     }

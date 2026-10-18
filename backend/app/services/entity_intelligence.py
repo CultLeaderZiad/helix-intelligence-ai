@@ -12,7 +12,6 @@ import logging
 import json
 import re
 from typing import Dict, Any, Optional, List
-import httpx
 
 from app.core.config import settings
 from app.core.credentials import env_secret
@@ -472,25 +471,28 @@ Respond ONLY with valid JSON matching this schema:
 }}"""
 
     try:
-        async with httpx.AsyncClient(timeout=4.0) as client:
-            resp = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "temperature": 0.1,
-                    "response_format": {"type": "json_object"},
-                    "messages": [
-                        {"role": "system", "content": "You are Helixa AI's entity intelligence engine. Output only strictly valid JSON."},
-                        {"role": "user", "content": prompt}
-                    ]
-                }
-            )
+        from app.services.safe_fetch import safe_request_async
+        resp = await safe_request_async(
+            "POST",
+            "https://api.groq.com/openai/v1/chat/completions",
+            timeout=4.0,
+            allowed_hosts={"api.groq.com"},
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "llama-3.1-8b-instant",
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {"role": "system", "content": "You are Helixa AI's entity intelligence engine. Output only strictly valid JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+            },
+        )
 
-            if resp.status_code == 200:
+        if resp.status_code == 200:
                 data = resp.json()
                 content = data["choices"][0]["message"]["content"]
                 parsed = json.loads(content)

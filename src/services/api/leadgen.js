@@ -1,5 +1,6 @@
 import { request } from "../http"
 import { API_BASE_URL } from "../config"
+import { getAccessToken } from "../sessionStore"
 
 /**
  * Lead Generation service (engine: scrapling_engine).
@@ -42,7 +43,7 @@ export const leadgenApi = {
   },
 
   _authorizedFetch(url) {
-    const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token") || ""
+    const token = getAccessToken() || ""
     return fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
   },
 

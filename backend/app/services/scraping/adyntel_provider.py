@@ -1,6 +1,5 @@
 import os
 import asyncio
-import httpx
 import logging
 from typing import List
 from datetime import datetime
@@ -71,21 +70,23 @@ class AdyntelProvider(ScraperProvider):
             await progress_callback(0, "Searching via Adyntel fallback...")
 
         try:
-            # NO RETRIES allowed on this paid API call
-            async with httpx.AsyncClient(timeout=45.0) as client:
-                resp = await client.post(url, json=payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    results = data.get("results", [])
-                    
-                    # Limit the results array locally as an extra safety measure
-                    if len(results) > max_records:
-                        results = results[:max_records]
-                        
-                    return self._parse_adyntel_ads(results, domain)
-                else:
-                    logger.warning(f"Adyntel API returned status {resp.status_code}: {resp.text[:250]}")
-                    return []
+            # NO RETRIES allowed on this paid API call.
+            # Host allowlist keeps the Adyntel key on api.adyntel.com; the fetch is still pinned.
+            from app.services.safe_fetch import safe_request_async
+            resp = await safe_request_async(
+                "POST", url, json=payload, timeout=45.0, allowed_hosts={"api.adyntel.com"}
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                results = data.get("results", [])
+
+                # Limit the results array locally as an extra safety measure
+                if len(results) > max_records:
+                    results = results[:max_records]
+
+                return self._parse_adyntel_ads(results, domain)
+            logger.warning(f"Adyntel API returned status {resp.status_code}: {resp.text[:250]}")
+            return []
         except Exception as e:
             logger.error(f"Adyntel API request failed: {e}")
             return []

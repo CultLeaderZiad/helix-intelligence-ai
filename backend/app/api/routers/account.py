@@ -66,7 +66,9 @@ async def update_profile(
     if req.full_name is not None:
         current_user.full_name = req.full_name
     if req.avatar_url is not None:
-        current_user.avatar_url = req.avatar_url
+        if not _acceptable_avatar_reference(req.avatar_url.strip()):
+            raise HTTPException(status_code=400, detail={"code": "avatar_rejected", "message": "Avatar URL must be an https URL or an uploaded file."})
+        current_user.avatar_url = req.avatar_url.strip()
     if req.new_password:
         if not req.current_password:
             raise HTTPException(status_code=400, detail="Current password is required to set a new password")
@@ -89,17 +91,37 @@ async def update_profile(
         }
     }
 
+def _acceptable_avatar_reference(url: str) -> bool:
+    if url == "":
+        return True
+    if url.startswith("/uploads/") and ".." not in url and "\\" not in url:
+        return True
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    return parsed.scheme == "https" and bool(parsed.hostname) and not parsed.username
+
+
 @router.post("/avatar")
 async def upload_avatar(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    contents = await file.read()
-    ext = file.filename.split(".")[-1].lower() if "." in file.filename else "png"
-    filename = f"avatar_{current_user.id}_{int(datetime.datetime.utcnow().timestamp())}.{ext}"
-    
-    avatar_url = await storage_service.save_file(contents, filename, content_type=file.content_type)
+    from app.services.avatar_image import MAX_AVATAR_BYTES, AvatarRejected, prepare_avatar_image
+
+    buf = bytearray()
+    while True:
+        chunk = await file.read(64 * 1024)
+        if not chunk:
+            break
+        if len(buf) + len(chunk) > MAX_AVATAR_BYTES:
+            raise HTTPException(status_code=413, detail={"code": "avatar_too_large", "message": "Avatar exceeds the 2MB limit."})
+        buf.extend(chunk)
+    try:
+        encoded, mime, ext = prepare_avatar_image(bytes(buf))
+    except AvatarRejected as exc:
+        raise HTTPException(status_code=400, detail={"code": "avatar_rejected", "message": str(exc)}) from exc
+    avatar_url = await storage_service.save_avatar(encoded, mime, ext, current_user.id)
     current_user.avatar_url = avatar_url
     await db.commit()
     await db.refresh(current_user)

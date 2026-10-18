@@ -1,16 +1,14 @@
 import asyncio
 import logging
-from typing import Optional, List
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from fastapi import HTTPException
 
 from app.models.media_job import MediaGenerationJob
 from app.schemas.media import MediaGenerationRequest
 from app.models.user import User
 from app.models.organization import Organization
 from app.services.billing_service import (
-    get_or_create_default_org,
     assert_can_generate_image,
     record_image_generated,
     record_video_generated,
@@ -126,9 +124,12 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             provider_instance, credential_mode = await resolve_image_provider(db, user, org)
 
             params = dict(job.parameters or {})
-            
-            # Override with per-request BYOK if provided in parameters
-            custom_api_key = custom_api_key or params.get("custom_api_key")  # in-memory key wins; legacy rows may still carry one
+            from app.schemas.media import strip_secret_fields
+
+            # Override with per-request BYOK if provided in parameters.
+            # in-memory key wins; legacy rows may still carry one, and it is removed before the row is written back.
+            custom_api_key = custom_api_key or params.pop("custom_api_key", None)
+            params = strip_secret_fields(params)
             custom_model = params.get("custom_model")
             
             if custom_api_key:
@@ -308,7 +309,9 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
 
     # SECURITY: per-request BYOK keys must never be persisted with the job or
     # echoed in job responses. Keep it in memory and hand it to the task only.
+    from app.schemas.media import strip_secret_fields
     request_api_key = parameters.pop("custom_api_key", None)
+    parameters = strip_secret_fields(parameters)
 
     # 2. Persist MediaGenerationJob
     job = MediaGenerationJob(
@@ -337,15 +340,13 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
 
 
 async def get_media_job(db: AsyncSession, user: User, job_id: str) -> Optional[MediaGenerationJob]:
-    from app.services.billing_service import get_or_create_default_org
-    is_admin = getattr(user, "role", "") == "admin"
-    org = await get_or_create_default_org(db, user)
+    from app.core.tenancy import get_user_org_ids
 
+    org_ids = await get_user_org_ids(db, user)
     stmt = select(MediaGenerationJob).where(MediaGenerationJob.id == job_id)
-    if not is_admin:
-        stmt = stmt.where(
-            (MediaGenerationJob.user_id == user.id) | (MediaGenerationJob.org_id == org.id)
-        )
+    # API-key organization scope is applied before any owner or admin bypass.
+    if org_ids is not None:
+        stmt = stmt.where(MediaGenerationJob.org_id.in_(org_ids))
     result = await db.execute(stmt)
     job = result.scalar_one_or_none()
     return job

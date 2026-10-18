@@ -22,7 +22,8 @@ const SearchContext = createContext({
 
 export function SearchProvider({ children }) {
   const { user } = useAuth()
-  const userId = user?.id || null
+  const orgId = user?.organization_id || user?.org_id || null
+  const userId = user?.id ? (orgId ? `${user.id}:${orgId}` : user.id) : null
   const prevUserIdRef = useRef(userId)
 
   const [latestSearch, setLatestSearch] = useState(null)
@@ -43,7 +44,17 @@ export function SearchProvider({ children }) {
     }
 
     if (!userId) {
-      // User signed out or not authenticated: clear search state completely
+      const previous = prevUserIdRef.current
+      if (previous) {
+        try {
+          localStorage.removeItem(`${STORAGE_LATEST_KEY}_${previous}`)
+          localStorage.removeItem(`${STORAGE_HISTORY_KEY}_${previous}`)
+          localStorage.removeItem(`${STORAGE_ACTIVE_CREATIVE_KEY}_${previous}`)
+          localStorage.removeItem(`${STORAGE_DRAFTS_KEY}_${previous}`)
+        } catch {
+          // storage can be blocked
+        }
+      }
       setLatestSearch(null)
       setSearchHistory([])
       setActiveCreative(null)
@@ -206,8 +217,12 @@ export function SearchProvider({ children }) {
     setSearchHistory([])
     setLatestSearch(null)
     if (userId) {
-      localStorage.removeItem(`${STORAGE_HISTORY_KEY}_${userId}`)
-      localStorage.removeItem(`${STORAGE_LATEST_KEY}_${userId}`)
+      try {
+        localStorage.removeItem(`${STORAGE_HISTORY_KEY}_${userId}`)
+        localStorage.removeItem(`${STORAGE_LATEST_KEY}_${userId}`)
+      } catch {
+        // storage can be blocked
+      }
     }
   }, [userId])
 

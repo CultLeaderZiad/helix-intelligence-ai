@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import List, Optional
 from urllib.parse import urlparse
 
-import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select, desc, func
@@ -204,10 +203,18 @@ async def _is_worker_available(db: AsyncSession) -> bool:
     # 2. Check direct worker HTTP health endpoint if configured
     if settings.SCRAPLING_WORKER_URL:
         try:
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                r = await client.get(settings.SCRAPLING_WORKER_URL.rstrip("/") + "/health")
-                if r.status_code == 200:
-                    return True
+            from app.services.safe_fetch import safe_request_async
+            from urllib.parse import urlsplit
+            health_url = settings.SCRAPLING_WORKER_URL.rstrip("/") + "/health"
+            # Operator-configured worker. Pinning applies, so a private address is rejected.
+            r = await safe_request_async(
+                "GET",
+                health_url,
+                timeout=2.0,
+                allowed_hosts={urlsplit(health_url).hostname or ""},
+            )
+            if r.status_code == 200:
+                return True
         except Exception:
             pass  # fall through to DB heartbeat check
 
@@ -610,17 +617,24 @@ async def worker_health(db: AsyncSession = Depends(get_db)):
     # Optional direct ping (SCRAPLING_WORKER_URL)
     if settings.SCRAPLING_WORKER_URL:
         try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                r = await client.get(settings.SCRAPLING_WORKER_URL.rstrip("/") + "/health")
-                if r.status_code == 200:
-                    data = r.json() if "json" in r.headers.get("content-type", "") else {}
-                    payload.update({
-                        "worker": "online",
-                        "scrapling_version": data.get("version"),
-                        "browsers_ready": bool(data.get("browsers_ready", False)),
-                        "engines": data.get("engines", payload["engines"]),
-                    })
-                    return payload
+            from app.services.safe_fetch import safe_request_async
+            from urllib.parse import urlsplit
+            health_url = settings.SCRAPLING_WORKER_URL.rstrip("/") + "/health"
+            r = await safe_request_async(
+                "GET",
+                health_url,
+                timeout=3.0,
+                allowed_hosts={urlsplit(health_url).hostname or ""},
+            )
+            if r.status_code == 200:
+                data = r.json() if "json" in r.headers.get("content-type", "") else {}
+                payload.update({
+                    "worker": "online",
+                    "scrapling_version": data.get("version"),
+                    "browsers_ready": bool(data.get("browsers_ready", False)),
+                    "engines": data.get("engines", payload["engines"]),
+                })
+                return payload
         except Exception:
             pass  # fall through to heartbeat
 

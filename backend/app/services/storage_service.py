@@ -24,8 +24,6 @@ import uuid
 from functools import lru_cache
 from typing import Optional
 
-import httpx
-
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -45,6 +43,34 @@ _EXT_BY_MIME = {
     "video/webm": ".webm",
     "video/quicktime": ".mov",
 }
+
+
+_SAFE_MEDIA_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mov": "video/quicktime",
+}
+
+
+def media_response_headers(filename: str) -> tuple[str, dict]:
+    """Restrictive headers for locally served bytes. R2 is the isolated origin when configured."""
+    ext = os.path.splitext(filename or "")[1].lower()
+    media_type = _SAFE_MEDIA_TYPES.get(ext, "application/octet-stream")
+    disposition = "inline" if media_type != "application/octet-stream" else "attachment"
+    safe_name = os.path.basename(filename).replace('"', "")
+    headers = {
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Referrer-Policy": "no-referrer",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        "Content-Disposition": f'{disposition}; filename="{safe_name}"',
+    }
+    return media_type, headers
 
 
 def _extension_for(mime_type: str) -> str:
@@ -115,7 +141,10 @@ def _r2_client():
     )
 
 
-def _r2_put(key: str, data: bytes, mime_type: str) -> None:
+def _r2_put(key: str, data: bytes, mime_type: str, content_disposition: Optional[str] = None) -> None:
+    extra = {}
+    if content_disposition:
+        extra["ContentDisposition"] = content_disposition
     _r2_client().put_object(
         Bucket=settings.R2_BUCKET,
         Key=key,
@@ -124,6 +153,7 @@ def _r2_put(key: str, data: bytes, mime_type: str) -> None:
         # Media is immutable: the key contains a fresh random component on
         # every write, so it can be cached indefinitely.
         CacheControl="public, max-age=31536000, immutable",
+        **extra,
     )
 
 
@@ -200,11 +230,16 @@ async def store_media_from_url(job_id: str, source_url: str) -> str:
     """
     try:
         logger.info("Downloading media for job %s from %s", job_id, source_url)
-        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-            response = await client.get(source_url)
-            response.raise_for_status()
-            content_type = response.headers.get("content-type", "")
-            return await store_media_bytes(job_id, response.content, content_type)
+        from app.services.safe_fetch import UnsafeFetch, safe_http_get_async
+
+        response = await safe_http_get_async(source_url, timeout=60.0, max_bytes=50 * 1024 * 1024)
+        if response.status_code >= 400:
+            raise RuntimeError(f"provider media download returned {response.status_code}")
+        content_type = response.headers.get("content-type", "")
+        return await store_media_bytes(job_id, response.content, content_type)
+    except UnsafeFetch:
+        logger.error("Refused to download media for job %s from a non-public URL", job_id)
+        raise
     except Exception as e:
         logger.error("Failed to download/store media for job %s: %s", job_id, e)
         return source_url
@@ -225,10 +260,23 @@ async def save_file(data: bytes, filename: str, content_type: Optional[str] = No
 
     if r2_enabled():
         key = f"uploads/{unique_filename}"
-        await asyncio.to_thread(_r2_put, key, data, mime)
+        await asyncio.to_thread(_r2_put, key, data, mime, f'inline; filename="{unique_filename}"')
         url = f"{settings.R2_PUBLIC_BASE_URL}/{key}"
         logger.info("Saved file in R2: %s", key)
         return url
 
     return _store_local(unique_filename, data)
+
+
+async def save_avatar(data: bytes, mime_type: str, extension: str, user_id: str) -> str:
+    """Store a re-encoded avatar. R2 is a separate media origin when configured."""
+    if not data:
+        raise ValueError("save_avatar called with empty data")
+    filename = f"avatar_{user_id}_{uuid.uuid4().hex[:12]}.{extension}"
+    disposition = f'inline; filename="avatar.{extension}"'
+    if r2_enabled():
+        key = f"avatars/{filename}"
+        await asyncio.to_thread(_r2_put, key, data, mime_type, disposition)
+        return f"{settings.R2_PUBLIC_BASE_URL}/{key}"
+    return _store_local(filename, data)
 

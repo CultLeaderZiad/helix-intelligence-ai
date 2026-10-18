@@ -66,6 +66,31 @@ jobs:
       - name: Run pytest test suite
         run: pytest -v tests
 
+  secret-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Gitleaks matches known provider token formats and high-entropy strings.
+      # A hand-rolled grep misses rotated prefixes and multiline secrets.
+      # v3 (e0c47f4) is pinned by commit SHA: it runs on Node 24. The Node 20
+      # v2 action no longer runs on GitHub-hosted runners after 2026-09-16.
+      # On pull_request it scans parent-of-first-PR-commit..head (the PR diff),
+      # not the full history, and exits 1 when gitleaks reports leaks.
+      # This repository is a personal account, so GITLEAKS_LICENSE is not required.
+      # Comments and SARIF upload stay off so findings are not published.
+      - name: Scan the pull request diff for secrets
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: "8.24.3"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_COMMENTS: "false"
+
   security-smoke:
     runs-on: ubuntu-latest
     steps:

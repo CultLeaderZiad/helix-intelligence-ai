@@ -1,6 +1,5 @@
 import os
 import asyncio
-import httpx
 import logging
 from typing import Dict, Any
 from app.core.config import settings
@@ -48,19 +47,26 @@ class ScrapeGraphProvider:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(self.endpoint, json=payload, headers=headers)
-                response.raise_for_status()
-                data = response.json()
-                extracted = data.get("json") or data.get("result") or {}
-                if isinstance(extracted, dict) and extracted:
-                    return {
-                        "headline": extracted.get("headline"),
-                        "offer": extracted.get("offer"),
-                        "positioning": extracted.get("positioning"),
-                        "cta": extracted.get("cta")
-                    }
-                return {}
+            from app.services.safe_fetch import safe_request_async
+            response = await safe_request_async(
+                "POST",
+                self.endpoint,
+                json=payload,
+                headers=headers,
+                timeout=30.0,
+                allowed_hosts={"v2-api.scrapegraphai.com"},
+            )
+            response.raise_for_status()
+            data = response.json()
+            extracted = data.get("json") or data.get("result") or {}
+            if isinstance(extracted, dict) and extracted:
+                return {
+                    "headline": extracted.get("headline"),
+                    "offer": extracted.get("offer"),
+                    "positioning": extracted.get("positioning"),
+                    "cta": extracted.get("cta")
+                }
+            return {}
         except Exception as e:
             logger.error(f"ScrapeGraphAI extraction failed for {url}: {e}")
             return {}

@@ -56,7 +56,7 @@ async def list_playbooks(
 @router.get("/public/{public_id}")
 async def get_public_playbook(
     public_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    # Notice: NO current_user requirement -> public unauthenticated read-only endpoint
-    return await playbook_service.get_public_playbook(db, public_id)
+    return await playbook_service.get_public_playbook(db, public_id, current_user)

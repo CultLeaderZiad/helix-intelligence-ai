@@ -86,7 +86,22 @@ async def get_or_create_default_org(
     Retrieves or creates the default organization for a user.
     Optionally applies a row-level lock (SELECT ... FOR UPDATE).
     Handles concurrent registration races via a nested savepoint and retry.
+    API-key callers are pinned to the key's organization before any owner lookup.
     """
+    scoped_org_id = getattr(user, "_scoped_org_id", None)
+    if scoped_org_id:
+        scoped_query = select(Organization).where(Organization.id == scoped_org_id)
+        if lock_row:
+            scoped_query = scoped_query.with_for_update().execution_options(populate_existing=True)
+        scoped_org = (await db.execute(scoped_query)).scalar_one_or_none()
+        if scoped_org is None:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "api_key_org_unavailable", "message": "API key organization is not available."},
+            )
+        await _ensure_daily_reset(db, scoped_org)
+        return scoped_org
+
     query = select(Organization).where(Organization.owner_id == user.id)
     if lock_row:
         query = query.with_for_update().execution_options(populate_existing=True)

@@ -10,6 +10,7 @@ import pytest
 from starlette.requests import Request
 from fastapi import HTTPException
 
+from app.core.config import settings
 from app.middleware.rate_limit import RateLimitMiddleware, _rules, _is_valid_public_ip
 from app.services.scrapling_engine import robots_allowed
 from app.services.leadgen_pipeline import parse_sitemap
@@ -41,7 +42,7 @@ def test_f58_is_valid_public_ip():
 def test_f58_client_ip_precedence():
     middleware = RateLimitMiddleware(app=MagicMock())
 
-    # 1. cf-connecting-ip takes highest precedence
+    # Forwarding headers are ignored unless the TCP peer is a trusted proxy.
     scope = {
         "type": "http",
         "headers": [
@@ -51,31 +52,31 @@ def test_f58_client_ip_precedence():
         ],
         "client": ("192.168.1.50", 12345),
     }
-    req = Request(scope)
-    assert middleware._client_ip(req) == "93.184.216.34"
+    assert middleware._client_ip(Request(scope)) == "192.168.1.50"
 
-    # 2. true-client-ip takes precedence if cf-connecting-ip missing
-    scope2 = {
-        "type": "http",
-        "headers": [
-            (b"true-client-ip", b"93.184.216.35"),
-            (b"x-forwarded-for", b"93.184.216.36"),
-        ],
-        "client": ("192.168.1.50", 12345),
-    }
-    assert middleware._client_ip(Request(scope2)) == "93.184.216.35"
+    with patch.object(settings, "TRUSTED_PROXY_CIDRS", "192.168.0.0/16,10.0.0.0/8"):
+        assert middleware._client_ip(Request(scope)) == "93.184.216.34"
 
-    # 3. x-forwarded-for: extracts rightmost non-private IP to avoid spoofed leftmost hops
-    scope3 = {
-        "type": "http",
-        "headers": [
-            (b"x-forwarded-for", b"attacker.spoofed.ip, 93.184.216.34, 10.0.0.1, 127.0.0.1"),
-        ],
-        "client": ("10.0.0.1", 12345),
-    }
-    assert middleware._client_ip(Request(scope3)) == "93.184.216.34"
+        scope2 = {
+            "type": "http",
+            "headers": [
+                (b"true-client-ip", b"93.184.216.35"),
+                (b"x-forwarded-for", b"93.184.216.36"),
+            ],
+            "client": ("192.168.1.50", 12345),
+        }
+        assert middleware._client_ip(Request(scope2)) == "93.184.216.35"
 
-    # 4. Fallback to client host
+        # Rightmost untrusted hop, so a prepended spoof does not win.
+        scope3 = {
+            "type": "http",
+            "headers": [
+                (b"x-forwarded-for", b"1.2.3.4, 93.184.216.34"),
+            ],
+            "client": ("10.0.0.1", 12345),
+        }
+        assert middleware._client_ip(Request(scope3)) == "93.184.216.34"
+
     scope4 = {
         "type": "http",
         "headers": [],

@@ -8,11 +8,11 @@ class GroqProvider(AIProvider):
     def __init__(self):
         self.api_key = getattr(settings, "GROQ_API_KEY", None) or os.getenv("GROQ_API_KEY")
         self.base_url = "https://api.groq.com/openai/v1/chat/completions"
-        self.model = "llama-3.3-70b-versatile"
+        self.model = getattr(settings, "GROQ_MODEL", None) or "llama-3.3-70b-versatile"
         
     async def _call_api(self, messages: List[dict]) -> str:
         if not self.api_key:
-            raise Exception("GROQ_API_KEY not configured")
+            raise Exception("Missing required integration key: GROQ_API_KEY")
             
         models_to_try = [self.model, "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
         last_err = None

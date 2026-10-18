@@ -31,7 +31,6 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, urljoin
 from xml.etree import ElementTree as ET
 
-import httpx
 from sqlalchemy import select
 
 from app.core.config import settings
@@ -643,6 +642,18 @@ def shopify_discover(shopify_url: str) -> List[str]:
 # Stages 6-9: enrich -> dedupe+score -> outreach draft -> export-ready
 # ---------------------------------------------------------------------------
 
+async def _hunter_domain_search(domain: str, api_key: str):
+    """Hunter is a fixed vendor host. The key stays on api.hunter.io."""
+    from app.services.safe_fetch import safe_request_async
+    return await safe_request_async(
+        "GET",
+        "https://api.hunter.io/v2/domain-search",
+        params={"domain": domain, "api_key": api_key, "limit": 3},
+        timeout=15.0,
+        allowed_hosts={"api.hunter.io"},
+    )
+
+
 async def _final_stages(job_id: str, started_ts: float) -> None:
     async with worker_session_maker() as db:
         job = (await db.execute(select(LeadGenJob).where(LeadGenJob.id == job_id))).scalar_one_or_none()
@@ -674,11 +685,7 @@ async def _final_stages(job_id: str, started_ts: float) -> None:
                 if not lead.domain:
                     continue
                 try:
-                    async with httpx.AsyncClient(timeout=15.0) as client:
-                        r = await client.get(
-                            "https://api.hunter.io/v2/domain-search",
-                            params={"domain": lead.domain, "api_key": hunter_key, "limit": 3},
-                        )
+                    r = await _hunter_domain_search(lead.domain, hunter_key)
                     if r.status_code == 401:
                         _append_log(job, "> enrich · hunter 401 · continuing website-only")
                         hunter_key = None

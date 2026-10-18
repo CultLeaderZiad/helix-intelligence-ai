@@ -147,13 +147,16 @@ async def extract_profile_with_scrapegraph(
         "prompt": prompt
     }
 
-    should_close = False
-    if client is None:
-        client = httpx.AsyncClient(timeout=30.0, follow_redirects=True)
-        should_close = True
-
     try:
-        resp = await client.post(SCRAPEGRAPH_EXTRACT_URL, json=payload, headers=headers, timeout=30.0)
+        from app.services.safe_fetch import safe_request_async
+        resp = await safe_request_async(
+            "POST",
+            SCRAPEGRAPH_EXTRACT_URL,
+            json=payload,
+            headers=headers,
+            timeout=30.0,
+            allowed_hosts={"v2-api.scrapegraphai.com"},
+        )
         if resp.status_code == 200:
             data = resp.json()
             extracted = data.get("json") or data.get("result") or {}
@@ -198,8 +201,7 @@ async def extract_profile_with_scrapegraph(
     except Exception as exc:
         logger.warning(f"ScrapeGraph profile extraction failed for {clean_url}: {exc}")
     finally:
-        if should_close:
-            await client.aclose()
+        pass
 
     return {}
 
@@ -238,13 +240,16 @@ async def extract_business_with_scrapegraph(
         "prompt": prompt
     }
 
-    should_close = False
-    if client is None:
-        client = httpx.AsyncClient(timeout=30.0, follow_redirects=True)
-        should_close = True
-
     try:
-        resp = await client.post(SCRAPEGRAPH_EXTRACT_URL, json=payload, headers=headers, timeout=30.0)
+        from app.services.safe_fetch import safe_request_async
+        resp = await safe_request_async(
+            "POST",
+            SCRAPEGRAPH_EXTRACT_URL,
+            json=payload,
+            headers=headers,
+            timeout=30.0,
+            allowed_hosts={"v2-api.scrapegraphai.com"},
+        )
         if resp.status_code == 200:
             data = resp.json()
             extracted = data.get("json") or data.get("result") or {}
@@ -285,9 +290,6 @@ async def extract_business_with_scrapegraph(
                 }
     except Exception as exc:
         logger.warning(f"ScrapeGraph business extraction failed for {clean_url}: {exc}")
-    finally:
-        if should_close:
-            await client.aclose()
 
     return {}
 
@@ -305,11 +307,6 @@ async def search_leads_with_scrapegraph(
     if not api_key or not keyword.strip() or not city.strip():
         return []
 
-    should_close = False
-    if client is None:
-        client = httpx.AsyncClient(timeout=30.0, follow_redirects=True)
-        should_close = True
-
     places: List[Dict[str, Any]] = []
     seen_domains = set()
 
@@ -321,91 +318,90 @@ async def search_leads_with_scrapegraph(
     }
 
     try:
-        try:
-            resp = await client.post(
-                SCRAPEGRAPH_SEARCH_URL,
-                headers=headers,
-                json={"query": query},
-                timeout=22.0
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                results = data.get("results", [])
-                for item in results:
-                    u = item.get("url") or ""
-                    t = item.get("title") or ""
-                    c = item.get("content") or ""
+        from app.services.safe_fetch import safe_request_async
+        resp = await safe_request_async(
+            "POST",
+            SCRAPEGRAPH_SEARCH_URL,
+            headers=headers,
+            json={"query": query},
+            timeout=22.0,
+            allowed_hosts={"v2-api.scrapegraphai.com"},
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            results = data.get("results", [])
+            for item in results:
+                u = item.get("url") or ""
+                t = item.get("title") or ""
+                c = item.get("content") or ""
 
-                    if not u or not t:
-                        continue
+                if not u or not t:
+                    continue
 
-                    # Filter out search engines and generic aggregators
-                    domain_match = re.search(r"https?://(?:www\.)?([^/]+)", u)
-                    if not domain_match:
-                        continue
-                    domain = domain_match.group(1).lower()
+                # Filter out search engines and generic aggregators
+                domain_match = re.search(r"https?://(?:www\.)?([^/]+)", u)
+                if not domain_match:
+                    continue
+                domain = domain_match.group(1).lower()
 
-                    if any(bad in domain for bad in DISALLOWED_DOMAINS) or domain in seen_domains:
-                        continue
+                if any(bad in domain for bad in DISALLOWED_DOMAINS) or domain in seen_domains:
+                    continue
 
-                    seen_domains.add(domain)
+                seen_domains.add(domain)
 
-                    # Clean title: Remove page artifacts like " - Contact Us", " | Official Site", etc.
-                    clean_title = re.split(r"[\s\-|•:]+(?:contact|home|official|about|website|reviews|top|best)", t, flags=re.IGNORECASE)[0].strip()
-                    if not clean_title or len(clean_title) < 3:
-                        clean_title = t.split("-")[0].split("|")[0].strip()
+                # Clean title: Remove page artifacts like " - Contact Us", " | Official Site", etc.
+                clean_title = re.split(r"[\s\-|•:]+(?:contact|home|official|about|website|reviews|top|best)", t, flags=re.IGNORECASE)[0].strip()
+                if not clean_title or len(clean_title) < 3:
+                    clean_title = t.split("-")[0].split("|")[0].strip()
 
-                    # Extract emails directly from content
-                    content_emails = extract_clean_emails(EMAIL_REGEX.findall(c))
+                # Extract emails directly from content
+                content_emails = extract_clean_emails(EMAIL_REGEX.findall(c))
 
-                    # Extract phones from content
-                    content_phones = []
-                    # 1. Country specific / general phone regex
-                    for pm in re.finditer(r"(?:\+?\d{1,4}[-.\s]?)?(?:\(?\d{2,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}", c):
-                        num = pm.group(0).strip()
-                        digits = re.sub(r"\D", "", num)
-                        if 8 <= len(digits) <= 15:
-                            content_phones.append(num)
-                    content_phones = extract_clean_phones(content_phones)
+                # Extract phones from content
+                content_phones = []
+                # 1. Country specific / general phone regex
+                for pm in re.finditer(r"(?:\+?\d{1,4}[-.\s]?)?(?:\(?\d{2,4}\)?[-.\s]?)?\d{3,4}[-.\s]?\d{3,4}", c):
+                    num = pm.group(0).strip()
+                    digits = re.sub(r"\D", "", num)
+                    if 8 <= len(digits) <= 15:
+                        content_phones.append(num)
+                content_phones = extract_clean_phones(content_phones)
 
-                    # Extract social links from content
-                    content_socials = {}
-                    for plat_name, domain_pat in [
-                        ("instagram", r'https?://(?:www\.)?instagram\.com/[a-zA-Z0-9_.]+/?'),
-                        ("facebook", r'https?://(?:www\.)?facebook\.com/[a-zA-Z0-9_.]+/?'),
-                        ("linkedin", r'https?://(?:www\.)?linkedin\.com/(?:company|in)/[a-zA-Z0-9_.-]+/?'),
-                        ("twitter", r'https?://(?:www\.)?(?:twitter|x)\.com/[a-zA-Z0-9_]+/?'),
-                    ]:
-                        sm = re.search(domain_pat, c, re.IGNORECASE)
-                        if sm:
-                            content_socials[plat_name] = sm.group(0)
+                # Extract social links from content
+                content_socials = {}
+                for plat_name, domain_pat in [
+                    ("instagram", r'https?://(?:www\.)?instagram\.com/[a-zA-Z0-9_.]+/?'),
+                    ("facebook", r'https?://(?:www\.)?facebook\.com/[a-zA-Z0-9_.]+/?'),
+                    ("linkedin", r'https?://(?:www\.)?linkedin\.com/(?:company|in)/[a-zA-Z0-9_.-]+/?'),
+                    ("twitter", r'https?://(?:www\.)?(?:twitter|x)\.com/[a-zA-Z0-9_]+/?'),
+                ]:
+                    sm = re.search(domain_pat, c, re.IGNORECASE)
+                    if sm:
+                        content_socials[plat_name] = sm.group(0)
 
-                    places.append({
-                        "title": clean_title or t,
-                        "phone": content_phones[0] if content_phones else None,
-                        "phones": content_phones,
-                        "email": content_emails[0] if content_emails else None,
-                        "emails": content_emails,
-                        "website": u,
-                        "category": keyword.title(),
-                        "address": city,
-                        "city": city,
-                        "rating": 4.8,
-                        "reviews_count": 24,
-                        "socials": content_socials,
-                        "instagram": content_socials.get("instagram"),
-                        "facebook": content_socials.get("facebook"),
-                        "linkedin": content_socials.get("linkedin"),
-                        "twitter": content_socials.get("twitter"),
-                        "source": "scrapegraph_search",
-                    })
+                places.append({
+                    "title": clean_title or t,
+                    "phone": content_phones[0] if content_phones else None,
+                    "phones": content_phones,
+                    "email": content_emails[0] if content_emails else None,
+                    "emails": content_emails,
+                    "website": u,
+                    "category": keyword.title(),
+                    "address": city,
+                    "city": city,
+                    "rating": 4.8,
+                    "reviews_count": 24,
+                    "socials": content_socials,
+                    "instagram": content_socials.get("instagram"),
+                    "facebook": content_socials.get("facebook"),
+                    "linkedin": content_socials.get("linkedin"),
+                    "twitter": content_socials.get("twitter"),
+                    "source": "scrapegraph_search",
+                })
 
-                    if len(places) >= limit:
-                        break
-        except Exception as q_err:
-            logger.warning(f"ScrapeGraph search error: {q_err}")
-    finally:
-        if should_close:
-            await client.aclose()
+                if len(places) >= limit:
+                    break
+    except Exception as q_err:
+        logger.warning(f"ScrapeGraph search error: {q_err}")
 
     return places

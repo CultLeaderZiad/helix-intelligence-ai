@@ -66,6 +66,8 @@ async def revoke_user_sessions(db: AsyncSession, user: User) -> int:
     """Increment the user's token version to immediately invalidate all existing sessions."""
     metadata = dict(user.signup_metadata or {})
     new_version = int(metadata.get("token_version", 1)) + 1
+    # Version, not the fractional timestamp, splits two tokens inside one UTC
+    # second. JWT iat cannot. The previous version stays revoked.
     metadata["token_version"] = new_version
     metadata["sessions_revoked_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     user.signup_metadata = metadata
@@ -231,10 +233,12 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Use
     user.password_reset_expires_at = None
     user.has_completed_onboarding = True
 
-    # Revoke all previous sessions (F19)
+    # Revoke all previous sessions (F19). The version bump rejects a token
+    # minted earlier in this same second; iat is only whole seconds.
     metadata = dict(user.signup_metadata or {})
     metadata["token_version"] = int(metadata.get("token_version", 1)) + 1
     metadata["password_reset_at"] = now.isoformat()
+    metadata["sessions_revoked_at"] = now.isoformat()
     user.signup_metadata = metadata
 
     await db.commit()

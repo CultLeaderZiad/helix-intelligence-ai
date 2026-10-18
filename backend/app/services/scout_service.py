@@ -220,12 +220,12 @@ async def run_scout_job_worker(job_id: str):
         enricher = LeadEnricher(hunter_api_key=hunter_key, enable_smtp_verify=False)
         proxy_url = get_scout_proxy()
 
-        client_kwargs = {"timeout": 20.0, "follow_redirects": True}
-        if proxy_url:
-            client_kwargs["proxy"] = proxy_url
-
+        # Vendor scrapers call client.get. SafeAsyncClient pins each public hop.
+        # A configured proxy cannot pin the target address; hops are still
+        # rejected unless they resolve to a public address.
+        from app.services.safe_fetch import SafeAsyncClient
         try:
-            async with httpx.AsyncClient(**client_kwargs) as client:
+            async with SafeAsyncClient(timeout=20.0, proxy=proxy_url) as client:
                 job.stage = "scrape"
                 job.stage_label = f"Scraping {len(targets)} targets across specified platforms"
                 job.stage_index = 2

@@ -138,13 +138,28 @@ class AIHubMixImageProvider(AIProvider):
         ]
 
         if reference_images:
+            from app.services.safe_fetch import UnsafeFetch, decode_image_data_url
+            from app.services.security_service import is_safe_public_url
             for ref in reference_images:
-                if ref:
-                    url = ref if ref.startswith("data:") or ref.startswith("http") else f"data:image/png;base64,{ref}"
+                if not ref:
+                    continue
+                try:
+                    if ref.startswith("data:"):
+                        decode_image_data_url(ref)
+                        url = ref
+                    elif ref.startswith("http://") or ref.startswith("https://"):
+                        if not is_safe_public_url(ref):
+                            raise UnsafeFetch("reference URL is not public")
+                        url = ref
+                    else:
+                        url = f"data:image/png;base64,{ref}"
+                        decode_image_data_url(url)
                     user_content.append({
                         "type": "image_url",
                         "image_url": {"url": url}
                     })
+                except Exception as err:
+                    logger.warning("Rejected AIHubMix reference image: %s", err)
 
         payload = {
             "model": model_name,
@@ -236,7 +251,10 @@ class AIHubMixImageProvider(AIProvider):
                 if "b64_json" in first_item:
                     raw_bytes = base64.b64decode(first_item["b64_json"])
                 elif "url" in first_item:
-                    img_resp = await client.get(first_item["url"], timeout=30.0)
+                    from app.services.safe_fetch import safe_http_get_async
+                    img_resp = await safe_http_get_async(first_item["url"], timeout=30.0, max_bytes=8 * 1024 * 1024)
+                    if img_resp.status_code >= 400:
+                        raise ValueError(f"AIHubMix result URL returned HTTP {img_resp.status_code}")
                     raw_bytes = img_resp.content
                 else:
                     raise ValueError("No image payload received from AIHubMix")
