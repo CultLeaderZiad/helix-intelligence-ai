@@ -1,21 +1,40 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 from app.schemas.media import MediaGenerationRequest, MediaGenerationJobResponse
 from app.services import media_service
-from app.services.storage_service import store_media_bytes
+from app.services.storage_service import resolve_stored_url, store_media_bytes
 
 router = APIRouter()
 
-@router.post("/jobs", response_model=MediaGenerationJobResponse)
+
+def _token_version(user: User) -> str:
+    metadata = getattr(user, "signup_metadata", None) or {}
+    try:
+        return str(int(metadata.get("token_version", 1)))
+    except (TypeError, ValueError):
+        return "1"
+
+
+def _present_job(job, user: User) -> dict:
+    payload = MediaGenerationJobResponse.model_validate(job).model_dump(mode="json")
+    payload["result_url"] = resolve_stored_url(
+        payload.get("result_url"),
+        org_id=getattr(job, "org_id", "") or "",
+        user_id=user.id,
+        token_version=_token_version(user),
+    )
+    return payload
+
+@router.post("/jobs", response_model=MediaGenerationJobResponse, dependencies=[Depends(require_feature("create"))])
 async def create_media_job(
     request: MediaGenerationRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     job = await media_service.create_media_job(db, current_user, request)
-    return job
+    return _present_job(job, current_user)
 
 @router.get("/models")
 async def get_available_models():
@@ -41,7 +60,7 @@ async def get_media_providers():
         }
     ]
 
-@router.get("/jobs/{job_id}", response_model=MediaGenerationJobResponse)
+@router.get("/jobs/{job_id}", response_model=MediaGenerationJobResponse, dependencies=[Depends(require_feature("create"))])
 async def get_media_job(
     job_id: str,
     current_user: User = Depends(get_current_user),
@@ -50,7 +69,7 @@ async def get_media_job(
     job = await media_service.get_media_job(db, current_user, job_id)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-    return job
+    return _present_job(job, current_user)
 
 @router.post("/jobs/{job_id}/cancel")
 async def cancel_media_job(
@@ -68,7 +87,7 @@ async def cancel_media_job(
     return {"success": True, "message": "Job canceled", "job_id": job_id, "status": "canceled"}
 
 
-@router.post("/upload")
+@router.post("/upload", dependencies=[Depends(require_feature("create"))])
 async def upload_file(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
@@ -100,4 +119,5 @@ async def upload_file(
         )
         
     url = await store_media_bytes("upload", content, mime_type)
+    url = resolve_stored_url(url, user_id=current_user.id, token_version=_token_version(current_user))
     return {"url": url}

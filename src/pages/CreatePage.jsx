@@ -78,12 +78,12 @@ export function CreatePage() {
   
   // Image Limits
   const imagesUsedToday = user?.images_used_today || 0
-  const imagesDailyLimit = user?.images_daily_limit || 5
+  const imagesDailyLimit = user?.images_daily_limit ?? 5
   const imagesRemainingToday = user?.images_remaining_today !== undefined ? user.images_remaining_today : (imagesDailyLimit - imagesUsedToday)
   
   // Video Limits
   const videosUsedToday = user?.videos_used_today || 0
-  const videosDailyLimit = user?.videos_daily_limit || 3
+  const videosDailyLimit = user?.videos_daily_limit ?? 3
   const videosRemainingToday = user?.videos_remaining_today !== undefined ? user.videos_remaining_today : (videosDailyLimit - videosUsedToday)
   
   const remainingToday = activeCategory === "video" ? videosRemainingToday : imagesRemainingToday
@@ -307,10 +307,10 @@ export function CreatePage() {
                   </span>
                   <span className="text-[11px] text-text-muted">
                     {isTrialExpired 
-                      ? "Upgrade to a paid plan to unlock unlimited image and video creation." 
+                      ? "Creation stays off until a platform admin approves this workspace." 
                       : isDailyLimitReached 
-                      ? `Your daily allowance resets at 00:00 UTC. Upgrade for 50+ ${activeCategory === "video" ? "videos" : "images"}/day.` 
-                      : `${daysLeft} days remaining · ${activeCategory === "video" ? "Video motion trial active (3/day)." : "Video motion trial also active (3/day)."}`}
+                      ? "The daily allowance resets at 00:00 UTC. Request access if this limit needs to change." 
+                      : `${daysLeft} days remaining · ${imagesDailyLimit} images and ${videosDailyLimit} videos per day.`}
                   </span>
                 </div>
               </div>
@@ -318,7 +318,7 @@ export function CreatePage() {
               {(isTrialExpired || isDailyLimitReached) && (
                 <Link to="/billing">
                   <Button size="xs" variant="primary" className="font-semibold gap-1 text-black">
-                    Upgrade Plan <ArrowRight className="w-3.5 h-3.5" />
+                    Request access <ArrowRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>
               )}

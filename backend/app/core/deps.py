@@ -101,9 +101,10 @@ async def authenticate_bearer(db: AsyncSession, token: str) -> User:
             detail={"code": "session_revoked", "message": "Session has been revoked. Please sign in again."},
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user._token_class = payload.get("_token_class")
+        user._token_class = payload.get("_token_class")
     user._token_scope = payload.get("scope")
     user._actor_id = payload.get("act")
+    await _bind_request_tenant(db, user)
     return user
 
 
@@ -127,6 +128,7 @@ async def get_current_user(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={"code": "user_suspended", "message": "Account suspended"}
             )
+        await _bind_request_tenant(db, user)
         return user
 
     if not token:
@@ -172,32 +174,82 @@ async def get_optional_user(
     except HTTPException:
         return None
 
+# Keys already mounted on admin routes. Anything else is denied for assistants.
+ASSISTANT_PERMISSION_ALLOWLIST = frozenset({
+    "overview",
+    "jobs",
+    "system",
+    "plans",
+    "organizations",
+    "usage",
+    "users",
+    "support",
+})
+
+
 def require_admin_permission(permission_key: str):
     """
     Granular permission gate for admin endpoints (F80).
     - Full 'admin' role has all permissions unconditionally.
-    - 'assistant-admin' must have permission_key enabled in user.admin_permissions.
+    - 'assistant-admin' is denied unless the key is on the allowlist and
+      explicitly enabled. A missing flag is not permission.
     """
     async def _checker(current_user: User = Depends(get_current_admin)) -> User:
         if current_user.role == "admin":
             return current_user
 
+        if permission_key not in ASSISTANT_PERMISSION_ALLOWLIST:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Assistant admin lacks '{permission_key}' permission."
+            )
+
         perms = getattr(current_user, "admin_permissions", {}) or {}
-        # Explicit false checks (e.g. perms["users"] == False or perms["can_view_users"] == False)
-        if (
-            perms.get(permission_key) is False
-            or perms.get(f"can_{permission_key}") is False
-            or perms.get(f"can_view_{permission_key}") is False
-            or perms.get(f"can_manage_{permission_key}") is False
-        ):
+        explicit = perms.get(permission_key)
+        if explicit is False:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Assistant admin lacks '{permission_key}' permission."
             )
-        if "sections" in perms and permission_key not in perms["sections"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Assistant admin lacks '{permission_key}' permission."
-            )
-        return current_user
+        sections = perms.get("sections")
+        in_sections = isinstance(sections, (list, tuple)) and permission_key in sections
+        if explicit is True or in_sections:
+            return current_user
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Assistant admin lacks '{permission_key}' permission."
+        )
     return _checker
+
+
+def require_feature(feature_name: str):
+    """Server-side entitlement gate. Authentication alone is not paid access."""
+
+    async def _checker(
+        db: AsyncSession = Depends(get_db),
+        current_user: User = Depends(get_current_user),
+    ) -> User:
+        from app.services.billing_service import assert_can_spend
+
+        await assert_can_spend(
+            db,
+            current_user,
+            required_credits=0.0,
+            feature_name=feature_name,
+            lock_row=False,
+        )
+        return current_user
+
+    return _checker
+
+
+async def _bind_request_tenant(db: AsyncSession, user: User) -> None:
+    from app.core.tenancy import apply_tenant_context, bind_tenant, get_user_org_ids
+
+    from app.services.billing_service import is_platform_admin
+
+    scoped = getattr(user, "_scoped_org_id", None)
+    org_ids = await get_user_org_ids(db, user)
+    platform_admin = is_platform_admin(user) and not scoped
+    bind_tenant(org_ids, user.id, platform_admin=platform_admin, enforce=True)
+    await apply_tenant_context(db)

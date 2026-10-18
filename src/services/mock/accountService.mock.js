@@ -69,7 +69,28 @@ const accountService = {
   async acceptTeamInvite(token) {
     await delay(100)
     return { success: true, message: "Joined organization" }
-  }
+  },
+
+  async getAccess() {
+    return {
+      status: "pending",
+      code: "access_pending_approval",
+      message: "Access is pending approval by a platform admin.",
+      org_id: null,
+    }
+  },
+
+  async createAccessRequest() {
+    const error = new Error("Access requests require the API data source.")
+    error.status = 503
+    throw error
+  },
+
+  async selectWorkspace() {
+    const error = new Error("Workspace selection requires the API data source.")
+    error.status = 503
+    throw error
+  },
 }
 
 export default accountService

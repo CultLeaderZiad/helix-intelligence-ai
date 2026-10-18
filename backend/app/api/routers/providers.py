@@ -18,6 +18,13 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
+async def _require_manager(db, user):
+    from app.core.tenancy import require_org_manager
+    org = await get_or_create_default_org(db, user)
+    await require_org_manager(db, org, user)
+    return org
+
 class SetApiKeyRequest(BaseModel):
     api_key: str
     credential_mode: Optional[str] = "byok"
@@ -98,7 +105,7 @@ async def save_gemini_credential(
         )
 
     # 2. Encrypt key at rest
-    org = await get_or_create_default_org(db, user)
+    org = await _require_manager(db, user)
     encrypted = encrypt_secret(raw_key)
     suffix = raw_key[-4:] if len(raw_key) >= 4 else raw_key
 
@@ -153,7 +160,7 @@ async def test_gemini_credential(
     if body.api_key and body.api_key.strip():
         api_key_to_test = body.api_key.strip()
     else:
-        org = await get_or_create_default_org(db, user)
+        org = await _require_manager(db, user)
         stmt = select(WorkspaceProviderCredential).where(
             WorkspaceProviderCredential.org_id == org.id,
             WorkspaceProviderCredential.provider == "google_gemini"
@@ -197,7 +204,7 @@ async def delete_gemini_credential(
     Permanently delete the encrypted Gemini BYOK key for this workspace.
     Resets provider mode to HELIX Managed.
     """
-    org = await get_or_create_default_org(db, user)
+    org = await _require_manager(db, user)
     stmt = delete(WorkspaceProviderCredential).where(
         WorkspaceProviderCredential.org_id == org.id,
         WorkspaceProviderCredential.provider == "google_gemini"
@@ -227,7 +234,7 @@ async def set_workspace_provider_mode(
             detail="Invalid credential_mode. Must be 'managed' or 'byok'"
         )
 
-    org = await get_or_create_default_org(db, user)
+    org = await _require_manager(db, user)
     stmt = select(WorkspaceProviderCredential).where(
         WorkspaceProviderCredential.org_id == org.id,
         WorkspaceProviderCredential.provider == "google_gemini"

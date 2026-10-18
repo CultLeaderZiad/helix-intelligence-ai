@@ -18,6 +18,28 @@ from app.models.ai_insight import AIInsight
 from app.models.media_job import MediaGenerationJob
 from app.models.support_ticket import SupportTicket, SupportTicketReply
 from app.models.leadgen import LeadGenJob
+from app.models.access_grant import OrganizationAccessGrant
+
+
+async def _grant_workspace(db, org, user, flags):
+    db.add(OrganizationAccessGrant(
+        org_id=org.id,
+        plan_id=org.plan_id or "plan_trial_default",
+        feature_flags=flags,
+        granted_by_user_id=user.id,
+    ))
+    await db.commit()
+
+
+_PHASE6_FLAGS = {
+    "discover": True,
+    "intelligence": True,
+    "create": True,
+    "swipe_files": True,
+    "scout": False,
+    "leadgen": False,
+    "monitors": False,
+}
 
 
 @pytest.mark.asyncio
@@ -152,6 +174,7 @@ async def test_media_generation_canceled_and_failure_handling():
         await db.flush()
         db.add(o)
         await db.commit()
+        await _grant_workspace(db, o, u, _PHASE6_FLAGS)
 
         # 1. Job canceled prior to start (F40)
         job_canceled = MediaGenerationJob(
@@ -206,6 +229,7 @@ async def test_custom_swipe_reference_integrity():
         await db.flush()
         db.add(o)
         await db.commit()
+        await _grant_workspace(db, o, u, _PHASE6_FLAGS)
 
         res = await create_custom_swipe_reference(
             db=db,
@@ -286,6 +310,7 @@ async def test_discovery_provider_outage_and_refund():
         await db.flush()
         db.add(o)
         await db.commit()
+        await _grant_workspace(db, o, u, _PHASE6_FLAGS)
 
         job_id = f"job_outage_{uuid.uuid4().hex[:8]}"
         job = ScrapeJob(id=job_id, org_id=test_oid, query="test brand", status="running")
@@ -431,6 +456,7 @@ async def test_insight_extended_fields_persistence_and_no_row_lock():
         await db.flush()
         db.add(o)
         await db.commit()
+        await _grant_workspace(db, o, u, _PHASE6_FLAGS)
 
         job = ScrapeJob(id=f"job_ai_{uuid.uuid4().hex[:8]}", org_id=test_oid, query="shoes", status="succeeded")
         db.add(job)

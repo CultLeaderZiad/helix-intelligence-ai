@@ -430,15 +430,8 @@ async def _run_monitor(monitor_id: str) -> None:
         org_id = monitor.org_id
         is_baseline = monitor.baseline_at is None
 
-        run = MonitorRun(monitor_id=monitor.id, status="running", started_at=_utcnow(), is_baseline=is_baseline)
-        db.add(run)
-        await db.commit()
-        await db.refresh(run)
-        run_id = run.id
-
-        # Credits, trial state and the 'monitors' feature flag are all enforced
-        # by the same gatekeeper the interactive Discover page uses, against the
-        # monitor owner's plan.
+        # Entitlement is checked before the run and the job are committed.
+        # The charge below commits that same transaction.
         try:
             org, _plan = await assert_can_spend(
                 db,
@@ -451,10 +444,22 @@ async def _run_monitor(monitor_id: str) -> None:
             detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
             reason = detail.get("code", "blocked")
             message = detail.get("message", "This monitor could not run.")
-            await _finish_run(run_id, status="skipped", skipped_reason=reason, error=message)
+            await db.rollback()
+            async with async_session_maker() as skipped_db:
+                skipped = MonitorRun(
+                    monitor_id=monitor_id,
+                    status="skipped",
+                    started_at=_utcnow(),
+                    is_baseline=is_baseline,
+                    skipped_reason=reason,
+                    error=message,
+                )
+                skipped_db.add(skipped)
+                await skipped_db.commit()
             await _handle_blocked(monitor_id, reason, message)
             return
 
+        run = MonitorRun(monitor_id=monitor.id, status="running", started_at=_utcnow(), is_baseline=is_baseline)
         job = ScrapeJob(
             org_id=org_id,
             query=query,
@@ -468,10 +473,12 @@ async def _run_monitor(monitor_id: str) -> None:
             elapsed_ms=0,
             record_count=0,
         )
+        db.add(run)
         db.add(job)
-        await db.commit()
-        await db.refresh(job)
+        await db.flush()
         job_id = job.id
+        run_id = run.id
+        run.job_id = job_id
 
         await charge(
             db=db,

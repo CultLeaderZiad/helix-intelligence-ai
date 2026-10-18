@@ -418,6 +418,19 @@ async def test_f61_api_key_entitlement_and_scoping():
                 def all(self):
                     return self._data if isinstance(self._data, list) else []
 
+            if "organization_access_grants" in stmt_str:
+                if self.org.id != "org_api_ok":
+                    return Res(None)
+                return Res(type("Grant", (), {
+                    "revoked_at": None,
+                    "expires_at": None,
+                    "granted_at": datetime.datetime.now(datetime.timezone.utc),
+                    "granted_by_user_id": "admin",
+                    "plan_id": "plan_pro",
+                    "feature_flags": {"public_api": True},
+                })())
+            if "access_requests" in stmt_str:
+                return Res(None)
             if "api_keys" in stmt_str:
                 return Res((api_key_record, user, self.org))
             if "plans" in stmt_str:
@@ -432,7 +445,7 @@ async def test_f61_api_key_entitlement_and_scoping():
     with pytest.raises(HTTPException) as exc:
         await authenticate_api_key(db_no_entitlement, raw_key)
     assert exc.value.status_code == 403
-    assert "public_api" in exc.value.detail
+    assert exc.value.detail["code"] == "access_pending_approval"
 
     # 2. Organization with public_api feature flag enabled -> succeeds
     org_with_api = Organization(id="org_api_ok", name="API Org", owner_id=user.id, plan_id="plan_pro")

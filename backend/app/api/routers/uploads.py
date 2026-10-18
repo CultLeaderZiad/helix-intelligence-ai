@@ -30,34 +30,41 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import authenticate_bearer, get_db
 from app.models.media_job import MediaGenerationJob
+from app.models.organization import Organization
 from app.models.user import User
-from app.services.storage_service import UPLOAD_DIR, media_response_headers, verify_local_signature
+from app.services.storage_service import UPLOAD_DIR, media_response_headers, verify_capability
 
 router = APIRouter()
 
 NOT_FOUND = HTTPException(status_code=404, detail="Not found")
 
 
-async def _authenticated_user(request: Request, token: Optional[str], db: AsyncSession) -> Optional[User]:
-    """Resolve a user from a bearer header or a ?token= query parameter.
+async def _authenticated_user(request: Request, db: AsyncSession) -> Optional[User]:
+    """Resolve a user from the Authorization header.
 
-    Returns None instead of raising: a failed lookup here means "no owner
-    access", which the caller turns into a 404.
+    Bearer tokens in the query string are ignored. A failed lookup means
+    "no owner access", which the caller turns into a 404.
     """
-    raw = token
-    if not raw:
-        header = request.headers.get("authorization", "")
-        if header.lower().startswith("bearer "):
-            raw = header[7:]
+    header = request.headers.get("authorization", "")
+    if not header.lower().startswith("bearer "):
+        return None
+    raw = header[7:]
     if not raw:
         return None
-
     try:
         return await authenticate_bearer(db, raw)
     except HTTPException as exc:
         if exc.status_code == 403:
             raise NOT_FOUND
         return None
+
+
+def _token_version(user: User) -> str:
+    metadata = getattr(user, "signup_metadata", None) or {}
+    try:
+        return str(int(metadata.get("token_version", 1)))
+    except (TypeError, ValueError):
+        return "1"
 
 
 async def _user_owns_file(db: AsyncSession, user: User, filename: str) -> bool:
@@ -83,6 +90,10 @@ async def get_upload(
     filename: str,
     request: Request,
     sig: Optional[str] = Query(None),
+    exp: Optional[str] = Query(None),
+    org: Optional[str] = Query(None),
+    uid: Optional[str] = Query(None),
+    ver: Optional[str] = Query(None),
     token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
@@ -96,10 +107,25 @@ async def get_upload(
     if not os.path.isfile(file_path):
         raise NOT_FOUND
 
-    if not verify_local_signature(filename, sig):
-        user = await _authenticated_user(request, token, db)
+    # `token` used to carry a full JWT. It is no longer an access credential.
+    del token
+    capability_ok = verify_capability(filename, sig, exp, org or "", uid or "", ver or "")
+    if capability_ok and uid:
+        owner = (await db.execute(select(User).where(User.id == uid))).scalar_one_or_none()
+        if owner is None or _token_version(owner) != str(ver or "") or getattr(owner, "is_banned", False):
+            capability_ok = False
+    if capability_ok and org:
+        organization = (await db.execute(select(Organization).where(Organization.id == org))).scalar_one_or_none()
+        if organization is None or (organization.status or "active") != "active":
+            capability_ok = False
+    if not capability_ok:
+        user = await _authenticated_user(request, db)
         if not user or not await _user_owns_file(db, user, filename):
             raise NOT_FOUND
+        if org:
+            organization = (await db.execute(select(Organization).where(Organization.id == org))).scalar_one_or_none()
+            if organization is not None and (organization.status or "active") != "active":
+                raise NOT_FOUND
 
     media_type, headers = media_response_headers(filename)
     return FileResponse(file_path, media_type=media_type, headers=headers)

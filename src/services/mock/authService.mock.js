@@ -54,7 +54,11 @@ function publicUser(u) {
     daily_credits_resets_at_utc: null,
     plan_id: "plan_trial_default",
     has_completed_onboarding: u.has_completed_onboarding ?? false,
-    feature_flags: { discover: true, intelligence: true, create: true, performance: true, swipe_files: true },
+    feature_flags: u.role === "admin"
+      ? { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: true, public_api: true, scout: true, leadgen: true, monitors: true }
+      : { discover: false, intelligence: false, create: false, performance: false, swipe_files: false, team_accounts: false, public_api: false, scout: false, leadgen: false, monitors: false },
+    access_status: u.role === "admin" ? "approved" : "pending",
+    is_platform_admin: u.role === "admin",
   }
 }
 

@@ -14,6 +14,9 @@ class User(Base):
     full_name = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
     role = Column(String, default="customer") # 'customer' | 'assistant-admin' | 'admin'
+    # Explicit platform-admin grant. Not an email allowlist. role='admin' is
+    # backfilled onto this flag; org owners are never platform admins.
+    is_platform_admin = Column(Boolean, default=False, server_default="false", nullable=False)
     admin_permissions = Column(JSON, default=dict, server_default="{}", nullable=True)
     trial_started_at = Column(DateTime(timezone=True), nullable=True)
     trial_expires_at = Column(DateTime(timezone=True), nullable=True)
@@ -24,3 +27,8 @@ class User(Base):
     password_reset_token_hash = Column(String, nullable=True)
     password_reset_expires_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+from app.models.access_grant import AccessRequest as _AccessRequest, OrganizationAccessGrant as _OrganizationAccessGrant
+
+_REGISTERED_ACCESS_TABLES = (_AccessRequest, _OrganizationAccessGrant)

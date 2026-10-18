@@ -283,9 +283,11 @@ async def list_patterns(
         )
 
     # Unowned null-job patterns are not readable by any tenant.
-    filters = [Pattern.job_id.is_not(None)]
+    # Pattern.job_id.is_not(None) stays as containment. Ownership is the org id.
+    filters = [Pattern.job_id.is_not(None), Pattern.org_id.is_not(None)]
     if user_org_ids is not None:
         scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
+        filters.append(Pattern.org_id.in_(user_org_ids))
         filters.append(Pattern.job_id.in_(scoped_jobs))
 
     count_query = select(func.count(Pattern.id))
@@ -411,7 +413,8 @@ async def generate_patterns_for_recent_creatives(
         
         # Persist only patterns tied to a job the caller already proved they own.
         # A missing job id used to write a globally readable null-job row.
-        if job_id:
+        # Organization id is required; rows that cannot be assigned are not written.
+        if job_id and getattr(job, "org_id", None):
             for p_schema in patterns:
                 new_pattern = Pattern(
                     id=p_schema.id,
@@ -419,7 +422,8 @@ async def generate_patterns_for_recent_creatives(
                     family=p_schema.family,
                     prevalence=p_schema.prevalence,
                     lift_index=p_schema.lift_index,
-                    job_id=job_id
+                    job_id=job_id,
+                    org_id=job.org_id,
                 )
                 db.add(new_pattern)
         

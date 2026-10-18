@@ -18,6 +18,7 @@ import datetime
 import os
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -262,7 +263,30 @@ async def test_f09_provider_outage_raises_honest_503_without_charging():
             if "organizations" in q_str:
                 return MockResult(item=org)
             elif "plans" in q_str:
-                return MockResult(item=Plan(id="plan_test", type="paid"))
+                return MockResult(item=Plan(
+                    id="plan_test",
+                    type="paid",
+                    name="Paid",
+                    feature_flags={
+                        "discover": True,
+                        "intelligence": True,
+                        "create": True,
+                        "swipe_files": True,
+                        "scout": False,
+                        "leadgen": False,
+                        "monitors": False,
+                    },
+                ))
+            elif "organization_access_grants" in q_str:
+                return MockResult(item=SimpleNamespace(
+                    org_id=org.id,
+                    plan_id="plan_test",
+                    feature_flags={"intelligence": True, "discover": True, "create": True, "swipe_files": True},
+                    revoked_at=None,
+                    expires_at=None,
+                    granted_at=now,
+                    granted_by_user_id=user.id,
+                ))
             elif "scrape_jobs" in q_str:
                 return MockResult(item=org.id)
             elif "creatives.id in" in q_str or "select creatives.id from creatives" in q_str:
@@ -350,6 +374,15 @@ async def test_f11_f55_inflight_concurrency_and_per_plan_quotas():
             self._in_flight = in_flight
 
         async def execute(self, q):
+            if "organization_access_grants" in str(q).lower():
+                return MockResult(item=SimpleNamespace(
+                    revoked_at=None,
+                    expires_at=None,
+                    granted_at=now,
+                    granted_by_user_id=user.id,
+                    feature_flags={"create": True, "discover": True},
+                    plan_id=plan_starter.id,
+                ))
             return MockResult(item=plan_starter)
 
         async def scalar(self, q):

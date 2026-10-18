@@ -12,8 +12,17 @@ class Pattern(Base):
     # the request mentions job_id but the contract uses pattern globally with a family/label, 
     # we'll include job_id to tie it to a run if needed
     job_id = Column(String, ForeignKey("scrape_jobs.id"), nullable=True)
-    
+    # Direct tenant owner. Nullable only so a quarantine backfill can run;
+    # writers must set it, and readers require an exact match.
+    org_id = Column(String, ForeignKey("organizations.id"), nullable=True, index=True)
+
     label = Column(String, nullable=False)
     family = Column(String, nullable=False)
     prevalence = Column(Float, nullable=False, default=0.0)
     lift_index = Column(Float, nullable=False, default=1.0)
+
+
+# Register the quarantine table on Base.metadata for Alembic.
+from app.models.pattern_quarantine import PatternQuarantine as _PatternQuarantine
+
+_REGISTERED_PATTERN_TABLES = (_PatternQuarantine,)

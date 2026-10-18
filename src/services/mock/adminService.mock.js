@@ -283,6 +283,26 @@ const adminService = {
     ]
   },
 
+  async listAccessRequests() {
+    return []
+  },
+
+  async approveAccessRequest() {
+    throw new Error("Access approval requires the API data source.")
+  },
+
+  async rejectAccessRequest() {
+    throw new Error("Access approval requires the API data source.")
+  },
+
+  async grantOrganizationAccess() {
+    throw new Error("Access approval requires the API data source.")
+  },
+
+  async revokeOrganizationAccess() {
+    throw new Error("Access approval requires the API data source.")
+  },
+
   async impersonateUser(userId) {
     await delay(150)
     return { access_token: "mock-impersonated-token", token_type: "bearer", user_id: userId, email: "impersonated@example.com", role: "customer" }

@@ -147,6 +147,38 @@ const adminService = {
     })
   },
 
+  listAccessRequests(status) {
+    return request("/admin/access-requests", { params: status ? { status } : undefined })
+  },
+
+  approveAccessRequest(requestId, body) {
+    return request(`/admin/access-requests/${requestId}/approve`, {
+      method: "POST",
+      body,
+    })
+  },
+
+  rejectAccessRequest(requestId, note) {
+    return request(`/admin/access-requests/${requestId}/reject`, {
+      method: "POST",
+      body: { note },
+    })
+  },
+
+  grantOrganizationAccess(orgId, body) {
+    return request(`/admin/organizations/${orgId}/access-grant`, {
+      method: "POST",
+      body,
+    })
+  },
+
+  revokeOrganizationAccess(orgId, note) {
+    return request(`/admin/organizations/${orgId}/access-revoke`, {
+      method: "POST",
+      body: { note },
+    })
+  },
+
   updateSupportTicketStatus(ticketId, status) {
     return request(`/admin/support/tickets/${ticketId}/status`, {
       method: "PATCH",

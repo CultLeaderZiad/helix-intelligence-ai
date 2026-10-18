@@ -82,7 +82,8 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
 
     # Administrator Full Privilege Override
     credit_balance = round(float(getattr(org, "credit_balance", 25.0) or 0.0), 2) if org else 25.0
-    if user.role == "admin":
+    platform_admin = billing_service.is_platform_admin(user)
+    if platform_admin:
         effective_flags = {
             "discover": True,
             "intelligence": True,
@@ -91,6 +92,9 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
             "swipe_files": True,
             "team_accounts": True,
             "public_api": True,
+            "scout": True,
+            "leadgen": True,
+            "monitors": True,
             "ai_insights": True,
             "create_media": True,
             "advanced_scoring": True,
@@ -101,6 +105,16 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         daily_limit = None
         daily_remaining = 999999.0
         credit_balance = max(credit_balance, 999999.0)
+
+    access_status = "approved" if platform_admin else "pending"
+    if org and access_status != "approved":
+        try:
+            access_status = (await billing_service.access_status_for_org(db, org.id))["status"]
+        except Exception as access_err:
+            logger.warning("Access status failed for user %s: %s", user.id, access_err)
+            access_status = "pending"
+    if access_status != "approved":
+        effective_flags = {key: False for key in effective_flags}
 
     display_name = getattr(user, "full_name", None) or (user.email.split("@")[0] if user.email else "user")
 
@@ -126,6 +140,10 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         trial_ends_at=trial_summary.get("trial_ends_at"),
         requires_plan=trial_summary.get("requires_plan", False),
         plan_id=(org.plan_id if org else None) or "plan_trial_default",
+        org_id=org.id if org else None,
+        org_name=org.name if org else None,
+        access_status=access_status,
+        is_platform_admin=platform_admin,
         has_completed_onboarding=getattr(user, "has_completed_onboarding", False)
     )
 

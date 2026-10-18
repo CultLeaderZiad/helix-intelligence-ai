@@ -32,6 +32,24 @@ const accountService = {
     return request("/account/billing")
   },
 
+  getAccess() {
+    return request("/account/access")
+  },
+
+  createAccessRequest(features, note, orgId) {
+    return request("/account/access-requests", {
+      method: "POST",
+      body: { features, note, org_id: orgId || undefined },
+    })
+  },
+
+  selectWorkspace(orgId) {
+    return request("/account/workspace", {
+      method: "POST",
+      body: { org_id: orgId },
+    })
+  },
+
   listApiKeys() {
     return request("/account/api-keys")
   },

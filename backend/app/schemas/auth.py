@@ -79,6 +79,10 @@ class SessionResponse(BaseModel):
     trial_ends_at: Optional[str] = None
     requires_plan: Optional[bool] = False
     plan_id: Optional[str] = None
+    org_id: Optional[str] = None
+    org_name: Optional[str] = None
+    access_status: Optional[str] = None
+    is_platform_admin: bool = False
     has_completed_onboarding: bool = False
 
 

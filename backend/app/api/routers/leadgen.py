@@ -25,7 +25,7 @@ from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 from app.models.leadgen import LeadGenJob, LeadGenLead, LeadGenWorkerHeartbeat
 from app.schemas.leadgen import CreateLeadGenJobRequest, LeadGenJobEnvelope
@@ -38,6 +38,7 @@ from app.services.billing_service import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+_lead_access = [Depends(require_feature("leadgen"))]
 
 RECIPES_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "leadgen_recipes"
 STAGES_TOTAL = 9
@@ -265,7 +266,7 @@ def _lead_to_dict(l: LeadGenLead) -> dict:
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@router.post("/jobs")
+@router.post("/jobs", dependencies=_lead_access)
 async def create_leadgen_job(
     req: CreateLeadGenJobRequest,
     db: AsyncSession = Depends(get_db),
@@ -370,12 +371,11 @@ async def create_leadgen_job(
         credit_budget=brief.credit_budget,
     )
     db.add(job)
-    await db.commit()
-    await db.refresh(job)
+    await db.flush()
 
-    # Atomic credit charge with idempotency recording (F27, F10)
+    # Credit reservation commits in the same transaction as the job.
     if not is_admin:
-        await charge(
+        usage = await charge(
             db=db,
             org=org,
             user_id=current_user.id,
@@ -388,6 +388,16 @@ async def create_leadgen_job(
             metadata={"brief": brief.model_dump(), "seeds_count": len(normalized["urls"])},
             idempotency_key=key
         )
+        if usage.job_id and usage.job_id != job.id:
+            await db.rollback()
+            existing_job = (
+                await db.execute(select(LeadGenJob).where(LeadGenJob.id == usage.job_id))
+            ).scalar_one_or_none()
+            if existing_job:
+                return _job_envelope(existing_job)
+    else:
+        await db.commit()
+    await db.refresh(job)
 
     # --- Enqueue: inline fallback (dev) or leave queued for the Docker worker ---
     if settings.SCRAPLING_INLINE_WORKER and not settings.SCRAPLING_WORKER_ENABLED:
@@ -398,7 +408,7 @@ async def create_leadgen_job(
     return _job_envelope(job)
 
 
-@router.get("/jobs/{job_id}", response_model=LeadGenJobEnvelope)
+@router.get("/jobs/{job_id}", response_model=LeadGenJobEnvelope, dependencies=_lead_access)
 async def get_leadgen_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),
@@ -408,7 +418,7 @@ async def get_leadgen_job(
     return _job_envelope(job)
 
 
-@router.get("/jobs/{job_id}/leads")
+@router.get("/jobs/{job_id}/leads", dependencies=_lead_access)
 async def list_leadgen_leads(
     job_id: str,
     db: AsyncSession = Depends(get_db),
@@ -424,7 +434,7 @@ async def list_leadgen_leads(
     return {"items": [_lead_to_dict(l) for l in leads], "total": len(leads)}
 
 
-@router.get("/jobs/{job_id}/leads/{lead_id}")
+@router.get("/jobs/{job_id}/leads/{lead_id}", dependencies=_lead_access)
 async def get_leadgen_lead(
     job_id: str,
     lead_id: str,
@@ -438,7 +448,7 @@ async def get_leadgen_lead(
     if not lead:
         raise HTTPException(status_code=404, detail="Lead not found")
     return _lead_to_dict(lead)
-@router.post("/jobs/{job_id}/pause")
+@router.post("/jobs/{job_id}/pause", dependencies=_lead_access)
 async def pause_leadgen_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),
@@ -454,7 +464,7 @@ async def pause_leadgen_job(
     return _job_envelope(job)
 
 
-@router.post("/jobs/{job_id}/resume")
+@router.post("/jobs/{job_id}/resume", dependencies=_lead_access)
 async def resume_leadgen_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),
@@ -529,7 +539,7 @@ def sanitize_csv_cell(val: object) -> object:
     return val
 
 
-@router.get("/jobs/{job_id}/export.csv")
+@router.get("/jobs/{job_id}/export.csv", dependencies=_lead_access)
 async def export_leadgen_csv(
     job_id: str,
     db: AsyncSession = Depends(get_db),
@@ -554,7 +564,7 @@ async def export_leadgen_csv(
     )
 
 
-@router.get("/jobs/{job_id}/export.jsonl")
+@router.get("/jobs/{job_id}/export.jsonl", dependencies=_lead_access)
 async def export_leadgen_jsonl(
     job_id: str,
     db: AsyncSession = Depends(get_db),
@@ -586,7 +596,7 @@ def _load_recipes() -> list:
     return recipes
 
 
-@router.get("/recipes")
+@router.get("/recipes", dependencies=_lead_access)
 async def list_recipes(current_user: User = Depends(get_current_user)):
     items = _load_recipes()
     return {"items": items, "total": len(items)}

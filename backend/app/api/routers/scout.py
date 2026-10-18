@@ -9,7 +9,7 @@ from sqlalchemy import select, desc
 
 from datetime import datetime, timezone
 from app.core.runtime import BOOT_ID
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 from app.models.scout import ScoutJob, ScoutLead, ScoutMapsJob, ScoutMapsLead
 from app.services.billing_service import (
@@ -22,7 +22,7 @@ from app.services.scout_service import run_scout_job_worker
 from app.services.scout_parse import parse_input_targets
 from app.services.maps_scout_service import run_maps_scout_worker
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_feature("scout"))])
 
 
 def sanitize_csv_cell(val: object) -> object:
@@ -137,17 +137,34 @@ async def create_scout_job(
         logs=[f"> job queued with {len(targets)} targets (category: {req.target_category or 'general'})"],
     )
     db.add(job)
-    await db.commit()
-    await db.refresh(job)
+    await db.flush()
 
-    # Launch in background
+    # Launch in background after the job and the credit reservation commit together.
     if not is_admin:
-        await charge(
+        usage = await charge(
             db=db, org=org, user_id=current_user.id, amount=credit_cost,
             provider="scout_social", operation="scout_job_start", units=1.0,
             cost_usd=0.0, job_id=job.id, metadata={"targets": target_count},
             idempotency_key=key,
         )
+        if usage.job_id and usage.job_id != job.id:
+            await db.rollback()
+            existing_job = (
+                await db.execute(select(ScoutJob).where(ScoutJob.id == usage.job_id))
+            ).scalar_one_or_none()
+            if existing_job:
+                return {
+                    "job_id": existing_job.id,
+                    "status": existing_job.status,
+                    "stage": existing_job.stage,
+                    "stage_label": existing_job.stage_label,
+                    "credits_used": existing_job.credits_used,
+                    "created_at": existing_job.created_at.isoformat() if existing_job.created_at else None,
+                    "idempotent_replay": True,
+                }
+    else:
+        await db.commit()
+    await db.refresh(job)
 
     background_tasks.add_task(run_scout_job_worker, job.id)
 
@@ -458,18 +475,35 @@ async def create_maps_job(
         logs=[f"> maps job queued: '{req.keyword}' in '{req.city}' (depth={depth})"],
     )
     db.add(job)
-    await db.commit()
-    await db.refresh(job)
+    await db.flush()
 
-    # Launch background worker
+    # Launch background worker after the job and the credit reservation commit together.
     if not is_admin:
-        await charge(
+        usage = await charge(
             db=db, org=org, user_id=current_user.id, amount=credit_cost,
             provider="scout_maps", operation="scout_maps_job_start", units=1.0,
             cost_usd=0.0, job_id=job.id,
             metadata={"keyword": req.keyword, "city": req.city, "depth": depth},
             idempotency_key=key,
         )
+        if usage.job_id and usage.job_id != job.id:
+            await db.rollback()
+            existing_job = (
+                await db.execute(select(ScoutMapsJob).where(ScoutMapsJob.id == usage.job_id))
+            ).scalar_one_or_none()
+            if existing_job:
+                return {
+                    "job_id": existing_job.id,
+                    "status": existing_job.status,
+                    "keyword": existing_job.keyword,
+                    "city": existing_job.city,
+                    "credits_used": existing_job.credits_used,
+                    "created_at": existing_job.created_at.isoformat() if existing_job.created_at else None,
+                    "idempotent_replay": True,
+                }
+    else:
+        await db.commit()
+    await db.refresh(job)
 
     background_tasks.add_task(run_maps_scout_worker, job.id)
 
@@ -750,6 +784,8 @@ async def update_scout_settings(
     org = await get_or_create_default_org(db, current_user)
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
+    from app.core.tenancy import require_org_manager
+    await require_org_manager(db, org, current_user)
 
     from app.services.security_service import encrypt_secret
     flags = dict(org.custom_feature_flags or {})

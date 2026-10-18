@@ -173,9 +173,19 @@ async def get_dashboard_metrics(db: AsyncSession, user: Optional[User] = None) -
             "cross_brand": []
         }
 
+    from app.core.tenancy import get_user_org_ids
+    org_ids = await get_user_org_ids(db, user) if user is not None else []
+
+    def _tenant(stmt):
+        if org_ids is None:
+            return stmt
+        if not org_ids:
+            return stmt.where(ScrapeJob.id.is_(None))
+        return stmt.where(ScrapeJob.org_id.in_(org_ids))
+
     # 1. Top Performers: Creatives sorted by composite score
     # Join with ScrapeJob to retrieve real brand query, filter out empty/template rows
-    top_query = (
+    top_query = _tenant(
         select(Creative, CreativeScore, ScrapeJob.query)
         .outerjoin(CreativeScore, Creative.id == CreativeScore.creative_id)
         .outerjoin(ScrapeJob, Creative.job_id == ScrapeJob.id)
@@ -205,7 +215,7 @@ async def get_dashboard_metrics(db: AsyncSession, user: Optional[User] = None) -
     top_performers = _map_creatives(distinct_top)
 
     # 2. Reach/Activity Leaderboard: Sorted by impressions_est or days_active
-    reach_query = (
+    reach_query = _tenant(
         select(Creative, CreativeScore, ScrapeJob.query)
         .outerjoin(CreativeScore, Creative.id == CreativeScore.creative_id)
         .outerjoin(ScrapeJob, Creative.job_id == ScrapeJob.id)
@@ -234,7 +244,7 @@ async def get_dashboard_metrics(db: AsyncSession, user: Optional[User] = None) -
     reach_leaderboard = _map_creatives(distinct_reach)
 
     # 3. Timeline View: Jobs/Creatives over time
-    timeline_query = (
+    timeline_query = _tenant(
         select(
             func.date(ScrapeJob.created_at).label("date"),
             func.count(Creative.id).label("creative_count")
@@ -249,7 +259,7 @@ async def get_dashboard_metrics(db: AsyncSession, user: Optional[User] = None) -
     timeline = [{"date": str(row.date), "count": row.creative_count} for row in timeline_rows if row.date]
 
     # 4. Cross-Brand Comparison: Aggregated metrics per REAL resolved brand
-    brand_data_query = (
+    brand_data_query = _tenant(
         select(
             Creative.id,
             Creative.brand_id,

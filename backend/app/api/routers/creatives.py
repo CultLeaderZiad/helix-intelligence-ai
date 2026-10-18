@@ -5,12 +5,12 @@ from app.schemas.creative import Creative, Brand
 from app.schemas.analysis import Pattern, Insight
 from app.schemas.common import Paginated
 from app.services import creative_service, analysis_service
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 
-router = APIRouter()
-brands_router = APIRouter()
-patterns_router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_feature("intelligence"))])
+brands_router = APIRouter(dependencies=[Depends(require_feature("discover"))])
+patterns_router = APIRouter(dependencies=[Depends(require_feature("intelligence"))])
 
 @router.get("", response_model=Paginated[Creative])
 @router.get("/", response_model=Paginated[Creative])

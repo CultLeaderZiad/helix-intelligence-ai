@@ -98,22 +98,23 @@ class AIRouter:
         if getattr(user, "role", "") == "admin":
             return MultiTierAIProvider()
 
-        # 3. Check Organization Plan: Paid plans bypass trial gates and limits (F32)
-        from app.models.organization import Organization
-        from app.models.plan import Plan
+        # 3. Check the verified workspace plan, including a paid org the user was invited into.
+        from app.services.billing_service import resolve_active_org
 
         is_paid = False
         try:
-            org_res = await db.execute(select(Organization).where(Organization.owner_id == user.id))
-            org = org_res.scalar_one_or_none() if hasattr(org_res, "scalar_one_or_none") else None
+            org = await resolve_active_org(db, user)
             if org:
                 if org.plan and org.plan != "trial":
                     is_paid = True
                 elif org.plan_id:
+                    from app.models.plan import Plan
                     plan_res = await db.execute(select(Plan).where(Plan.id == org.plan_id))
                     plan = plan_res.scalar_one_or_none() if hasattr(plan_res, "scalar_one_or_none") else None
                     if plan and plan.type not in ("trial", None):
                         is_paid = True
+                if (org.status or "active") not in ("active", "quota_exhausted", "daily_limit_reached"):
+                    is_paid = False
         except Exception:
             is_paid = False
 

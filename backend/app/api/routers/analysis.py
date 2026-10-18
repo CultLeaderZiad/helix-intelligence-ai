@@ -3,12 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.analysis import Insight
 from app.schemas.common import Paginated
 from app.services import analysis_service
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 
 router = APIRouter()
-insights_router = APIRouter()
-creatives_insights_router = APIRouter()
+insights_router = APIRouter(dependencies=[Depends(require_feature("intelligence"))])
+creatives_insights_router = APIRouter(dependencies=[Depends(require_feature("intelligence"))])
 
 @creatives_insights_router.get("/{creative_id}/insights", response_model=Paginated[Insight])
 async def get_creative_insights(

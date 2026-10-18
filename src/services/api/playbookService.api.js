@@ -3,7 +3,7 @@ import { request } from "../http"
 /**
  * Shareable Creative Playbook API service.
  * Handles compiling playbooks from completed intelligence, listing user playbooks,
- * and fetching public unauthenticated playbooks for client sharing.
+ * and fetching an authenticated playbook by its public id. Anonymous reads are rejected.
  */
 const playbookService = {
   compilePlaybook(data) {
