@@ -169,7 +169,7 @@ class AIRouter:
         return MultiTierAIProvider()
 
     @staticmethod
-    async def log_usage(db: AsyncSession, user_id: str, provider_name: str, org_id: str = None, tokens: int = 0):
+    async def log_usage(db: AsyncSession, user_id: str, provider_name: str, org_id: str, tokens: int = 0):
         log = UsageLog(
             user_id=user_id,
             org_id=org_id,
@@ -186,7 +186,7 @@ class AIRouter:
         user_id: str,
         provider_name: str,
         operation: str,
-        org_id: str = None,
+        org_id: str,
         error: str = "",
     ):
         """Records a provider failure so it is visible in the admin

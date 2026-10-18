@@ -181,6 +181,24 @@ def _apply_prod_drift(database: str) -> None:
             created_at timestamptz
         )
         """,
+        # Defaults, nullability, foreign key, and duplicate key_hash index
+        # present on the unmodified production copy.
+        "ALTER TABLE api_keys ALTER COLUMN id SET DEFAULT gen_random_uuid()::varchar",
+        "ALTER TABLE api_keys ALTER COLUMN is_active SET DEFAULT true",
+        "ALTER TABLE api_keys ADD CONSTRAINT api_keys_key_hash_key UNIQUE (key_hash)",
+        "ALTER TABLE plans ALTER COLUMN type SET DEFAULT 'trial'",
+        "ALTER TABLE plans ALTER COLUMN credit_allowance SET DEFAULT 25",
+        "ALTER TABLE plans ALTER COLUMN feature_flags SET DEFAULT '{}'::jsonb",
+        "ALTER TABLE usage_logs ALTER COLUMN id SET DEFAULT gen_random_uuid()::varchar",
+        "ALTER TABLE usage_logs ALTER COLUMN org_id SET NOT NULL",
+        "ALTER TABLE usage_logs ALTER COLUMN user_id SET NOT NULL",
+        """
+        ALTER TABLE usage_logs
+        ADD CONSTRAINT usage_logs_org_id_fkey
+        FOREIGN KEY (org_id) REFERENCES organizations (id)
+        """,
+        "ALTER TABLE users ALTER COLUMN is_suspended SET DEFAULT false",
+        "ALTER TABLE users ALTER COLUMN has_completed_onboarding SET DEFAULT false",
     ]
     for statement in statements:
         _sql(database, statement)

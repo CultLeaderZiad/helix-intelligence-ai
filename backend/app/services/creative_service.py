@@ -391,7 +391,7 @@ async def generate_patterns_for_recent_creatives(
                 user_id=user.id,
                 provider_name=getattr(provider, "model", "unknown"),
                 operation="pattern_synthesis",
-                org_id=None,
+                org_id=org.id,
                 error=str(e),
             )
         except Exception:
