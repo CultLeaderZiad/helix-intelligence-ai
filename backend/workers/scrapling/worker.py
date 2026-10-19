@@ -101,10 +101,12 @@ async def _claim_next_job_async() -> str | None:
     Uses worker_session_maker (NullPool) to ensure no connection reuse across destroyed event loops (F24).
     SKIP LOCKED keeps multiple worker replicas from double-claiming."""
     from sqlalchemy import update, select
+    from app.core.tenancy import apply_worker_claim_context
     from app.db.session import worker_session_maker
     from app.models.leadgen import LeadGenJob  # noqa: F401 - registers tables
 
     async with worker_session_maker() as db:
+        await apply_worker_claim_context(db, f"claimed:{BOOT_ID}")
         job_id = (await db.execute(
             select(LeadGenJob.id)
             .where(LeadGenJob.status == "queued")
@@ -201,12 +203,12 @@ def main() -> None:
                 work_id = await claim_next_work_item(BOOT_ID)
                 if work_id:
                     logger.info("claimed work item %s", work_id)
-                    await execute_work_item(work_id)
+                    await execute_work_item(work_id, BOOT_ID)
                     continue
                 job_id = await _claim_next_job_async()
                 if job_id:
                     logger.info("claimed job %s", job_id)
-                    await run_leadgen_job(job_id)
+                    await run_leadgen_job(job_id, claimed_boot_id=BOOT_ID)
                 else:
                     await asyncio.sleep(POLL_INTERVAL_S)
             except Exception as e:

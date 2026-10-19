@@ -7,7 +7,7 @@ import datetime
 from app.db.session import async_session_maker
 from app.schemas.auth import UserCreate, UserLogin, SessionResponse, PasswordResetRequest, PasswordResetConfirm
 from app.services import auth_service, billing_service
-from app.core.deps import get_db, get_current_user, oauth2_scheme
+from app.core.deps import _bind_request_tenant, get_db, get_current_user, oauth2_scheme
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.plan import Plan
@@ -190,6 +190,7 @@ async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
         user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+        await _bind_request_tenant(db, user)
         return await build_session_response(db, user, access_token=token)
     except HTTPException:
         raise
@@ -278,6 +279,7 @@ async def reset_password(req: PasswordResetConfirm, db: AsyncSession = Depends(g
         logger.exception(f"Password reset failed: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Password reset failed")
 
+    await _bind_request_tenant(db, user)
     from app.core.security import create_access_token
     token_ver = (user.signup_metadata or {}).get("token_version", 1)
     token = create_access_token(subject=user.id, role=user.role, token_version=token_ver)

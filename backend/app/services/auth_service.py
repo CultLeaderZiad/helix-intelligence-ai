@@ -126,6 +126,12 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         logger.exception("Failed to flush new user record: %s", e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not create user account. Please try again.")
 
+    # Seed the authenticated identity before creating its first organization;
+    # the organizations policy permits only the owner_id/user_id bootstrap.
+    from app.core.tenancy import apply_tenant_context, bind_tenant
+    bind_tenant([], user.id, platform_admin=False, enforce=True)
+    await apply_tenant_context(db)
+
     # Auto-create a personal org for every new user with 25 trial credits and default trial plan
     from app.models.organization import Organization
     org_name = full_name or user_in.email.split("@")[0]
@@ -152,6 +158,8 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
         logger.exception("Failed to commit new user organization: %s", e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not initialize user workspace. Please try again.")
+    bind_tenant([org.id], user.id, platform_admin=False, enforce=True)
+    await apply_tenant_context(db)
     await db.refresh(user)   # reload all columns — caller must not access expired attrs in async context
     return user
 

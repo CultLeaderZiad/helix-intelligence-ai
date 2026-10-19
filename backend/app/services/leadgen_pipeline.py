@@ -251,9 +251,47 @@ def score_lead(lead_sources: dict, brief: dict) -> tuple:
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
-async def run_leadgen_job(job_id: str) -> None:
-    """Claim + run one LeadGenJob through the 9 stages. Idempotent: exits
-    immediately if the job is not queued/paused or another worker owns it."""
+async def run_leadgen_job(job_id: str, *, claimed_boot_id: Optional[str] = None) -> None:
+    """Bind one verified job organization, then run the LeadGen pipeline.
+
+    A standalone Scrapling worker may resolve only its explicitly claimed row;
+    request-triggered inline execution relies on the already-bound request scope.
+    """
+    from app.core.tenancy import (
+        apply_worker_claim_context,
+        tenant_scope,
+    )
+
+    async with worker_session_maker() as db:
+        if claimed_boot_id:
+            claim_owner = f"claimed:{claimed_boot_id}"
+            await apply_worker_claim_context(db, claim_owner)
+            row = (
+                await db.execute(
+                    select(LeadGenJob.org_id, LeadGenJob.user_id).where(
+                        LeadGenJob.id == job_id,
+                        LeadGenJob.status == "running",
+                        LeadGenJob.owner_boot_id == claim_owner,
+                    )
+                )
+            ).first()
+        else:
+            row = (
+                await db.execute(
+                    select(LeadGenJob.org_id, LeadGenJob.user_id).where(
+                        LeadGenJob.id == job_id
+                    )
+                )
+            ).first()
+
+    if row is None or not row.org_id:
+        return
+    with tenant_scope([row.org_id], row.user_id or "", platform_admin=False, enforce=True):
+        await _run_leadgen_job_scoped(job_id)
+
+
+async def _run_leadgen_job_scoped(job_id: str) -> None:
+    """Run one LeadGenJob through the 9 stages under its org RLS scope."""
     boot_id = uuid.uuid4().hex[:12]
     started_ts = time.monotonic()
 

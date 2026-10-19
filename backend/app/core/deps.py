@@ -14,8 +14,16 @@ from app.models.user import User
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/signin", auto_error=False)
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with async_session_maker() as session:
-        yield session
+    # Each request starts without inherited tenant scope. Authentication binds
+    # its verified organization before querying any tenant-owned rows.
+    from app.core.tenancy import bind_tenant, reset_tenant
+
+    tenant_token = bind_tenant([], "", platform_admin=False, enforce=True)
+    try:
+        async with async_session_maker() as session:
+            yield session
+    finally:
+        reset_tenant(tenant_token)
 
 
 def _parse_revoked_at(value) -> Optional[float]:
@@ -249,6 +257,11 @@ async def _bind_request_tenant(db: AsyncSession, user: User) -> None:
     from app.services.billing_service import is_platform_admin
 
     scoped = getattr(user, "_scoped_org_id", None)
+    # Organization lookup is the bootstrap query: establish the authenticated
+    # user id first so the organizations/organization_members policies can
+    # return only rows owned by or joined to this user.
+    bind_tenant([], user.id, platform_admin=False, enforce=True)
+    await apply_tenant_context(db)
     org_ids = await get_user_org_ids(db, user)
     platform_admin = is_platform_admin(user) and not scoped
     bind_tenant(org_ids, user.id, platform_admin=platform_admin, enforce=True)

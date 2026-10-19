@@ -133,11 +133,12 @@ async def test_pollinations_and_provider_resolver():
         mock_resp.content = b"fake-video-bytes"
         mock_get.return_value = mock_resp
 
-        res = await poll_prov.generate_video(
-            prompt="running athlete",
-            start_frame="https://example.com/start.png",
-            end_frame="https://example.com/end.png"
-        )
+        with patch("app.services.security_service.is_safe_public_url", return_value=True):
+            res = await poll_prov.generate_video(
+                prompt="running athlete",
+                start_frame="https://example.com/start.png",
+                end_frame="https://example.com/end.png"
+            )
         assert res["media_type"] == "video"
         called_url = mock_get.call_args[0][0]
         assert "image=https" in called_url
@@ -151,10 +152,11 @@ async def test_pollinations_and_provider_resolver():
         mock_get_img.return_value = mock_resp_img
 
         with patch.object(poll_prov, "_clean_watermark", return_value=b"cleaned-bytes"):
-            res_img = await poll_prov.generate_image(
-                prompt="portrait",
-                reference_images=["https://example.com/ref.jpg"]
-            )
+            with patch("app.services.security_service.is_safe_public_url", return_value=True):
+                res_img = await poll_prov.generate_image(
+                    prompt="portrait",
+                    reference_images=["https://example.com/ref.jpg"]
+                )
             assert res_img["media_type"] == "image"
             called_img_url = mock_get_img.call_args[0][0]
             assert "image=https" in called_img_url

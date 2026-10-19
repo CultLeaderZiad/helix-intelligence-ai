@@ -20,6 +20,7 @@ import sys
 
 PROD_STAMP = "c4d92e1f7a8b"
 BEFORE_TENANCY = "d5e8c0a1b2f3"
+RLS_DENY_REVISION = "f3d9a7c2b1e4"
 DRIFT_DB = os.environ.get("PROVE_DRIFT_DB", "helix_w2_prodlike")
 EMPTY_DB = os.environ.get("PROVE_EMPTY_DB", "helix_w2_emptyproof")
 FAIL_DB = os.environ.get("PROVE_FAIL_DB", "helix_w2_rolefail")
@@ -85,7 +86,7 @@ def _must(result: subprocess.CompletedProcess[str], label: str) -> None:
         sys.stderr.write(result.stdout)
         sys.stderr.write(result.stderr)
         raise SystemExit(f"{label} failed with exit {result.returncode}")
-    print(f"ok {label}")
+    print(f"ok {label} (exit 0)")
 
 
 def _sql(database: str, statement: str, params=None):
@@ -98,6 +99,53 @@ def _sql(database: str, statement: str, params=None):
 
 def _version(database: str) -> str:
     return _sql(database, "SELECT version_num FROM alembic_version")[0][0]
+
+
+def _assert_rls_policy_state(database: str, *, deny_by_default: bool) -> None:
+    policies = _sql(
+        database,
+        """
+        SELECT count(*),
+               count(*) FILTER (
+                   WHERE position('helix.enforce' in coalesce(qual, '') || coalesce(with_check, '')) > 0
+               )
+        FROM pg_policies
+        WHERE schemaname = 'public' AND policyname LIKE '%_tenant_isolation'
+        """,
+    )[0]
+    rls_counts = _sql(
+        database,
+        """
+        SELECT count(*) FILTER (WHERE c.relrowsecurity),
+               count(*) FILTER (WHERE c.relforcerowsecurity)
+        FROM pg_policies p
+        JOIN pg_class c ON c.relname = p.tablename
+        JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = p.schemaname
+        WHERE p.schemaname = 'public' AND p.policyname LIKE '%_tenant_isolation'
+        """,
+    )[0]
+    configured_roles = int(
+        _sql(
+            database,
+            """
+            SELECT count(*) FROM pg_roles
+            WHERE rolname IN ('helix_app', 'helix_worker')
+              AND coalesce(rolconfig, ARRAY[]::text[]) @> ARRAY['helix.enforce=1']::text[]
+            """,
+        )[0][0]
+    )
+    if int(policies[0]) != 34 or int(rls_counts[0]) != 34:
+        raise SystemExit(f"expected 34 enabled tenant policies, found policies={policies}, rls={rls_counts}")
+    if deny_by_default:
+        if int(policies[1]) != 0 or int(rls_counts[1]) != 0 or configured_roles != 2:
+            raise SystemExit(
+                f"deny-by-default RLS state mismatch: policies={policies}, rls={rls_counts}, role_defaults={configured_roles}"
+            )
+    elif int(policies[1]) != 34 or int(rls_counts[1]) != 34 or configured_roles != 0:
+        raise SystemExit(
+            f"legacy RLS state was not restored: policies={policies}, rls={rls_counts}, role_defaults={configured_roles}"
+        )
+    print(f"ok {'deny-by-default' if deny_by_default else 'legacy'} RLS policies and role settings")
 
 
 def _scalar(database: str, statement: str):
@@ -258,9 +306,16 @@ def _assert_preserved(database: str) -> None:
 
 def _cycle(database: str, label: str) -> None:
     _must(_alembic("upgrade", "head", database=database), f"{label} upgrade head")
+    if _version(database) != RLS_DENY_REVISION:
+        raise SystemExit(f"{label} did not reach the RLS deny-by-default revision")
+    _assert_rls_policy_state(database, deny_by_default=True)
     _must(_alembic("check", database=database), f"{label} alembic check")
     _must(_alembic("downgrade", "-1", database=database), f"{label} downgrade -1")
+    if _version(database) != "e8c3b5d7a2f4":
+        raise SystemExit(f"{label} downgrade -1 did not return to e8c3b5d7a2f4")
+    _assert_rls_policy_state(database, deny_by_default=False)
     _must(_alembic("upgrade", "head", database=database), f"{label} upgrade head again")
+    _assert_rls_policy_state(database, deny_by_default=True)
     _must(_alembic("check", database=database), f"{label} alembic check again")
 
 

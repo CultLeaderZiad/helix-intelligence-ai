@@ -31,6 +31,11 @@ from sqlalchemy import text
 
 from app.core.config import settings
 from app.core.runtime import BOOT_ID
+from app.core.tenancy import (
+    apply_maintenance_context,
+    apply_monitor_maintenance_lookup_context,
+    tenant_scope,
+)
 from app.db.session import async_session_maker
 from app.services.billing_service import DISCOVER_SEARCH_CREDIT_COST, refund
 
@@ -92,6 +97,7 @@ async def _sweep_table(
     params = {"boot": BOOT_ID, "cutoff": cutoff}
 
     async with async_session_maker() as db:
+        await apply_maintenance_context(db, BOOT_ID)
         lock_suffix = " FOR UPDATE SKIP LOCKED" if db.bind and db.bind.dialect.name == "postgresql" else ""
         rows = (
             await db.execute(
@@ -127,6 +133,7 @@ async def _sweep_table(
 async def _sweep_unrefunded_failed_jobs() -> List[Dict[str, Any]]:
     """Sweep scrape jobs that failed but have not had their credits refunded yet (F08)."""
     async with async_session_maker() as db:
+        await apply_maintenance_context(db, BOOT_ID)
         lock_suffix = " FOR UPDATE OF sj SKIP LOCKED" if db.bind and db.bind.dialect.name == "postgresql" else ""
         query = text(f"""
             SELECT sj.id, sj.org_id
@@ -158,6 +165,7 @@ async def _sweep_monitor_runs() -> int:
     hard_cutoff = now - datetime.timedelta(seconds=settings.MONITOR_RUN_TIMEOUT_S)
 
     async with async_session_maker() as db:
+        await apply_maintenance_context(db, BOOT_ID)
         result = await db.execute(
             text(
                 """
@@ -167,7 +175,7 @@ async def _sweep_monitor_runs() -> int:
                     skipped_reason = 'service_restart',
                     error = 'Interrupted by a service restart. The next scheduled run will pick up where this left off.'
                 FROM (
-                    SELECT mr.id
+                    SELECT mr.id, mr.monitor_id
                     FROM monitor_runs mr
                     LEFT JOIN scrape_jobs sj ON sj.id = mr.job_id
                     WHERE mr.status = 'running'
@@ -183,18 +191,29 @@ async def _sweep_monitor_runs() -> int:
             ),
             {"stale_cutoff": stale_cutoff, "hard_cutoff": hard_cutoff},
         )
-        monitor_ids = [row[0] for row in result.fetchall()]
+        monitor_targets = [row[0] for row in result.fetchall()]
         await db.commit()
 
-    if monitor_ids:
+    if monitor_targets:
         from app.services.monitor_service import notify_run_interrupted
 
-        for monitor_id in dict.fromkeys(monitor_ids):
+        for monitor_id in dict.fromkeys(monitor_targets):
             try:
-                await notify_run_interrupted(monitor_id)
+                async with async_session_maker() as db:
+                    await apply_monitor_maintenance_lookup_context(db, monitor_id)
+                    org_id = (
+                        await db.execute(
+                            text("SELECT org_id FROM monitors WHERE id = :monitor_id"),
+                            {"monitor_id": monitor_id},
+                        )
+                    ).scalar_one_or_none()
+                if not org_id:
+                    continue
+                with tenant_scope([org_id], "", platform_admin=False, enforce=True):
+                    await notify_run_interrupted(monitor_id)
             except Exception as exc:
                 logger.error("Could not notify owner of interrupted monitor %s: %s", monitor_id, exc)
-    return len(monitor_ids)
+    return len(monitor_targets)
 
 
 async def reconcile_once() -> Dict[str, int]:
@@ -229,14 +248,15 @@ async def reconcile_once() -> Dict[str, int]:
 
     for job_id, row in all_to_refund.items():
         try:
-            async with async_session_maker() as db:
-                await refund(
-                    db,
-                    row["org_id"],
-                    DISCOVER_SEARCH_CREDIT_COST,
-                    "service_restart_sweep",
-                    job_id,
-                )
+            with tenant_scope([row["org_id"]], "", platform_admin=False, enforce=True):
+                async with async_session_maker() as db:
+                    await refund(
+                        db,
+                        row["org_id"],
+                        DISCOVER_SEARCH_CREDIT_COST,
+                        "service_restart_sweep",
+                        job_id,
+                    )
             swept["refunded"] += 1
         except Exception as e:
             logger.error("Refund failed for swept job %s: %s", job_id, e)
@@ -265,8 +285,9 @@ async def reconcile_once() -> Dict[str, int]:
             credits = float(r.get("credits_used") or 0.0)
             if credits > 0:
                 try:
-                    async with async_session_maker() as db:
-                        await refund(db, r["org_id"], credits, "scout_service_restart_sweep", r["id"])
+                    with tenant_scope([r["org_id"]], "", platform_admin=False, enforce=True):
+                        async with async_session_maker() as db:
+                            await refund(db, r["org_id"], credits, "scout_service_restart_sweep", r["id"])
                     swept["refunded"] += 1
                 except Exception as e:
                     logger.error("Refund failed for swept scout job %s: %s", r["id"], e)
@@ -289,8 +310,9 @@ async def reconcile_once() -> Dict[str, int]:
             credits = float(r.get("credits_used") or 0.0)
             if credits > 0:
                 try:
-                    async with async_session_maker() as db:
-                        await refund(db, r["org_id"], credits, "maps_service_restart_sweep", r["id"])
+                    with tenant_scope([r["org_id"]], "", platform_admin=False, enforce=True):
+                        async with async_session_maker() as db:
+                            await refund(db, r["org_id"], credits, "maps_service_restart_sweep", r["id"])
                     swept["refunded"] += 1
                 except Exception as e:
                     logger.error("Refund failed for swept maps job %s: %s", r["id"], e)
@@ -313,8 +335,9 @@ async def reconcile_once() -> Dict[str, int]:
             credits = float(r.get("credits_used") or 0.0)
             if credits > 0:
                 try:
-                    async with async_session_maker() as db:
-                        await refund(db, r["org_id"], credits, "leadgen_service_restart_sweep", r["id"])
+                    with tenant_scope([r["org_id"]], "", platform_admin=False, enforce=True):
+                        async with async_session_maker() as db:
+                            await refund(db, r["org_id"], credits, "leadgen_service_restart_sweep", r["id"])
                     swept["refunded"] += 1
                 except Exception as e:
                     logger.error("Refund failed for swept leadgen job %s: %s", r["id"], e)

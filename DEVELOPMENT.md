@@ -450,10 +450,14 @@ python backend/tests/test_gemini_suite.py
 
 ## Row-level security roles
 
-Policies are forced on tenant tables. A superuser or a role with `BYPASSRLS`
-(the Neon owner, often `neondb_owner`) does not go through them. Production
-refuses to boot when `current_user` is one of those roles. Other environments
-log a warning and continue.
+Row-level security stays enabled on tenant tables. Restricted API/worker roles
+are denied by default when no organization context is set; the only broad
+application bypass is the existing `helix.platform_admin` setting. The forward
+RLS correction removes `FORCE ROW LEVEL SECURITY` so a table owner/migration
+role retains normal owner access. Superusers and roles with `BYPASSRLS` (the
+Neon owner, often `neondb_owner`) also bypass policies. Production refuses to
+boot when `current_user` is one of those roles; other environments log a
+warning and continue.
 
 `helix_app` and `helix_worker` are `NOLOGIN` group roles. Migration
 `e7c1a9b4d2f0` creates them only after its schema statements succeed.
@@ -468,7 +472,14 @@ CREATE ROLE helix_api_login LOGIN NOSUPERUSER NOBYPASSRLS INHERIT;
 CREATE ROLE helix_worker_login LOGIN NOSUPERUSER NOBYPASSRLS INHERIT;
 GRANT helix_app TO helix_api_login;
 GRANT helix_worker TO helix_worker_login;
+ALTER ROLE helix_api_login SET helix.enforce = '1';
+ALTER ROLE helix_worker_login SET helix.enforce = '1';
 ```
+
+Role settings are not inherited from group roles, so configure both login roles
+as well as the `helix_app` and `helix_worker` defaults applied by Alembic. The
+policy itself denies access without matching organization context; this setting
+is only defense in depth.
 
 Then set each password out of band (`ALTER ROLE ... PASSWORD` from a secret
 store) and point `DATABASE_URL` at that login. The API uses

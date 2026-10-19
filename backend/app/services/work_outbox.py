@@ -17,6 +17,11 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import classified_environment, settings
+from app.core.tenancy import (
+    apply_maintenance_context,
+    apply_worker_claim_context,
+    tenant_scope,
+)
 from app.db.session import async_session_maker, worker_session_maker
 from app.models.work_item import WorkItem
 from app.services.ai.call_policy import RetryableProviderError
@@ -106,6 +111,7 @@ async def claim_next_work_item(owner: str) -> Optional[str]:
     """Lock one due row, then commit the lease before any provider call."""
     now = _now()
     async with worker_session_maker() as db:
+        await apply_worker_claim_context(db, owner)
         item = (
             await db.execute(
                 select(WorkItem)
@@ -169,6 +175,7 @@ async def requeue_expired_leases() -> int:
     now = _now()
     moved = 0
     async with async_session_maker() as db:
+        await apply_maintenance_context(db, "work-lease-reaper")
         rows = (
             await db.execute(
                 select(WorkItem).where(
@@ -242,13 +249,24 @@ async def retries_remaining(job_id: str) -> bool:
         return int(item.attempt_count or 0) < int(item.max_attempts or 1)
 
 
-async def execute_work_item(item_id: str) -> None:
+async def execute_work_item(item_id: str, owner: str) -> None:
     async with worker_session_maker() as db:
-        item = await db.get(WorkItem, item_id)
-        if item is None or item.status != LEASED:
+        await apply_worker_claim_context(db, owner)
+        item = (
+            await db.execute(
+                select(WorkItem).where(
+                    WorkItem.id == item_id,
+                    WorkItem.status == LEASED,
+                    WorkItem.lease_owner == owner,
+                )
+            )
+        ).scalars().first()
+        if item is None:
             return
         if item.cancel_requested and item.provider_started_at is None:
             item.status = CANCELED
+            item.lease_owner = None
+            item.lease_until = None
             await db.commit()
             return
         kind = item.kind
@@ -256,16 +274,20 @@ async def execute_work_item(item_id: str) -> None:
         payload = dict(item.payload or {})
         org_id = item.org_id
         user_id = item.user_id
-    try:
-        await _dispatch(kind, job_id, payload, org_id, user_id, item_id)
-    except RetryableProviderError as exc:
-        await defer_or_dead(item_id, str(exc))
-        return
-    except Exception as exc:
-        logger.exception("work item %s failed", item_id)
-        await defer_or_dead(item_id, str(exc))
-        return
-    await finish_work_item(item_id, status=SUCCEEDED)
+
+    # The global claim policy grants access to the queue row only. All work
+    # execution and follow-up status writes run under the verified row org.
+    with tenant_scope([org_id], user_id or "", platform_admin=False, enforce=True):
+        try:
+            await _dispatch(kind, job_id, payload, org_id, user_id, item_id)
+        except RetryableProviderError as exc:
+            await defer_or_dead(item_id, str(exc))
+            return
+        except Exception as exc:
+            logger.exception("work item %s failed", item_id)
+            await defer_or_dead(item_id, str(exc))
+            return
+        await finish_work_item(item_id, status=SUCCEEDED)
 
 
 async def _dispatch(kind, job_id, payload, org_id, user_id, item_id) -> None:

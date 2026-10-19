@@ -12,6 +12,7 @@ Rules:
 Organization ids come from the authenticated user and membership rows.
 Callers must not trust an org id supplied only by a header or body.
 """
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import List, Optional
@@ -72,6 +73,67 @@ def bind_tenant(
 
 def reset_tenant(token) -> None:
     _tenant.reset(token)
+
+
+@contextmanager
+def tenant_scope(
+    org_ids: Optional[List[str]],
+    user_id: str = "",
+    *,
+    platform_admin: bool = False,
+    enforce: bool = True,
+):
+    """Bind verified tenant scope for detached work and reset it on exit."""
+    token = bind_tenant(
+        org_ids,
+        user_id,
+        platform_admin=platform_admin,
+        enforce=enforce,
+    )
+    try:
+        yield current_tenant()
+    finally:
+        reset_tenant(token)
+
+
+async def apply_worker_claim_context(db: AsyncSession, worker_id: str) -> None:
+    """Enable the table-specific worker claim policies for this transaction."""
+    await db.execute(
+        text("SELECT set_config('helix.worker_claim', '1', true)")
+    )
+    await db.execute(
+        text("SELECT set_config('helix.worker_id', :worker_id, true)"),
+        {"worker_id": worker_id},
+    )
+
+
+async def apply_maintenance_context(db: AsyncSession, boot_id: str) -> None:
+    """Enable only the stale-job/expired-lease maintenance RLS policies."""
+    await db.execute(
+        text("SELECT set_config('helix.maintenance', '1', true)")
+    )
+    await db.execute(
+        text("SELECT set_config('helix.maintenance_boot', :boot_id, true)"),
+        {"boot_id": boot_id},
+    )
+
+
+async def apply_monitor_claim_context(db: AsyncSession) -> None:
+    """Enable the due-monitor-only scheduler policies for this transaction."""
+    await db.execute(
+        text("SELECT set_config('helix.monitor_claim', '1', true)")
+    )
+
+
+async def apply_monitor_maintenance_lookup_context(db: AsyncSession, monitor_id: str) -> None:
+    """Allow maintenance to look up exactly one monitor row by a trusted id."""
+    await db.execute(
+        text("SELECT set_config('helix.maintenance', '1', true)")
+    )
+    await db.execute(
+        text("SELECT set_config('helix.maintenance_monitor_id', :monitor_id, true)"),
+        {"monitor_id": monitor_id},
+    )
 
 
 async def apply_tenant_context(db: AsyncSession, ctx: Optional[TenantContext] = None) -> None:

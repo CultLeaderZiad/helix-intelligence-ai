@@ -432,7 +432,12 @@ async def test_f61_api_key_entitlement_and_scoping():
             if "access_requests" in stmt_str:
                 return Res(None)
             if "api_keys" in stmt_str:
-                return Res((api_key_record, user, self.org))
+                api_key_record.org_id = self.org.id
+                return Res(api_key_record)
+            if "users" in stmt_str:
+                return Res(user)
+            if "organizations" in stmt_str:
+                return Res(self.org)
             if "plans" in stmt_str:
                 return Res(self.plan)
             return Res(None)

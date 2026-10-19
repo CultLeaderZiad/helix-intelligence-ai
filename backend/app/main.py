@@ -7,6 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from app.core.config import settings, cors_origins
+from app.core.runtime import BOOT_ID
+from app.core.tenancy import apply_maintenance_context, tenant_scope
 from app.db.session import engine, async_session_maker
 from app.db.base import Base
 from app.services.billing_service import refund, DISCOVER_SEARCH_CREDIT_COST
@@ -46,6 +48,7 @@ async def lifespan(app: FastAPI):
     stuck_discover_jobs = []
     try:
         async with engine.begin() as conn:
+            await apply_maintenance_context(conn, BOOT_ID)
             try:
                 reconcile_cutoff = datetime.datetime.utcnow() - datetime.timedelta(minutes=10)
                 reclaimable = """
@@ -126,14 +129,15 @@ async def lifespan(app: FastAPI):
     # locked session (the same primitive the discover pipeline uses).
     for row in stuck_discover_jobs:
         try:
-            async with async_session_maker() as sweep_db:
-                await refund(
-                    sweep_db,
-                    row["org_id"],
-                    DISCOVER_SEARCH_CREDIT_COST,
-                    "service_restart_sweep",
-                    row["id"],
-                )
+            with tenant_scope([row["org_id"]], "", platform_admin=False, enforce=True):
+                async with async_session_maker() as sweep_db:
+                    await refund(
+                        sweep_db,
+                        row["org_id"],
+                        DISCOVER_SEARCH_CREDIT_COST,
+                        "service_restart_sweep",
+                        row["id"],
+                    )
         except Exception as refund_err:
             print(f"Startup reconciliation refund failed for job {row['id']}:", refund_err)
 
