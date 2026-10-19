@@ -10,6 +10,7 @@ from app.models.ai_insight import AIInsight
 from app.models.creative import Creative
 from app.models.scrape_job import ScrapeJob
 from app.schemas.common import Paginated
+from app.services.query_bounds import pagination_bounds
 from app.services.ai.ai_router import AIRouter
 from app.models.user import User
 from app.services.billing_service import (
@@ -177,23 +178,28 @@ async def generate_insight_for_creative(
             detail=f"AI insight generation service is temporarily unavailable: {str(e)}"
         )
         
-async def scoped_creative_ids(db: AsyncSession, user_org_ids: List[str]) -> List[str]:
-    """Creative ids belonging to the caller's org(s) - the join path for insight
-    isolation, because AIInsight only stores creative_id."""
-    rows = await db.execute(
+def scoped_creative_ids(user_org_ids: List[str]):
+    """Keep the ownership join in SQL, never load a tenant's full ID set."""
+    return (
         select(Creative.id)
         .join(ScrapeJob, Creative.job_id == ScrapeJob.id)
         .where(ScrapeJob.org_id.in_(user_org_ids))
     )
-    return list(rows.scalars().all())
 
 
-async def get_creative_insight(db: AsyncSession, creative_id: str, user_org_ids: Optional[List[str]] = None) -> Paginated[Insight]:
+async def get_creative_insight(
+    db: AsyncSession, creative_id: str, user_org_ids: Optional[List[str]] = None,
+    page: int = 1, page_size: int = 20,
+) -> Paginated[Insight]:
+    offset, page_size = pagination_bounds(page, page_size)
+    filters = [AIInsight.creative_id == creative_id]
     # Tenant isolation: insights hang off creatives, which hang off jobs.
     if user_org_ids is not None:
-        if creative_id not in await scoped_creative_ids(db, user_org_ids):
-            return Paginated(items=[], total=0, page=1, page_size=20, has_more=False)
-    result = await db.execute(select(AIInsight).where(AIInsight.creative_id == creative_id))
+        filters.append(AIInsight.creative_id.in_(scoped_creative_ids(user_org_ids)))
+    total = await db.scalar(select(func.count(AIInsight.id)).where(*filters)) or 0
+    result = await db.execute(
+        select(AIInsight).where(*filters).order_by(AIInsight.id).offset(offset).limit(page_size)
+    )
     insights = result.scalars().all()
     
     items = []
@@ -220,20 +226,20 @@ async def get_creative_insight(db: AsyncSession, creative_id: str, user_org_ids:
     
     return Paginated(
         items=items,
-        total=len(items),
-        page=1,
-        page_size=len(items) if items else 20,
-        has_more=False
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=(offset + page_size) < total
     )
 
 async def list_insights(db: AsyncSession, page: int = 1, page_size: int = 20, user_org_ids: Optional[List[str]] = None) -> Paginated[Insight]:
+    offset, page_size = pagination_bounds(page, page_size)
     count_query = select(func.count(AIInsight.id))
-    offset = (page - 1) * page_size
-    query = select(AIInsight).offset(offset).limit(page_size)
+    query = select(AIInsight).order_by(AIInsight.id).offset(offset).limit(page_size)
 
     # Tenant isolation: only insights whose creative belongs to the caller's org(s).
     if user_org_ids is not None:
-        allowed = await scoped_creative_ids(db, user_org_ids)
+        allowed = scoped_creative_ids(user_org_ids)
         count_query = count_query.where(AIInsight.creative_id.in_(allowed))
         query = query.where(AIInsight.creative_id.in_(allowed))
 

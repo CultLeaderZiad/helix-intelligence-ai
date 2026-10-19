@@ -1,9 +1,10 @@
 import { request } from "../http"
 
 export const mediaService = {
-  generate: async (params) => {
+  generate: async (params, { signal } = {}) => {
     const res = await request("/media/jobs", {
       method: "POST",
+      signal,
       body: JSON.stringify(params),
     })
     return {
@@ -12,8 +13,8 @@ export const mediaService = {
     }
   },
   
-  getJob: async (jobId) => {
-    const job = await request(`/media/jobs/${jobId}`)
+  getJob: async (jobId, { signal } = {}) => {
+    const job = await request(`/media/jobs/${jobId}`, { signal })
     // Normalize backend status 'completed' -> 'succeeded' for frontend consistency
     if (job.status === "completed") {
       job.status = "succeeded"
@@ -24,8 +25,8 @@ export const mediaService = {
     }
   },
   
-  getJobResult: async (jobId) => {
-    const job = await request(`/media/jobs/${jobId}`)
+  getJobResult: async (jobId, { signal } = {}) => {
+    const job = await request(`/media/jobs/${jobId}`, { signal })
     if (job.status !== "succeeded" && job.status !== "completed") {
       const error = new Error("Job is not completed yet")
       error.status = 400
@@ -45,8 +46,8 @@ export const mediaService = {
     }
   },
   
-  cancel: async (jobId) => {
-    return request(`/media/jobs/${jobId}/cancel`, { method: "POST" })
+  cancel: async (jobId, { signal } = {}) => {
+    return request(`/media/jobs/${jobId}/cancel`, { method: "POST", signal })
   }
 }
 

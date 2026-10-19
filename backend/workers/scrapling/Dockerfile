@@ -1,7 +1,8 @@
 # Build from the backend/ directory:
 #   docker build -f workers/scrapling/Dockerfile -t helix-leadgen-worker .
-# Base: official Scrapling image (ships the library + browser tooling).
-ARG SCRAPLING_IMAGE=ghcr.io/d4vinci/scrapling:latest
+# Official multi-arch Scrapling image (library + browser tooling).
+# Verified against Docker Hub's public tag API; immutable manifest index.
+ARG SCRAPLING_IMAGE=pyd4vinci/scrapling@sha256:1d876879813759959bc4ba6fbb1ce8247ebbc2b67eee77b140baf7c80af6ae6b
 FROM ${SCRAPLING_IMAGE}
 
 WORKDIR /app
@@ -10,7 +11,7 @@ WORKDIR /app
 COPY requirements.txt ./
 COPY workers/scrapling/requirements.txt ./worker-requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt -r worker-requirements.txt \
-    && (scrapling install || echo "WARN: scrapling install failed — stealth/dynamic engines need browsers")
+    && scrapling install
 
 # Full backend tree (models, services, config). No frontend code here.
 COPY . .

@@ -69,8 +69,57 @@ startBackendKeepAlive()
  * Automatically retries up to 6 times on transient network glitches or 502/503/504 errors
  * to gracefully absorb Render cold-start latency.
  */
-export async function request(path, options = {}, retryCount = 0) {
+export const HTTP_REQUEST_TIMEOUT_MS = 60000
+
+function abortError(signal) {
+  return signal?.reason || new DOMException("Request aborted", "AbortError")
+}
+
+function retryDelay(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(abortError(signal)); return }
+    const onAbort = () => {
+      clearTimeout(timer)
+      signal.removeEventListener("abort", onAbort)
+      reject(abortError(signal))
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener("abort", onAbort, { once: true })
+  })
+}
+
+/** One deadline covers fetches, response bodies and every retry delay. */
+export async function request(path, options = {}) {
+  const controller = new AbortController()
+  const callerSignal = options.signal
+  const onAbort = () => controller.abort(abortError(callerSignal))
+  if (callerSignal?.aborted) onAbort()
+  else callerSignal?.addEventListener("abort", onAbort, { once: true })
+  const requestedTimeout = options.timeoutMs ?? HTTP_REQUEST_TIMEOUT_MS
+  const timeoutMs = Number.isFinite(requestedTimeout) && requestedTimeout > 0
+    ? Math.min(requestedTimeout, HTTP_REQUEST_TIMEOUT_MS) : HTTP_REQUEST_TIMEOUT_MS
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort(new DOMException("Request aborted", "AbortError"))
+  }, timeoutMs)
+  try {
+    return await requestAttempt(path, { ...options, signal: controller.signal })
+  } catch (err) {
+    if (timedOut) throw new ServiceError("Request failed", { code: "request_timeout" })
+    throw err
+  } finally {
+    clearTimeout(timer)
+    callerSignal?.removeEventListener("abort", onAbort)
+  }
+}
+
+async function requestAttempt(path, options, retryCount = 0) {
   const { method = "GET", params, body, signal, headers: extraHeaders } = options
+  if (signal.aborted) throw abortError(signal)
   const url = `${API_BASE_URL}${path}${buildQuery(params)}`
 
   const token = getAccessToken()
@@ -103,12 +152,13 @@ export async function request(path, options = {}, retryCount = 0) {
     })
   // Transparent retry on network disconnect / Render waking up (only for idempotent or key-protected requests)
   } catch (err) {
+    if (signal.aborted) throw abortError(signal)
     if (err?.name === "AbortError") throw err
 
     if (isSafeToRetry && retryCount < 6) {
       const delay = Math.min(3500, 1000 * Math.pow(1.3, retryCount))
-      await new Promise((resolve) => setTimeout(resolve, delay))
-      return request(path, options, retryCount + 1)
+      await retryDelay(delay, signal)
+      return requestAttempt(path, options, retryCount + 1)
     }
 
     throw new ServiceError(
@@ -121,11 +171,12 @@ export async function request(path, options = {}, retryCount = 0) {
 
   // If server returns 502, 503, or 504 gateway error (Render cold-start boot), retry transparently only if safe
   // Do NOT retry structured JSON error responses (e.g. worker_offline 503) (F57)
+  if (signal.aborted) throw abortError(signal)
   const isJsonError = res.headers?.get("content-type")?.includes("application/json")
   if (isSafeToRetry && [502, 503, 504].includes(res.status) && !isJsonError && retryCount < 8) {
     const delay = Math.min(4000, 1200 * Math.pow(1.3, retryCount))
-    await new Promise((resolve) => setTimeout(resolve, delay))
-    return request(path, options, retryCount + 1)
+    await retryDelay(delay, signal)
+    return requestAttempt(path, options, retryCount + 1)
   }
 
   if (!res.ok) {
@@ -143,6 +194,7 @@ export async function request(path, options = {}, retryCount = 0) {
     } catch {
       /* non-JSON error body */
     }
+    if (signal.aborted) throw abortError(signal)
 
     if (typeof detail === "string") {
       detail = detail.replace(/^(Value error,?\s*|String should have at least\s*)/i, "")
@@ -186,6 +238,7 @@ export async function uploadFile(path, formData, options = {}) {
   try {
     res = await fetch(url, {
       method: "POST",
+      signal: options.signal,
       headers: {
         Accept: "application/json",
         ...authHeader,

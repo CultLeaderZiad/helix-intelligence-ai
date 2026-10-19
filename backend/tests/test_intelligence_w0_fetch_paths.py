@@ -174,14 +174,14 @@ def test_robots_fetch_rejects_redirect_and_private_ip():
         "app.services.safe_fetch._exchange",
         side_effect=lambda *a, **k: calls.append(a) or _redirect_exchange(),
     ):
-        assert engine.robots_allowed("https://example.com/page") is True
+        assert engine.robots_allowed("https://example.com/page") is False
         assert len(calls) == 1
     engine._ROBOTS_CACHE.clear()
     calls.clear()
     with patch("app.services.safe_fetch._resolve", _private_resolve), patch(
         "app.services.safe_fetch._exchange", side_effect=lambda *a, **k: calls.append(a)
     ):
-        assert engine.robots_allowed("https://private-robots.example/page") is True
+        assert engine.robots_allowed("https://private-robots.example/page") is False
         assert calls == []
     engine._ROBOTS_CACHE.clear()
 

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react"
-import { mediaService, ServiceError } from "@/services"
+import { useCallback, useRef, useState } from "react"
+import { mediaService } from "@/services"
+import { pollDelay, useJobLifecycle } from "./useJobLifecycle"
 
 export const PHASE = {
   IDLE: "idle",
@@ -16,133 +17,104 @@ export function useMediaGenerate() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
   const [failureKind, setFailureKind] = useState(null)
+  const activeJobId = useRef(null)
+  const lifecycle = useJobLifecycle()
 
-  const activeJobIdRef = useRef(null)
-  const pollTimerRef = useRef(null)
-
-  const stopPolling = useCallback(() => {
-    if (pollTimerRef.current) {
-      clearTimeout(pollTimerRef.current)
-      pollTimerRef.current = null
+  const submit = useCallback(async (params) => {
+    const run = lifecycle.begin(() => {
+      activeJobId.current = null
+      setError("Failed to check generation status")
+      setFailureKind("timeout")
+      setPhase(PHASE.ERROR)
+    })
+    activeJobId.current = null
+    if (!run) return
+    setPhase(PHASE.SUBMITTING)
+    setJob(null)
+    setError(null)
+    setFailureKind(null)
+    setResult(null)
+    const options = { signal: run.signal }
+    const fail = (err, fallback) => {
+      if (!lifecycle.isCurrent(run)) return
+      setError(err?.message || (typeof err === "string" ? err : fallback))
+      setPhase(PHASE.ERROR)
+      lifecycle.finish(run)
     }
-  }, [])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return stopPolling
-  }, [stopPolling])
-
-  const checkJobStatus = useCallback(
-    async (jobId) => {
-      if (activeJobIdRef.current !== jobId) return
-
-      try {
-        const currentJob = await mediaService.getJob(jobId)
-        if (activeJobIdRef.current !== jobId) return
-
-        setJob(currentJob)
-
-        if (currentJob.status === "succeeded" || currentJob.status === "completed") {
-          setPhase(PHASE.FETCHING_RESULTS)
-          try {
-            const finalResult = await mediaService.getJobResult(jobId)
-            if (activeJobIdRef.current !== jobId) return
-            setResult(finalResult)
-          } catch (e) {
-            if (currentJob.result_url) {
-              setResult({
-                type: "image",
-                url: currentJob.result_url,
-                images: [{ url: currentJob.result_url }]
-              })
+    try {
+      // Transport cancellation and generation fencing protect both work and state.
+      const created = await mediaService.generate(params, options)
+      if (!lifecycle.isCurrent(run)) return
+      const jobId = created.job_id || created.id
+      activeJobId.current = jobId
+      setJob(created)
+      setPhase(PHASE.RUNNING)
+      let attempt = 0
+      const poll = async () => {
+        if (!lifecycle.isCurrent(run)) return
+        try {
+          const next = await mediaService.getJob(jobId, options)
+          if (!lifecycle.isCurrent(run)) return
+          setJob(next)
+          if (next.status === "succeeded" || next.status === "completed") {
+            setPhase(PHASE.FETCHING_RESULTS)
+            try {
+              const payload = await mediaService.getJobResult(jobId, options)
+              if (!lifecycle.isCurrent(run)) return
+              setResult(payload)
+            } catch (err) {
+              if (!lifecycle.isCurrent(run)) return
+              if (!next.result_url) throw err
+              setResult({ type: "image", url: next.result_url, images: [{ url: next.result_url }] })
             }
+            if (!lifecycle.isCurrent(run)) return
+            setPhase(PHASE.READY)
+            lifecycle.finish(run)
+          } else if (["failed", "canceled", "nsfw"].includes(next.status)) {
+            const fallback = next.status === "canceled" ? "Generation canceled"
+              : next.status === "nsfw" ? "Prompt flagged as NSFW. Generation aborted." : "Generation failed"
+            setFailureKind(next.failure_kind || "error")
+            fail(next.error_message, fallback)
+          } else {
+            lifecycle.schedule(run, poll, pollDelay(attempt++, 2000))
           }
-          setPhase(PHASE.READY)
-          stopPolling()
-        } else if (currentJob.status === "failed") {
-          const errStr = currentJob.error_message || "Generation failed"
-          setError(errStr)
-          // A restart is not a bad prompt; CreatePage words it differently.
-          setFailureKind(currentJob.failure_kind || "error")
-          setPhase(PHASE.ERROR)
-          stopPolling()
-        } else if (currentJob.status === "canceled") {
-          setError("Generation canceled")
-          setPhase(PHASE.ERROR)
-          stopPolling()
-        } else if (currentJob.status === "nsfw") {
-          setError(currentJob.error_message || "Prompt flagged as NSFW. Generation aborted.")
-          setPhase(PHASE.ERROR)
-          stopPolling()
-        } else {
-          // Still running/queued, poll again
-          pollTimerRef.current = setTimeout(() => checkJobStatus(jobId), 2000)
+        } catch (err) {
+          fail(err, "Failed to check generation status")
         }
-      } catch (err) {
-        if (activeJobIdRef.current !== jobId) return
-        const msg = err?.message || (typeof err === "string" ? err : "Failed to check generation status")
-        setError(msg)
-        setPhase(PHASE.ERROR)
-        stopPolling()
       }
-    },
-    [stopPolling],
-  )
-
-  const submit = useCallback(
-    async (params) => {
-      stopPolling()
-      setPhase(PHASE.SUBMITTING)
-      setError(null)
-      setFailureKind(null)
-      setResult(null)
-
-      try {
-        const newJob = await mediaService.generate(params)
-        const jobId = newJob.job_id || newJob.id
-        setJob(newJob)
-        activeJobIdRef.current = jobId
-        setPhase(PHASE.RUNNING)
-        checkJobStatus(jobId)
-      } catch (err) {
-        const msg = err?.message || (typeof err === "string" ? err : "Generation request failed")
-        setError(msg)
-        setPhase(PHASE.ERROR)
-        activeJobIdRef.current = null
-      }
-    },
-    [checkJobStatus, stopPolling],
-  )
+      void poll()
+    } catch (err) {
+      if (!lifecycle.isCurrent(run)) return
+      activeJobId.current = null
+      fail(err, "Generation request failed")
+    }
+  }, [lifecycle])
 
   const cancel = useCallback(async () => {
-    const currentId = activeJobIdRef.current
-    stopPolling()
-    activeJobIdRef.current = null
-    
-    if (currentId) {
-      try {
-        await mediaService.cancel(currentId)
-      } catch (err) {
-        // ignore cancellation errors in UI
-      }
-    }
-    
+    const jobId = activeJobId.current
+    lifecycle.invalidate()
+    activeJobId.current = null
+    // Reset before awaiting server cancellation; its completion owns no UI state.
     setPhase(PHASE.IDLE)
     setJob(null)
     setResult(null)
     setError(null)
     setFailureKind(null)
-  }, [stopPolling])
+    if (jobId) {
+      // Cancellation is a separate request, but still belongs to this mounted
+      // lifecycle: navigating away or submitting again must abort it as well.
+      const run = lifecycle.begin(() => {})
+      if (!run) return
+      try { await mediaService.cancel(jobId, { signal: run.signal }) }
+      catch { /* best effort */ }
+      finally { lifecycle.finish(run) }
+    }
+  }, [lifecycle])
 
   return {
-    phase,
-    job,
-    result,
-    error,
-    failureKind,
+    phase, job, result, error, failureKind,
     isServiceRestart: failureKind === "service_restart",
-    submit,
-    cancel,
+    submit, cancel,
     isBusy: phase === PHASE.SUBMITTING || phase === PHASE.RUNNING || phase === PHASE.FETCHING_RESULTS,
   }
 }

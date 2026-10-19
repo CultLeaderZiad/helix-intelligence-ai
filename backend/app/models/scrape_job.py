@@ -14,6 +14,8 @@ class ScrapeJob(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     org_id = Column(String, ForeignKey("organizations.id"), nullable=False)
     query = Column(String, nullable=False)
+    # NULL means legacy/unknown request semantics: never reuse as cache.
+    cache_identity = Column(String(64), nullable=True)
     status = Column(String, default="queued") # 'queued' | 'running' | 'succeeded' | 'failed'
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
@@ -44,4 +46,7 @@ class ScrapeJob(Base):
 
     __table_args__ = (
         Index("ix_scrape_jobs_org_status_created", "org_id", "status", "created_at"),
+        Index("uq_scrape_jobs_active_identity", "org_id", "cache_identity", unique=True,
+              postgresql_where=sa.text("status IN ('queued', 'running') AND cache_identity IS NOT NULL")),
+        Index("ix_scrape_jobs_cache_lookup", "org_id", "cache_identity", "status", "created_at"),
     )

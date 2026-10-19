@@ -3,6 +3,69 @@
 @import "@fontsource-variable/inter/index.css";
 @import "@fontsource-variable/jetbrains-mono/index.css";
 
+/* Navigation uses compositor-only CSS instead of loading GSAP in the shell.
+   Logical insets keep both labels aligned in RTL without layout measurements. */
+.pill-nav-native .pill .hover-circle {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  transform: scaleY(0);
+  transform-origin: center bottom;
+  transition: transform 350ms cubic-bezier(.22, 1, .36, 1);
+}
+.pill-nav-native .pill .pill-label,
+.pill-nav-native .pill .pill-label-hover {
+  transition: transform 350ms cubic-bezier(.22, 1, .36, 1), opacity 350ms;
+}
+.pill-nav-native .pill .pill-label-hover {
+  left: auto;
+  inset-inline-start: 0;
+  transform: translateY(160%);
+  opacity: 0;
+}
+.pill-nav-native .pill:is(:hover, :focus-visible) .hover-circle {
+  transform: scaleY(1);
+}
+.pill-nav-native .pill:is(:hover, :focus-visible) .pill-label {
+  transform: translateY(-160%);
+  opacity: 0;
+}
+.pill-nav-native .pill:is(:hover, :focus-visible) .pill-label-hover {
+  transform: translateY(0);
+  opacity: 1;
+}
+.pill-nav-native .pill-logo img { transition: transform 400ms ease; }
+.pill-nav-native .pill-logo:is(:hover, :focus-visible) img { transform: rotate(360deg); }
+.pill-nav-native :is(.pill, .pill-logo, .mobile-menu-button):focus-visible {
+  outline: 2px solid var(--hover-circle, #ccff00);
+  outline-offset: 3px;
+}
+.pill-nav-native .mobile-menu-popover[hidden] { display: none; }
+.pill-nav-native .mobile-menu-popover:not([hidden]) {
+  opacity: 1;
+  visibility: visible;
+  animation: pill-nav-slide-in 200ms ease-out;
+}
+.pill-nav-native .mobile-menu-button[aria-expanded="true"] .hamburger-line:first-child {
+  transform: translateY(3.5px) rotate(45deg);
+}
+.pill-nav-native .mobile-menu-button[aria-expanded="true"] .hamburger-line:last-child {
+  transform: translateY(-3.5px) rotate(-45deg);
+}
+.pill-nav-enter :is(.pill-logo, .pill-nav-items) { animation: pill-nav-slide-in 600ms ease-out; }
+@keyframes pill-nav-slide-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pill-nav-native *, .pill-nav-native *::before, .pill-nav-native *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .pill-nav-native .pill-logo:is(:hover, :focus-visible) img { transform: none; }
+}
+
 /* ============================================================
    HELIX INTELLIGENCE — DESIGN TOKENS
    Single dark theme. Instrument-grade, dense, crisp, high-contrast.

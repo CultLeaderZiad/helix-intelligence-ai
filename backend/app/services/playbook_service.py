@@ -11,6 +11,7 @@ from app.models.creative import Creative
 from app.models.pattern import Pattern
 from app.models.ai_insight import AIInsight
 from app.models.usage_log import UsageLog
+from app.services.query_bounds import pagination_bounds
 
 async def compile_playbook(
     db: AsyncSession,
@@ -213,9 +214,13 @@ async def get_public_playbook(db: AsyncSession, public_id: str, user: Optional[U
         "created_at": playbook.created_at.isoformat() if playbook.created_at else ""
     }
 
-async def list_user_playbooks(db: AsyncSession, user_id: str) -> List[Dict[str, Any]]:
+async def list_user_playbooks(
+    db: AsyncSession, user_id: str, page: int = 1, page_size: int = 20,
+) -> List[Dict[str, Any]]:
+    offset, page_size = pagination_bounds(page, page_size)
     result = await db.execute(
-        select(Playbook).where(Playbook.user_id == user_id).order_by(desc(Playbook.created_at))
+        select(Playbook).where(Playbook.user_id == user_id)
+        .order_by(desc(Playbook.created_at), Playbook.id).offset(offset).limit(page_size)
     )
     items = result.scalars().all()
     return [
