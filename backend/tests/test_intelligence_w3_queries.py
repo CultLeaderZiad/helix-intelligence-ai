@@ -34,8 +34,12 @@ async def corpus():
     from sqlalchemy.engine import make_url
     url = make_url(settings.async_database_url)
     local = url.host in {"localhost", "127.0.0.1", "::1"} or url.query.get("host") == "/tmp/helix-w3"
-    if not local or "w3" not in (url.database or ""):
-        pytest.fail("W3 query tests require a disposable local PostgreSQL database named with 'w3'")
+    # The repository CI creates helix_test_db in a fresh PostgreSQL service.
+    # Accept that known disposable name as well as local W3 databases, never
+    # a remote/configured production database or an arbitrary local database.
+    disposable = "w3" in (url.database or "") or url.database == "helix_test_db"
+    if not local or not disposable:
+        pytest.fail("W3 query tests require a disposable local W3 database or CI helix_test_db")
     suffix = uuid.uuid4().hex
     async with worker_session_maker() as db:
         db.add_all([
