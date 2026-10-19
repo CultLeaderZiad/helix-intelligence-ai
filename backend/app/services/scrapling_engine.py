@@ -32,7 +32,9 @@ _CHALLENGE_MARKERS = (
     "ddos protection", "access denied",
 )
 
-# robots cache: origin -> RobotFileParser | False (unreachable -> fail open) | "deny"
+# robots cache: origin -> (expires_at, RobotFileParser | "allow" | "deny").
+# Missing rules and unavailable origins share a bounded TTL; failures never allow.
+_ROBOTS_TTL_S = 300.0
 _ROBOTS_CACHE: Dict[str, Any] = {}
 _LAST_FETCH: Dict[str, Any] = {}
 _HTML_MAX_BYTES = 2_000_000
@@ -49,44 +51,47 @@ def engine_header(engine: str) -> str:
 
 
 def robots_allowed(url: str) -> bool:
-    """robots.txt gate. Disallow => blocked. If robots.txt is unreachable,
-    fall back to allow (standard crawler behavior). Enforces a 5.0s timeout
-    and 500KB read limit to prevent hangs or memory exhaustion."""
+    """Fail closed on unsafe destinations, failed requests and HTTP errors.
+
+    Only a real 404/410 means no robots rules (allow). A blocked redirect,
+    timeout or 5xx is unavailability, not evidence of permission to crawl.
+    All outcomes use the same TTL and the 5s/500KB request limits.
+    """
     parsed = urlparse(url)
     origin = f"{parsed.scheme}://{parsed.netloc}"
-    if origin in _ROBOTS_CACHE:
-        entry = _ROBOTS_CACHE[origin]
+    now = time.monotonic()
+    cached = _ROBOTS_CACHE.get(origin)
+    if cached and cached[0] > now:
+        entry = cached[1]
         if entry == "deny":
             return False
-        return True if entry is False else bool(entry.can_fetch("*", url))
+        return True if entry == "allow" else bool(entry.can_fetch("*", url))
 
-    robots_url = f"{origin}/robots.txt"
-    rp = robotparser.RobotFileParser()
-    rp.set_url(robots_url)
+    # Drop expired entries so the cache does not retain every origin forever.
+    for key, (expires, _) in list(_ROBOTS_CACHE.items()):
+        if expires <= now:
+            _ROBOTS_CACHE.pop(key, None)
+    entry = "deny"
     try:
         from app.services.security_service import is_safe_public_url
-        if not is_safe_public_url(robots_url):
-            _ROBOTS_CACHE[origin] = False
-            return True
-
         from app.services.safe_fetch import safe_request
-        resp = safe_request(
-            "GET",
-            robots_url,
-            timeout=5.0,
-            max_bytes=500 * 1024,
-            headers={"User-Agent": "HelixBot/1.0 (Mozilla/5.0 Compatible)"},
-        )
-        lines = resp.content.decode("utf-8", errors="replace").splitlines()
-        rp.parse(lines)
-        _ROBOTS_CACHE[origin] = rp
-        return bool(rp.can_fetch("*", url))
+        robots_url = f"{origin}/robots.txt"
+        if is_safe_public_url(robots_url):
+            resp = safe_request(
+                "GET", robots_url, timeout=5.0, max_bytes=500 * 1024,
+                headers={"User-Agent": "HelixBot/1.0 (Mozilla/5.0 Compatible)"},
+            )
+            if resp.status_code in (404, 410):
+                entry = "allow"
+            elif 200 <= resp.status_code < 300:
+                entry = robotparser.RobotFileParser()
+                entry.set_url(robots_url)
+                entry.parse(resp.content.decode("utf-8", errors="replace").splitlines())
     except Exception:
-        # A robots file that cannot be fetched, including a blocked redirect,
-        # does not invent a disallow. The page URL is still rejected separately
-        # when it is not a public address.
-        _ROBOTS_CACHE[origin] = False
-        return True
+        # Cache denial too: repeated attempts must not bypass a failed gate.
+        entry = "deny"
+    _ROBOTS_CACHE[origin] = (time.monotonic() + _ROBOTS_TTL_S, entry)
+    return entry == "allow" or (entry != "deny" and bool(entry.can_fetch("*", url)))
 
 
 def _rate_allowed(url: str) -> bool:
@@ -128,7 +133,10 @@ def fetch(
     Never raises for network outcomes - status is data, not control flow.
     """
     if robots_obey and not robots_allowed(url):
-        return {"fetch_status": "blocked", "status_code": 0, "html": None, "url": url, "reason": "robots_disallow"}
+        parsed = urlparse(url)
+        cached = _ROBOTS_CACHE.get(f"{parsed.scheme}://{parsed.netloc}")
+        reason = "robots_unavailable" if cached and cached[1] == "deny" else "robots_disallow"
+        return {"fetch_status": "blocked", "status_code": 0, "html": None, "url": url, "reason": reason}
     if not _rate_allowed(url):
         return {"fetch_status": "rate_limited", "status_code": 429, "html": None, "url": url, "reason": "host_interval"}
     # Scrapling's Fetcher/StealthyFetcher/DynamicFetcher open their own browser
