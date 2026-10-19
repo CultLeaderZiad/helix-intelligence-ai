@@ -12,11 +12,9 @@ import { ErrorState, Skeleton } from "@/components/ui/States"
 import { deriveInsight } from "@/lib/insight"
 import {
   formatCompact,
-  formatConfidence,
   formatDate,
   formatDays,
   formatDuration,
-  formatLift,
   formatPercent,
   formatOrdinal,
   formatPrevalence,
@@ -86,25 +84,22 @@ function MediaFrame({ format, ratio, duration, mediaUrl, thumbnailUrl }) {
  * Every line is derived from the record (see lib/insight.js).
  */
 function InsightBlock({ creative }) {
+  const { t } = useLanguage()
   const insight = deriveInsight(creative)
   if (!insight) return null
 
   return (
     <div className="flex flex-col gap-3 border border-border bg-surface-2 p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="label-mono text-text">Why this ad matters</span>
-        <span className="label-mono tnum">
-          confidence {formatConfidence(insight.confidence)}
-        </span>
+        <span className="label-mono text-text">{t("heuristicScores")}</span>
+        <span className="label-mono" dir="auto">{t("notMeasured")}</span>
       </div>
 
       {insight.daysActive ? (
         <p className="text-xs leading-relaxed text-text-muted">
-          This creative has been active for{" "}
           <span className="tnum font-mono text-text">
             {formatDays(insight.daysActive)}
           </span>
-          {insight.daysActive >= 60 ? " — well past the typical fatigue window." : "."}
         </p>
       ) : null}
 
@@ -115,7 +110,7 @@ function InsightBlock({ creative }) {
               {formatOrdinal(i + 1)}
             </span>
             <span className="min-w-0 flex-1 truncate text-xs text-text">{r.label}</span>
-            <span className="label-mono tnum shrink-0">{formatLift(r.lift)} lift</span>
+            <span className="label-mono tnum shrink-0">{t("notMeasured")}</span>
           </li>
         ))}
       </ol>
@@ -125,6 +120,7 @@ function InsightBlock({ creative }) {
 
 /** Numbered pattern findings — research results, not feature cards. */
 function PatternFindings({ patterns }) {
+  const { t } = useLanguage()
   if (!patterns?.length) {
     return (
       <p className="text-xs text-text-faint">
@@ -147,12 +143,11 @@ function PatternFindings({ patterns }) {
             <span className="label-mono ml-auto">{p.family}</span>
           </div>
           <p className="pl-7 text-[11px] leading-relaxed text-text-muted">
-            Found in{" "}
+            {t("foundInSupplied")}{" "}
             <span className="tnum font-mono text-text">
               {formatPrevalence(p.prevalence)}
             </span>{" "}
-            of the corpus · lift{" "}
-            <span className="tnum font-mono text-text">{formatLift(p.lift_index)}</span>
+            {t("ofSuppliedAds")}
           </p>
         </div>
       ))}
@@ -314,21 +309,19 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
             {/* Performance scores */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="label-mono">{t("performanceScores")}</span>
-                {data.scores?.composite !== null && data.scores?.composite !== undefined ? (
-                  <span className="label-mono text-accent">
-                    tier {data.scores.composite >= 80 ? "A" : data.scores.composite >= 60 ? "B" : "C"}
-                  </span>
+                <span className="label-mono">{t("heuristicScores")}</span>
+                {data.scores?.version ? (
+                  <span className="label-mono text-text-faint">{data.scores.version}</span>
                 ) : null}
               </div>
               <p className="text-[10px] leading-snug text-text-faint">
-                {t("helixSignalNote")}
+                {t("heuristicNote")}
               </p>
               {[
-                ["Hook", data.scores?.hook, "How strongly the opening grabs attention in the first seconds."],
-                ["Clarity", data.scores?.clarity, "How obvious the offer and message are at a glance."],
-                ["Retention", data.scores?.retention, "How likely people are to keep watching instead of scrolling away."],
-                ["Composite", data.scores?.composite, "One combined 0–100 signal from the three scores above."],
+                ["Hook", data.scores?.hook, t("heuristicNote")],
+                ["Clarity", data.scores?.clarity, t("heuristicNote")],
+                ["Retention", data.scores?.retention, t("heuristicNote")],
+                ["Composite", data.scores?.composite, t("heuristicNote")],
               ].map(([label, value, tip]) => (
                 <div key={label} className="flex items-center justify-between gap-2">
                   <span className="flex items-center text-xs text-text-muted">
@@ -352,26 +345,50 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                     {data.metrics?.is_impression_estimate && <span className="text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
                   </span>
                 }
-                value={`~${formatCompact(data.metrics?.impressions_est)}`}
+                value={
+                  data.metrics?.impressions_est === null || data.metrics?.impressions_est === undefined
+                    ? t("unavailable")
+                    : formatCompact(data.metrics.impressions_est)
+                }
               />
-              <StatBlock label="Spend" value={formatSpendBand(data.metrics?.spend_band)} />
+              <StatBlock
+                label="Spend"
+                value={data.metrics?.spend_band ? formatSpendBand(data.metrics.spend_band) : t("unavailable")}
+              />
               <StatBlock
                 label="Engagement"
                 value={
                   data.metrics?.engagement_rate === null ||
                   data.metrics?.engagement_rate === undefined
-                    ? "—"
+                    ? t("unavailable")
                     : formatPercent(data.metrics.engagement_rate)
                 }
               />
               <StatBlock
-                label="Est. CTR"
+                label={t("ctrLabel")}
                 value={
                   data.metrics?.ctr_est === null || data.metrics?.ctr_est === undefined
-                    ? "—"
+                    ? t("unavailable")
                     : formatPercent(data.metrics.ctr_est, 2)
                 }
               />
+            </div>
+
+            <div className="flex flex-col gap-1 border-t border-border pt-3 text-[11px] text-text-muted" dir="auto">
+              <span className="label-mono">{t("provenanceLabel")}</span>
+              <span>
+                {t("sourceAd")}: {data.source_ad_id || t("unavailable")}
+              </span>
+              {data.permalink ? (
+                <a href={data.permalink} className="truncate text-accent" target="_blank" rel="noreferrer">
+                  {data.permalink}
+                </a>
+              ) : (
+                <span>{t("unavailable")}</span>
+              )}
+              <span>
+                {t("fetchedAt")}: {data.fetched_at ? formatDate(data.fetched_at) : t("unavailable")}
+              </span>
             </div>
 
             <div className="flex flex-col gap-2 border-t border-border pt-3">

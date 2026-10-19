@@ -155,7 +155,11 @@ def _disable_policy(table: str) -> None:
 
 
 def _create_roles() -> None:
-    # CREATE ROLE is not allowed inside Alembic's transaction.
+    # Bootstrap cluster-wide identities before any revision-local schema work.
+    # Entering autocommit commits an open transaction, so this must remain the
+    # first upgrade step. Per-revision transactions keep earlier stamps durable;
+    # everything after this block commits atomically with this revision's stamp.
+    # Roles may survive a failed upgrade, which is safe because this is idempotent.
     with op.get_context().autocommit_block():
         op.execute(
             """
@@ -179,40 +183,47 @@ def _drop_roles() -> None:
     op.execute("REVOKE ALL ON ALL TABLES IN SCHEMA public FROM helix_app, helix_worker")
     op.execute("REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM helix_app, helix_worker")
     op.execute("REVOKE USAGE ON SCHEMA public FROM helix_app, helix_worker")
-    # Roles are cluster-wide. Another database may still grant them, so a
-    # failed DROP must not abort a downgrade that already revoked this database.
-    with op.get_context().autocommit_block():
-        op.execute(
-            """
-            DO $$
-            BEGIN
-                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'helix_worker') THEN
-                    BEGIN
-                        EXECUTE 'REVOKE helix_worker FROM CURRENT_USER';
-                        DROP ROLE helix_worker;
-                    EXCEPTION
-                        WHEN undefined_object THEN NULL;
-                        WHEN dependent_objects_still_exist THEN NULL;
-                    END;
-                END IF;
-                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'helix_app') THEN
-                    BEGIN
-                        EXECUTE 'REVOKE helix_app FROM CURRENT_USER';
-                        DROP ROLE helix_app;
-                    EXCEPTION
-                        WHEN undefined_object THEN NULL;
-                        WHEN dependent_objects_still_exist THEN NULL;
-                    END;
-                END IF;
-            END
-            $$;
-            """
-        )
+    # Role DDL is transactional in PostgreSQL. Keep it in the same transaction
+    # as the schema downgrade and version stamp. Cluster-wide dependencies in
+    # other databases may prevent deletion; leave those shared roles in place.
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'helix_worker') THEN
+                BEGIN
+                    EXECUTE 'REVOKE helix_worker FROM CURRENT_USER';
+                    DROP ROLE helix_worker;
+                EXCEPTION
+                    WHEN undefined_object THEN NULL;
+                    WHEN dependent_objects_still_exist THEN NULL;
+                END;
+            END IF;
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'helix_app') THEN
+                BEGIN
+                    EXECUTE 'REVOKE helix_app FROM CURRENT_USER';
+                    DROP ROLE helix_app;
+                EXCEPTION
+                    WHEN undefined_object THEN NULL;
+                    WHEN dependent_objects_still_exist THEN NULL;
+                END;
+            END IF;
+        END
+        $$;
+        """
+    )
+
+
+def _usage_log_columns() -> set[str]:
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if not insp.has_table("usage_logs"):
+        return set()
+    return {col["name"] for col in insp.get_columns("usage_logs")}
 
 
 def upgrade() -> None:
     _create_roles()
-
     op.create_table(
         "pattern_quarantine",
         sa.Column("id", sa.String(), nullable=False),
@@ -272,34 +283,41 @@ def upgrade() -> None:
         """
     )
 
-    op.add_column("usage_logs", sa.Column("idempotency_key", sa.String(), nullable=True))
-    op.add_column("usage_logs", sa.Column("payload_hash", sa.String(), nullable=True))
-    op.add_column("usage_logs", sa.Column("reservation_id", sa.String(), nullable=True))
-    op.add_column("usage_logs", sa.Column("ledger_id", sa.String(), nullable=True))
-    op.execute(
-        """
-        WITH ranked AS (
-            SELECT id,
-                   row_number() OVER (
-                       PARTITION BY org_id, operation, (metadata_json::jsonb ->> 'idempotency_key')
-                       ORDER BY created_at ASC NULLS LAST, id ASC
-                   ) AS n,
-                   metadata_json::jsonb ->> 'idempotency_key' AS idem_key
-            FROM usage_logs
-            WHERE metadata_json IS NOT NULL
-              AND (metadata_json::jsonb ->> 'idempotency_key') IS NOT NULL
+    usage_cols = _usage_log_columns()
+    for name in ("idempotency_key", "payload_hash", "reservation_id", "ledger_id"):
+        if name not in usage_cols:
+            op.add_column("usage_logs", sa.Column(name, sa.String(), nullable=True))
+    usage_cols = _usage_log_columns()
+    # Older production rows stored the key inside metadata, not metadata_json.
+    # Skip the copy when that column was never created.
+    if {"metadata_json", "operation", "id"} <= usage_cols:
+        op.execute(
+            """
+            WITH ranked AS (
+                SELECT id,
+                       row_number() OVER (
+                           PARTITION BY org_id, operation, (metadata_json::jsonb ->> 'idempotency_key')
+                           ORDER BY created_at ASC NULLS LAST, id ASC
+                       ) AS n,
+                       metadata_json::jsonb ->> 'idempotency_key' AS idem_key
+                FROM usage_logs
+                WHERE metadata_json IS NOT NULL
+                  AND (metadata_json::jsonb ->> 'idempotency_key') IS NOT NULL
+            )
+            UPDATE usage_logs AS u
+            SET idempotency_key = CASE WHEN ranked.n = 1 THEN ranked.idem_key ELSE NULL END
+            FROM ranked
+            WHERE u.id = ranked.id
+            """
         )
-        UPDATE usage_logs AS u
-        SET idempotency_key = CASE WHEN ranked.n = 1 THEN ranked.idem_key ELSE NULL END
-        FROM ranked
-        WHERE u.id = ranked.id
-        """
-    )
-    op.create_unique_constraint(
-        "uq_usage_logs_org_operation_idempotency_key",
-        "usage_logs",
-        ["org_id", "operation", "idempotency_key"],
-    )
+    bind = op.get_bind()
+    existing_uniques = {item["name"] for item in sa.inspect(bind).get_unique_constraints("usage_logs")}
+    if "uq_usage_logs_org_operation_idempotency_key" not in existing_uniques:
+        op.create_unique_constraint(
+            "uq_usage_logs_org_operation_idempotency_key",
+            "usage_logs",
+            ["org_id", "operation", "idempotency_key"],
+        )
 
     op.create_table(
         "operation_idempotency",

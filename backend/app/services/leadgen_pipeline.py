@@ -251,9 +251,47 @@ def score_lead(lead_sources: dict, brief: dict) -> tuple:
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
-async def run_leadgen_job(job_id: str) -> None:
-    """Claim + run one LeadGenJob through the 9 stages. Idempotent: exits
-    immediately if the job is not queued/paused or another worker owns it."""
+async def run_leadgen_job(job_id: str, *, claimed_boot_id: Optional[str] = None) -> None:
+    """Bind one verified job organization, then run the LeadGen pipeline.
+
+    A standalone Scrapling worker may resolve only its explicitly claimed row;
+    request-triggered inline execution relies on the already-bound request scope.
+    """
+    from app.core.tenancy import (
+        apply_worker_claim_context,
+        tenant_scope,
+    )
+
+    async with worker_session_maker() as db:
+        if claimed_boot_id:
+            claim_owner = f"claimed:{claimed_boot_id}"
+            await apply_worker_claim_context(db, claim_owner)
+            row = (
+                await db.execute(
+                    select(LeadGenJob.org_id, LeadGenJob.user_id).where(
+                        LeadGenJob.id == job_id,
+                        LeadGenJob.status == "running",
+                        LeadGenJob.owner_boot_id == claim_owner,
+                    )
+                )
+            ).first()
+        else:
+            row = (
+                await db.execute(
+                    select(LeadGenJob.org_id, LeadGenJob.user_id).where(
+                        LeadGenJob.id == job_id
+                    )
+                )
+            ).first()
+
+    if row is None or not row.org_id:
+        return
+    with tenant_scope([row.org_id], row.user_id or "", platform_admin=False, enforce=True):
+        await _run_leadgen_job_scoped(job_id)
+
+
+async def _run_leadgen_job_scoped(job_id: str) -> None:
+    """Run one LeadGenJob through the 9 stages under its org RLS scope."""
     boot_id = uuid.uuid4().hex[:12]
     started_ts = time.monotonic()
 
@@ -787,26 +825,24 @@ async def _final_stages(job_id: str, started_ts: float) -> None:
                     lead.outreach = {"reason": "skipped_router_unavailable"}
                     errored += 1
                     continue
-                prompt = (
-                    "You are a B2B outreach writer. Draft outreach for this lead as STRICT JSON with keys "
-                    "subject (string), body (<=120 words), dm (<=50 words social DM), personalization_points (string[]). "
-                    "No placeholders, no invented facts beyond the provided fields. "
-                    f"ICP: {brief.get('icp')} | Lead: {lead.company_name or lead.domain} | site: {lead.website} | "
-                    f"known contacts: {', '.join((lead.emails or [])[:2]) or 'phone only'} | score: {lead.lead_score}. "
-                    "Return ONLY the JSON."
+                from app.services.ai.prompts import PROMPT_OUTREACH, outreach_messages
+                from app.services.ai.structured import InvalidModelOutput, parse_outreach
+                lead_fields = (
+                    f"company={lead.company_name or lead.domain}; site={lead.website}; "
+                    f"contacts={', '.join((lead.emails or [])[:2]) or 'phone only'}; score={lead.lead_score}"
                 )
                 try:
-                    raw = await provider._call_api([{"role": "user", "content": prompt}])
+                    raw = await provider._call_api(outreach_messages(str(brief.get("icp") or ""), lead_fields))
                     m = re.search(r"\{.*\}", raw or "", re.S)
                     parsed = json.loads(m.group(0)) if m else None
-                    if isinstance(parsed, dict) and parsed.get("subject") and parsed.get("body"):
-                        lead.outreach = {
-                            "subject": str(parsed.get("subject"))[:200],
-                            "body": str(parsed.get("body"))[:2000],
-                            "dm": str(parsed.get("dm") or "")[:500],
-                            "personalization_points": [str(x) for x in (parsed.get("personalization_points") or [])[:6]],
-                            "sent": False,  # drafts only - never auto-send
-                        }
+                    try:
+                        draft = parse_outreach(parsed)
+                    except InvalidModelOutput:
+                        draft = None
+                    if draft:
+                        draft["prompt_version"] = PROMPT_OUTREACH
+                        draft["model"] = getattr(getattr(provider, "last_usage", None), "model", None) or getattr(provider, "model", None)
+                        lead.outreach = draft
                         generated += 1
                     else:
                         lead.outreach = {"reason": "skipped_parse_error"}

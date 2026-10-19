@@ -60,24 +60,49 @@ class GeminiProvider(AIProvider):
                 "parts": [{"text": msg["content"]}]
             })
             
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                self.base_url,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": self.api_key
+        from app.core.config import settings as _settings
+        from app.services.ai.call_policy import ChatResult, remember
+        from app.services.safe_fetch import safe_request_async
+        token_cap = int(getattr(_settings, "AI_MAX_OUTPUT_TOKENS", 1024) or 1024)
+        response = await safe_request_async(
+            "POST",
+            self.base_url,
+            headers={
+                "Content-Type": "application/json",
+                "x-goog-api-key": self.api_key,
+            },
+            json={
+                "contents": gemini_messages,
+                "generationConfig": {
+                    "responseMimeType": "application/json",
+                    "temperature": 0.2,
+                    "maxOutputTokens": token_cap,
                 },
-                json={
-                    "contents": gemini_messages,
-                    "generationConfig": {
-                        "responseMimeType": "application/json",
-                        "temperature": 0.2
-                    }
-                }
-            )
-            response.raise_for_status()
-            data = response.json()
-            return data["candidates"][0]["content"]["parts"][0]["text"]
+            },
+            timeout=float(getattr(_settings, "AI_CALL_TIMEOUT_S", 20) or 20),
+            allowed_hosts={"generativelanguage.googleapis.com"},
+        )
+        if response.status_code != 200:
+            raise Exception(f"Gemini API returned HTTP {response.status_code}")
+        data = response.json()
+        usage = data.get("usageMetadata") or {}
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+        prompt_tokens = usage.get("promptTokenCount")
+        completion_tokens = usage.get("candidatesTokenCount")
+        total = usage.get("totalTokenCount")
+        observed = total is not None
+        remember(self, ChatResult(
+            text=text,
+            provider="gemini",
+            model=self.model,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            total_tokens=total,
+            latency_ms=0,
+            cost_usd=None,
+            tokens_observed=bool(observed),
+        ))
+        return text
 
     async def generate_image(
         self,
@@ -211,6 +236,8 @@ class GeminiProvider(AIProvider):
                                     if inline and inline.get("data"):
                                         mime_type = inline.get("mimeType") or inline.get("mime_type") or "image/png"
                                         image_bytes = base64.b64decode(inline["data"])
+                                        if len(image_bytes) > 15 * 1024 * 1024:
+                                            raise ValueError("Gemini image exceeded the 15MB output cap")
                                         return {
                                             "provider": "gemini",
                                             "model": model_name,

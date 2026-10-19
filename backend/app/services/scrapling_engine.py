@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 from urllib import robotparser
@@ -31,8 +32,10 @@ _CHALLENGE_MARKERS = (
     "ddos protection", "access denied",
 )
 
-# robots cache: origin -> RobotFileParser | False (unreachable -> fail open)
+# robots cache: origin -> RobotFileParser | False (unreachable -> fail open) | "deny"
 _ROBOTS_CACHE: Dict[str, Any] = {}
+_LAST_FETCH: Dict[str, Any] = {}
+_HTML_MAX_BYTES = 2_000_000
 
 
 def is_available() -> bool:
@@ -53,6 +56,8 @@ def robots_allowed(url: str) -> bool:
     origin = f"{parsed.scheme}://{parsed.netloc}"
     if origin in _ROBOTS_CACHE:
         entry = _ROBOTS_CACHE[origin]
+        if entry == "deny":
+            return False
         return True if entry is False else bool(entry.can_fetch("*", url))
 
     robots_url = f"{origin}/robots.txt"
@@ -77,8 +82,29 @@ def robots_allowed(url: str) -> bool:
         _ROBOTS_CACHE[origin] = rp
         return bool(rp.can_fetch("*", url))
     except Exception:
+        # A robots file that cannot be fetched, including a blocked redirect,
+        # does not invent a disallow. The page URL is still rejected separately
+        # when it is not a public address.
         _ROBOTS_CACHE[origin] = False
         return True
+
+
+def _rate_allowed(url: str) -> bool:
+    """Shared host budget for browser fetches and HTTP subrequests."""
+    from app.core.config import settings
+    host = urlparse(url).netloc.lower()
+    interval = float(getattr(settings, "SCRAPLING_MIN_INTERVAL_S", 1.0) or 0)
+    if interval <= 0:
+        return True
+    burst = 5.0
+    now = time.monotonic()
+    tokens, stamp = _LAST_FETCH.get(host, (burst, now))
+    tokens = min(burst, float(tokens) + (now - float(stamp)) / interval)
+    if tokens < 1:
+        _LAST_FETCH[host] = (tokens, now)
+        return False
+    _LAST_FETCH[host] = (tokens - 1, now)
+    return True
 
 
 def _first_proxy() -> Optional[str]:
@@ -103,6 +129,8 @@ def fetch(
     """
     if robots_obey and not robots_allowed(url):
         return {"fetch_status": "blocked", "status_code": 0, "html": None, "url": url, "reason": "robots_disallow"}
+    if not _rate_allowed(url):
+        return {"fetch_status": "rate_limited", "status_code": 429, "html": None, "url": url, "reason": "host_interval"}
     # Scrapling's Fetcher/StealthyFetcher/DynamicFetcher open their own browser
     # or HTTP stack. Pinning that connection is not available from here, so the
     # initial URL must already be a public http(s) address. Redirects inside
@@ -143,6 +171,11 @@ def fetch(
     if isinstance(html, bytes):
         html = html.decode("utf-8", errors="replace")
     final_url = getattr(resp, "url", url) or url
+    from app.services.security_service import is_safe_public_url as _safe_final
+    if final_url and not _safe_final(str(final_url)):
+        return {"fetch_status": "error", "status_code": status, "html": None, "url": str(final_url), "reason": "unsafe_redirect"}
+    if isinstance(html, str) and len(html.encode("utf-8")) > _HTML_MAX_BYTES:
+        return {"fetch_status": "error", "status_code": status, "html": None, "url": str(final_url), "reason": "response_too_large"}
 
     if status == 429:
         return {"fetch_status": "rate_limited", "status_code": status, "html": None, "url": final_url}
@@ -169,7 +202,7 @@ def fetch(
             for cand in list(candidates)[:5]:
                 if pattern.search(cand):
                     full_xhr_url = urljoin(final_url, cand)
-                    if is_safe_public_url(full_xhr_url):
+                    if is_safe_public_url(full_xhr_url) and (not robots_obey or robots_allowed(full_xhr_url)) and _rate_allowed(full_xhr_url):
                         try:
                             xhr_resp = safe_http_get(full_xhr_url, timeout=5.0, max_bytes=262144)
                             if xhr_resp and xhr_resp.status_code == 200:

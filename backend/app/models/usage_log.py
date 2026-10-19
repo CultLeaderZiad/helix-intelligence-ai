@@ -17,8 +17,13 @@ class UsageLog(Base):
     )
 
     id = Column(String, primary_key=True, default=generate_uuid)
-    org_id = Column(String, nullable=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    org_id = Column(
+        String,
+        ForeignKey("organizations.id", name="usage_logs_org_id_fkey"),
+        nullable=False,
+        index=True,
+    )
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     job_id = Column(String, nullable=True, index=True)
     provider = Column(String, nullable=False, index=True) # 'groq' | 'brightdata' | 'scrapegraph' | 'apify' | 'gemini' | 'openrouter'
     operation = Column(String, nullable=False, default="discover_search", server_default="discover_search") # 'discover_search' | 'landing_enrich' | 'pattern_synthesis' | 'chat'

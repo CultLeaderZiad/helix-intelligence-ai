@@ -123,8 +123,12 @@ class AdLibraryProvider(ScraperProvider):
                     filters=filters,
                     progress_callback=progress_callback
                 )
-                self.successful_queries_count += 1
-                if creatives:
+                outcome = getattr(self.metapi_provider, "last_outcome", "empty")
+                if outcome == "failure":
+                    logger.warning("[AdDiscovery] Metapi failed; not counting the call as a successful empty result")
+                else:
+                    self.successful_queries_count += 1
+                if creatives and outcome != "failure":
                     self.last_provider_used = "metapi"
                     logger.info(f"[AdDiscovery] Metapi succeeded with {len(creatives)} creatives")
                     return creatives
@@ -156,8 +160,14 @@ class AdLibraryProvider(ScraperProvider):
                         filters=filters,
                         progress_callback=progress_callback
                     )
-                    self.successful_queries_count += 1
-                    if creatives:
+                    # Adyntel still collapses transport errors to an empty list.
+                    # Only an explicit last_outcome of failure is withheld from the success count.
+                    outcome = getattr(self.adyntel_provider, "last_outcome", "empty")
+                    if outcome == "failure":
+                        logger.warning("[AdDiscovery] Adyntel failed; not counting the call as a successful empty result")
+                    else:
+                        self.successful_queries_count += 1
+                    if creatives and outcome != "failure":
                         self.last_provider_used = "adyntel"
                         logger.info(f"[AdDiscovery] Adyntel succeeded with {len(creatives)} creatives")
                         return creatives
@@ -178,8 +188,12 @@ class AdLibraryProvider(ScraperProvider):
                 if progress_callback:
                     await progress_callback(0, "Querying Meta Graph API (Official)...")
                 creatives = await self.query_meta_api(cleaned_query, country=country, max_records=max_records)
-                self.successful_queries_count += 1
-                if creatives:
+                outcome = getattr(self, "last_call_outcome", "empty")
+                if outcome == "failure":
+                    logger.warning("[AdDiscovery] Meta Graph API failed; not counting the call as a successful empty result")
+                else:
+                    self.successful_queries_count += 1
+                if creatives and outcome != "failure":
                     self.last_provider_used = "meta_graph"
                     logger.info(f"[AdDiscovery] Meta Graph API succeeded with {len(creatives)} creatives")
                     return creatives
@@ -201,8 +215,12 @@ class AdLibraryProvider(ScraperProvider):
                     max_records=max_records,
                     progress_callback=progress_callback
                 )
-                self.successful_queries_count += 1
-                if creatives:
+                outcome = getattr(self, "last_call_outcome", "empty")
+                if outcome == "failure":
+                    logger.warning("[AdDiscovery] Apify failed; not counting the call as a successful empty result")
+                else:
+                    self.successful_queries_count += 1
+                if creatives and outcome != "failure":
                     self.last_provider_used = "apify"
                     logger.info(f"[AdDiscovery] Apify succeeded with {len(creatives)} creatives")
                     return creatives
@@ -254,11 +272,15 @@ class AdLibraryProvider(ScraperProvider):
             if resp.status_code == 200:
                 data = resp.json()
                 ads_data = data.get("data", [])
-                return self._parse_meta_ads(ads_data, query)
+                parsed = self._parse_meta_ads(ads_data, query)
+                self.last_call_outcome = "success" if parsed else "empty"
+                return parsed
             logger.warning(f"Meta Ad Library API returned status {resp.status_code}: {resp.text[:250]}")
+            self.last_call_outcome = "failure"
             return []
         except Exception as e:
             logger.error(f"Meta Ad Library API request failed: {e}")
+            self.last_call_outcome = "failure"
             return []
 
     async def query_apify(self, query: str, country: str = "ALL", max_records: int = 15, progress_callback=None) -> List[RawCreative]:
@@ -282,13 +304,18 @@ class AdLibraryProvider(ScraperProvider):
             )
             if resp.status_code in [200, 201]:
                 items = resp.json()
-                if isinstance(items, list) and items:
-                    return self._parse_apify_ads(items, query)
-            else:
-                logger.warning(f"Apify Actor returned status {resp.status_code}: {resp.text[:250]}")
+                if isinstance(items, list):
+                    parsed = self._parse_apify_ads(items, query) if items else []
+                    self.last_call_outcome = "success" if parsed else "empty"
+                    return parsed
+            logger.warning(f"Apify Actor returned status {resp.status_code}: {resp.text[:250]}")
+            self.last_call_outcome = "failure"
+            return []
         except Exception as e:
             logger.error(f"Apify scraper request failed: {e}")
+            self.last_call_outcome = "failure"
 
+        self.last_call_outcome = "failure"
         return []
 
     def _parse_meta_ads(self, ads_data: List[dict], fallback_brand: str) -> List[RawCreative]:
@@ -312,8 +339,8 @@ class AdLibraryProvider(ScraperProvider):
             if platform in ["facebook", "instagram"]:
                 platform = "meta"
 
-            first_seen = ad.get("ad_delivery_start_time") or ad.get("ad_creation_time") or now.isoformat()
-            last_seen = ad.get("ad_delivery_stop_time") or now.isoformat()
+            first_seen = ad.get("ad_delivery_start_time") or ad.get("ad_creation_time")
+            last_seen = ad.get("ad_delivery_stop_time")
             
             days_active = 1
             try:
@@ -353,17 +380,27 @@ class AdLibraryProvider(ScraperProvider):
                     brand_name=brand_name,
                     headline=headline,
                     body=body,
-                    cta="Learn More",
+                    cta=None,
                     landing_domain=landing_domain or None,
                     landing_url=landing_url,
                     first_seen=first_seen,
                     last_seen=last_seen,
                     days_active=days_active,
+                    days_known=bool(first_seen),
                     variant_count=1,
                     impressions_est=impressions_est,
                     spend_band=spend_band,
                     data_source="meta_official",
-                    is_estimated=False
+                    is_estimated=False,
+                    source_ad_id=ad.get("id"),
+                    permalink=ad.get("ad_snapshot_url"),
+                    fetched_at=now.isoformat(),
+                    provider="meta_graph",
+                    raw={
+                        "id": ad.get("id"),
+                        "permalink": ad.get("ad_snapshot_url"),
+                        "metrics_observed": impressions_est is not None or spend_band is not None,
+                    },
                 )
             )
 
@@ -412,17 +449,27 @@ class AdLibraryProvider(ScraperProvider):
                     brand_name=brand_name,
                     headline=title or (body[:60] if body else ""),
                     body=body,
-                    cta=item.get("cta_text") or item.get("cta") or "Learn More",
+                    cta=item.get("cta_text") or item.get("cta") or None,
                     landing_domain=landing_domain,
                     landing_url=landing_url,
-                    first_seen=item.get("start_date") or now.isoformat(),
-                    last_seen=item.get("end_date") or now.isoformat(),
-                    days_active=item.get("days_active", 1),
+                    first_seen=item.get("start_date"),
+                    last_seen=item.get("end_date"),
+                    days_active=item.get("days_active") or 1,
+                    days_known=item.get("days_active") is not None or bool(item.get("start_date")),
                     variant_count=1,
                     impressions_est=None,
                     spend_band=None,
                     data_source="ad_library_scrape",
-                    is_estimated=True
+                    is_estimated=True,
+                    source_ad_id=item.get("ad_archive_id") or item.get("id"),
+                    permalink=item.get("ad_snapshot_url") or item.get("url"),
+                    fetched_at=now.isoformat(),
+                    provider="apify",
+                    raw={
+                        "id": item.get("ad_archive_id") or item.get("id"),
+                        "permalink": item.get("ad_snapshot_url") or item.get("url"),
+                        "metrics_observed": False,
+                    },
                 )
             )
 

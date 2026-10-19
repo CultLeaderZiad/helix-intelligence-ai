@@ -18,6 +18,27 @@ from app.core.credentials import env_secret
 
 logger = logging.getLogger(__name__)
 
+def _drop_unfetched_urls(profile: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep a handle for display, but do not ship a URL that was not fetched."""
+    copied = dict(profile)
+    links = copied.get("social_links") or {}
+    cleaned: Dict[str, Dict[str, Any]] = {}
+    if isinstance(links, dict):
+        for key, entry in links.items():
+            if not isinstance(entry, dict):
+                continue
+            fetched = entry.get("fetched") is True
+            cleaned[str(key)] = {
+                "name": entry.get("name") or key,
+                "handle": entry.get("handle"),
+                "profile_url": entry.get("profile_url") if fetched else None,
+                "search_url": entry.get("search_url") if fetched else None,
+                "fetched": fetched,
+            }
+    copied["social_links"] = cleaned
+    return copied
+
+
 def build_social_links(query: str, custom_handles: Optional[Dict[str, str]] = None) -> Dict[str, Dict[str, str]]:
     q_enc = query.replace(" ", "%20")
     h_default = query.split(" ")[0].lower().replace("@", "")
@@ -314,12 +335,12 @@ def _heuristic_entity_classification(query: str) -> Dict[str, Any]:
 
     # 1. Exact match in curated list
     if clean_q in KNOWN_ENTITIES:
-        return KNOWN_ENTITIES[clean_q]
+        return _drop_unfetched_urls(KNOWN_ENTITIES[clean_q])
 
     # 2. Check if known entity is inside query
     for k, profile in KNOWN_ENTITIES.items():
         if k in clean_q or clean_q in k:
-            return profile
+            return _drop_unfetched_urls(profile)
 
     # 3. Domain detection (e.g. nike.com, shopify.com)
     if "." in clean_q and " " not in clean_q:
@@ -346,7 +367,7 @@ def _heuristic_entity_classification(query: str) -> Dict[str, Any]:
                 "has_confusion": False,
                 "target_intent": f"{brand_label} Official Brand",
                 "confused_with": "",
-                "explanation": f"Verified commercial domain query for '{domain_name}'.",
+                "explanation": f"Domain-shaped query for '{domain_name}'. Not a fetched profile.",
                 "filtered_categories": []
             },
             "playbook_and_takeaways": [
@@ -359,7 +380,8 @@ def _heuristic_entity_classification(query: str) -> Dict[str, Any]:
                     "detail": "Combine Meta dynamic ads with automated SMS/email sequences to recover drop-offs."
                 }
             ],
-            "similar_entities": []
+            "similar_entities": [],
+            "social_links": {},
         }
 
     # 4. Fallback general entity profile
@@ -368,11 +390,11 @@ def _heuristic_entity_classification(query: str) -> Dict[str, Any]:
         "entity_name": title_q,
         "entity_type": "general",
         "category_label": "Market Entity / Keyword",
-        "primary_platforms": ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"],
+        "primary_platforms": [],
         "summary": f"Search intelligence for '{title_q}'. Monitored across Meta Ad Library, web presence, and digital marketing footprints.",
-        "runs_direct_meta_ads": True,
+        "runs_direct_meta_ads": None,
         "marketing_archetype": "Multi-Channel Digital Marketing",
-        "social_links": build_social_links(clean_q),
+        "social_links": {},
         "online_presence": {
             "reach_overview": f"Digital footprint across social platforms and search engines for {title_q}.",
             "viral_engine": "Content publishing and paid ad creative.",
@@ -416,12 +438,18 @@ async def analyze_entity_intent(query: str, raw_creatives: Optional[List[Any]] =
     # If in curated list, return immediately with highest precision
     low_q = clean_q.lower()
     if low_q in KNOWN_ENTITIES:
-        return KNOWN_ENTITIES[low_q]
+        profile = dict(KNOWN_ENTITIES[low_q])
+        profile["evidence_status"] = "curated_unverified"
+        profile["evidence_label"] = "Curated profile. Not fetched from an ad library for this search."
+        return _drop_unfetched_urls(profile)
 
     # Check Groq LLM for dynamic classification
     api_key = env_secret("GROQ_API_KEY", fallback=settings.GROQ_API_KEY)
     if not api_key:
-        return _heuristic_entity_classification(clean_q)
+        heuristic = dict(_heuristic_entity_classification(clean_q))
+        heuristic.setdefault("evidence_status", "unverified_heuristic")
+        heuristic.setdefault("evidence_label", "Heuristic hypothesis. Not fetched from an ad library.")
+        return _drop_unfetched_urls(heuristic)
 
     prompt = f"""You are an elite competitive intelligence & brand analyst for Helixa AI.
 Analyze the entity searched by the user: "{clean_q}".
@@ -497,10 +525,20 @@ Respond ONLY with valid JSON matching this schema:
                 content = data["choices"][0]["message"]["content"]
                 parsed = json.loads(content)
                 if isinstance(parsed, dict) and "entity_name" in parsed:
-                    if not parsed.get("social_links"):
-                        parsed["social_links"] = build_social_links(clean_q)
-                    return parsed
+                    from app.services.ai.structured import InvalidModelOutput, parse_entity
+                    try:
+                        labeled = parse_entity(parsed)
+                    except InvalidModelOutput:
+                        labeled = None
+                    if labeled:
+                        labeled["prompt_version"] = "entity-dossier-v2"
+                        labeled["model"] = "llama-3.1-8b-instant"
+                        return _drop_unfetched_urls(labeled)
     except Exception as exc:
         logger.warning("Groq entity intelligence call failed or timed out: %s. Using heuristic fallback.", exc)
 
-    return _heuristic_entity_classification(clean_q)
+    heuristic = dict(_heuristic_entity_classification(clean_q))
+    heuristic["evidence_status"] = "unverified_heuristic"
+    heuristic["evidence_label"] = "Heuristic hypothesis. Not fetched from an ad library."
+    heuristic["social_links"] = {}
+    return _drop_unfetched_urls(heuristic)

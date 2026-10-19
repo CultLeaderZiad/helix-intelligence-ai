@@ -192,7 +192,7 @@ export function SwipeFilesPage() {
         <p className="text-sm text-text-muted max-w-md mx-auto">
           Swipe files stay off until a platform admin grants that feature for this workspace.
         </p>
-        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">Request access</Link>
+        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">{t("requestAccess")}</Link>
       </div>
     )
   }

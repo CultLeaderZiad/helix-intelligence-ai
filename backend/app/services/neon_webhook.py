@@ -168,9 +168,14 @@ async def _sync_created_user(db: AsyncSession, payload: dict) -> None:
         trial_expires_at=now + timedelta(days=int(settings.TRIAL_DAYS or 7)),
     ))
     await db.flush()
+    from app.core.tenancy import apply_tenant_context, bind_tenant
+    bind_tenant([], user_id, platform_admin=False, enforce=True)
+    await apply_tenant_context(db)
     from app.services import billing_service
     created = (await db.execute(select(User).where(User.id == user_id))).scalar_one()
-    await billing_service.get_or_create_default_org(db, created)
+    org = await billing_service.get_or_create_default_org(db, created)
+    bind_tenant([org.id], user_id, platform_admin=False, enforce=True)
+    await apply_tenant_context(db)
 
 
 async def process_auth_webhook(db: AsyncSession, payload: dict) -> dict[str, Any]:

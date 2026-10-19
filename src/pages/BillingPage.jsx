@@ -16,8 +16,18 @@ import {
 } from "lucide-react"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
+import { useLanguage } from "@/context/LanguageContext"
+
+const ACCESS_STATUS_KEY = {
+  approved: "accessApproved",
+  pending: "accessPending",
+  rejected: "accessRejected",
+  expired: "accessExpired",
+  revoked: "accessRevoked",
+}
 
 export function BillingPage() {
+  const { t } = useLanguage()
   const [billing, setBilling] = useState(null)
   const [todayUsage, setTodayUsage] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -177,8 +187,8 @@ export function BillingPage() {
             <span>Access</span>
             <Clock className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-xl font-bold text-slate-100 capitalize">
-            {(access?.status || billing?.access?.status || "pending").replaceAll("_", " ")}
+          <div className="text-xl font-bold text-slate-100 capitalize" dir="auto">
+            {t(ACCESS_STATUS_KEY[access?.status || billing?.access?.status || "pending"] || "accessPending")}
           </div>
           <p className="text-xs text-slate-500">
             {formatPlanLifecycle(billing)}
@@ -187,9 +197,15 @@ export function BillingPage() {
       </div>
 
       <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-xl space-y-3">
-        <h2 className="text-sm font-semibold text-slate-100">Request access</h2>
+        <h2 className="text-sm font-semibold text-slate-100" dir="auto">{t("requestAccessTitle")}</h2>
         <p dir="auto" className="text-xs text-slate-400">
-          {access?.message || "A platform admin approves features for this workspace. There is no checkout."}
+          {t({
+            pending: "accessPendingMessage",
+            rejected: "accessRejectedMessage",
+            expired: "accessExpiredMessage",
+            revoked: "accessRevokedMessage",
+            approved: "accessApproved",
+          }[access?.status || "pending"] || "requestAccessHelp")}
         </p>
         <div className="flex flex-wrap gap-3">
           {["discover", "intelligence", "create", "scout", "leadgen", "monitors"].map((feature) => (
@@ -206,7 +222,8 @@ export function BillingPage() {
         <textarea
           value={requestNote}
           onChange={(event) => setRequestNote(event.target.value)}
-          placeholder="What do you need this workspace to do?"
+          placeholder={t("requestNotePlaceholder")}
+          dir="auto"
           className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-slate-100"
           rows={3}
         />
@@ -220,14 +237,14 @@ export function BillingPage() {
               const next = await accountService.getAccess()
               setAccess(next)
             } catch (err) {
-              setRequestState(err?.message || "Request failed")
+              setRequestState(err?.message || t("requestFailed"))
             }
           }}
           className="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white"
         >
-          Submit access request
+          {t("submitAccessRequest")}
         </button>
-        {requestState && <p className="text-xs text-slate-300">Request status: {requestState}</p>}
+        {requestState && <p className="text-xs text-slate-300" dir="auto">{t("requestStatus")}: {requestState}</p>}
       </div>
 
       {/* Real Daily Usage View Widget */}

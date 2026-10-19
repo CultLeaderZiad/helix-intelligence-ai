@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useSearchParams, useNavigate, Link } from "react-router-dom"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
+import { useLanguage } from "@/context/LanguageContext"
 import {
   Play,
   Image as ImageIcon,
@@ -51,6 +52,7 @@ const ASPECT_RATIOS = [
 ]
 
 export function CreatePage() {
+  const { t } = useLanguage()
   const [searchParams, setSearchParams] = useSearchParams()
   const sourceId = searchParams.get("sourceId")
   const navigate = useNavigate()
@@ -309,7 +311,7 @@ export function CreatePage() {
                     {isTrialExpired 
                       ? "Creation stays off until a platform admin approves this workspace." 
                       : isDailyLimitReached 
-                      ? "The daily allowance resets at 00:00 UTC. Request access if this limit needs to change." 
+                      ? t("dailyAllowance") 
                       : `${daysLeft} days remaining · ${imagesDailyLimit} images and ${videosDailyLimit} videos per day.`}
                   </span>
                 </div>
@@ -318,7 +320,7 @@ export function CreatePage() {
               {(isTrialExpired || isDailyLimitReached) && (
                 <Link to="/billing">
                   <Button size="xs" variant="primary" className="font-semibold gap-1 text-black">
-                    Request access <ArrowRight className="w-3.5 h-3.5" />
+                    {t("requestAccess")} <ArrowRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>
               )}

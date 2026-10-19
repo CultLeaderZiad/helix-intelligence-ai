@@ -64,7 +64,7 @@ jobs:
         run: |
           python -c "import app.main; print('FastAPI app imported OK; routes:', len(app.main.app.routes))"
       - name: Run pytest test suite
-        run: pytest -v tests
+        run: python -m pytest -v tests
 
   secret-scan:
     runs-on: ubuntu-latest

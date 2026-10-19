@@ -12,7 +12,7 @@ class ApiKey(Base):
     org_id = Column(String, ForeignKey("organizations.id"), nullable=False, index=True)
     user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     name = Column(String, nullable=False, default="Default API Key")
-    key_hash = Column(String, nullable=False, index=True)
+    key_hash = Column(String, nullable=False, unique=True)
     prefix = Column(String, nullable=False) # e.g. "hlx_live_a1b2..."
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

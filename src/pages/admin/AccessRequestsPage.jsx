@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react"
 import { adminService } from "@/services"
 import { ShieldCheck, RefreshCw } from "lucide-react"
+import { useLanguage } from "@/context/LanguageContext"
 
 const FEATURES = [
   "discover",
@@ -16,6 +17,7 @@ const FEATURES = [
 ]
 
 export function AccessRequestsPage() {
+  const { t } = useLanguage()
   const [requests, setRequests] = useState([])
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
@@ -42,7 +44,7 @@ export function AccessRequestsPage() {
       setPlans(list)
       if (!planId && list[0]?.id) setPlanId(list[0].id)
     } catch (err) {
-      setError(err?.message || "Access requests could not be loaded")
+      setError(err?.message || t("accessRequestsLoadFailed"))
       setRequests([])
     } finally {
       setLoading(false)
@@ -66,7 +68,7 @@ export function AccessRequestsPage() {
       })
       await load()
     } catch (err) {
-      setError(err?.message || "Approval failed")
+      setError(err?.message || t("approvalFailed"))
     } finally {
       setBusyId(null)
     }
@@ -82,7 +84,7 @@ export function AccessRequestsPage() {
       setRevokeState(result?.status || "revoked")
       await load()
     } catch (err) {
-      setError(err?.message || "Revoke failed")
+      setError(err?.message || t("revokeFailed"))
     } finally {
       setBusyId(null)
     }
@@ -95,7 +97,7 @@ export function AccessRequestsPage() {
       await adminService.rejectAccessRequest(requestId, "Rejected by platform admin")
       await load()
     } catch (err) {
-      setError(err?.message || "Rejection failed")
+      setError(err?.message || t("rejectionFailed"))
     } finally {
       setBusyId(null)
     }
@@ -107,14 +109,14 @@ export function AccessRequestsPage() {
         <div>
           <h1 className="text-xl font-bold text-slate-100 flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-indigo-400" />
-            Access requests
+            {t("accessRequestsTitle")}
           </h1>
           <p dir="auto" className="text-sm text-slate-400 mt-1">
-            Approve a workspace by choosing a plan, the features to turn on, and an optional expiry. Rejection and revocation keep the workspace data.
+            {t("accessRequestsHelp")}
           </p>
         </div>
         <button type="button" onClick={load} className="text-xs font-mono text-slate-300 border border-slate-700 rounded px-3 py-1.5">
-          <RefreshCw className={`w-3.5 h-3.5 inline ${loading ? "animate-spin" : ""}`} /> Refresh
+          <RefreshCw className={`w-3.5 h-3.5 inline ${loading ? "animate-spin" : ""}`} /> {t("refresh")}
         </button>
       </div>
 
@@ -122,16 +124,16 @@ export function AccessRequestsPage() {
 
       <div className="border border-slate-800 rounded-xl p-4 space-y-3 bg-slate-900/60">
         <label className="block text-xs text-slate-400">
-          Plan
+          {t("planLabel")}
           <select value={planId} onChange={(event) => setPlanId(event.target.value)} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-100">
-            {plans.length === 0 && <option value="">No plans loaded</option>}
+            {plans.length === 0 && <option value="">{t("noPlansLoaded")}</option>}
             {plans.map((plan) => (
               <option key={plan.id} value={plan.id}>{plan.name} ({plan.id})</option>
             ))}
           </select>
         </label>
         <label className="block text-xs text-slate-400">
-          Expiry (optional)
+          {t("expiryOptional")}
           <input type="datetime-local" value={expiry} onChange={(event) => setExpiry(event.target.value)} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-100" />
         </label>
         <div className="flex flex-wrap gap-3">
@@ -146,27 +148,27 @@ export function AccessRequestsPage() {
 
       <div className="border border-slate-800 rounded-xl p-4 space-y-2 bg-slate-900/60">
         <label className="block text-xs text-slate-400">
-          Revoke workspace access
-          <input value={revokeOrgId} onChange={(event) => setRevokeOrgId(event.target.value)} placeholder="Workspace id" className="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-100 font-mono" />
+          {t("revokeWorkspaceAccess")}
+          <input value={revokeOrgId} onChange={(event) => setRevokeOrgId(event.target.value)} placeholder={t("workspaceId")} dir="auto" className="mt-1 w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-100 font-mono" />
         </label>
-        <button type="button" disabled={!revokeOrgId || busyId === revokeOrgId} onClick={revoke} className="text-xs px-3 py-1.5 rounded border border-rose-800 text-rose-200 disabled:opacity-50">Revoke access</button>
-        {revokeState && <p className="text-xs text-slate-300">Revoke status: {revokeState}. Workspace data is kept.</p>}
+        <button type="button" disabled={!revokeOrgId || busyId === revokeOrgId} onClick={revoke} className="text-xs px-3 py-1.5 rounded border border-rose-800 text-rose-200 disabled:opacity-50">{t("revokeAccess")}</button>
+        {revokeState && <p className="text-xs text-slate-300" dir="auto">{t("revokeStatusKept").replace("{status}", revokeState)}</p>}
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-400">Loading requests…</p>
+        <p className="text-sm text-slate-400" dir="auto">{t("loadingRequests")}</p>
       ) : requests.length === 0 ? (
-        <p dir="auto" className="text-sm text-slate-400">No pending access requests.</p>
+        <p dir="auto" className="text-sm text-slate-400">{t("noPendingAccessRequests")}</p>
       ) : (
         <ul className="space-y-3">
           {requests.map((row) => (
             <li key={row.id} className="border border-slate-800 rounded-xl p-4 bg-slate-900/40">
-              <p className="text-sm text-slate-100">Workspace {row.org_id}</p>
-              <p className="text-xs text-slate-400 mt-1">Requested: {(row.requested_features || []).join(", ") || "—"}</p>
+              <p className="text-sm text-slate-100" dir="auto">{t("workspaceLabel")} {row.org_id}</p>
+              <p className="text-xs text-slate-400 mt-1" dir="auto">{t("requestedFeatures")}: {(row.requested_features || []).join(", ") || "—"}</p>
               {row.note && <p className="text-xs text-slate-500 mt-1">{row.note}</p>}
               <div className="flex gap-2 mt-3">
-                <button type="button" disabled={busyId === row.id || !planId} onClick={() => approve(row.id)} className="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white disabled:opacity-50">Approve</button>
-                <button type="button" disabled={busyId === row.id} onClick={() => reject(row.id)} className="text-xs px-3 py-1.5 rounded border border-slate-600 text-slate-200">Reject</button>
+                <button type="button" disabled={busyId === row.id || !planId} onClick={() => approve(row.id)} className="text-xs px-3 py-1.5 rounded bg-indigo-600 text-white disabled:opacity-50">{t("approve")}</button>
+                <button type="button" disabled={busyId === row.id} onClick={() => reject(row.id)} className="text-xs px-3 py-1.5 rounded border border-slate-600 text-slate-200">{t("reject")}</button>
               </div>
             </li>
           ))}

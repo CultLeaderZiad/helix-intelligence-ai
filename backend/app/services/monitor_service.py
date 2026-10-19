@@ -30,6 +30,7 @@ from sqlalchemy import select, text, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.tenancy import apply_monitor_claim_context, tenant_scope
 from app.db.session import async_session_maker
 from app.models.creative import Creative
 from app.models.monitor import Monitor, MonitorCreative, MonitorEvent, MonitorRun
@@ -298,7 +299,7 @@ async def get_monitor_events(
 # Scheduling
 # ---------------------------------------------------------------------------
 
-async def claim_due_monitors(db: AsyncSession, limit: int) -> List[str]:
+async def claim_due_monitors(db: AsyncSession, limit: int) -> List[Dict[str, str]]:
     """Atomically take ownership of monitors that are due.
 
     ``next_run_at`` is pushed forward in the same statement that selects the
@@ -325,14 +326,14 @@ async def claim_due_monitors(db: AsyncSession, limit: int) -> List[str]:
                 FOR UPDATE SKIP LOCKED
             ) AS due
             WHERE monitors.id = due.id
-            RETURNING monitors.id
+            RETURNING monitors.id, monitors.org_id, monitors.user_id
             """
         ),
         {"limit": limit},
     )
-    ids = [row[0] for row in result.fetchall()]
+    rows = [dict(row) for row in result.mappings().all()]
     await db.commit()
-    return ids
+    return rows
 
 
 async def tick(max_monitors: Optional[int] = None) -> Dict[str, Any]:
@@ -345,10 +346,28 @@ async def tick(max_monitors: Optional[int] = None) -> Dict[str, Any]:
     """
     limit = max_monitors or settings.MONITOR_MAX_PER_TICK
     async with async_session_maker() as db:
-        monitor_ids = await claim_due_monitors(db, limit)
+        await apply_monitor_claim_context(db)
+        claimed = await claim_due_monitors(db, limit)
 
-    for monitor_id in monitor_ids:
-        asyncio.create_task(run_monitor(monitor_id))
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
+    monitor_ids = [row["id"] for row in claimed]
+    for row in claimed:
+        monitor_id = row["id"]
+        with tenant_scope([row["org_id"]], row.get("user_id") or "", platform_admin=False, enforce=True):
+            async with async_session_maker() as db:
+                try:
+                    await enqueue_work(
+                        db,
+                        kind="monitor",
+                        job_id=monitor_id,
+                        org_id=row["org_id"],
+                        user_id=row.get("user_id"),
+                        payload={"monitor_id": monitor_id},
+                    )
+                except Exception:
+                    logger.exception("monitor work item was not enqueued for %s", monitor_id)
+            if inline_execution_enabled():
+                asyncio.create_task(run_monitor(monitor_id))
 
     return {"dispatched": len(monitor_ids), "monitor_ids": monitor_ids}
 
@@ -367,7 +386,20 @@ async def run_now(db: AsyncSession, monitor_id: str, org_id: str) -> Dict[str, A
     monitor.next_run_at = _utcnow() + _interval(monitor.cadence)
     await db.commit()
 
-    asyncio.create_task(run_monitor(monitor.id))
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
+    try:
+        await enqueue_work(
+            db,
+            kind="monitor",
+            job_id=monitor.id,
+            org_id=monitor.org_id,
+            user_id=monitor.user_id,
+            payload={"monitor_id": monitor.id},
+        )
+    except Exception:
+        logger.exception("monitor work item was not enqueued for %s", monitor.id)
+    if inline_execution_enabled():
+        asyncio.create_task(run_monitor(monitor.id))
     return {"success": True, "monitor_id": monitor.id}
 
 

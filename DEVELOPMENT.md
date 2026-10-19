@@ -160,9 +160,16 @@ this app reach 5.3 minutes at p95, so an age-based rule would have to wait out
 the slowest legitimate job — roughly ten minutes — before it could call
 anything dead.
 
-The sweep runs at startup **and** on a 60s timer. Startup alone is not enough:
-a restart that comes back in seconds kills a job that is not yet old enough to
-look stale, and nothing would ever revisit it.
+The durable scrapling worker runs the sweep at startup **and** on a 60s timer,
+using `worker_session_maker` for maintenance and refunds. The API does not run
+startup sweeps or periodic maintenance; keep the worker service running for
+recovery. Startup alone is not enough: a restart that comes back in seconds
+kills a job that is not yet old enough to look stale, and nothing would revisit
+it. Failed scrape refund recovery considers only the last 24 hours using
+`COALESCE(completed_at, heartbeat_at, created_at)` (scrape jobs have no
+`updated_at` column); sweeping an active scrape sets `completed_at` to now.
+Monitor cleanup resolves the parent organization while the stale run is still
+`running`, then marks it failed and retains that org for tenant-scoped notices.
 
 The UI distinguishes the two failure causes. `failure_kind` is surfaced on both
 the discover `Job` and the media job response, and Discover and Create render
@@ -220,9 +227,8 @@ ticks cannot both pick up the same monitor and charge for it twice.
 
 A monitor run costs exactly what a Discover search costs and goes through the
 same gatekeeper (`assert_can_spend`) against the **monitor owner's** plan, with
-`feature_name="monitors"`. Feature flags default to allowed, so admins can
-disable monitors per organisation via `custom_feature_flags` without a schema
-change. There is no separate paid tier.
+`feature_name="monitors"`. Feature flags fail closed. A platform admin grant
+is what turns a feature on. There is no separate paid tier.
 
 Blocked runs do not retry forever. A trial expiry, disabled feature or exhausted
 balance pauses the monitor and notifies the owner once; a daily cap only defers
@@ -449,5 +455,38 @@ python backend/tests/test_gemini_trial_suite.py
 python backend/tests/test_gemini_suite.py
 ```
 
+## Row-level security roles
+
+Row-level security stays enabled on tenant tables. Restricted API/worker roles
+are denied by default when no organization context is set; the only broad
+application bypass is the existing `helix.platform_admin` setting. The forward
+RLS correction removes `FORCE ROW LEVEL SECURITY` so a table owner/migration
+role retains normal owner access. Superusers and roles with `BYPASSRLS` (the
+Neon owner, often `neondb_owner`) also bypass policies. Production refuses to
+boot when `current_user` is one of those roles; other environments log a
+warning and continue.
+
+`helix_app` and `helix_worker` are `NOLOGIN` group roles. Migration
+`e7c1a9b4d2f0` creates them transactionally with its schema changes; a failure
+rolls back both. Create one login for the API and one for the worker. Set the
+password in the Neon or Render dashboard, not in this repository.
+
+```sql
+CREATE ROLE helix_api_login LOGIN NOSUPERUSER NOBYPASSRLS INHERIT;
+CREATE ROLE helix_worker_login LOGIN NOSUPERUSER NOBYPASSRLS INHERIT;
+GRANT helix_app TO helix_api_login;
+GRANT helix_worker TO helix_worker_login;
+```
+
+The policy denies access without matching organization context, independent
+of `helix.enforce`; no login-role setting is needed. Maintenance policies are
+worker-only, so API logins must not inherit `helix_worker`.
+
+Then set each password out of band (`ALTER ROLE ... PASSWORD` from a secret
+store) and point `DATABASE_URL` at that login. The API uses
+`helix_api_login`. The scrapling worker uses `helix_worker_login`. Both
+inherit `SELECT, INSERT, UPDATE, DELETE` on public tables and `USAGE, SELECT`
+on sequences. Migration `d4f6a8c0e2b1` grants those privileges again and sets
+default privileges for tables created later by the migration role.
 
 

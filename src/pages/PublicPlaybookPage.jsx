@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
-import { Sparkles, Printer, ArrowUpRight, Share2, ExternalLink, ShieldCheck, Compass, CheckCircle2, Layers } from "lucide-react"
+import { Sparkles, Printer, Share2, ExternalLink, ShieldCheck, Compass, CheckCircle2, Layers } from "lucide-react"
 import { playbookService } from "../services"
 import { getAccessToken } from "@/services/sessionStore"
 import { ScrollToTopButton } from "@/components/ui/ScrollToTopButton"
 import { SkipToContent } from "@/components/ui/SkipToContent"
+import { useLanguage } from "@/context/LanguageContext"
 
 export function PublicPlaybookPage() {
   const { publicId } = useParams()
+  const { t } = useLanguage()
   const [playbook, setPlaybook] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -240,7 +242,7 @@ export function PublicPlaybookPage() {
           <div className="flex items-center justify-between print-avoid-break-after">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-teal-400 print:text-slate-900" aria-hidden="true" />
-              <h2 className="text-xl font-bold text-white print:text-slate-900 tracking-tight">Top High-Converting Creative Patterns</h2>
+              <h2 className="text-xl font-bold text-white print:text-slate-900 tracking-tight" dir="auto">{t("suppliedPatternsTitle")}</h2>
             </div>
             <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20 print:border-slate-400 print:text-slate-800">
               AI-Synthesized
@@ -254,11 +256,7 @@ export function PublicPlaybookPage() {
                   <span className="px-2.5 py-0.5 rounded text-[11px] font-semibold uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 print:border-slate-400 print:text-slate-900 print:bg-slate-100">
                     {pat.category || "Hook Pattern"}
                   </span>
-                  {pat.estimated_lift_percent != null && (
-                    <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 print:text-emerald-800">
-                      <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" /> +{pat.estimated_lift_percent}% Est. Lift
-                    </div>
-                  )}
+                  <span className="text-[11px] text-slate-400 print:text-slate-600" dir="auto">{t("notMeasured")}</span>
                 </div>
 
                 <h3 className="font-bold text-base text-white print:text-slate-900">{pat.name}</h3>

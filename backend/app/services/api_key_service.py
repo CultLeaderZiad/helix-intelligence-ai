@@ -87,17 +87,29 @@ async def revoke_api_key(db: AsyncSession, user: User, key_id: str) -> Dict[str,
 
 async def authenticate_api_key(db: AsyncSession, raw_key: str) -> Tuple[User, Organization]:
     hashed = hash_key(raw_key)
-    result = await db.execute(
-        select(ApiKey, User, Organization)
-        .join(User, ApiKey.user_id == User.id)
-        .join(Organization, ApiKey.org_id == Organization.id)
-        .where(ApiKey.key_hash == hashed, ApiKey.is_active == True)
-    )
-    row = result.first()
-    if not row:
+    api_key = (
+        await db.execute(
+            select(ApiKey).where(ApiKey.key_hash == hashed, ApiKey.is_active == True)
+        )
+    ).scalar_one_or_none()
+    if api_key is None:
         raise HTTPException(status_code=401, detail="Invalid or revoked API Key")
 
-    api_key, user, org = row
+    # api_keys is the credential lookup boundary and has no tenant RLS policy;
+    # use its verified org/user ids to seed the scoped context before joining
+    # the RLS-protected organizations and entitlement tables.
+    from app.core.tenancy import apply_tenant_context, bind_tenant
+
+    bind_tenant([api_key.org_id], api_key.user_id, platform_admin=False, enforce=True)
+    await apply_tenant_context(db)
+    user = (
+        await db.execute(select(User).where(User.id == api_key.user_id))
+    ).scalar_one_or_none()
+    org = (
+        await db.execute(select(Organization).where(Organization.id == api_key.org_id))
+    ).scalar_one_or_none()
+    if user is None or org is None:
+        raise HTTPException(status_code=401, detail="Invalid or revoked API Key")
 
     # Re-validate public_api entitlement (F61)
     from app.models.plan import Plan

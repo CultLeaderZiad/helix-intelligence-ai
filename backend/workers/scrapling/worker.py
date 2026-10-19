@@ -101,10 +101,12 @@ async def _claim_next_job_async() -> str | None:
     Uses worker_session_maker (NullPool) to ensure no connection reuse across destroyed event loops (F24).
     SKIP LOCKED keeps multiple worker replicas from double-claiming."""
     from sqlalchemy import update, select
+    from app.core.tenancy import apply_worker_claim_context
     from app.db.session import worker_session_maker
     from app.models.leadgen import LeadGenJob  # noqa: F401 - registers tables
 
     async with worker_session_maker() as db:
+        await apply_worker_claim_context(db, f"claimed:{BOOT_ID}")
         job_id = (await db.execute(
             select(LeadGenJob.id)
             .where(LeadGenJob.status == "queued")
@@ -153,6 +155,35 @@ def _serve_health(info: dict) -> None:
     logger.info("worker health server on :%d/health", port)
 
 
+async def _worker_loop(run_leadgen_job) -> None:
+    """Own maintenance for this worker lifetime, including graceful shutdown."""
+    from app.services.job_reconciliation import reconcile_once, reconciliation_loop
+    from app.services.work_outbox import claim_next_work_item, execute_work_item
+
+    await reconcile_once()
+    reconciler = asyncio.create_task(reconciliation_loop())
+    try:
+        while not _stop.is_set():
+            try:
+                work_id = await claim_next_work_item(BOOT_ID)
+                if work_id:
+                    logger.info("claimed work item %s", work_id)
+                    await execute_work_item(work_id, BOOT_ID)
+                    continue
+                job_id = await _claim_next_job_async()
+                if job_id:
+                    logger.info("claimed job %s", job_id)
+                    await run_leadgen_job(job_id, claimed_boot_id=BOOT_ID)
+                else:
+                    await asyncio.sleep(POLL_INTERVAL_S)
+            except Exception as e:
+                logger.exception("worker loop error: %s", e)
+                await asyncio.sleep(POLL_INTERVAL_S)
+    finally:
+        reconciler.cancel()
+        await asyncio.gather(reconciler, return_exceptions=True)
+
+
 def main() -> None:
     # Fail fast on required config (the worker, not the API, needs these)
     for var in ("DATABASE_URL", "SECRET_KEY"):
@@ -162,6 +193,18 @@ def main() -> None:
 
     os.environ.setdefault("SCRAPLING_WORKER_ENABLED", "true")
     os.environ.setdefault("SCRAPLING_ROBOTS_OBEY", "true")
+
+    async def _check_rls_role() -> None:
+        from app.core.rls_role import assert_rls_role
+        from app.db.session import worker_engine
+        async with worker_engine.connect() as conn:
+            await assert_rls_role(conn)
+
+    try:
+        asyncio.run(_check_rls_role())
+    except RuntimeError as exc:
+        print(f"FATAL: {exc}", file=sys.stderr)
+        sys.exit(1)
 
     # Deferred: app imports happen only here, never in the API boot path.
     from app.services import scrapling_engine as engine
@@ -182,20 +225,7 @@ def main() -> None:
     signal.signal(signal.SIGTERM, lambda *_: _stop.set())
     signal.signal(signal.SIGINT, lambda *_: _stop.set())
 
-    async def _worker_loop():
-        while not _stop.is_set():
-            try:
-                job_id = await _claim_next_job_async()
-                if job_id:
-                    logger.info("claimed job %s", job_id)
-                    await run_leadgen_job(job_id)
-                else:
-                    await asyncio.sleep(POLL_INTERVAL_S)
-            except Exception as e:
-                logger.exception("worker loop error: %s", e)
-                await asyncio.sleep(POLL_INTERVAL_S)
-
-    asyncio.run(_worker_loop())
+    asyncio.run(_worker_loop(run_leadgen_job))
     logger.info("worker stopped")
 
 

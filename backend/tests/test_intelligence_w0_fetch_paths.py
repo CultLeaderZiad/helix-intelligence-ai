@@ -11,6 +11,7 @@ import pytest
 
 from app.core.config import settings
 from app.services.safe_fetch import UnsafeFetch
+from app.services.scraping.base import ProviderFailure
 
 
 def _public_resolve(hostname, port):
@@ -104,13 +105,18 @@ async def test_adyntel_rejects_redirect_and_private_ip():
         "app.services.safe_fetch._exchange",
         side_effect=lambda *a, **k: calls.append(a) or _redirect_exchange(),
     ):
-        assert await provider.search("nike.com", max_records=5) == []
+        with pytest.raises(ProviderFailure) as raised:
+            await provider.search("nike.com", max_records=5)
+        assert raised.value.provider == "adyntel"
+        assert provider.last_outcome == "failure"
         assert len(calls) == 1
     calls.clear()
     with patch("app.services.safe_fetch._resolve", _private_resolve), patch(
         "app.services.safe_fetch._exchange", side_effect=lambda *a, **k: calls.append(a)
     ):
-        assert await provider.search("nike.com", max_records=5) == []
+        with pytest.raises(ProviderFailure):
+            await provider.search("nike.com", max_records=5)
+        assert provider.last_outcome == "failure"
         assert calls == []
 
 
@@ -146,13 +152,16 @@ async def test_scrapegraph_provider_rejects_redirect_and_private_ip():
         "app.services.safe_fetch._exchange",
         side_effect=lambda *a, **k: calls.append(a) or _redirect_exchange(),
     ):
-        assert await provider.extract_landing_page("https://example.com/landing") == {}
+        result = await provider.extract_landing_page("https://example.com/landing")
+        assert result["status"] == "failure"
+        assert result.get("headline") is None
         assert len(calls) == 1
     calls.clear()
     with patch("app.services.safe_fetch._resolve", _private_resolve), patch(
         "app.services.safe_fetch._exchange", side_effect=lambda *a, **k: calls.append(a)
     ):
-        assert await provider.extract_landing_page("https://example.com/landing") == {}
+        result = await provider.extract_landing_page("https://example.com/landing")
+        assert result["status"] == "failure"
         assert calls == []
 
 

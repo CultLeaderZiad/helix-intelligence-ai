@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from typing import Optional
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,7 +87,7 @@ async def meter_media_success(job_id: str) -> None:
         logger.error("Media metering failed for job %s: %s", job_id, e)
 
 
-async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, custom_api_key: Optional[str] = None):
+async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, custom_api_key: Optional[str] = None, work_item_id: Optional[str] = None):
     """
     Executes synchronous/async Gemini image generation in background task.
     Resolves Managed vs BYOK provider without leaking credentials.
@@ -157,6 +158,10 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             if custom_model:
                 provider_instance.image_model = custom_model
 
+            from app.services.billing_service import assert_can_spend
+            await assert_can_spend(db, user, required_credits=0.0, feature_name="create", lock_row=False)
+            if job.status == "canceled":
+                return
             job.status = "running"
             job.owner_boot_id = BOOT_ID
             job.heartbeat_at = datetime.now(timezone.utc)
@@ -173,6 +178,10 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             mode = params.get("mode")
             mode_spec = resolve_mode_spec(mode) if mode else {}
             media_category = mode_spec.get("output_type", "image")
+            started_generation = time.monotonic()
+            if work_item_id:
+                from app.services.work_outbox import mark_provider_started
+                await mark_provider_started(work_item_id)
 
             if media_category == "video":
                 start_frame = params.get("start_frame") or params.get("start_image_url")
@@ -191,7 +200,7 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
                         model=params.get("custom_model") or "wan-fast",
                         **video_kwargs
                     )
-                else:
+                elif settings.MEDIA_MANAGED_FALLBACK and credential_mode not in {"byok", "byok_request"}:
                     from app.services.ai.pollinations_provider import PollinationsProvider
                     temp_provider = PollinationsProvider()
                     gen_result = await temp_provider.generate_video(
@@ -200,6 +209,10 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
                         model=params.get("custom_model") or "wan-fast",
                         **video_kwargs
                     )
+                    provider_instance = temp_provider
+                    credential_mode = "managed_fallback"
+                else:
+                    raise RuntimeError("This provider cannot generate video, and managed fallback is not enabled.")
             else:
                 try:
                     gen_result = await provider_instance.generate_image(
@@ -211,11 +224,10 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
                 except Exception as img_err:
                     err_str = str(img_err).lower()
                     from app.services.ai.pollinations_provider import PollinationsProvider
-                    if ("quota" in err_str or "rate limit" in err_str or "429" in err_str or "resourceexhausted" in err_str) and not isinstance(provider_instance, PollinationsProvider):
-                        logger.warning(
-                            "Primary image provider failed due to quota/rate limit: %s. Transparently falling back to Pollinations FLUX.",
-                            img_err
-                        )
+                    quota_error = "quota" in err_str or "rate limit" in err_str or "429" in err_str or "resourceexhausted" in err_str
+                    managed_mode = credential_mode not in {"byok", "byok_request"}
+                    if quota_error and managed_mode and settings.MEDIA_MANAGED_FALLBACK and not isinstance(provider_instance, PollinationsProvider):
+                        logger.warning("Managed image provider quota error; using configured Pollinations fallback: %s", img_err)
                         fallback_provider = PollinationsProvider()
                         gen_result = await fallback_provider.generate_image(
                             prompt=job.prompt,
@@ -224,6 +236,8 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
                             seed=params.get("seed"),
                             model="flux",
                         )
+                        provider_instance = fallback_provider
+                        credential_mode = "managed_fallback"
                     else:
                         raise
 
@@ -238,15 +252,26 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
                 logger.info("Media job %s was canceled during execution, skipping completion and usage recording", job.id)
                 return
 
+            actual_provider = getattr(provider_instance, "provider_name", None) or provider_instance.__class__.__name__.replace("Provider", "").lower()
+            actual_model = getattr(provider_instance, "image_model", None) or getattr(provider_instance, "model", None)
             job.status = "completed"
             job.result_url = final_url
-            await db.commit()
-
-            # Increment usage counters only on success
+            job.provider = actual_provider
+            params["model"] = actual_model
+            params["credential_mode"] = credential_mode
+            params["latency_ms"] = int((time.monotonic() - started_generation) * 1000)
+            job.parameters = params
             if media_category == "video":
-                await record_video_generated(db, user, org, job_id=job.id)
+                await record_video_generated(
+                    db, user, org, job_id=job.id, provider=actual_provider, model=actual_model,
+                    latency_ms=params.get("latency_ms"), commit=False,
+                )
             else:
-                await record_image_generated(db, user, org, job_id=job.id)
+                await record_image_generated(
+                    db, user, org, job_id=job.id, provider=actual_provider, model=actual_model,
+                    latency_ms=params.get("latency_ms"), commit=False,
+                )
+            await db.commit()
 
             logger.info(
                 "Gemini/Pollinations job %s completed successfully (%s mode): %s",
@@ -282,14 +307,15 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
 
 
 async def mock_generate_media_task(job_id: str):
-    await asyncio.sleep(2)
+    """Production never completes a mock image. The flag is rejected at boot."""
     from app.db.session import async_session_maker
     async with async_session_maker() as db:
         result = await db.execute(select(MediaGenerationJob).where(MediaGenerationJob.id == job_id))
         job = result.scalar_one_or_none()
         if job:
-            job.status = "completed"
-            job.result_url = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1024"
+            job.status = "failed"
+            job.failure_kind = "mock_disabled"
+            job.error_message = "Mock media generation is disabled."
             await db.commit()
 
 
@@ -346,13 +372,29 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
     await db.commit()
     await db.refresh(job)
 
-    # 3. Dispatch Provider Task
-    if provider == "mock":
-        asyncio.create_task(_with_heartbeat(lambda: mock_generate_media_task(job.id), job.id))
-    else:
-        asyncio.create_task(
-            _with_heartbeat(lambda: gemini_generate_media_task(job.id, user.id, org.id, custom_api_key=request_api_key), job.id)
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
+    encrypted_key = None
+    if request_api_key:
+        from app.services.security_service import encrypt_secret
+        encrypted_key = encrypt_secret(request_api_key)
+    try:
+        await enqueue_work(
+            db,
+            kind="media",
+            job_id=job.id,
+            org_id=org.id,
+            user_id=user.id,
+            payload={"encrypted_byok": encrypted_key, "mode": mode},
         )
+    except Exception:
+        logger.exception("media work item was not enqueued for %s", job.id)
+    if inline_execution_enabled():
+        if provider == "mock":
+            asyncio.create_task(_with_heartbeat(lambda: mock_generate_media_task(job.id), job.id))
+        else:
+            asyncio.create_task(
+                _with_heartbeat(lambda: gemini_generate_media_task(job.id, user.id, org.id, custom_api_key=request_api_key), job.id)
+            )
 
     return job
 

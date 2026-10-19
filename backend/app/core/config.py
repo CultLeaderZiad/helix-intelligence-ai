@@ -183,6 +183,20 @@ class Settings(BaseSettings):
     # not total runtime, so a legitimately slow search is never swept.
     JOB_HEARTBEAT_INTERVAL_S: int = int(os.getenv("JOB_HEARTBEAT_INTERVAL_S", "15"))
     JOB_STALE_AFTER_S: int = int(os.getenv("JOB_STALE_AFTER_S", "120"))
+    # Long jobs are claimed by the worker. Inline dispatch is a local override
+    # and is rejected in production.
+    HELIX_DISPATCH_INLINE: bool = os.getenv("HELIX_DISPATCH_INLINE", "false").lower() in ("true", "1", "yes")
+    WORK_LEASE_S: int = int(os.getenv("WORK_LEASE_S", "120"))
+    WORK_MAX_ATTEMPTS: int = int(os.getenv("WORK_MAX_ATTEMPTS", "3"))
+    AI_MAX_OUTPUT_TOKENS: int = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "1024"))
+    AI_CALL_TIMEOUT_S: float = float(os.getenv("AI_CALL_TIMEOUT_S", "20"))
+    AI_CALL_DEADLINE_S: float = float(os.getenv("AI_CALL_DEADLINE_S", "45"))
+    AI_MAX_RETRIES: int = int(os.getenv("AI_MAX_RETRIES", "2"))
+    MEDIA_GENERATION_DEADLINE_S: float = float(os.getenv("MEDIA_GENERATION_DEADLINE_S", "120"))
+    # Managed image/video calls may fall back to Pollinations only when this is set.
+    # BYOK failures never use it.
+    MEDIA_MANAGED_FALLBACK: bool = os.getenv("MEDIA_MANAGED_FALLBACK", "false").lower() in ("true", "1", "yes")
+    SCRAPLING_MIN_INTERVAL_S: float = float(os.getenv("SCRAPLING_MIN_INTERVAL_S", "1.0"))
 
     # MONITORS (scheduled competitor watches)
     # The scheduler is whatever calls POST /api/monitors/tick with this secret
@@ -308,6 +322,8 @@ def validate_boot_invariants(cfg) -> None:
     errors = []
     if getattr(cfg, "USE_MOCKS", False):
         errors.append("USE_MOCKS must be false when ENVIRONMENT=production")
+    if getattr(cfg, "HELIX_DISPATCH_INLINE", False):
+        errors.append("HELIX_DISPATCH_INLINE must be false when ENVIRONMENT=production")
     if getattr(cfg, "AUTH_DEV_RESET_RETURN", False):
         errors.append("AUTH_DEV_RESET_RETURN must be false when ENVIRONMENT=production")
     secret = getattr(cfg, "SECRET_KEY", "") or ""

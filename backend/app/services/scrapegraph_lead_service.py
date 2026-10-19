@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List, Union
 import httpx
 from app.core.config import settings
@@ -389,8 +390,11 @@ async def search_leads_with_scrapegraph(
                     "category": keyword.title(),
                     "address": city,
                     "city": city,
-                    "rating": 4.8,
-                    "reviews_count": 24,
+                    "rating": None,
+                    "reviews_count": None,
+                    "rating_provider": "scrapegraph_search",
+                    "source_url": u,
+                    "fetched_at": datetime.now(timezone.utc).isoformat(),
                     "socials": content_socials,
                     "instagram": content_socials.get("instagram"),
                     "facebook": content_socials.get("facebook"),

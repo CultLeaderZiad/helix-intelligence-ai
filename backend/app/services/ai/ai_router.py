@@ -41,7 +41,8 @@ class MultiTierAIProvider(AIProvider):
         # Tier 1: Groq (Primary)
         try:
             res = await self.groq._call_api(messages)
-            self.model = "groq/openai/gpt-oss-120b"
+            self.model = self.groq.model
+            self.last_usage = getattr(self.groq, "last_usage", None)
             return res
         except Exception as e_groq:
             errors["groq"] = str(e_groq)
@@ -49,7 +50,8 @@ class MultiTierAIProvider(AIProvider):
             # Tier 2: OpenRouter (Fallback)
             try:
                 res = await self.openrouter._call_api(messages)
-                self.model = f"openrouter/{self.openrouter.model}"
+                self.model = self.openrouter.model
+                self.last_usage = getattr(self.openrouter, "last_usage", None)
                 return res
             except Exception as e_or:
                 errors["openrouter"] = str(e_or)
@@ -59,6 +61,7 @@ class MultiTierAIProvider(AIProvider):
                     try:
                         res = await self.aihubmix._call_api(messages)
                         self.model = f"aihubmix/{self.aihubmix.model}"
+                        self.last_usage = getattr(self.aihubmix, "last_usage", None)
                         return res
                     except Exception as e_ah:
                         errors["aihubmix"] = str(e_ah)
@@ -70,6 +73,7 @@ class MultiTierAIProvider(AIProvider):
                     try:
                         res = await self.tokenharbor._call_api(messages)
                         self.model = f"tokenharbor/{self.tokenharbor.model}"
+                        self.last_usage = getattr(self.tokenharbor, "last_usage", None)
                         return res
                     except Exception as e_th:
                         errors["tokenharbor"] = str(e_th)
@@ -80,6 +84,7 @@ class MultiTierAIProvider(AIProvider):
                 try:
                     res = await self.gemini._call_api(messages)
                     self.model = f"gemini/{self.gemini.model}"
+                    self.last_usage = getattr(self.gemini, "last_usage", None)
                     return res
                 except Exception as e_gem:
                     errors["gemini"] = str(e_gem)
@@ -164,7 +169,7 @@ class AIRouter:
         return MultiTierAIProvider()
 
     @staticmethod
-    async def log_usage(db: AsyncSession, user_id: str, provider_name: str, org_id: str = None, tokens: int = 0):
+    async def log_usage(db: AsyncSession, user_id: str, provider_name: str, org_id: str, tokens: int = 0):
         log = UsageLog(
             user_id=user_id,
             org_id=org_id,
@@ -181,7 +186,7 @@ class AIRouter:
         user_id: str,
         provider_name: str,
         operation: str,
-        org_id: str = None,
+        org_id: str,
         error: str = "",
     ):
         """Records a provider failure so it is visible in the admin

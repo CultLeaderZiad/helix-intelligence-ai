@@ -177,7 +177,7 @@ def _pinned_get(destination: PublicDestination, timeout: float, headers: dict, m
         transport.close()
 
 
-def safe_http_get(url: str, timeout: float = 20.0, max_redirects: int = 5, max_bytes: int = DEFAULT_MAX_BYTES, **kwargs):
+def safe_http_get(url: str, timeout: float = 20.0, max_redirects: int = 5, max_bytes: int = DEFAULT_MAX_BYTES, transport=None, resolve=None, **kwargs):
     """GET ``url``, validating the initial target and every redirect hop."""
     if "max_bytes" in kwargs:
         max_bytes = int(kwargs.pop("max_bytes"))
@@ -185,7 +185,16 @@ def safe_http_get(url: str, timeout: float = 20.0, max_redirects: int = 5, max_b
     headers = dict(kwargs.pop("headers", None) or {})
     current = url
     for _ in range(max_redirects + 1):
-        destination = assert_public_http_url(current)
+        destination = assert_public_http_url(current, resolve=resolve)
+        if transport is not None:
+            response = _exchange("GET", destination, timeout, headers, max_bytes, None, None, None, None, transport=transport)
+            if not getattr(response, "is_redirect", False):
+                return response
+            location = response.headers.get("location") if getattr(response, "headers", None) else None
+            if not location:
+                raise UnsafeFetch("SSRF blocked: redirect missing location")
+            current = urljoin(current, location)
+            continue
         if _use_patched_client_get():
             response = httpx.get(
                 destination.url,
@@ -263,21 +272,28 @@ def _with_params(url: str, params) -> str:
     return str(httpx.URL(url).copy_merge_params(params))
 
 
-def _exchange(method, destination, timeout, headers, max_bytes, json_body, content, data, proxy):
+def _exchange(method, destination, timeout, headers, max_bytes, json_body, content, data, proxy, transport=None):
     """Send one hop. A configured proxy cannot be pinned to the target address."""
-    transport = None if proxy else _PinningTransport(destination)
+    owned_transport = None
+    if transport is not None:
+        client_transport = transport
+    elif proxy:
+        client_transport = None
+    else:
+        owned_transport = _PinningTransport(destination)
+        client_transport = owned_transport
     client_kwargs = {
         "trust_env": False,
         "follow_redirects": False,
         "timeout": httpx.Timeout(timeout),
     }
-    if proxy:
+    if proxy and transport is None:
         # The TCP connection is the operator-configured proxy, so the target
         # address cannot be pinned. The caller has already rejected private
         # destinations, and redirects are not followed by this client.
         client_kwargs["proxy"] = proxy
-    else:
-        client_kwargs["transport"] = transport
+    elif client_transport is not None:
+        client_kwargs["transport"] = client_transport
     try:
         with httpx.Client(**client_kwargs) as client:
             request_kwargs = {"headers": headers}
@@ -305,8 +321,8 @@ def _exchange(method, destination, timeout, headers, max_bytes, json_body, conte
             finally:
                 response.close()
     finally:
-        if transport is not None:
-            transport.close()
+        if owned_transport is not None:
+            owned_transport.close()
 
 
 def _strip_credential_headers(headers: dict) -> None:

@@ -38,6 +38,253 @@ def get_schema_cache(conn):
     return existing_tables, existing_cols, existing_indexes
 
 
+def _column_names(conn, table: str) -> set[str]:
+    insp = sa.inspect(conn)
+    if not insp.has_table(table):
+        return set()
+    return {col["name"] for col in insp.get_columns(table)}
+
+
+def _index_names(conn, table: str) -> set[str]:
+    insp = sa.inspect(conn)
+    if not insp.has_table(table):
+        return set()
+    return {idx["name"] for idx in insp.get_indexes(table)}
+
+
+def _ensure_index(conn, name: str, table: str, columns: list[str], unique: bool = False) -> None:
+    if name in _index_names(conn, table):
+        return
+    op.create_index(name, table, columns, unique=unique)
+
+
+def _json_not_jsonb(conn, table: str, column: str) -> None:
+    """Models use JSON. A hand-built JSONB column fails alembic check."""
+    row = conn.execute(
+        sa.text(
+            """
+            SELECT udt_name, is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = :table AND column_name = :column
+            """
+        ),
+        {"table": table, "column": column},
+    ).first()
+    if row is None or row.udt_name != "jsonb":
+        return
+    op.execute(sa.text(f"ALTER TABLE {table} ALTER COLUMN {column} TYPE json USING {column}::json"))
+
+
+def _drop_not_null_when_model_allows(conn, table: str, column: str) -> None:
+    row = conn.execute(
+        sa.text(
+            """
+            SELECT is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = :table AND column_name = :column
+            """
+        ),
+        {"table": table, "column": column},
+    ).first()
+    if row is None or row.is_nullable == "YES":
+        return
+    op.execute(sa.text(f"ALTER TABLE {table} ALTER COLUMN {column} DROP NOT NULL"))
+
+
+def _reconcile_api_keys(conn) -> None:
+    if not sa.inspect(conn).has_table("api_keys"):
+        return
+    cols = _column_names(conn, "api_keys")
+    if "prefix" not in cols and "key_prefix" in cols:
+        op.execute(sa.text("ALTER TABLE api_keys RENAME COLUMN key_prefix TO prefix"))
+    elif "prefix" in cols and "key_prefix" in cols:
+        op.execute(sa.text("UPDATE api_keys SET prefix = COALESCE(prefix, key_prefix)"))
+        op.execute(sa.text("ALTER TABLE api_keys DROP COLUMN key_prefix"))
+    cols = _column_names(conn, "api_keys")
+    if "prefix" not in cols:
+        op.execute(sa.text("ALTER TABLE api_keys ADD COLUMN prefix VARCHAR"))
+        op.execute(sa.text("UPDATE api_keys SET prefix = '' WHERE prefix IS NULL"))
+        op.execute(sa.text("ALTER TABLE api_keys ALTER COLUMN prefix SET NOT NULL"))
+    for extra in ("scopes", "expires_at"):
+        if extra in cols:
+            op.execute(sa.text(f"ALTER TABLE api_keys DROP COLUMN {extra}"))
+    _ensure_index(conn, "ix_api_keys_key_hash", "api_keys", ["key_hash"])
+    _ensure_index(conn, "ix_api_keys_org_id", "api_keys", ["org_id"])
+    _ensure_index(conn, "ix_api_keys_user_id", "api_keys", ["user_id"])
+
+
+def _reconcile_usage_logs(conn) -> None:
+    if not sa.inspect(conn).has_table("usage_logs"):
+        return
+    cols = _column_names(conn, "usage_logs")
+    if "metadata" in cols and "metadata_json" not in cols:
+        op.execute(sa.text("ALTER TABLE usage_logs RENAME COLUMN metadata TO metadata_json"))
+    elif "metadata" in cols and "metadata_json" in cols:
+        op.execute(sa.text("UPDATE usage_logs SET metadata_json = COALESCE(metadata_json::jsonb, metadata::jsonb)::json"))
+        op.execute(sa.text("ALTER TABLE usage_logs DROP COLUMN metadata"))
+    cols = _column_names(conn, "usage_logs")
+    if "operation" not in cols:
+        op.execute(sa.text("ALTER TABLE usage_logs ADD COLUMN operation VARCHAR"))
+    if "feature_name" in cols:
+        op.execute(
+            sa.text(
+                "UPDATE usage_logs SET operation = COALESCE(operation, feature_name, 'discover_search')"
+            )
+        )
+        op.execute(sa.text("ALTER TABLE usage_logs DROP COLUMN feature_name"))
+    else:
+        op.execute(sa.text("UPDATE usage_logs SET operation = COALESCE(operation, 'discover_search')"))
+    op.execute(sa.text("ALTER TABLE usage_logs ALTER COLUMN operation SET DEFAULT 'discover_search'"))
+    op.execute(sa.text("ALTER TABLE usage_logs ALTER COLUMN operation SET NOT NULL"))
+
+    cols = _column_names(conn, "usage_logs")
+    if "credits_deducted" not in cols:
+        op.execute(sa.text("ALTER TABLE usage_logs ADD COLUMN credits_deducted DOUBLE PRECISION"))
+    if "credits_charged" in _column_names(conn, "usage_logs"):
+        op.execute(
+            sa.text(
+                "UPDATE usage_logs SET credits_deducted = COALESCE(credits_deducted, credits_charged)"
+            )
+        )
+        op.execute(sa.text("ALTER TABLE usage_logs DROP COLUMN credits_charged"))
+
+    cols = _column_names(conn, "usage_logs")
+    if "cost_usd" not in cols:
+        op.execute(sa.text("ALTER TABLE usage_logs ADD COLUMN cost_usd DOUBLE PRECISION"))
+    if "provider_cost_usd" in _column_names(conn, "usage_logs"):
+        op.execute(
+            sa.text("UPDATE usage_logs SET cost_usd = COALESCE(cost_usd, provider_cost_usd)")
+        )
+        op.execute(sa.text("ALTER TABLE usage_logs DROP COLUMN provider_cost_usd"))
+
+    additions = {
+        "provider": "VARCHAR",
+        "job_id": "VARCHAR",
+        "units": "DOUBLE PRECISION",
+        "tokens_used": "INTEGER",
+        "requests_used": "INTEGER",
+        "metadata_json": "JSON",
+    }
+    cols = _column_names(conn, "usage_logs")
+    for name, ddl in additions.items():
+        if name not in cols:
+            op.execute(sa.text(f"ALTER TABLE usage_logs ADD COLUMN {name} {ddl}"))
+    op.execute(sa.text("UPDATE usage_logs SET provider = 'legacy' WHERE provider IS NULL"))
+    op.execute(sa.text("ALTER TABLE usage_logs ALTER COLUMN provider SET NOT NULL"))
+    _json_not_jsonb(conn, "usage_logs", "metadata_json")
+    for name, columns in (
+        ("ix_usage_logs_created_at", ["created_at"]),
+        ("ix_usage_logs_org_id", ["org_id"]),
+        ("ix_usage_logs_user_id", ["user_id"]),
+        ("ix_usage_logs_job_id", ["job_id"]),
+        ("ix_usage_logs_provider", ["provider"]),
+    ):
+        _ensure_index(conn, name, "usage_logs", columns)
+
+
+def _create_missing_billing_tables(conn) -> None:
+    insp = sa.inspect(conn)
+    if not insp.has_table("notifications"):
+        op.create_table(
+            "notifications",
+            sa.Column("id", sa.String(), nullable=False),
+            sa.Column("user_id", sa.String(), nullable=False),
+            sa.Column("org_id", sa.String(), nullable=True),
+            sa.Column("type", sa.String(), nullable=False),
+            sa.Column("title", sa.String(), nullable=False),
+            sa.Column("message", sa.String(), nullable=False),
+            sa.Column("link", sa.String(), nullable=True),
+            sa.Column("is_read", sa.Boolean(), nullable=False),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
+            sa.ForeignKeyConstraint(["org_id"], ["organizations.id"]),
+            sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        op.create_index("ix_notifications_created_at", "notifications", ["created_at"])
+        op.create_index("ix_notifications_is_read", "notifications", ["is_read"])
+        op.create_index("ix_notifications_org_id", "notifications", ["org_id"])
+        op.create_index("ix_notifications_user_id", "notifications", ["user_id"])
+    if not insp.has_table("organization_invites"):
+        op.create_table(
+            "organization_invites",
+            sa.Column("id", sa.String(), nullable=False),
+            sa.Column("org_id", sa.String(), nullable=False),
+            sa.Column("email", sa.String(), nullable=False),
+            sa.Column("role", sa.String(), nullable=False),
+            sa.Column("invited_by_user_id", sa.String(), nullable=False),
+            sa.Column("token", sa.String(), nullable=False),
+            sa.Column("status", sa.String(), nullable=False),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
+            sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+            sa.ForeignKeyConstraint(["invited_by_user_id"], ["users.id"]),
+            sa.ForeignKeyConstraint(["org_id"], ["organizations.id"]),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        op.create_index("ix_organization_invites_email", "organization_invites", ["email"])
+        op.create_index("ix_organization_invites_org_id", "organization_invites", ["org_id"])
+        op.create_index("ix_organization_invites_token", "organization_invites", ["token"], unique=True)
+    if not insp.has_table("organization_members"):
+        op.create_table(
+            "organization_members",
+            sa.Column("id", sa.String(), nullable=False),
+            sa.Column("org_id", sa.String(), nullable=False),
+            sa.Column("user_id", sa.String(), nullable=False),
+            sa.Column("role", sa.String(), nullable=False),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
+            sa.ForeignKeyConstraint(["org_id"], ["organizations.id"]),
+            sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        op.create_index("ix_organization_members_org_id", "organization_members", ["org_id"])
+        op.create_index("ix_organization_members_user_id", "organization_members", ["user_id"])
+    if not insp.has_table("saved_creatives"):
+        op.create_table(
+            "saved_creatives",
+            sa.Column("id", sa.String(), nullable=False),
+            sa.Column("user_id", sa.String(), nullable=False),
+            sa.Column("org_id", sa.String(), nullable=False),
+            sa.Column("creative_id", sa.String(), nullable=False),
+            sa.Column("collection_name", sa.String(), nullable=False),
+            sa.Column("tags", sa.JSON(), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=True),
+            sa.ForeignKeyConstraint(["creative_id"], ["creatives.id"]),
+            sa.ForeignKeyConstraint(["org_id"], ["organizations.id"]),
+            sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        op.create_index("ix_saved_creatives_collection_name", "saved_creatives", ["collection_name"])
+        op.create_index("ix_saved_creatives_created_at", "saved_creatives", ["created_at"])
+        op.create_index("ix_saved_creatives_creative_id", "saved_creatives", ["creative_id"])
+        op.create_index("ix_saved_creatives_org_id", "saved_creatives", ["org_id"])
+        op.create_index("ix_saved_creatives_user_id", "saved_creatives", ["user_id"])
+    if not insp.has_table("external_api_usage"):
+        op.create_table(
+            "external_api_usage",
+            sa.Column("id", sa.String(), nullable=False),
+            sa.Column("provider", sa.String(), nullable=False),
+            sa.Column("org_id", sa.String(), nullable=False),
+            sa.Column("user_id", sa.String(), nullable=True),
+            sa.Column("query", sa.String(), nullable=True),
+            sa.Column("max_records_requested", sa.Integer(), nullable=True),
+            sa.Column("estimated_cost_usd", sa.Float(), nullable=False),
+            sa.Column("status", sa.String(), nullable=False),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+            sa.ForeignKeyConstraint(["org_id"], ["organizations.id"]),
+            sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+            sa.PrimaryKeyConstraint("id"),
+        )
+
+
+def _reconcile_prod_drift(conn) -> None:
+    _reconcile_api_keys(conn)
+    _reconcile_usage_logs(conn)
+    _create_missing_billing_tables(conn)
+    _json_not_jsonb(conn, "plans", "feature_flags")
+    _json_not_jsonb(conn, "organizations", "custom_feature_flags")
+    for flag in ("is_suspended", "has_completed_onboarding", "is_banned"):
+        _drop_not_null_when_model_allows(conn, "users", flag)
+
+
 def upgrade() -> None:
     conn = op.get_bind()
     existing_tables, existing_cols, existing_indexes = get_schema_cache(conn)
@@ -61,6 +308,12 @@ def upgrade() -> None:
     # ---------------------------------------------------------
 
     # creatives
+    if not column_exists(conn, 'creatives', 'is_estimated'):
+        op.add_column('creatives', sa.Column('is_estimated', sa.Boolean(), nullable=True))
+        existing_cols.setdefault('creatives', set()).add('is_estimated')
+    if not column_exists(conn, 'creatives', 'data_source'):
+        op.add_column('creatives', sa.Column('data_source', sa.String(), nullable=True))
+        existing_cols.setdefault('creatives', set()).add('data_source')
     if not column_exists(conn, 'creatives', 'brand_name'):
         op.add_column('creatives', sa.Column('brand_name', sa.String(), nullable=True))
     if not column_exists(conn, 'creatives', 'media_url'):
@@ -490,6 +743,14 @@ def upgrade() -> None:
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
             sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         )
+
+    # ---------------------------------------------------------
+    # 3b. Production drift that the earlier revisions never saw.
+    # A database stamped at c4d92e1f7a8b can still be missing the
+    # billing tables, and can still have the pre-model api_keys and
+    # usage_logs columns. Converge those to the models. Rows are kept.
+    # ---------------------------------------------------------
+    _reconcile_prod_drift(conn)
 
     # ---------------------------------------------------------
     # 4. Supporting Indexes (F63) & Dedup Guard Index
