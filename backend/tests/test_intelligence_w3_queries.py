@@ -4,6 +4,7 @@ No provider requests or production data; every seeded row is rolled back.
 """
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from unittest.mock import AsyncMock, patch
@@ -232,6 +233,7 @@ async def test_explain_actual_scoped_pages_has_bounded_output(corpus):
         assert plan["Plan"]["Node Type"] == "Limit"
         assert plan["Plan"]["Actual Rows"] == expected_rows
         print(f"W3 EXPLAIN {name}: rows={plan['Plan']['Actual Rows']}, shared_hits={plan['Plan']['Shared Hit Blocks']}, execution_ms={plan['Execution Time']}")
+        print(f"W3 EXPLAIN PLAN {name}: {json.dumps(plan, sort_keys=True)}")
 
 
 @pytest.mark.asyncio
