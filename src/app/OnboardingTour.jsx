@@ -1,28 +1,32 @@
 import { useEffect, useRef } from "react"
-import { driver } from "driver.js"
-import "driver.js/dist/driver.css"
 
 export function OnboardingTour({ user, enabled = true, onComplete }) {
-  const driverObj = useRef(null)
+  const onCompleteRef = useRef(onComplete)
+  useEffect(() => { onCompleteRef.current = onComplete }, [onComplete])
+  const eligible = enabled && !!user && !user.has_completed_onboarding
 
   useEffect(() => {
-    if (!enabled || !user || user.has_completed_onboarding) return
+    if (!eligible) return
+    let cancelled = false
+    let completed = false
+    let tour = null
+    let timer
 
-    const handleComplete = async () => {
-      try {
-        onComplete && onComplete()
-      } catch (err) {
-        console.error("Failed to complete onboarding:", err)
-      }
-    }
-
-    driverObj.current = driver({
+    // Neither the driver bundle nor its stylesheet loads for returning users.
+    Promise.all([import("driver.js"), import("driver.js/dist/driver.css")]).then(([{ driver }]) => {
+      if (cancelled) return
+      tour = driver({
+      animate: !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches,
       showProgress: true,
       showButtons: ["next", "previous", "close"],
       popoverClass: "helixa-driver-theme",
       onDestroyStarted: () => {
-        driverObj.current.destroy()
-        handleComplete()
+        tour.destroy()
+        if (cancelled || completed) return
+        completed = true
+        Promise.resolve().then(() => onCompleteRef.current?.()).catch(err => {
+          console.error("Failed to complete onboarding:", err)
+        })
       },
       steps: [
         {
@@ -64,20 +68,18 @@ export function OnboardingTour({ user, enabled = true, onComplete }) {
       ]
     })
 
-    // Slight delay to ensure DOM elements are fully mounted
-    const timer = setTimeout(() => {
-      if (driverObj.current) {
-        driverObj.current.drive()
-      }
-    }, 400)
+      // Give the Discover elements time to mount, and cancel stale imports/timers.
+      timer = setTimeout(() => { if (!cancelled) tour.drive() }, 400)
+    }).catch(err => {
+      if (!cancelled) console.error("Failed to load onboarding:", err)
+    })
 
     return () => {
+      cancelled = true
       clearTimeout(timer)
-      if (driverObj.current) {
-        driverObj.current.destroy()
-      }
+      tour?.destroy()
     }
-  }, [user, enabled, onComplete])
+  }, [eligible, user?.id])
 
   return null
 }

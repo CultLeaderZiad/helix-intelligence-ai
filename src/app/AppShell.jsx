@@ -1,15 +1,16 @@
-import { useEffect, useState, useRef } from "react"
+import { lazy, Suspense, useEffect, useState, useRef } from "react"
 import { useLocation } from "react-router-dom"
 import { Menu, X, Search } from "lucide-react"
 import { Sidebar } from "./Sidebar"
 import { StatusBar } from "./StatusBar"
-import { CommandBar } from "./CommandBar"
 import { Button } from "@/components/ui/Button"
 import { TrialBanner } from "@/components/ui/TrialBanner"
 import { UpdatesBanner } from "@/components/UpdatesBanner"
 import { ScrollToTopButton } from "@/components/ui/ScrollToTopButton"
 import { FloatingSupportButton } from "@/components/ui/FloatingSupportButton"
 import { SkipToContent } from "@/components/ui/SkipToContent"
+
+const CommandBar = lazy(() => import("./CommandBar").then(module => ({ default: module.CommandBar })))
 
 /**
  * Workstation chrome: fixed rail, scrollable workspace, instrument strip.
@@ -151,7 +152,9 @@ export function AppShell({ children }) {
       </div>
 
       <StatusBar />
-      <CommandBar open={commandOpen} onClose={() => setCommandOpen(false)} />
+      {commandOpen && <Suspense fallback={null}>
+        <CommandBar open onClose={() => setCommandOpen(false)} />
+      </Suspense>}
 
       {/* Floating Persistent Support Access */}
       <FloatingSupportButton />

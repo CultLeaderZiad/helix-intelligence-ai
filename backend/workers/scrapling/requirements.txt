@@ -1,3 +1,7 @@
-# Pinned for reproducible worker builds. Verify the exact latest pin after the
-# first successful `docker build` and lock it here (spec: pin version).
-scrapling[fetchers]>=0.3.3,<1.0
+# Supported worker API: Scrapling 0.5 (Python >=3.10).
+# Verified published PyPI releases; pin browser drivers together so their browser
+# revisions cannot drift on a rebuild. Re-run `scrapling install` after updates.
+scrapling[fetchers]==0.5
+playwright==1.62.0
+patchright==1.62.1
+browserforge==1.2.4

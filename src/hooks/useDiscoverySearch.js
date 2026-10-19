@@ -1,25 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { discoverService } from "@/services"
-import { JOB_POLL_INTERVAL_MS, JOB_POLL_TIMEOUT_MS } from "@/services/config"
+import { JOB_POLL_INTERVAL_MS } from "@/services/config"
+import { pollDelay, useJobLifecycle } from "./useJobLifecycle"
 
-/**
- * ============================================================
- * DISCOVERY JOB LIFECYCLE
- * ============================================================
- * Owns the full async flow as real application state:
- *
- *   submit() -> POST job -> poll status -> succeeded -> GET results
- *
- * The progress the UI renders is the `progress` value returned by the
- * service, not a CSS keyframe. If polling stops, the bar stops. If the
- * job fails mid-flight, the UI shows the stage it died on.
- *
- * This is the only hook Discover components use to reach data; none of
- * them import a service directly.
- * ============================================================
- */
-
-const PHASE = {
+export const PHASE = {
   IDLE: "idle",
   SUBMITTING: "submitting",
   RUNNING: "running",
@@ -29,176 +13,119 @@ const PHASE = {
   TIMED_OUT: "timed_out",
 }
 
-export { PHASE }
-
-/**
- * A job the backend killed because its process restarted is not the same event
- * as a search that genuinely failed, and the user should not be told to fix
- * their query when there was nothing wrong with it.
- */
 export function isServiceRestart(error) {
   return error?.kind === "service_restart"
 }
 
 const PAGE_SIZE = 20
 
+/** The hook owns submission, sequential polling and result/refinement state. */
 export function useDiscoverySearch() {
   const [phase, setPhase] = useState(PHASE.IDLE)
   const [job, setJob] = useState(null)
   const [results, setResults] = useState(null)
   const [error, setError] = useState(null)
   const [lastParams, setLastParams] = useState(null)
-
-  const pollRef = useRef(null)
-  const mounted = useRef(true)
   const activeJobId = useRef(null)
-  const pollDeadlineRef = useRef(0)
+  const lifecycle = useJobLifecycle()
 
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-      if (pollRef.current) clearTimeout(pollRef.current)
+  const fetchResults = useCallback(async (run, jobId, { page = 1, sort } = {}) => {
+    if (!lifecycle.isCurrent(run)) return
+    setPhase(PHASE.FETCHING_RESULTS)
+    try {
+      const payload = await discoverService.getJobResults(jobId, {
+        page, page_size: PAGE_SIZE, sort,
+      }, { signal: run.signal })
+      if (!lifecycle.isCurrent(run)) return
+      setResults(payload)
+      setPhase(PHASE.READY)
+    } catch (err) {
+      if (!lifecycle.isCurrent(run)) return
+      setError(err)
+      setPhase(PHASE.ERROR)
+    } finally {
+      lifecycle.finish(run)
     }
-  }, [])
+  }, [lifecycle])
 
-  const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearTimeout(pollRef.current)
-      pollRef.current = null
-    }
-  }, [])
-
-  const fetchResults = useCallback(
-    async (jobId, { page = 1, sort } = {}) => {
-      setPhase(PHASE.FETCHING_RESULTS)
-      try {
-        const payload = await discoverService.getJobResults(jobId, {
-          page,
-          page_size: PAGE_SIZE,
-          sort,
-        })
-        if (!mounted.current || activeJobId.current !== jobId) return
-        setResults(payload)
-        setPhase(PHASE.READY)
-      } catch (err) {
-        if (!mounted.current || activeJobId.current !== jobId) return
-        setError(err)
-        setPhase(PHASE.ERROR)
-      }
-    },
-    [],
-  )
-
-  const submit = useCallback(
-    async (params = {}) => {
-      stopPolling()
-      setError(null)
-      setResults(null)
-      setJob(null)
-      setPhase(PHASE.SUBMITTING)
-      setLastParams(params)
-
-      let created
-      try {
-        created = await discoverService.search(params)
-      } catch (err) {
-        if (!mounted.current) return
-        setError(err)
-        setPhase(PHASE.ERROR)
-        return
-      }
-
-      if (!mounted.current) return
-
-      activeJobId.current = created.job_id
+  const submit = useCallback(async (params = {}) => {
+    const run = lifecycle.begin(() => setPhase(PHASE.TIMED_OUT))
+    activeJobId.current = null
+    if (!run) return
+    setError(null)
+    setResults(null)
+    setJob(null)
+    setPhase(PHASE.SUBMITTING)
+    setLastParams(params)
+    try {
+      const created = await discoverService.search(params, { signal: run.signal })
+      if (!lifecycle.isCurrent(run)) return
+      const jobId = created.job_id
+      activeJobId.current = jobId
       setJob(created)
       setPhase(PHASE.RUNNING)
-      pollDeadlineRef.current = Date.now() + JOB_POLL_TIMEOUT_MS
-
-      // Poll sequentially. Every value the progress UI shows originates here.
-      const pollStep = async () => {
-        const jobId = activeJobId.current
-        if (!jobId || !mounted.current) return
-        // Polling ceiling: a job that has not finished within the timeout is
-        // treated as stalled. Stop hammering the API and surface an honest
-        // "taking longer than expected" state with retry — never poll forever.
-        if (Date.now() > pollDeadlineRef.current) {
-          stopPolling()
-          setPhase(PHASE.TIMED_OUT)
-          return
-        }
+      let attempt = 0
+      const poll = async () => {
+        if (!lifecycle.isCurrent(run)) return
         try {
-          const next = await discoverService.getJobStatus(jobId)
-          if (!mounted.current || activeJobId.current !== jobId) return
+          const next = await discoverService.getJobStatus(jobId, { signal: run.signal })
+          if (!lifecycle.isCurrent(run)) return
           setJob(next)
-
           if (next.status === "succeeded") {
-            stopPolling()
-            fetchResults(jobId, { page: 1, sort: params.sort })
+            void fetchResults(run, jobId, { page: 1, sort: params.sort })
           } else if (next.status === "failed") {
-            stopPolling()
             const failure = new Error(next.error ?? "Discovery job failed")
             failure.kind = next.failure_kind ?? "error"
             setError(failure)
             setPhase(PHASE.ERROR)
+            lifecycle.finish(run)
           } else {
-            // Schedule next hop sequentially once current poll completes
-            if (mounted.current && activeJobId.current === jobId) {
-              pollRef.current = setTimeout(pollStep, JOB_POLL_INTERVAL_MS)
-            }
+            lifecycle.schedule(run, poll, pollDelay(++attempt, JOB_POLL_INTERVAL_MS))
           }
         } catch (err) {
-          if (!mounted.current || activeJobId.current !== jobId) return
-          stopPolling()
+          if (!lifecycle.isCurrent(run)) return
           setError(err)
           setPhase(PHASE.ERROR)
+          lifecycle.finish(run)
         }
       }
+      lifecycle.schedule(run, poll, JOB_POLL_INTERVAL_MS)
+    } catch (err) {
+      if (!lifecycle.isCurrent(run)) return
+      setError(err)
+      setPhase(PHASE.ERROR)
+      lifecycle.finish(run)
+    }
+  }, [lifecycle, fetchResults])
 
-      pollRef.current = setTimeout(pollStep, JOB_POLL_INTERVAL_MS)
-    },
-    [stopPolling, fetchResults],
-  )
-
-  /** Re-sort or paginate a completed set without re-running the scrape. */
-  const refine = useCallback(
-    ({ page, sort }) => {
-      if (!activeJobId.current) return
-      const nextParams = { ...(lastParams ?? {}), sort: sort ?? lastParams?.sort }
-      setLastParams(nextParams)
-      fetchResults(activeJobId.current, { page, sort: nextParams.sort })
-    },
-    [fetchResults, lastParams],
-  )
+  const refine = useCallback(({ page, sort }) => {
+    const jobId = activeJobId.current
+    if (!jobId) return
+    // Each refinement is a new generation, even when the job ID is unchanged.
+    const run = lifecycle.begin(() => setPhase(PHASE.TIMED_OUT))
+    if (!run) return
+    const nextParams = { ...(lastParams ?? {}), sort: sort ?? lastParams?.sort }
+    setLastParams(nextParams)
+    setError(null)
+    void fetchResults(run, jobId, { page, sort: nextParams.sort })
+  }, [fetchResults, lastParams, lifecycle])
 
   const cancel = useCallback(() => {
-    stopPolling()
+    lifecycle.invalidate()
     activeJobId.current = null
     setPhase(PHASE.IDLE)
     setJob(null)
     setResults(null)
     setError(null)
-  }, [stopPolling])
+  }, [lifecycle])
 
   const retry = useCallback(() => {
-    if (lastParams) submit(lastParams)
+    if (lastParams) void submit(lastParams)
   }, [lastParams, submit])
 
   return {
-    phase,
-    job,
-    results,
-    error,
-    lastParams,
-    submit,
-    refine,
-    cancel,
-    retry,
-    isBusy:
-      phase === PHASE.SUBMITTING ||
-      phase === PHASE.RUNNING ||
-      phase === PHASE.FETCHING_RESULTS,
+    phase, job, results, error, lastParams, submit, refine, cancel, retry,
+    isBusy: phase === PHASE.SUBMITTING || phase === PHASE.RUNNING || phase === PHASE.FETCHING_RESULTS,
     timedOut: phase === PHASE.TIMED_OUT,
   }
 }
