@@ -5,6 +5,7 @@ from app.schemas.common import Paginated
 from app.models.creative import Creative
 from app.models.creative_score import CreativeScore
 from app.models.scrape_job import ScrapeJob
+from app.services.query_bounds import pagination_bounds
 import datetime
 
 from typing import List, Optional
@@ -24,6 +25,7 @@ async def list_creatives(
     page_size: int = 20,
     user_org_ids: Optional[List[str]] = None
 ) -> Paginated[CreativeSchema]:
+    offset, page_size = pagination_bounds(page, page_size)
     # Build filters dynamically
     filters = []
     if job_id:
@@ -42,13 +44,12 @@ async def list_creatives(
     total = await db.scalar(count_query) or 0
 
     # Fetch paginated
-    offset = (page - 1) * page_size
     query = select(Creative, CreativeScore).outerjoin(
         CreativeScore, Creative.id == CreativeScore.creative_id
     )
     if filters:
         query = query.where(*filters)
-    query = query.offset(offset).limit(page_size)
+    query = query.order_by(Creative.id).offset(offset).limit(page_size)
     
     result = await db.execute(query)
     rows = result.all()
@@ -172,6 +173,7 @@ async def list_brands(
     page_size: int = 20,
     user_org_ids: Optional[List[str]] = None
 ) -> Paginated[BrandSchema]:
+    offset, page_size = pagination_bounds(page, page_size)
     # Since we don't have a separate Brand table, generate unique brands from creatives
     query = select(
         Creative.brand_id,
@@ -183,12 +185,9 @@ async def list_brands(
         query = query.where(Creative.job_id.in_(scoped_jobs))
 
     query = query.group_by(Creative.brand_id)
-    result = await db.execute(query)
-    rows = result.all()
-    
-    total = len(rows)
-    offset = (page - 1) * page_size
-    paginated_rows = rows[offset:offset+page_size]
+    total = await db.scalar(select(func.count()).select_from(query.subquery())) or 0
+    result = await db.execute(query.order_by(Creative.brand_id).offset(offset).limit(page_size))
+    paginated_rows = result.all()
     
     items = []
     for brand_id, brand_name, ad_count in paginated_rows:
@@ -216,6 +215,7 @@ async def list_patterns(
     page_size: int = 20,
     user_org_ids: Optional[List[str]] = None
 ) -> Paginated[PatternSchema]:
+    offset, page_size = pagination_bounds(page, page_size)
     # Unowned null-job patterns are not readable by any tenant.
     # Pattern.job_id.is_not(None) stays as containment. Ownership is the org id.
     filters = [Pattern.job_id.is_not(None), Pattern.org_id.is_not(None)]
@@ -229,11 +229,10 @@ async def list_patterns(
         count_query = count_query.where(*filters)
     total = await db.scalar(count_query) or 0
     
-    offset = (page - 1) * page_size
     query = select(Pattern)
     if filters:
         query = query.where(*filters)
-    query = query.offset(offset).limit(page_size)
+    query = query.order_by(Pattern.id).offset(offset).limit(page_size)
     result = await db.execute(query)
     patterns = result.scalars().all()
     
@@ -486,6 +485,7 @@ async def list_saved_creatives(
     from app.models.creative import Creative
     from app.models.creative_score import CreativeScore
 
+    offset, page_size = pagination_bounds(page, page_size)
     # Gated by feature flag
     await check_quota_and_feature(db, user, feature_name="swipe_files", required_credits=0.0)
 
@@ -496,13 +496,12 @@ async def list_saved_creatives(
     count_query = select(func.count(SavedCreative.id)).where(*filters)
     total = await db.scalar(count_query) or 0
 
-    offset = (page - 1) * page_size
     query = (
         select(Creative, CreativeScore, SavedCreative)
         .join(SavedCreative, Creative.id == SavedCreative.creative_id)
         .outerjoin(CreativeScore, Creative.id == CreativeScore.creative_id)
         .where(*filters)
-        .order_by(SavedCreative.created_at.desc())
+        .order_by(SavedCreative.created_at.desc(), SavedCreative.id)
         .offset(offset)
         .limit(page_size)
     )

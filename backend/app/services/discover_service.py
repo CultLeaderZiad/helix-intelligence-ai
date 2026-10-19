@@ -121,6 +121,7 @@ from app.models.organization import Organization
 from app.models.user import User
 from app.core.config import settings
 from app.db.session import async_session_maker
+from app.services.query_bounds import pagination_bounds
 
 
 def _job_response(job: ScrapeJob) -> Job:
@@ -359,6 +360,7 @@ async def get_job_status(db: AsyncSession, job_id: str, user_org_ids: Optional[L
     return _job_response(job)
 
 async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_size: int = 8) -> Paginated[Job]:
+    offset, page_size = pagination_bounds(page, page_size)
     if settings.USE_MOCKS:
         mock_job = Job(
             job_id="mock-job-id-123",
@@ -386,11 +388,10 @@ async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_s
     ).where(Organization.owner_id == user_id)
     total = await db.scalar(count_query) or 0
 
-    offset = (page - 1) * page_size
     query = select(ScrapeJob).join(
         Organization, ScrapeJob.org_id == Organization.id
     ).where(Organization.owner_id == user_id).order_by(
-        ScrapeJob.created_at.desc()
+        ScrapeJob.created_at.desc(), ScrapeJob.id
     ).offset(offset).limit(page_size)
     
     result = await db.execute(query)
