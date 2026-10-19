@@ -5,12 +5,11 @@ from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException, BackgroundTasks
 import datetime
 import asyncio
-import traceback
 import uuid
 import time
-import os
 import re
 import logging
+from app.core.observability import log_event
 
 from app.schemas.discover import SearchParams, Job
 
@@ -156,7 +155,6 @@ from app.services.billing_service import (
     charge,
     refund,
     DISCOVER_SEARCH_CREDIT_COST,
-    DISCOVER_DEEP_SEARCH_CREDIT_COST,
     ESTIMATED_PROVIDER_COSTS
 )
 from app.services.api_usage_service import (
@@ -333,8 +331,8 @@ async def trigger_search(
             user_id=user.id,
             payload={"query": scrape_query, "filters": filters},
         )
-    except Exception:
-        logger.exception("discover work item was not enqueued for %s", new_job.id)
+    except Exception as exc:
+        log_event(logger, "discover_enqueue_failed", error=exc, job_id=new_job.id, tenant_id=org.id, actor_id=user_id)
     if inline_execution_enabled():
         if background_tasks:
             background_tasks.add_task(run_discovery_pipeline, new_job.id, scrape_query, search_params.filters)
@@ -452,7 +450,6 @@ async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
 
 async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
     query = (query or "").strip()
-    clean_query = query  # production copies historically referenced this name
     start_time = time.time()
     async with async_session_maker() as db:
         result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
@@ -523,7 +520,6 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
             filters=filters,
             progress_callback=on_scraping_progress
         )
-        provider_used = ad_lib_provider.last_provider_used
         sources_tried = ad_lib_provider.sources_tried
             
         # Zero Results vs Provider Outage Handling (F29)
@@ -566,8 +562,8 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
                             "provider_outage",
                             job_id,
                         )
-                    except Exception:
-                        logger.exception("provider outage refund failed for %s; failure_kind kept", job_id)
+                    except Exception as exc:
+                        log_event(logger, "discover_outage_refund_failed", error=exc, job_id=job_id, tenant_id=org_id)
                 return
 
             async with async_session_maker() as db:
@@ -657,12 +653,7 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
                 saved_creatives += 1
 
             if rejected_templates or duplicates_skipped or rejected_irrelevant:
-                print(
-                    f"[DiscoverPipeline] job {job_id}: saved {saved_creatives}, "
-                    f"pruned {rejected_irrelevant} off-topic noise record(s), "
-                    f"rejected {rejected_templates} template-only record(s), "
-                    f"skipped {duplicates_skipped} duplicate(s)"
-                )
+                log_event(logger, "discover_records_filtered", job_id=job_id, tenant_id=org_id, level=logging.INFO)
             await db.commit()
             
         # Stage 4: AI Pattern Scoring/Generation (Graceful Degradation)
@@ -674,11 +665,9 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
                 await generate_patterns_for_recent_creatives(db, user, job_id)
             except HTTPException as he:
                 # If trial expired or plan restricted, gracefully preserve the scraped creatives
-                detail = he.detail if isinstance(he.detail, dict) else {"message": str(he.detail)}
-                err_code = detail.get("error") or detail.get("code") or "plan_restricted"
-                print(f"[DiscoverPipeline] AI pattern scoring gracefully skipped for job {job_id}: {err_code} - {detail.get('message')}")
+                log_event(logger, "discover_pattern_scoring_unavailable", error=he, job_id=job_id, tenant_id=org_id, actor_id=user.id)
             except Exception as ai_err:
-                print(f"[DiscoverPipeline] AI pattern scoring encountered an issue for job {job_id}: {ai_err}")
+                log_event(logger, "discover_pattern_scoring_failed", error=ai_err, job_id=job_id, tenant_id=org_id, actor_id=user.id)
             
         # Stage 5: Complete
         async with async_session_maker() as db:
@@ -711,8 +700,8 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
                 await mark_api_usage_status(db, usage_log_id, "success")
                 
     except APILimitExceeded as e:
-        error_msg = str(e)
-        print(f"Pipeline blocked: {error_msg}")
+        error_msg = "Discovery is temporarily unavailable because provider capacity is exhausted."
+        log_event(logger, "discover_capacity_blocked", error=e, job_id=job_id, tenant_id=org_id)
         async with async_session_maker() as db:
             result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
             job = result.scalar_one_or_none()
@@ -730,8 +719,7 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
         from app.services.ai.call_policy import RetryableProviderError
         if isinstance(e, RetryableProviderError):
             raise
-        error_msg = f"Pipeline failed: {str(e)}\n{traceback.format_exc()}"
-        print(error_msg)
+        log_event(logger, "discover_pipeline_failed", error=e, job_id=job_id, tenant_id=org_id)
         async with async_session_maker() as db:
             result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
             job = result.scalar_one_or_none()
@@ -742,7 +730,7 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
             if job:
                 job.status = "failed"
                 job.failure_kind = "error"
-                job.error_msg = str(e)
+                job.error_msg = "Discovery could not be completed. Please retry."
                 job.elapsed_ms = int((time.time() - start_time) * 1000)
                 await db.commit()
             if usage_log_id:

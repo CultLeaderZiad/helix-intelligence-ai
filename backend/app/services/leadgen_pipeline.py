@@ -21,19 +21,18 @@ import json
 import logging
 import os
 import re
-import socket
 import time
 import uuid
-import ipaddress
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 from urllib.parse import urlparse, urljoin
 from xml.etree import ElementTree as ET
 
 from sqlalchemy import select
 
 from app.core.config import settings
+from app.core.observability import log_event
 from app.db.session import worker_session_maker
 from app.models.leadgen import LeadGenJob, LeadGenLead
 
@@ -172,7 +171,7 @@ def parse_sitemap(
 
     urls: List[str] = []
     if not is_safe_public_url(sitemap_url):
-        logger.warning("SSRF blocked unsafe sitemap URL: %s", sitemap_url)
+        log_event(logger, "leadgen_sitemap_url_blocked")
         return []
     try:
         resp = safe_http_get(sitemap_url, timeout=20.0)
@@ -190,11 +189,11 @@ def parse_sitemap(
                     if len(urls) >= limit:
                         break
                 elif not is_safe_public_url(child):
-                    logger.warning("SSRF blocked unsafe child sitemap: %s", child)
+                    log_event(logger, "leadgen_child_sitemap_url_blocked")
         else:
             urls = [u for u in locs if u.startswith(("http://", "https://")) and is_safe_public_url(u)][:limit]
     except Exception as e:
-        logger.warning("sitemap parse failed %s: %s", sitemap_url, e)
+        log_event(logger, "leadgen_sitemap_failed", error=e)
     return urls
 
 
@@ -352,8 +351,8 @@ async def _run_leadgen_job_scoped(job_id: str) -> None:
     try:
         await _run_stages(job_id, boot_id, started_ts, resume_checkpoint)
     except Exception as e:
-        logger.exception("LeadGen job %s crashed", job_id)
-        await _fail_job(job_id, f"{type(e).__name__}: {e}")
+        log_event(logger, "leadgen_job_failed", error=e, job_id=job_id)
+        await _fail_job(job_id, "Lead generation could not be completed. Please retry.")
 
 
 async def _fail_job(job_id: str, message: str) -> None:
@@ -674,7 +673,7 @@ def shopify_discover(shopify_url: str) -> List[str]:
     Recipe shopify-brand drives extraction selectors."""
     from app.services.security_service import is_safe_public_url, safe_http_get
     if not is_safe_public_url(shopify_url):
-        logger.warning("SSRF blocked unsafe shopify URL: %s", shopify_url)
+        log_event(logger, "leadgen_shopify_url_blocked")
         return []
     base = shopify_url.rstrip("/")
     urls = [f"{base}/pages/contact", f"{base}/pages/about", f"{base}/policies/contact"]
@@ -692,7 +691,7 @@ def shopify_discover(shopify_url: str) -> List[str]:
                         if is_safe_public_url(cand):
                             urls.append(cand)
     except Exception as e:
-        logger.warning("shopify discover failed %s: %s", base, e)
+        log_event(logger, "leadgen_shopify_failed", error=e)
     return urls
 
 
@@ -761,7 +760,7 @@ async def _final_stages(job_id: str, started_ts: float) -> None:
                             lead.extract_status = "ok"
                             enriched_with_hunter += 1
                 except Exception as e:
-                    logger.warning("hunter enrich failed for %s: %s", lead.domain, e)
+                    log_event(logger, "leadgen_enrichment_failed", error=e, job_id=job_id)
 
         website_only = sum(1 for l in leads if (l.email_source or "none") == "website")
         _append_log(job, f"> enrich · email_source=hunter:{enriched_with_hunter} website:{website_only} · phone_source=website:{sum(1 for l in leads if (l.phone_source or 'none') == 'website')}")
@@ -794,7 +793,6 @@ async def _final_stages(job_id: str, started_ts: float) -> None:
             src = dict(lead.sources or {})
             src["score"] = breakdown
             lead.sources = src
-        scored = [l for l in leads if (l.lead_score or 0) > 0]
         high = sum(1 for l in leads if l.priority == "high")
         _append_log(job, f"> score · {len(leads)} · high={high} · bands=high70/med40/low<40")
         await db.commit()
@@ -809,7 +807,8 @@ async def _final_stages(job_id: str, started_ts: float) -> None:
                 from app.services.ai.ai_router import MultiTierAIProvider
                 provider = MultiTierAIProvider()
             except Exception as e:
-                _append_log(job, f"> outreach · router unavailable · {str(e)[:80]}")
+                log_event(logger, "leadgen_outreach_router_failed", error=e, job_id=job_id, tenant_id=job.org_id, actor_id=job.user_id)
+                _append_log(job, "> outreach · router unavailable")
 
             for lead in leads:
                 has_contact = bool(lead.emails or lead.phones)
@@ -848,7 +847,8 @@ async def _final_stages(job_id: str, started_ts: float) -> None:
                         lead.outreach = {"reason": "skipped_parse_error"}
                         errored += 1
                 except Exception as e:
-                    lead.outreach = {"reason": "skipped_llm_error", "detail": str(e)[:200]}
+                    log_event(logger, "leadgen_outreach_failed", error=e, job_id=job_id, tenant_id=job.org_id, actor_id=job.user_id)
+                    lead.outreach = {"reason": "skipped_llm_error", "detail": "Outreach generation is temporarily unavailable."}
                     errored += 1
             _append_log(job, f"> outreach · generated={generated} · skipped_low_priority={skipped_low} · skipped_no_contact={skipped_none} · errors={errored}")
         else:

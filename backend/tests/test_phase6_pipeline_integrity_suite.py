@@ -3,20 +3,18 @@ import os
 import sys
 import uuid
 import datetime
-from unittest.mock import patch, AsyncMock, MagicMock
+from unittest.mock import patch, AsyncMock, MagicMock, create_autospec
 from sqlalchemy import select
 
 # Ensure backend root is on sys.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from app.db.session import worker_session_maker, engine, worker_engine
+from app.db.session import worker_session_maker
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.scrape_job import ScrapeJob
 from app.models.creative import Creative
-from app.models.ai_insight import AIInsight
 from app.models.media_job import MediaGenerationJob
-from app.models.support_ticket import SupportTicket, SupportTicketReply
 from app.models.leadgen import LeadGenJob
 from app.models.access_grant import OrganizationAccessGrant
 
@@ -274,7 +272,7 @@ async def test_support_ticket_batching_and_pagination():
 
         # Create 2 tickets and replies
         t1 = await create_ticket(db, user, "billing", "Billing Issue 1", "Need help with invoice")
-        t2 = await create_ticket(db, user, "technical", "Technical Issue 2", "API 500 error")
+        await create_ticket(db, user, "technical", "Technical Issue 2", "API 500 error")
 
         await add_reply(db, t1.id, admin, "We are reviewing your invoice")
         await add_reply(db, t1.id, user, "Thank you for the fast response")
@@ -325,9 +323,13 @@ async def test_discovery_provider_outage_and_refund():
             self_instance.sources_tried = ["Metapi (unconfigured)", "Adyntel (unconfigured)", "Meta (unconfigured)", "Apify (unconfigured)"]
             return []
 
-        # Patch check_global_cap_and_log_preflight to succeed
-        from app.services.billing_service import refund as refund_fn
-        autospec_refund = AsyncMock(spec=refund_fn)
+        # Use a real debit/refund transaction and enforce the actual function
+        # signature. AsyncMock(spec=...) alone accepts invalid call arguments.
+        from app.services.billing_service import charge, refund as refund_fn
+        from app.models.usage_log import UsageLog
+        await charge(db, o, test_uid, DISCOVER_SEARCH_CREDIT_COST, "test", "discover_search",
+                     job_id=job_id, idempotency_key=f"phase6-{job_id}")
+        autospec_refund = create_autospec(refund_fn, side_effect=refund_fn)
         with patch.object(AdLibraryProvider, "search", fake_search), \
              patch("app.services.discover_service.async_session_maker", worker_session_maker), \
              patch("app.services.discover_service.check_global_cap_and_log_preflight") as mock_cap, \
@@ -342,12 +344,18 @@ async def test_discovery_provider_outage_and_refund():
             assert job.failure_kind == "provider_outage"
             assert "Provider Outage" in (job.stage_label or "")
 
-            autospec_refund.assert_awaited()
+            autospec_refund.assert_awaited_once()
             args, kwargs = autospec_refund.await_args
-            reason = kwargs.get("reason", args[3] if len(args) > 3 else None)
-            amount = kwargs.get("amount", args[2] if len(args) > 2 else None)
-            assert reason == "provider_outage"
-            assert amount == DISCOVER_SEARCH_CREDIT_COST
+            assert kwargs == {}
+            assert args[1:] == (test_oid, DISCOVER_SEARCH_CREDIT_COST, "provider_outage", job_id)
+            await db.refresh(o)
+            assert o.credit_balance == 100.0
+            refunds = (await db.execute(select(UsageLog).where(
+                UsageLog.job_id == job_id, UsageLog.credits_deducted < 0,
+            ))).scalars().all()
+            assert len(refunds) == 1
+            assert refunds[0].operation == "refund_provider_outage"
+            assert refunds[0].credits_deducted == -DISCOVER_SEARCH_CREDIT_COST
 
 
 @pytest.mark.asyncio
