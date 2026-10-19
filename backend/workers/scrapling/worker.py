@@ -155,6 +155,35 @@ def _serve_health(info: dict) -> None:
     logger.info("worker health server on :%d/health", port)
 
 
+async def _worker_loop(run_leadgen_job) -> None:
+    """Own maintenance for this worker lifetime, including graceful shutdown."""
+    from app.services.job_reconciliation import reconcile_once, reconciliation_loop
+    from app.services.work_outbox import claim_next_work_item, execute_work_item
+
+    await reconcile_once()
+    reconciler = asyncio.create_task(reconciliation_loop())
+    try:
+        while not _stop.is_set():
+            try:
+                work_id = await claim_next_work_item(BOOT_ID)
+                if work_id:
+                    logger.info("claimed work item %s", work_id)
+                    await execute_work_item(work_id, BOOT_ID)
+                    continue
+                job_id = await _claim_next_job_async()
+                if job_id:
+                    logger.info("claimed job %s", job_id)
+                    await run_leadgen_job(job_id, claimed_boot_id=BOOT_ID)
+                else:
+                    await asyncio.sleep(POLL_INTERVAL_S)
+            except Exception as e:
+                logger.exception("worker loop error: %s", e)
+                await asyncio.sleep(POLL_INTERVAL_S)
+    finally:
+        reconciler.cancel()
+        await asyncio.gather(reconciler, return_exceptions=True)
+
+
 def main() -> None:
     # Fail fast on required config (the worker, not the API, needs these)
     for var in ("DATABASE_URL", "SECRET_KEY"):
@@ -196,26 +225,7 @@ def main() -> None:
     signal.signal(signal.SIGTERM, lambda *_: _stop.set())
     signal.signal(signal.SIGINT, lambda *_: _stop.set())
 
-    async def _worker_loop():
-        while not _stop.is_set():
-            try:
-                from app.services.work_outbox import claim_next_work_item, execute_work_item
-                work_id = await claim_next_work_item(BOOT_ID)
-                if work_id:
-                    logger.info("claimed work item %s", work_id)
-                    await execute_work_item(work_id, BOOT_ID)
-                    continue
-                job_id = await _claim_next_job_async()
-                if job_id:
-                    logger.info("claimed job %s", job_id)
-                    await run_leadgen_job(job_id, claimed_boot_id=BOOT_ID)
-                else:
-                    await asyncio.sleep(POLL_INTERVAL_S)
-            except Exception as e:
-                logger.exception("worker loop error: %s", e)
-                await asyncio.sleep(POLL_INTERVAL_S)
-
-    asyncio.run(_worker_loop())
+    asyncio.run(_worker_loop(run_leadgen_job))
     logger.info("worker stopped")
 
 

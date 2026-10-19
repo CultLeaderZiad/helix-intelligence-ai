@@ -155,10 +155,11 @@ def _disable_policy(table: str) -> None:
 
 
 def _create_roles() -> None:
-    # CREATE ROLE cannot run inside a transaction. This is called only after
-    # the schema statements succeed, so a failure above rolls back without
-    # leaving these roles behind. Entering this block commits that schema work,
-    # then creates the roles. The statements are idempotent.
+    # Bootstrap cluster-wide identities before any revision-local schema work.
+    # Entering autocommit commits an open transaction, so this must remain the
+    # first upgrade step. Per-revision transactions keep earlier stamps durable;
+    # everything after this block commits atomically with this revision's stamp.
+    # Roles may survive a failed upgrade, which is safe because this is idempotent.
     with op.get_context().autocommit_block():
         op.execute(
             """
@@ -182,35 +183,35 @@ def _drop_roles() -> None:
     op.execute("REVOKE ALL ON ALL TABLES IN SCHEMA public FROM helix_app, helix_worker")
     op.execute("REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM helix_app, helix_worker")
     op.execute("REVOKE USAGE ON SCHEMA public FROM helix_app, helix_worker")
-    # Roles are cluster-wide. Another database may still grant them, so a
-    # failed DROP must not abort a downgrade that already revoked this database.
-    with op.get_context().autocommit_block():
-        op.execute(
-            """
-            DO $$
-            BEGIN
-                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'helix_worker') THEN
-                    BEGIN
-                        EXECUTE 'REVOKE helix_worker FROM CURRENT_USER';
-                        DROP ROLE helix_worker;
-                    EXCEPTION
-                        WHEN undefined_object THEN NULL;
-                        WHEN dependent_objects_still_exist THEN NULL;
-                    END;
-                END IF;
-                IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'helix_app') THEN
-                    BEGIN
-                        EXECUTE 'REVOKE helix_app FROM CURRENT_USER';
-                        DROP ROLE helix_app;
-                    EXCEPTION
-                        WHEN undefined_object THEN NULL;
-                        WHEN dependent_objects_still_exist THEN NULL;
-                    END;
-                END IF;
-            END
-            $$;
-            """
-        )
+    # Role DDL is transactional in PostgreSQL. Keep it in the same transaction
+    # as the schema downgrade and version stamp. Cluster-wide dependencies in
+    # other databases may prevent deletion; leave those shared roles in place.
+    op.execute(
+        """
+        DO $$
+        BEGIN
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'helix_worker') THEN
+                BEGIN
+                    EXECUTE 'REVOKE helix_worker FROM CURRENT_USER';
+                    DROP ROLE helix_worker;
+                EXCEPTION
+                    WHEN undefined_object THEN NULL;
+                    WHEN dependent_objects_still_exist THEN NULL;
+                END;
+            END IF;
+            IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'helix_app') THEN
+                BEGIN
+                    EXECUTE 'REVOKE helix_app FROM CURRENT_USER';
+                    DROP ROLE helix_app;
+                EXCEPTION
+                    WHEN undefined_object THEN NULL;
+                    WHEN dependent_objects_still_exist THEN NULL;
+                END;
+            END IF;
+        END
+        $$;
+        """
+    )
 
 
 def _usage_log_columns() -> set[str]:
@@ -222,6 +223,7 @@ def _usage_log_columns() -> set[str]:
 
 
 def upgrade() -> None:
+    _create_roles()
     op.create_table(
         "pattern_quarantine",
         sa.Column("id", sa.String(), nullable=False),
@@ -287,8 +289,7 @@ def upgrade() -> None:
             op.add_column("usage_logs", sa.Column(name, sa.String(), nullable=True))
     usage_cols = _usage_log_columns()
     # Older production rows stored the key inside metadata, not metadata_json.
-    # Skip the copy when that column was never created instead of aborting
-    # after a role commit.
+    # Skip the copy when that column was never created.
     if {"metadata_json", "operation", "id"} <= usage_cols:
         op.execute(
             """
@@ -410,7 +411,6 @@ def upgrade() -> None:
     for table, predicate in _INDIRECT_PREDICATES.items():
         _enable_policy(table, predicate)
 
-    _create_roles()
     op.execute("GRANT USAGE ON SCHEMA public TO helix_app, helix_worker")
     op.execute(
         "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO helix_app, helix_worker"

@@ -18,8 +18,9 @@ wait out the slowest legitimate job before it can call anything dead. A live
 job heartbeats every 15 seconds, so two minutes of silence means dead no matter
 how long the job was always going to take.
 
-The sweep runs at startup and then on a timer, because a restart that completes
-quickly happens before the killed job is old enough to look stale.
+The durable worker runs the sweep at startup and then on a timer, because a
+restart that completes quickly happens before the killed job looks stale.
+The API process never enables maintenance context.
 """
 
 import asyncio
@@ -34,9 +35,10 @@ from app.core.runtime import BOOT_ID
 from app.core.tenancy import (
     apply_maintenance_context,
     apply_monitor_maintenance_lookup_context,
+    apply_tenant_context,
     tenant_scope,
 )
-from app.db.session import async_session_maker
+from app.db.session import worker_session_maker
 from app.services.billing_service import DISCOVER_SEARCH_CREDIT_COST, refund
 
 logger = logging.getLogger(__name__)
@@ -96,12 +98,13 @@ async def _sweep_table(
     """
     params = {"boot": BOOT_ID, "cutoff": cutoff}
 
-    async with async_session_maker() as db:
+    async with worker_session_maker() as db:
         await apply_maintenance_context(db, BOOT_ID)
         lock_suffix = " FOR UPDATE SKIP LOCKED" if db.bind and db.bind.dialect.name == "postgresql" else ""
+        select_columns = "id, org_id" + select_extra.replace(", org_id", "")
         rows = (
             await db.execute(
-                text(f"SELECT id{select_extra} FROM {table} WHERE {predicate}{lock_suffix}"), params
+                text(f"SELECT {select_columns} FROM {table} WHERE {predicate}{lock_suffix}"), params
             )
         ).mappings().all()
         if not rows:
@@ -114,25 +117,30 @@ async def _sweep_table(
         failure_kind_clause = "failure_kind = 'service_restart'," if has_failure_kind else ""
         extra_clauses = f", {extra_update_clauses}" if extra_update_clauses else ""
         
-        await db.execute(
-            text(
-                f"""UPDATE {table}
-                    SET status = 'failed',
-                        {failure_kind_clause}
-                        {error_column} = :message
-                        {extra_clauses}
-                    WHERE id IN ({id_placeholders})"""
-            ),
-            {**id_params, "message": message},
-        )
-        await db.commit()
+        # Maintenance SELECT admits stale active rows, not their terminal state.
+        # Bind only their organizations so RLS admits the failed UPDATE result.
+        with tenant_scope(list(dict.fromkeys(r["org_id"] for r in rows)), "", platform_admin=False, enforce=True):
+            await apply_tenant_context(db)
+            await db.execute(
+                text(
+                    f"""UPDATE {table}
+                        SET status = 'failed',
+                            {failure_kind_clause}
+                            {error_column} = :message
+                            {extra_clauses}
+                        WHERE id IN ({id_placeholders})"""
+                ),
+                {**id_params, "message": message},
+            )
+            await db.commit()
 
     return [dict(r) for r in rows]
 
 
 async def _sweep_unrefunded_failed_jobs() -> List[Dict[str, Any]]:
     """Sweep scrape jobs that failed but have not had their credits refunded yet (F08)."""
-    async with async_session_maker() as db:
+    refund_cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)
+    async with worker_session_maker() as db:
         await apply_maintenance_context(db, BOOT_ID)
         lock_suffix = " FOR UPDATE OF sj SKIP LOCKED" if db.bind and db.bind.dialect.name == "postgresql" else ""
         query = text(f"""
@@ -140,6 +148,7 @@ async def _sweep_unrefunded_failed_jobs() -> List[Dict[str, Any]]:
             FROM scrape_jobs sj
             JOIN usage_logs ul_charge ON ul_charge.job_id = sj.id AND ul_charge.credits_deducted > 0
             WHERE sj.status = 'failed'
+              AND COALESCE(sj.completed_at, sj.heartbeat_at, sj.created_at) >= :refund_cutoff
               AND NOT EXISTS (
                   SELECT 1 FROM usage_logs ul_refund
                   WHERE ul_refund.job_id = sj.id AND ul_refund.credits_deducted < 0
@@ -147,7 +156,7 @@ async def _sweep_unrefunded_failed_jobs() -> List[Dict[str, Any]]:
             {lock_suffix}
             LIMIT 50
         """)
-        rows = (await db.execute(query)).mappings().all()
+        rows = (await db.execute(query, {"refund_cutoff": refund_cutoff})).mappings().all()
         return [dict(r) for r in rows]
 
 
@@ -164,51 +173,74 @@ async def _sweep_monitor_runs() -> int:
     stale_cutoff = now - datetime.timedelta(seconds=settings.JOB_STALE_AFTER_S)
     hard_cutoff = now - datetime.timedelta(seconds=settings.MONITOR_RUN_TIMEOUT_S)
 
-    async with async_session_maker() as db:
+    async with worker_session_maker() as db:
         await apply_maintenance_context(db, BOOT_ID)
+        lock_suffix = " FOR UPDATE OF mr SKIP LOCKED" if db.bind and db.bind.dialect.name == "postgresql" else ""
         result = await db.execute(
             text(
                 """
-                UPDATE monitor_runs AS r
-                SET status = 'failed',
-                    finished_at = now(),
-                    skipped_reason = 'service_restart',
-                    error = 'Interrupted by a service restart. The next scheduled run will pick up where this left off.'
-                FROM (
-                    SELECT mr.id, mr.monitor_id
-                    FROM monitor_runs mr
-                    LEFT JOIN scrape_jobs sj ON sj.id = mr.job_id
-                    WHERE mr.status = 'running'
-                      AND (
-                            mr.started_at < :hard_cutoff
-                        OR (mr.started_at < :stale_cutoff
-                            AND (mr.job_id IS NULL OR sj.status IN ('failed', 'succeeded')))
-                      )
-                ) AS dead
-                WHERE r.id = dead.id
-                RETURNING r.monitor_id
-                """
+                SELECT mr.id, mr.monitor_id
+                FROM monitor_runs mr
+                LEFT JOIN scrape_jobs sj ON sj.id = mr.job_id
+                WHERE mr.status = 'running'
+                  AND (
+                        mr.started_at < :hard_cutoff
+                    OR (mr.started_at < :stale_cutoff
+                        AND (mr.job_id IS NULL OR sj.status IN ('failed', 'succeeded')))
+                  )
+                """ + lock_suffix
             ),
             {"stale_cutoff": stale_cutoff, "hard_cutoff": hard_cutoff},
         )
-        monitor_targets = [row[0] for row in result.fetchall()]
+        dead_runs = result.mappings().all()
+        monitor_orgs = {}
+        # The lookup policy requires a stale *running* child. Resolve the org
+        # before changing its status, in the same transaction holding its lock.
+        for run in dead_runs:
+            monitor_id = run["monitor_id"]
+            if monitor_id not in monitor_orgs:
+                await apply_monitor_maintenance_lookup_context(db, monitor_id)
+                monitor_orgs[monitor_id] = (
+                    await db.execute(
+                        text("SELECT org_id FROM monitors WHERE id = :monitor_id"),
+                        {"monitor_id": monitor_id},
+                    )
+                ).scalar_one_or_none()
+
+        monitor_targets = []
+        for run in dead_runs:
+            org_id = monitor_orgs.get(run["monitor_id"])
+            if not org_id:
+                continue
+            with tenant_scope([org_id], "", platform_admin=False, enforce=True):
+                await apply_tenant_context(db)
+                result = await db.execute(
+                    text(
+                        """
+                        UPDATE monitor_runs
+                        SET status = 'failed',
+                            finished_at = now(),
+                            skipped_reason = 'service_restart',
+                            error = 'Interrupted by a service restart. The next scheduled run will pick up where this left off.'
+                        WHERE id = :run_id AND status = 'running'
+                        RETURNING monitor_id
+                        """
+                    ),
+                    {"run_id": run["id"]},
+                )
+            monitor_id = result.scalar_one_or_none()
+            if monitor_id:
+                monitor_targets.append(monitor_id)
         await db.commit()
 
     if monitor_targets:
         from app.services.monitor_service import notify_run_interrupted
 
         for monitor_id in dict.fromkeys(monitor_targets):
+            org_id = monitor_orgs.get(monitor_id)
+            if not org_id:
+                continue
             try:
-                async with async_session_maker() as db:
-                    await apply_monitor_maintenance_lookup_context(db, monitor_id)
-                    org_id = (
-                        await db.execute(
-                            text("SELECT org_id FROM monitors WHERE id = :monitor_id"),
-                            {"monitor_id": monitor_id},
-                        )
-                    ).scalar_one_or_none()
-                if not org_id:
-                    continue
                 with tenant_scope([org_id], "", platform_admin=False, enforce=True):
                     await notify_run_interrupted(monitor_id)
             except Exception as exc:
@@ -227,7 +259,8 @@ async def reconcile_once() -> Dict[str, int]:
 
     try:
         discover_rows = await _sweep_table(
-            "scrape_jobs", DISCOVER_ACTIVE, "error_msg", DISCOVER_MESSAGE, ", org_id"
+            "scrape_jobs", DISCOVER_ACTIVE, "error_msg", DISCOVER_MESSAGE, ", org_id",
+            extra_update_clauses="completed_at = now()",
         )
         swept["discover"] = len(discover_rows)
     except Exception as e:
@@ -249,7 +282,7 @@ async def reconcile_once() -> Dict[str, int]:
     for job_id, row in all_to_refund.items():
         try:
             with tenant_scope([row["org_id"]], "", platform_admin=False, enforce=True):
-                async with async_session_maker() as db:
+                async with worker_session_maker() as db:
                     await refund(
                         db,
                         row["org_id"],
@@ -286,7 +319,7 @@ async def reconcile_once() -> Dict[str, int]:
             if credits > 0:
                 try:
                     with tenant_scope([r["org_id"]], "", platform_admin=False, enforce=True):
-                        async with async_session_maker() as db:
+                        async with worker_session_maker() as db:
                             await refund(db, r["org_id"], credits, "scout_service_restart_sweep", r["id"])
                     swept["refunded"] += 1
                 except Exception as e:
@@ -311,7 +344,7 @@ async def reconcile_once() -> Dict[str, int]:
             if credits > 0:
                 try:
                     with tenant_scope([r["org_id"]], "", platform_admin=False, enforce=True):
-                        async with async_session_maker() as db:
+                        async with worker_session_maker() as db:
                             await refund(db, r["org_id"], credits, "maps_service_restart_sweep", r["id"])
                     swept["refunded"] += 1
                 except Exception as e:
@@ -336,7 +369,7 @@ async def reconcile_once() -> Dict[str, int]:
             if credits > 0:
                 try:
                     with tenant_scope([r["org_id"]], "", platform_admin=False, enforce=True):
-                        async with async_session_maker() as db:
+                        async with worker_session_maker() as db:
                             await refund(db, r["org_id"], credits, "leadgen_service_restart_sweep", r["id"])
                     swept["refunded"] += 1
                 except Exception as e:

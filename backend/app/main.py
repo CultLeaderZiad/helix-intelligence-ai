@@ -1,17 +1,10 @@
-import asyncio
-import datetime
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
 from app.core.config import settings, cors_origins
-from app.core.runtime import BOOT_ID
-from app.core.tenancy import apply_maintenance_context, tenant_scope
-from app.db.session import engine, async_session_maker
-from app.db.base import Base
-from app.services.billing_service import refund, DISCOVER_SEARCH_CREDIT_COST
+from app.db.session import engine
 from app.middleware.rate_limit import RateLimitMiddleware
 import app.models
 
@@ -42,119 +35,7 @@ async def lifespan(app: FastAPI):
     from app.core.rls_role import assert_rls_role
     async with engine.begin() as conn:
         await assert_rls_role(conn)
-    # Startup reconciliation. Jobs still marked active from a dead process lifetime
-    # are reconciled. We check heartbeat_at < cutoff (or created_at < cutoff if no heartbeat
-    # was recorded) to avoid terminating live jobs on other active workers.
-    stuck_discover_jobs = []
-    try:
-        async with engine.begin() as conn:
-            await apply_maintenance_context(conn, BOOT_ID)
-            try:
-                reconcile_cutoff = datetime.datetime.utcnow() - datetime.timedelta(minutes=10)
-                reclaimable = """
-                      AND NOT EXISTS (
-                          SELECT 1 FROM work_items wi
-                          WHERE wi.job_id = scrape_jobs.id
-                            AND wi.status IN ('queued', 'leased')
-                            AND wi.attempt_count < wi.max_attempts
-                      )
-                """
-                stuck_discover_jobs = (await conn.execute(text(f"""
-                    SELECT id, org_id FROM scrape_jobs
-                    WHERE status IN ('queued', 'running')
-                      AND (
-                          (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
-                          OR (heartbeat_at IS NULL AND created_at < :cutoff)
-                      )
-                      {reclaimable}
-                """), {"cutoff": reconcile_cutoff})).mappings().all()
-                if stuck_discover_jobs:
-                    await conn.execute(text("""
-                        UPDATE scrape_jobs
-                        SET status = 'failed',
-                            failure_kind = 'interrupted',
-                            error_msg = 'Interrupted by a service restart — the credits for this search were refunded. Please run it again.'
-                        WHERE status IN ('queued', 'running')
-                          AND (
-                              (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
-                              OR (heartbeat_at IS NULL AND created_at < :cutoff)
-                          )
-                          AND NOT EXISTS (
-                              SELECT 1 FROM work_items wi
-                              WHERE wi.job_id = scrape_jobs.id
-                                AND wi.status IN ('queued', 'leased')
-                                AND wi.attempt_count < wi.max_attempts
-                          )
-                    """), {"cutoff": reconcile_cutoff})
-                    print(f"Startup reconciliation: {len(stuck_discover_jobs)} stuck discover job(s) marked failed and refunded.")
-                stuck_media_jobs = (await conn.execute(text("""
-                    SELECT id FROM media_jobs
-                    WHERE status IN ('pending', 'running', 'in_progress', 'processing')
-                      AND (
-                          (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
-                          OR (heartbeat_at IS NULL AND created_at < :cutoff)
-                      )
-                      AND NOT EXISTS (
-                          SELECT 1 FROM work_items wi
-                          WHERE wi.job_id = media_jobs.id
-                            AND wi.status IN ('queued', 'leased')
-                            AND wi.attempt_count < wi.max_attempts
-                      )
-                """), {"cutoff": reconcile_cutoff})).all()
-                if stuck_media_jobs:
-                    await conn.execute(text("""
-                        UPDATE media_jobs
-                        SET status = 'failed',
-                            failure_kind = 'interrupted',
-                            error_message = 'Interrupted by a service restart. Please try generating again.'
-                        WHERE status IN ('pending', 'running', 'in_progress', 'processing')
-                          AND (
-                              (heartbeat_at IS NOT NULL AND heartbeat_at < :cutoff)
-                              OR (heartbeat_at IS NULL AND created_at < :cutoff)
-                          )
-                          AND NOT EXISTS (
-                              SELECT 1 FROM work_items wi
-                              WHERE wi.job_id = media_jobs.id
-                                AND wi.status IN ('queued', 'leased')
-                                AND wi.attempt_count < wi.max_attempts
-                          )
-                    """), {"cutoff": reconcile_cutoff})
-                    print(f"Startup reconciliation: {len(stuck_media_jobs)} stuck media job(s) marked failed.")
-            except Exception as reconcile_err:
-                print("Startup reconciliation error:", reconcile_err)
-    except Exception as e:
-        print("Database startup reconciliation error:", e)
-
-    # Refunds run after the migration transaction commits, each in its own
-    # locked session (the same primitive the discover pipeline uses).
-    for row in stuck_discover_jobs:
-        try:
-            with tenant_scope([row["org_id"]], "", platform_admin=False, enforce=True):
-                async with async_session_maker() as sweep_db:
-                    await refund(
-                        sweep_db,
-                        row["org_id"],
-                        DISCOVER_SEARCH_CREDIT_COST,
-                        "service_restart_sweep",
-                        row["id"],
-                    )
-        except Exception as refund_err:
-            print(f"Startup reconciliation refund failed for job {row['id']}:", refund_err)
-
-    # Heartbeat-aware sweep for jobs the age-only SQL pass above cannot see
-    # yet (a restart that returns before the cutoff).
-    reconciler = None
-    try:
-        from app.services.job_reconciliation import reconciliation_loop
-
-        reconciler = asyncio.create_task(reconciliation_loop())
-    except Exception as e:
-        print("Job reconciliation startup error:", e)
-
     yield
-
-    if reconciler:
-        reconciler.cancel()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

@@ -92,11 +92,6 @@ _ROLE_CHECK = (
     "(current_user = 'helix_worker' "
     "OR pg_has_role(current_user, 'helix_worker', 'MEMBER'))"
 )
-_APP_OR_WORKER_CHECK = (
-    "((current_user = 'helix_app' OR pg_has_role(current_user, 'helix_app', 'MEMBER')) "
-    "OR (current_user = 'helix_worker' "
-    "OR pg_has_role(current_user, 'helix_worker', 'MEMBER')))"
-)
 
 
 def _org_predicate(table: str) -> str:
@@ -180,7 +175,7 @@ def _create_worker_queue_policies() -> None:
 
 def _create_maintenance_policies() -> None:
     maintenance = (
-        f"{_APP_OR_WORKER_CHECK} AND current_setting('helix.maintenance', true) = '1'"
+        f"{_ROLE_CHECK} AND current_setting('helix.maintenance', true) = '1'"
     )
     stale = (
         "COALESCE(heartbeat_at, created_at) < now() - interval '120 seconds' "
@@ -206,7 +201,8 @@ def _create_maintenance_policies() -> None:
 
     # Failed scrape rows and their matching usage ledger entries are the only
     # extra rows the restart reconciler may inspect for idempotent refunds.
-    failed_scrape = f"{maintenance} AND status = 'failed'"
+    recent_failure = "COALESCE(completed_at, heartbeat_at, created_at) >= now() - interval '24 hours'"
+    failed_scrape = f"{maintenance} AND status = 'failed' AND {recent_failure}"
     op.execute(
         "CREATE POLICY scrape_jobs_maintenance_failed_select ON scrape_jobs "
         f"FOR SELECT USING ({failed_scrape})"
@@ -220,7 +216,8 @@ def _create_maintenance_policies() -> None:
     op.execute(
         "CREATE POLICY usage_logs_maintenance_failed_jobs_select ON usage_logs FOR SELECT "
         f"USING ({maintenance} AND job_id IS NOT NULL AND EXISTS ("
-        "SELECT 1 FROM scrape_jobs sj WHERE sj.id = usage_logs.job_id AND sj.status = 'failed'))"
+        "SELECT 1 FROM scrape_jobs sj WHERE sj.id = usage_logs.job_id AND sj.status = 'failed' "
+        "AND COALESCE(sj.completed_at, sj.heartbeat_at, sj.created_at) >= now() - interval '24 hours'))"
     )
 
     # The reconciler only reads queue state to avoid failing a job that still
@@ -241,9 +238,33 @@ def _create_maintenance_policies() -> None:
         "CREATE POLICY monitor_runs_maintenance_update ON monitor_runs FOR UPDATE "
         f"USING ({stale_run}) WITH CHECK ({maintenance} AND status = 'failed')"
     )
+    # A direct EXISTS would recurse: monitor_runs' tenant policy reads monitors.
+    # This fixed-search-path, worker-gated boolean helper reveals no run details
+    # and uses the migration owner's normal access (these tables are NO FORCE).
+    op.execute("""
+        CREATE FUNCTION public.helix_monitor_has_stale_run(monitor_id text)
+        RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+        SET search_path = pg_catalog, public SET row_security = off
+        AS $$ SELECT CASE WHEN
+            pg_has_role(COALESCE(NULLIF(current_setting('role', true), 'none'), session_user),
+                        'helix_worker', 'MEMBER')
+            AND current_setting('helix.maintenance', true) = '1'
+            AND $1 = current_setting('helix.maintenance_monitor_id', true)
+        THEN EXISTS (
+            SELECT 1 FROM public.monitor_runs mr
+            WHERE mr.monitor_id = $1 AND mr.status = 'running'
+              AND mr.started_at < now() - interval '120 seconds'
+        ) ELSE false END $$
+    """)
+    op.execute("REVOKE ALL ON FUNCTION public.helix_monitor_has_stale_run(text) FROM PUBLIC")
+    # PostgreSQL checks function privileges while preparing all policy branches,
+    # even for app readers that cannot pass the maintenance gate. The helper
+    # itself checks the invoker's role (current_user is its definer here).
+    op.execute("GRANT EXECUTE ON FUNCTION public.helix_monitor_has_stale_run(text) TO helix_app, helix_worker")
     op.execute(
         "CREATE POLICY monitors_maintenance_parent_select ON monitors FOR SELECT "
-        f"USING ({maintenance} AND id = current_setting('helix.maintenance_monitor_id', true))"
+        f"USING ({maintenance} AND id = current_setting('helix.maintenance_monitor_id', true) "
+        "AND public.helix_monitor_has_stale_run(id))"
     )
 
     # A scheduler may claim only due active monitors and advance their next
@@ -268,7 +289,7 @@ def _create_maintenance_policies() -> None:
         "AND last_run_at >= now() - interval '1 minute')"
     )
 
-    # Expired leases may be requeued or dead-lettered, but the worker/app
+    # Expired leases may be requeued or dead-lettered, but the worker
     # cannot use this policy to inspect or alter live leases.
     expired_item = (
         f"{maintenance} AND status = 'leased' AND lease_until IS NOT NULL AND lease_until < now()"
@@ -295,8 +316,6 @@ def upgrade() -> None:
 
     _create_worker_queue_policies()
     _create_maintenance_policies()
-    op.execute("ALTER ROLE helix_app SET helix.enforce = '1'")
-    op.execute("ALTER ROLE helix_worker SET helix.enforce = '1'")
 
 
 def downgrade() -> None:
@@ -334,5 +353,4 @@ def downgrade() -> None:
         _replace_policy(table, predicate, _old_expression)
         op.execute(f"ALTER TABLE {table} FORCE ROW LEVEL SECURITY")
 
-    op.execute("ALTER ROLE helix_app RESET helix.enforce")
-    op.execute("ALTER ROLE helix_worker RESET helix.enforce")
+    op.execute("DROP FUNCTION public.helix_monitor_has_stale_run(text)")

@@ -3,8 +3,8 @@
 Production was stamped at c4d92e1f7a8b while its tables were built partly
 outside Alembic. This script builds that drift on a disposable database,
 upgrades to head, and checks the model. It also upgrades an empty database
-and checks that a forced failure inside the tenancy migration does not leave
-its new tables committed.
+and checks that forced failures inside and immediately after the tenancy
+migration leave schema and revision stamps consistent and can be retried.
 
 Usage (from backend/):
     TEST_DATABASE_URL=postgresql+asyncpg://helix:helix@127.0.0.1:5432/postgres \
@@ -24,6 +24,7 @@ RLS_DENY_REVISION = "f3d9a7c2b1e4"
 DRIFT_DB = os.environ.get("PROVE_DRIFT_DB", "helix_w2_prodlike")
 EMPTY_DB = os.environ.get("PROVE_EMPTY_DB", "helix_w2_emptyproof")
 FAIL_DB = os.environ.get("PROVE_FAIL_DB", "helix_w2_rolefail")
+LATER_FAIL_DB = os.environ.get("PROVE_LATER_FAIL_DB", "helix_w2_laterfail")
 
 
 def _admin_dsn() -> str:
@@ -124,28 +125,18 @@ def _assert_rls_policy_state(database: str, *, deny_by_default: bool) -> None:
         WHERE p.schemaname = 'public' AND p.policyname LIKE '%_tenant_isolation'
         """,
     )[0]
-    configured_roles = int(
-        _sql(
-            database,
-            """
-            SELECT count(*) FROM pg_roles
-            WHERE rolname IN ('helix_app', 'helix_worker')
-              AND coalesce(rolconfig, ARRAY[]::text[]) @> ARRAY['helix.enforce=1']::text[]
-            """,
-        )[0][0]
-    )
     if int(policies[0]) != 34 or int(rls_counts[0]) != 34:
         raise SystemExit(f"expected 34 enabled tenant policies, found policies={policies}, rls={rls_counts}")
     if deny_by_default:
-        if int(policies[1]) != 0 or int(rls_counts[1]) != 0 or configured_roles != 2:
+        if int(policies[1]) != 0 or int(rls_counts[1]) != 0:
             raise SystemExit(
-                f"deny-by-default RLS state mismatch: policies={policies}, rls={rls_counts}, role_defaults={configured_roles}"
+                f"deny-by-default RLS state mismatch: policies={policies}, rls={rls_counts}"
             )
-    elif int(policies[1]) != 34 or int(rls_counts[1]) != 34 or configured_roles != 0:
+    elif int(policies[1]) != 34 or int(rls_counts[1]) != 34:
         raise SystemExit(
-            f"legacy RLS state was not restored: policies={policies}, rls={rls_counts}, role_defaults={configured_roles}"
+            f"legacy RLS state was not restored: policies={policies}, rls={rls_counts}"
         )
-    print(f"ok {'deny-by-default' if deny_by_default else 'legacy'} RLS policies and role settings")
+    print(f"ok {'deny-by-default' if deny_by_default else 'legacy'} RLS policies")
 
 
 def _scalar(database: str, statement: str):
@@ -353,6 +344,59 @@ def prove_tenancy_failure_rolls_back() -> None:
     _must(_alembic("check", database=FAIL_DB), "fail-db alembic check")
 
 
+def prove_failure_after_tenancy_is_retryable(database: str = LATER_FAIL_DB) -> None:
+    """Fail f8 after its first DDL; e7 schema and stamp must remain durable."""
+    _recreate(database)
+    _must(_alembic("upgrade", BEFORE_TENANCY, database=database), "later-fail stamp before tenancy")
+    # A real PostgreSQL exception, not a mocked migration runner. f8 adds a
+    # users column before creating access_requests, so the failure also proves
+    # that the partially executed next revision rolls back as a unit.
+    _sql(
+        database,
+        """
+        CREATE FUNCTION helix_proof_fail_after_tenancy() RETURNS event_trigger
+        LANGUAGE plpgsql AS $$
+        BEGIN
+            IF current_query() ~* 'CREATE TABLE[[:space:]]+access_requests' THEN
+                RAISE EXCEPTION 'injected failure after e7c1a9b4d2f0';
+            END IF;
+        END;
+        $$;
+        CREATE EVENT TRIGGER helix_proof_fail_after_tenancy
+        ON ddl_command_start EXECUTE FUNCTION helix_proof_fail_after_tenancy();
+        """,
+    )
+    try:
+        failed = _alembic("upgrade", "head", database=database)
+        if failed.returncode == 0:
+            raise SystemExit("injected post-tenancy failure did not fire")
+        if "injected failure after e7c1a9b4d2f0" not in failed.stdout + failed.stderr:
+            sys.stderr.write(failed.stdout + failed.stderr)
+            raise SystemExit("upgrade failed for a reason other than the injected failure")
+        if _version(database) != "e7c1a9b4d2f0":
+            raise SystemExit(f"post-tenancy failure left incorrect version {_version(database)}")
+        for table in ("pattern_quarantine", "operation_idempotency", "credit_reservations", "credit_ledger"):
+            if _scalar(database, f"SELECT to_regclass('public.{table}')") is None:
+                raise SystemExit(f"stamped tenancy schema is missing {table}")
+        if _scalar(database, "SELECT to_regclass('public.access_requests')") is not None:
+            raise SystemExit("failed next revision committed access_requests")
+        if _sql(
+            database,
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'is_platform_admin'",
+        ):
+            raise SystemExit("failed next revision committed users.is_platform_admin")
+        print("ok post-tenancy failure preserved e7 schema/stamp and rolled back next revision")
+    finally:
+        _sql(database, "DROP EVENT TRIGGER helix_proof_fail_after_tenancy")
+        _sql(database, "DROP FUNCTION helix_proof_fail_after_tenancy()")
+    _must(_alembic("upgrade", "head", database=database), "later-fail retry upgrade head")
+    if _version(database) != RLS_DENY_REVISION:
+        raise SystemExit("post-tenancy retry did not reach head")
+    _assert_rls_policy_state(database, deny_by_default=True)
+    _must(_alembic("check", database=database), "later-fail retry alembic check")
+
+
 def prove_nonempty_legacy_is_refused() -> None:
     name = os.environ.get("PROVE_NONEMPTY_DB", "helix_w2_nonempty")
     _recreate(name)
@@ -391,6 +435,7 @@ def main() -> None:
     prove_empty()
     prove_drift()
     prove_tenancy_failure_rolls_back()
+    prove_failure_after_tenancy_is_retryable()
     prove_nonempty_legacy_is_refused()
     print("prod schema reconcile proof passed")
 

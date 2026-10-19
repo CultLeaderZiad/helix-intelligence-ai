@@ -160,9 +160,16 @@ this app reach 5.3 minutes at p95, so an age-based rule would have to wait out
 the slowest legitimate job — roughly ten minutes — before it could call
 anything dead.
 
-The sweep runs at startup **and** on a 60s timer. Startup alone is not enough:
-a restart that comes back in seconds kills a job that is not yet old enough to
-look stale, and nothing would ever revisit it.
+The durable scrapling worker runs the sweep at startup **and** on a 60s timer,
+using `worker_session_maker` for maintenance and refunds. The API does not run
+startup sweeps or periodic maintenance; keep the worker service running for
+recovery. Startup alone is not enough: a restart that comes back in seconds
+kills a job that is not yet old enough to look stale, and nothing would revisit
+it. Failed scrape refund recovery considers only the last 24 hours using
+`COALESCE(completed_at, heartbeat_at, created_at)` (scrape jobs have no
+`updated_at` column); sweeping an active scrape sets `completed_at` to now.
+Monitor cleanup resolves the parent organization while the stale run is still
+`running`, then marks it failed and retains that org for tenant-scoped notices.
 
 The UI distinguishes the two failure causes. `failure_kind` is surfaced on both
 the discover `Job` and the media job response, and Discover and Create render
@@ -460,26 +467,20 @@ boot when `current_user` is one of those roles; other environments log a
 warning and continue.
 
 `helix_app` and `helix_worker` are `NOLOGIN` group roles. Migration
-`e7c1a9b4d2f0` creates them only after its schema statements succeed.
-PostgreSQL refuses `CREATE ROLE` inside a transaction, so that step commits
-the schema work and then creates the roles. A schema error rolls back and
-does not leave the roles behind. Create one login for the API and one for
-the worker. Set the password in the Neon or Render dashboard, not in this
-repository.
+`e7c1a9b4d2f0` creates them transactionally with its schema changes; a failure
+rolls back both. Create one login for the API and one for the worker. Set the
+password in the Neon or Render dashboard, not in this repository.
 
 ```sql
 CREATE ROLE helix_api_login LOGIN NOSUPERUSER NOBYPASSRLS INHERIT;
 CREATE ROLE helix_worker_login LOGIN NOSUPERUSER NOBYPASSRLS INHERIT;
 GRANT helix_app TO helix_api_login;
 GRANT helix_worker TO helix_worker_login;
-ALTER ROLE helix_api_login SET helix.enforce = '1';
-ALTER ROLE helix_worker_login SET helix.enforce = '1';
 ```
 
-Role settings are not inherited from group roles, so configure both login roles
-as well as the `helix_app` and `helix_worker` defaults applied by Alembic. The
-policy itself denies access without matching organization context; this setting
-is only defense in depth.
+The policy denies access without matching organization context, independent
+of `helix.enforce`; no login-role setting is needed. Maintenance policies are
+worker-only, so API logins must not inherit `helix_worker`.
 
 Then set each password out of band (`ALTER ROLE ... PASSWORD` from a secret
 store) and point `DATABASE_URL` at that login. The API uses
