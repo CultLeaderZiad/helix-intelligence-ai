@@ -14,21 +14,23 @@ import { request } from "../http"
  *   GET  /v1/discovery/jobs         -> Paginated<Job>
  */
 const discoverService = {
-  search(params = {}) {
+  search(params = {}, { signal } = {}) {
     const { query = "", filters = {}, sort = "composite_desc", query_language = "en" } = params
     const finalQuery = query.trim() || "*"
     return request("/discovery/jobs", {
       method: "POST",
+      signal,
       body: { query: finalQuery, filters, sort, query_language },
     })
   },
 
-  getJobStatus(jobId) {
-    return request(`/discovery/jobs/${jobId}`)
+  getJobStatus(jobId, { signal } = {}) {
+    return request(`/discovery/jobs/${jobId}`, { signal })
   },
 
-  getJobResults(jobId, { page = 1, page_size = 20, sort } = {}) {
+  getJobResults(jobId, { page = 1, page_size = 20, sort } = {}, { signal } = {}) {
     return request(`/discovery/jobs/${jobId}/results`, {
+      signal,
       params: { page, page_size, sort },
     })
   },

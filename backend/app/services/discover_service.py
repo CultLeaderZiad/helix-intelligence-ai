@@ -122,6 +122,7 @@ from app.models.user import User
 from app.core.config import settings
 from app.db.session import async_session_maker
 from app.services.query_bounds import pagination_bounds
+from app.services.discovery_cache import discovery_cache_identity
 
 
 def _job_response(job: ScrapeJob) -> Job:
@@ -178,6 +179,20 @@ def _utcnow() -> datetime.datetime:
     """
     return datetime.datetime.now(datetime.timezone.utc)
 
+def _discovery_cache_provider_identity() -> str:
+    """Describe the configured fallback chain without retaining credentials."""
+    from app.services.scraping.ad_library_provider import _apify_allowed
+    provider = AdLibraryProvider()
+    enabled = {
+        "metapi": bool(provider.metapi_provider.metapi_api_key),
+        "adyntel": bool(provider.adyntel_provider.adyntel_api_key and provider.adyntel_provider.adyntel_email),
+        "meta_official": bool(provider.meta_token),
+        "apify": bool(provider.apify_token) and _apify_allowed(),
+    }
+    chain = ",".join(name for name in DISCOVERY_PROVIDER_CHAIN if enabled.get(name))
+    return f"{chain or 'none'};meta_graph={provider.meta_graph_version}"
+
+
 async def trigger_search(
     db: AsyncSession,
     search_params: SearchParams,
@@ -213,11 +228,15 @@ async def trigger_search(
     #     zero-result (Meta Graph with no commercial coverage) must not block
     #     Metapi/Adyntel after keys are added.
     twelve_hours_ago = _utcnow() - datetime.timedelta(hours=12)
-    normalized_query = scrape_query.lower()
+    filters = search_params.filters.model_dump() if hasattr(search_params.filters, "model_dump") else (search_params.filters or {})
+    cache_identity = discovery_cache_identity(
+        query=scrape_query, filters=filters, org_id=org_id,
+        provider=_discovery_cache_provider_identity(),
+    )
     active_job_result = await db.execute(
         select(ScrapeJob)
         .where(ScrapeJob.org_id == org_id)
-        .where(func.lower(ScrapeJob.query) == normalized_query)
+        .where(ScrapeJob.cache_identity == cache_identity)
         .where(ScrapeJob.status.in_(("queued", "running")))
         .order_by(ScrapeJob.created_at.desc())
         .limit(1)
@@ -229,7 +248,7 @@ async def trigger_search(
     duplicate_job_result = await db.execute(
         select(ScrapeJob)
         .where(ScrapeJob.org_id == org_id)
-        .where(func.lower(ScrapeJob.query) == normalized_query)
+        .where(ScrapeJob.cache_identity == cache_identity)
         .where(ScrapeJob.status == "succeeded")
         .where(ScrapeJob.record_count > 0)
         .where(ScrapeJob.created_at >= twelve_hours_ago)
@@ -240,9 +259,9 @@ async def trigger_search(
     if duplicate_job:
         return _job_response(duplicate_job)
 
-    # 4. Create new ScrapeJob. A partial unique index on
-    # (org_id, lower(query)) WHERE status IN ('queued','running') makes a
-    # duplicate active job structurally impossible: if a concurrent identical
+    # 4. Create new ScrapeJob. The partial unique canonical-identity index
+    # makes a duplicate active job structurally impossible. Legacy rows have
+    # no identity and cannot be safely reused. If a concurrent identical
     # request won the insert race, we roll back and return its job — before
     # any credits are charged.
     from app.services.work_outbox import enqueue_work, inline_execution_enabled
@@ -250,6 +269,7 @@ async def trigger_search(
     new_job = ScrapeJob(
         org_id=org_id,
         query=scrape_query,
+        cache_identity=cache_identity,
         status="running" if inline else "queued",
         created_at=_utcnow(),
         progress=0.1 if inline else 0.0,
@@ -268,7 +288,7 @@ async def trigger_search(
         winner_result = await db.execute(
             select(ScrapeJob)
             .where(ScrapeJob.org_id == org_id)
-            .where(func.lower(ScrapeJob.query) == normalized_query)
+            .where(ScrapeJob.cache_identity == cache_identity)
             .where(ScrapeJob.status.in_(("queued", "running", "succeeded")))
             .order_by(ScrapeJob.created_at.desc())
             .limit(1)
@@ -277,7 +297,10 @@ async def trigger_search(
         winner_created = winner.created_at if winner else None
         if winner_created is not None and winner_created.tzinfo is None:
             winner_created = winner_created.replace(tzinfo=datetime.timezone.utc)
-        if winner_created and winner_created >= twelve_hours_ago:
+        if winner and (winner.status in ("queued", "running") or (
+            winner.status == "succeeded" and (winner.record_count or 0) > 0
+            and winner_created and winner_created >= twelve_hours_ago
+        )):
             return _job_response(winner)
         raise HTTPException(
             status_code=409,
@@ -308,7 +331,7 @@ async def trigger_search(
             job_id=new_job.id,
             org_id=org_id,
             user_id=user.id,
-            payload={"query": scrape_query, "filters": search_params.filters.model_dump() if hasattr(search_params.filters, "model_dump") else (search_params.filters or {})},
+            payload={"query": scrape_query, "filters": filters},
         )
     except Exception:
         logger.exception("discover work item was not enqueued for %s", new_job.id)

@@ -42,7 +42,7 @@ export function useMediaGenerate() {
       lifecycle.finish(run)
     }
     try {
-      // Adapters may ignore options; generation fencing still protects state.
+      // Transport cancellation and generation fencing protect both work and state.
       const created = await mediaService.generate(params, options)
       if (!lifecycle.isCurrent(run)) return
       const jobId = created.job_id || created.id
@@ -101,7 +101,13 @@ export function useMediaGenerate() {
     setError(null)
     setFailureKind(null)
     if (jobId) {
-      try { await mediaService.cancel(jobId) } catch { /* best effort */ }
+      // Cancellation is a separate request, but still belongs to this mounted
+      // lifecycle: navigating away or submitting again must abort it as well.
+      const run = lifecycle.begin(() => {})
+      if (!run) return
+      try { await mediaService.cancel(jobId, { signal: run.signal }) }
+      catch { /* best effort */ }
+      finally { lifecycle.finish(run) }
     }
   }, [lifecycle])
 

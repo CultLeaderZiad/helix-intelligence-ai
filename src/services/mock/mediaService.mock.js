@@ -4,8 +4,8 @@ import { ServiceError } from "../http"
 const jobs = new Map()
 
 export const mediaService = {
-  generate: async (params) => {
-    await delay(300)
+  generate: async (params, { signal } = {}) => {
+    await delay(300, { signal })
     const jobId = crypto.randomUUID()
     const now = new Date().toISOString()
     
@@ -65,15 +65,15 @@ export const mediaService = {
     return job
   },
   
-  getJob: async (jobId) => {
-    await delay(150)
+  getJob: async (jobId, { signal } = {}) => {
+    await delay(150, { signal })
     const job = jobs.get(jobId)
     if (!job) throw new ServiceError("Job not found", 404)
     return { ...job } // return a copy to prevent mutation bugs
   },
   
-  getJobResult: async (jobId) => {
-    await delay(100)
+  getJobResult: async (jobId, { signal } = {}) => {
+    await delay(100, { signal })
     const job = jobs.get(jobId)
     if (!job) throw new ServiceError("Job not found", 404)
     if (job.status !== "succeeded") {
@@ -82,8 +82,8 @@ export const mediaService = {
     return job.result
   },
   
-  cancel: async (jobId) => {
-    await delay(100)
+  cancel: async (jobId, { signal } = {}) => {
+    await delay(100, { signal })
     const job = jobs.get(jobId)
     if (job && (job.status === "queued" || job.status === "running")) {
       job.status = "canceled"

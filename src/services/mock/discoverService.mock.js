@@ -175,8 +175,8 @@ const discoverService = {
    * @param {import('../contracts').SearchParams} params
    * @returns {Promise<import('../contracts').Job>}
    */
-  async search(params = {}) {
-    await delay(220)
+  async search(params = {}, { signal } = {}) {
+    await delay(220, { signal })
     maybeFail("Could not reach discovery orchestrator")
 
     const { query = "", filters = {}, sort = "composite_desc" } = params
@@ -220,8 +220,8 @@ const discoverService = {
    * @param {string} jobId
    * @returns {Promise<import('../contracts').Job>}
    */
-  async getJobStatus(jobId) {
-    await delay(90)
+  async getJobStatus(jobId, { signal } = {}) {
+    await delay(90, { signal })
     const record = jobStore.get(jobId)
     if (!record) {
       throw new ServiceError(`Job ${jobId} not found`, {
@@ -238,9 +238,9 @@ const discoverService = {
    * @param {{ page?: number, page_size?: number, sort?: string }} [opts]
    * @returns {Promise<import('../contracts').Paginated>}
    */
-  async getJobResults(jobId, opts = {}) {
+  async getJobResults(jobId, opts = {}, { signal } = {}) {
     const started = performance.now()
-    await delay()
+    await delay(undefined, { signal })
     maybeFail("Result index temporarily unavailable")
 
     const record = jobStore.get(jobId)

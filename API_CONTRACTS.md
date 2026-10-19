@@ -195,3 +195,22 @@ All generation and entitlement gatekeeper failures return machine-readable JSON 
 2. **Never Exposed**: Plaintext keys are NEVER returned in API responses, logs, or stored in frontend state. Responses only display masked suffixes (`••••••••abcd`).
 3. **Trial Isolation**: Trial users always use HELIX Managed Gemini.
 4. **No Silent Fallback**: If a paid workspace configures BYOK and the customer's Google project fails or runs out of quota, HELIX returns an explicit notice and never silently bills HELIX infrastructure.
+
+## 6. Frontend Job Request Cancellation
+
+Discovery and media job services accept an optional final `{ signal: AbortSignal }`
+argument in both API and mock mode. In particular, discovery result reads use
+`getJobResults(jobId, pagination, { signal })`; media generation, status, result,
+and cancellation calls use `(paramsOrJobId, { signal })`.
+
+`useDiscoverySearch` and `useMediaGenerate` own a controller for each submission
+(and each discovery refinement). Unmounting, route navigation, explicit cancel,
+or resubmission aborts outstanding fetches and HTTP retry waits, in addition to
+fencing stale state updates. Media's best-effort server-cancel request is also
+aborted on unmount or resubmission. Mock delays honor the same signal and remove
+their timers/listeners when canceled.
+
+Aborting a client request is **not** proof that a submitted backend job stopped:
+media's explicit cancel action calls the cancellation endpoint, while discovery
+navigation only stops client work. HTTP requests retain their bounded transport
+deadline and the hooks retain their overall job deadline.

@@ -97,9 +97,10 @@ def test_f58_rate_limit_rules_and_normalization():
 # ============================================================================
 
 def test_f66_robots_allowed_ssrf_and_timeout():
-    # Private / internal URL should fail open without network call
-    assert robots_allowed("http://127.0.0.1:8000/some-path") is True
-    assert robots_allowed("http://169.254.169.254/latest/meta-data") is True
+    # Unavailable robots rules on private/internal origins must fail closed.
+    # Real 404/410 responses remain covered by test_intelligence_w3_robots.py.
+    assert robots_allowed("http://127.0.0.1:8000/some-path") is False
+    assert robots_allowed("http://169.254.169.254/latest/meta-data") is False
 
 
 def test_f66_parse_sitemap_recursion_and_visited_guards():
