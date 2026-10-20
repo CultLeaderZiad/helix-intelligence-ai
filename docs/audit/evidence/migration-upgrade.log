@@ -1,0 +1,22 @@
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> b04f12968b0c, Initial backend scaffold
+INFO  [alembic.runtime.migration] Running upgrade b04f12968b0c -> 26d99f8467f6, Add UsageLog model
+INFO  [alembic.runtime.migration] Running upgrade 26d99f8467f6 -> 48ce41ebc764, add_billing_and_gated_features
+INFO  [alembic.runtime.migration] Running upgrade 48ce41ebc764 -> 46af201944fd, Add is_suspended to users
+INFO  [alembic.runtime.migration] Running upgrade 46af201944fd -> 296fd86254e3, Add has_completed_onboarding flag
+INFO  [alembic.runtime.migration] Running upgrade 296fd86254e3 -> 8873440dfb27, add api_usage table
+INFO  [alembic.runtime.migration] Running upgrade 8873440dfb27 -> c4d92e1f7a8b, Add daily credit limit and daily usage tracking
+INFO  [alembic.runtime.migration] Running upgrade c4d92e1f7a8b -> 3c8be5787f7a, Add MediaGenerationJob
+INFO  [alembic.runtime.migration] Running upgrade 3c8be5787f7a -> 51fc8263b0bc, Add WebhookEvent model
+INFO  [alembic.runtime.migration] Running upgrade 51fc8263b0bc -> a1b2c3d4e5f6, Add leadgen tables (LeadGenJob, LeadGenLead, LeadGenWorkerHeartbeat).
+INFO  [alembic.runtime.migration] Running upgrade a1b2c3d4e5f6 -> b1c2d3e4f5a6, Complete production schema alignment (F01, F14, F63, F77)
+INFO  [alembic.runtime.migration] Running upgrade b1c2d3e4f5a6 -> d5e8c0a1b2f3, Durable unique Neon auth webhook event ids.
+INFO  [alembic.runtime.migration] Running upgrade d5e8c0a1b2f3 -> e7c1a9b4d2f0, W1 tenancy ownership, decimal ledger, and row-level security.
+INFO  [alembic.runtime.migration] Running upgrade e7c1a9b4d2f0 -> f8b3c4d5e6a7, Manual access grants and explicit scout/leadgen/monitors flags.
+INFO  [alembic.runtime.migration] Running upgrade f8b3c4d5e6a7 -> c2a4e8b1d907, W2 durable work items and creative source provenance.
+INFO  [alembic.runtime.migration] Running upgrade c2a4e8b1d907 -> d4f6a8c0e2b1, Null unmeasured lift and review counts, and grant the restricted roles.
+INFO  [alembic.runtime.migration] Running upgrade d4f6a8c0e2b1 -> e8c3b5d7a2f4, Drop leftover prod defaults and require usage-log tenancy.
+INFO  [alembic.runtime.migration] Running upgrade e8c3b5d7a2f4 -> f3d9a7c2b1e4, Make tenant RLS fail closed without an organization context.
+INFO  [alembic.runtime.migration] Running upgrade f3d9a7c2b1e4 -> a9d4e6f8c2b0, Persist complete discovery cache identity and replace query-only uniqueness.
+INFO  [alembic.runtime.migration] Running upgrade a9d4e6f8c2b0 -> b7e4c9a1d2f0, Revalidate alignment invariants for databases already stamped past b1.
