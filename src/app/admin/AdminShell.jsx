@@ -56,9 +56,9 @@ export function AdminShell({ children }) {
               onClick={() => setNavOpen(false)}
               aria-hidden="true"
             />
-            <div className="relative flex flex-col z-10 w-[240px] max-w-[85vw] h-full shadow-2xl bg-surface border-r border-border animate-in slide-in-from-left duration-200">
+            <div className="relative flex flex-col z-10 w-[240px] max-w-[85vw] h-full shadow-2xl bg-surface border-e border-border">
               <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-surface-2">
-                <span className="font-mono text-xs font-bold text-text">Console Navigation</span>
+                <span className="font-mono text-xs font-bold text-text">{t("adminNavigation")}</span>
                 <button
                   type="button"
                   onClick={() => setNavOpen(false)}
