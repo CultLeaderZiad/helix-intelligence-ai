@@ -293,6 +293,13 @@ async def complete_onboarding(current_user: User = Depends(get_current_user), db
     log_event(logger, "onboarding_completed", actor_id=current_user.id, level=logging.INFO)
     return {"message": "Onboarding marked as complete"}
 
+@router.post("/session/onboarding/restart")
+async def restart_onboarding(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    current_user.has_completed_onboarding = False
+    await db.commit()
+    log_event(logger, "onboarding_restarted", actor_id=current_user.id, level=logging.INFO)
+    return {"message": "Onboarding marked as incomplete"}
+
 from fastapi import Request
 import hmac
 
