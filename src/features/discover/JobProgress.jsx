@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/Button"
 import { formatDuration, formatInt } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { useLanguage } from "@/context/LanguageContext"
+import w5Discover from "@/i18n/w5Discover"
 // Pipeline vocabulary, not row data. The service reports stage_index /
 // stages_total against this canonical list; the real worker will report
 // the same keys. Same class of exception as brandsById in ResultsTable.
@@ -25,7 +27,7 @@ function Leader() {
   )
 }
 
-function StageLine({ stage, state, records, error }) {
+function StageLine({ label, state, records }) {
   // state: "done" | "active" | "pending" | "failed"
   const pending = state === "pending"
   return (
@@ -41,7 +43,7 @@ function StageLine({ stage, state, records, error }) {
         {state === "failed" ? <span className="text-danger">✕</span> : null}
       </span>
       <span className={cn(state === "active" && "text-text")}>
-        {stage.label.toLowerCase()}
+        {label}
       </span>
       {!pending ? <Leader /> : null}
       {state === "done" ? (
@@ -52,7 +54,6 @@ function StageLine({ stage, state, records, error }) {
       {state === "active" ? (
         <span className="tnum shrink-0 text-text">
           {records !== null ? formatInt(records) : null}
-          <span className="cursor-blink ml-1 inline-block h-3 w-[7px] translate-y-[2px] bg-accent" />
         </span>
       ) : null}
       {state === "failed" ? (
@@ -68,18 +69,54 @@ function StageLine({ stage, state, records, error }) {
 /** Stages that stream a record count while running. */
 const COUNTING_STAGES = new Set(["enumerating", "fetching_assets", "scoring"])
 
-export function JobProgress({ job, query, onCancel }) {
+export function JobProgress({
+  job,
+  query,
+  onCancel,
+  onRetry,
+  cancelError,
+  isCancelling = false,
+}) {
+  const { lang } = useLanguage()
+  const copy = w5Discover[lang] ?? w5Discover.en
   if (!job) return null
 
   const failed = job.status === "failed"
   const done = job.status === "succeeded"
+  const cancelled = job.status === "cancelled" || job.status === "canceled"
+  const timedOut = job.status === "timed_out"
+  const statusCancelling = job.status === "cancelling" || job.status === "cancel_requested"
+  const active = !failed && !done && !cancelled && !timedOut
   const currentIndex = job.stage_index
+  const statusLabel = failed
+    ? copy.statusFailed
+    : done
+      ? copy.statusSucceeded
+      : cancelled
+        ? copy.statusCancelled
+        : timedOut
+          ? copy.statusTimedOut
+          : cancelError
+            ? copy.statusCancelError
+            : isCancelling || statusCancelling
+              ? copy.statusCancelling
+              : job.status === "queued"
+                ? copy.statusQueued
+                : copy.statusRunning
+  const statusColor = failed || timedOut
+    ? "text-danger"
+    : done
+      ? "text-success"
+      : cancelled
+        ? "text-text-muted"
+        : "text-text"
 
   return (
     <div
       className="shrink-0 border-b border-border bg-bg px-3 py-3"
       role="status"
       aria-live="polite"
+      dir={lang === "ar" ? "rtl" : "ltr"}
     >
       {/* Session header. The dot alone carries the accent while a job is
           live — same discipline as StatusBar — so the word beside it
@@ -89,26 +126,32 @@ export function JobProgress({ job, query, onCancel }) {
           <span
             className={cn(
               "h-[7px] w-[7px] rounded-full",
-              failed ? "bg-danger" : done ? "bg-success" : "bg-accent animate-pulse",
+              failed || timedOut
+                ? "bg-danger"
+                : done
+                  ? "bg-success"
+                  : cancelled
+                    ? "bg-border-strong"
+                    : "bg-accent",
             )}
             aria-hidden="true"
           />
           <span
             className={cn(
               "label-mono",
-              failed ? "text-danger" : done ? "text-success" : "text-text",
+              statusColor,
             )}
           >
-            {failed ? "failed" : done ? "done" : job.status === "queued" ? "queued" : "live"}
+            {statusLabel}
           </span>
         </span>
         <span className="truncate text-text-muted">discover/{job.job_id}</span>
         <span className="tnum ml-auto shrink-0 text-text-faint">
           {formatDuration(job.elapsed_ms)}
         </span>
-        {!failed && !done && onCancel ? (
-          <Button size="xs" variant="ghost" onClick={onCancel}>
-            Cancel
+        {active && onCancel ? (
+          <Button size="xs" variant="ghost" onClick={onCancel} disabled={isCancelling}>
+            {cancelError ? copy.retryCancel : isCancelling ? copy.statusCancelling : copy.cancel}
           </Button>
         ) : null}
       </div>
@@ -127,7 +170,7 @@ export function JobProgress({ job, query, onCancel }) {
           let state = "pending"
           if (failed && i === currentIndex) state = "failed"
           else if (i < currentIndex || done) state = "done"
-          else if (i === currentIndex) state = "active"
+          else if (active && i === currentIndex) state = "active"
 
           const counts = COUNTING_STAGES.has(stage.key)
           const records =
@@ -140,10 +183,13 @@ export function JobProgress({ job, query, onCancel }) {
           return (
             <StageLine
               key={stage.key}
-              stage={stage}
+              label={
+                active && i === currentIndex && job.stage_label?.trim()
+                  ? job.stage_label
+                  : stage.label.toLowerCase()
+              }
               state={state}
               records={records}
-              error={job.error}
             />
           )
         })}
@@ -158,6 +204,44 @@ export function JobProgress({ job, query, onCancel }) {
           <p className="mt-1 font-mono text-[11px] leading-5 text-success">
             * complete — {formatInt(job.records_found)} creatives indexed
           </p>
+        ) : null}
+
+        {isCancelling || statusCancelling ? (
+          <p className="mt-1 font-mono text-[11px] leading-5 text-text-muted">
+            * {copy.cancelling}
+          </p>
+        ) : null}
+
+        {cancelError ? (
+          <p className="mt-1 font-mono text-[11px] leading-5 text-danger">
+            * {copy.cancelFailed}
+          </p>
+        ) : null}
+
+        {cancelled ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <p className="font-mono text-[11px] leading-5 text-text-muted">
+              * {copy.cancelled}
+            </p>
+            {onRetry ? (
+              <Button size="xs" variant="outline" onClick={onRetry}>
+                {copy.retrySearch}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {timedOut ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <p className="font-mono text-[11px] leading-5 text-danger">
+              * {copy.timedOut}
+            </p>
+            {onRetry ? (
+              <Button size="xs" variant="outline" onClick={onRetry}>
+                {copy.retrySearch}
+              </Button>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>
