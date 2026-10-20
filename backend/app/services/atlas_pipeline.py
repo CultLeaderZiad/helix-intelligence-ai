@@ -221,7 +221,7 @@ async def run_atlas_pipeline(
     bio = raw_lead.get("bio") or ""
     website = raw_lead.get("website")
     followers = raw_lead.get("followers") or raw_lead.get("follower_count")
-    is_verified = bool(raw_lead.get("is_verified"))
+    bool(raw_lead.get("is_verified"))
     email = raw_lead.get("email")
     email_source = raw_lead.get("email_source")
     phone = raw_lead.get("phone")
