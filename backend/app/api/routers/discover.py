@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.discover import SearchParams, Job
 from app.schemas.creative import Creative

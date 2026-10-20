@@ -1,8 +1,7 @@
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
 from app.models.notification import Notification
-from app.models.user import User
 
 async def create_notification(
     db: AsyncSession,
