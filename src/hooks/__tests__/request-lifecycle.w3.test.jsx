@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { mediaService, discoverService } = vi.hoisted(() => ({
   mediaService: { generate: vi.fn(), getJob: vi.fn(), getJobResult: vi.fn(), cancel: vi.fn() },
-  discoverService: { search: vi.fn(), getJobStatus: vi.fn(), getJobResults: vi.fn() },
+  discoverService: { search: vi.fn(), getJobStatus: vi.fn(), getJobResults: vi.fn(), cancelJob: vi.fn() },
 }))
 vi.mock("@/services", () => ({ mediaService, discoverService }))
 import { useMediaGenerate } from "../useMediaGenerate"
@@ -124,7 +124,7 @@ for (const [name, hook, service, start, status, created] of [
       expect(vi.getTimerCount()).toBe(0)
     })
 
-    it("bounds polling with increasing delays and stops at the deadline", async () => {
+    it("bounds polling and requests server cancellation at the discovery deadline", async () => {
       service[start].mockResolvedValue(created("job"))
       service[status].mockResolvedValue({ job_id: "job", status: "running" })
       mount(hook)
@@ -133,10 +133,16 @@ for (const [name, hook, service, start, status, created] of [
       const calls = service[status].mock.calls.length
       expect(calls).toBeGreaterThan(1)
       expect(calls).toBeLessThan(80)
-      expect(latest.isBusy).toBe(false)
-      expect(vi.getTimerCount()).toBe(0)
-      await advance(JOB_POLL_TIMEOUT_MS)
-      expect(service[status]).toHaveBeenCalledTimes(calls)
+      if (name === "discovery") {
+        expect(service.cancelJob).toHaveBeenCalledWith("job")
+        expect(latest.phase).toBe("cancelling")
+        expect(latest.isBusy).toBe(true)
+      } else {
+        expect(latest.isBusy).toBe(false)
+        expect(vi.getTimerCount()).toBe(0)
+        await advance(JOB_POLL_TIMEOUT_MS)
+        expect(service[status]).toHaveBeenCalledTimes(calls)
+      }
     })
   })
 }
