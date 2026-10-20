@@ -1,0 +1,618 @@
+{
+  "measurement": {
+    "capturedAtUtc": "2026-10-20",
+    "branch": "audit/helix-full",
+    "method": "Existing installed workspaces only; no package installation, provider call, production query, or database mutation.",
+    "node": "v24.22.0",
+    "pnpm": "9.15.4",
+    "python": "3.12.3",
+    "pythonEnvironment": "/tmp/w4-venv"
+  },
+  "build": {
+    "command": "pnpm build",
+    "result": "passed",
+    "distBytes": 1958073,
+    "emittedFiles": 122,
+    "largestAssets": [
+      {
+        "path": "dist/assets/index-CuzHoytb.js",
+        "bytes": 481532,
+        "gzipBytes": 147494
+      },
+      {
+        "path": "dist/assets/DocSearchModal-1NVj4Zf_.js",
+        "bytes": 182288,
+        "gzipBytes": 51820
+      },
+      {
+        "path": "dist/assets/index-cRSK3YUL.css",
+        "bytes": 135665,
+        "gzipBytes": 25694
+      },
+      {
+        "path": "dist/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+        "bytes": 85068,
+        "gzipBytes": 85109
+      },
+      {
+        "path": "dist/brand/helix-logo.png",
+        "bytes": 80628,
+        "gzipBytes": 78422
+      },
+      {
+        "path": "dist/brand/helix-mark.png",
+        "bytes": 80628,
+        "gzipBytes": 78422
+      },
+      {
+        "path": "dist/assets/ScoutPage-D7qscLw1.js",
+        "bytes": 71115,
+        "gzipBytes": 15094
+      },
+      {
+        "path": "dist/assets/DiscoverPage-BR_vSBz3.js",
+        "bytes": 64062,
+        "gzipBytes": 18852
+      },
+      {
+        "path": "dist/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+        "bytes": 48256,
+        "gzipBytes": 48249
+      },
+      {
+        "path": "dist/assets/ScoutLeadGenerationPage-Bw0NbW__.js",
+        "bytes": 41262,
+        "gzipBytes": 10690
+      },
+      {
+        "path": "dist/assets/jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2",
+        "bytes": 40404,
+        "gzipBytes": 40437
+      },
+      {
+        "path": "dist/assets/IntelligencePage-D8t2Fb8o.js",
+        "bytes": 35566,
+        "gzipBytes": 10721
+      },
+      {
+        "path": "dist/assets/CreatePage-GRcwbt8o.js",
+        "bytes": 33132,
+        "gzipBytes": 9789
+      },
+      {
+        "path": "dist/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2",
+        "bytes": 25960,
+        "gzipBytes": 25988
+      },
+      {
+        "path": "dist/assets/driver.js-Dj4CfABu.js",
+        "bytes": 25413,
+        "gzipBytes": 7281
+      },
+      {
+        "path": "dist/assets/DocsDetailPage-BAaHn1ji.js",
+        "bytes": 24939,
+        "gzipBytes": 7022
+      },
+      {
+        "path": "dist/assets/DashboardPage-BIWuR3on.js",
+        "bytes": 21237,
+        "gzipBytes": 5317
+      },
+      {
+        "path": "dist/assets/inter-greek-wght-normal-CkhJZR-_.woff2",
+        "bytes": 18996,
+        "gzipBytes": 19024
+      },
+      {
+        "path": "dist/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2",
+        "bytes": 18748,
+        "gzipBytes": 18776
+      },
+      {
+        "path": "dist/assets/UpdatesPage-h90t7YM8.js",
+        "bytes": 17889,
+        "gzipBytes": 4900
+      }
+    ]
+  },
+  "javascript": {
+    "runtimeDependencyCount": 10,
+    "developmentDependencyCount": 16,
+    "installedPackageDirectoryCount": 397,
+    "nodeModulesBytes": 234236741,
+    "pnpmStoreBytes": 222123714,
+    "runtimeDependencies": [
+      {
+        "name": "@fontsource-variable/inter",
+        "manifestVersion": "^5.3.0",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/@fontsource-variable+inter@5.3.0/node_modules/@fontsource-variable/inter",
+        "packageContentBytes": 1195995,
+        "staticImportReferenceFound": true,
+        "staticImportCount": 1,
+        "staticImportExamples": [
+          "src/main.jsx:5"
+        ]
+      },
+      {
+        "name": "@fontsource-variable/jetbrains-mono",
+        "manifestVersion": "^5.3.0",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/@fontsource-variable+jetbrains-mono@5.3.0/node_modules/@fontsource-variable/jetbrains-mono",
+        "packageContentBytes": 201553,
+        "staticImportReferenceFound": true,
+        "staticImportCount": 1,
+        "staticImportExamples": [
+          "src/main.jsx:6"
+        ]
+      },
+      {
+        "name": "clsx",
+        "manifestVersion": "^2.1.1",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx",
+        "packageContentBytes": 8555,
+        "staticImportReferenceFound": true,
+        "staticImportCount": 1,
+        "staticImportExamples": [
+          "src/lib/utils.js:1"
+        ]
+      },
+      {
+        "name": "driver.js",
+        "manifestVersion": "^1.8.0",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/driver.js@1.8.0/node_modules/driver.js",
+        "packageContentBytes": 142878,
+        "staticImportReferenceFound": false,
+        "staticImportCount": 0,
+        "staticImportExamples": []
+      },
+      {
+        "name": "gsap",
+        "manifestVersion": "^3.15.0",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/gsap@3.15.0/node_modules/gsap",
+        "packageContentBytes": 6240808,
+        "staticImportReferenceFound": true,
+        "staticImportCount": 1,
+        "staticImportExamples": [
+          "src/components/ui/CardSwap.jsx:12"
+        ]
+      },
+      {
+        "name": "lucide-react",
+        "manifestVersion": "^1.16.0",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/lucide-react@1.17.0_react@19.2.4/node_modules/lucide-react",
+        "packageContentBytes": 25596175,
+        "staticImportReferenceFound": true,
+        "staticImportCount": 95,
+        "staticImportExamples": [
+          "src/app/BreadcrumbBar.jsx:1",
+          "src/app/CommandBar.jsx:3",
+          "src/app/StatusBar.jsx:1",
+          "src/app/navigation.js:1",
+          "src/app/AppShell.jsx:3"
+        ]
+      },
+      {
+        "name": "react",
+        "manifestVersion": "^19",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/react@19.2.4/node_modules/react",
+        "packageContentBytes": 171604,
+        "staticImportReferenceFound": true,
+        "staticImportCount": 114,
+        "staticImportExamples": [
+          "src/main.jsx:1",
+          "src/App.jsx:1",
+          "src/app/CommandBar.jsx:1",
+          "src/app/TelemetryContext.jsx:1",
+          "src/app/AppShell.jsx:1"
+        ]
+      },
+      {
+        "name": "react-dom",
+        "manifestVersion": "^19",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom",
+        "packageContentBytes": 7319413,
+        "staticImportReferenceFound": true,
+        "staticImportCount": 2,
+        "staticImportExamples": [
+          "src/main.jsx:2",
+          "src/components/ui/InfoTip.jsx:2"
+        ]
+      },
+      {
+        "name": "react-router-dom",
+        "manifestVersion": "^7.9.6",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/react-router-dom@7.18.2_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/react-router-dom",
+        "packageContentBytes": 5280,
+        "staticImportReferenceFound": true,
+        "staticImportCount": 45,
+        "staticImportExamples": [
+          "src/main.jsx:3",
+          "src/App.jsx:2",
+          "src/app/CommandBar.jsx:2",
+          "src/app/PublicHeader.jsx:1",
+          "src/app/StatusBar.jsx:2"
+        ]
+      },
+      {
+        "name": "tailwind-merge",
+        "manifestVersion": "^3.3.1",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/tailwind-merge@3.4.0/node_modules/tailwind-merge",
+        "packageContentBytes": 934340,
+        "staticImportReferenceFound": true,
+        "staticImportCount": 1,
+        "staticImportExamples": [
+          "src/lib/utils.js:2"
+        ]
+      }
+    ],
+    "largestPnpmStoreEntriesApproxKiB": [
+      {
+        "entry": "lucide-react@1.17.0_react@19.2.4",
+        "kibibytes": 26115
+      },
+      {
+        "entry": "typescript@5.9.3",
+        "kibibytes": 23108
+      },
+      {
+        "entry": "playwright-core@1.62.1",
+        "kibibytes": 12987
+      },
+      {
+        "entry": "@esbuild+linux-x64@0.28.2",
+        "kibibytes": 11162
+      },
+      {
+        "entry": "lightningcss-linux-x64-gnu@1.32.0",
+        "kibibytes": 9823
+      },
+      {
+        "entry": "lightningcss-linux-x64-musl@1.32.0",
+        "kibibytes": 9803
+      },
+      {
+        "entry": "react-dom@19.2.4_react@19.2.4",
+        "kibibytes": 7159
+      },
+      {
+        "entry": "@opentelemetry+semantic-conventions@1.43.0",
+        "kibibytes": 6655
+      },
+      {
+        "entry": "gsap@3.15.0",
+        "kibibytes": 6138
+      },
+      {
+        "entry": "jsdom@30.1.3",
+        "kibibytes": 5578
+      },
+      {
+        "entry": "playwright@1.62.1",
+        "kibibytes": 4960
+      },
+      {
+        "entry": "zod@4.4.3",
+        "kibibytes": 4556
+      },
+      {
+        "entry": "react-router@7.18.2_react-dom@19.2.4_react@19.2.4__react@19.2.4",
+        "kibibytes": 3543
+      },
+      {
+        "entry": "eslint@9.39.5_jiti@2.7.0",
+        "kibibytes": 3047
+      },
+      {
+        "entry": "@tailwindcss+oxide-linux-x64-musl@4.3.3",
+        "kibibytes": 2947
+      }
+    ],
+    "staticImportScan": {
+      "scope": "src production JS/JSX/TS/TSX; excludes test/spec files",
+      "matching": "ES module imports, side-effect imports, and re-exports; dynamic import() tracked separately",
+      "dynamicImportSpecifiers": {
+        "@/pages/auth/SignInPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/auth/SignUpPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/auth/ForgotPasswordPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/auth/ResetPasswordPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/DiscoverPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/IntelligencePage": [
+          "src/App.jsx"
+        ],
+        "./pages/PerformancePage": [
+          "src/App.jsx"
+        ],
+        "./pages/DashboardPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/CreatePage": [
+          "src/App.jsx"
+        ],
+        "@/pages/MonitorsPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/GuidePage": [
+          "src/App.jsx"
+        ],
+        "@/pages/SwipeFilesPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/BillingPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/ApiKeysPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/TeamPage": [
+          "src/App.jsx",
+          "src/App.jsx"
+        ],
+        "@/pages/PendingLoopPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/NotFoundPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/OverviewPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/AdminPendingPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/OrganizationsPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/AccessRequestsPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/SubscriptionsPlansPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/UsagePage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/FeatureFlagsPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/UsersPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/UpdatesPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/SupportAdminPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/ScrapeJobsPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/DataSourcesPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/SystemHealthPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/admin/AuditLogPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/PublicPlaybookPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/PublicUpdatesPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/ProfileSettingsPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/SupportPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/NotificationsPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/docs/DocsHomePage": [
+          "src/App.jsx"
+        ],
+        "@/pages/docs/DocsDetailPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/ScoutPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/docs/ScoutCliDocsPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/ScoutLeadGenerationPage": [
+          "src/App.jsx"
+        ],
+        "@/pages/LegalPage": [
+          "src/App.jsx"
+        ],
+        "./CommandBar": [
+          "src/app/AppShell.jsx"
+        ],
+        "driver.js": [
+          "src/app/OnboardingTour.jsx"
+        ],
+        "driver.js/dist/driver.css": [
+          "src/app/OnboardingTour.jsx"
+        ],
+        "react": [
+          "src/context/LanguageContext.jsx"
+        ],
+        "../contracts": [
+          "src/services/mock/analysisService.mock.js",
+          "src/services/mock/creativeService.mock.js",
+          "src/services/mock/creativeService.mock.js",
+          "src/services/mock/adminService.mock.js",
+          "src/services/mock/adminService.mock.js",
+          "src/services/mock/adminService.mock.js",
+          "src/services/mock/authService.mock.js",
+          "src/services/mock/authService.mock.js",
+          "src/services/mock/authService.mock.js",
+          "src/services/mock/authService.mock.js",
+          "src/services/mock/authService.mock.js",
+          "src/services/mock/discoverService.mock.js",
+          "src/services/mock/discoverService.mock.js",
+          "src/services/mock/discoverService.mock.js",
+          "src/services/mock/discoverService.mock.js",
+          "src/services/mock/discoverService.mock.js"
+        ]
+      },
+      "runtimeDependenciesWithoutStaticImport": [
+        "driver.js"
+      ]
+    }
+  },
+  "python": {
+    "requirementsFile": "backend/requirements.txt",
+    "environmentBytes": 181398865,
+    "sitePackagesPath": "/tmp/w4-venv/lib/python3.12/site-packages",
+    "sitePackagesBytes": 181369362,
+    "installedDistributionCount": 58,
+    "requirements": [
+      {
+        "requirement": "fastapi==0.141.1",
+        "name": "fastapi",
+        "installedVersion": "0.141.1"
+      },
+      {
+        "requirement": "asyncpg==0.31.0",
+        "name": "asyncpg",
+        "installedVersion": "0.31.0"
+      },
+      {
+        "requirement": "alembic==1.19.1",
+        "name": "alembic",
+        "installedVersion": "1.19.1"
+      },
+      {
+        "requirement": "pydantic-settings==2.15.0",
+        "name": "pydantic-settings",
+        "installedVersion": "2.15.0"
+      },
+      {
+        "requirement": "bcrypt==5.0.0",
+        "name": "bcrypt",
+        "installedVersion": "5.0.0"
+      },
+      {
+        "requirement": "python-multipart==0.0.32",
+        "name": "python-multipart",
+        "installedVersion": "0.0.32"
+      },
+      {
+        "requirement": "httpx==0.28.1",
+        "name": "httpx",
+        "installedVersion": "0.28.1"
+      },
+      {
+        "requirement": "python-dotenv==1.2.3",
+        "name": "python-dotenv",
+        "installedVersion": "1.2.3"
+      },
+      {
+        "requirement": "boto3==1.43.93",
+        "name": "boto3",
+        "installedVersion": "1.43.93"
+      },
+      {
+        "requirement": "Pillow==12.3.0",
+        "name": "Pillow",
+        "installedVersion": "12.3.0"
+      },
+      {
+        "requirement": "aiosqlite==0.22.1",
+        "name": "aiosqlite",
+        "installedVersion": "0.22.1"
+      }
+    ],
+    "largestInstalledDistributionsByRecordSize": [
+      {
+        "name": "SQLAlchemy",
+        "version": "2.0.52",
+        "recordedFileBytes": 22505839
+      },
+      {
+        "name": "botocore",
+        "version": "1.43.115",
+        "recordedFileBytes": 22161968
+      },
+      {
+        "name": "pillow",
+        "version": "12.3.0",
+        "recordedFileBytes": 21053137
+      },
+      {
+        "name": "uvloop",
+        "version": "0.23.0",
+        "recordedFileBytes": 16616409
+      },
+      {
+        "name": "cryptography",
+        "version": "50.0.2",
+        "recordedFileBytes": 15573035
+      },
+      {
+        "name": "asyncpg",
+        "version": "0.31.0",
+        "recordedFileBytes": 13409710
+      },
+      {
+        "name": "pip",
+        "version": "24.0",
+        "recordedFileBytes": 13250011
+      },
+      {
+        "name": "Pygments",
+        "version": "2.21.0",
+        "recordedFileBytes": 8527080
+      },
+      {
+        "name": "pydantic_core",
+        "version": "2.46.4",
+        "recordedFileBytes": 5252582
+      },
+      {
+        "name": "pydantic",
+        "version": "2.13.4",
+        "recordedFileBytes": 3783908
+      },
+      {
+        "name": "PyYAML",
+        "version": "6.0.3",
+        "recordedFileBytes": 3155355
+      },
+      {
+        "name": "pytest",
+        "version": "9.1.1",
+        "recordedFileBytes": 3002381
+      },
+      {
+        "name": "dnspython",
+        "version": "2.9.0",
+        "recordedFileBytes": 2657856
+      },
+      {
+        "name": "greenlet",
+        "version": "3.5.6",
+        "recordedFileBytes": 2319657
+      },
+      {
+        "name": "alembic",
+        "version": "1.19.1",
+        "recordedFileBytes": 2210079
+      }
+    ]
+  }
+}
