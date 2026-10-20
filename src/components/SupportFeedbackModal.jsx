@@ -1,205 +1,235 @@
-import React, { useState, useEffect } from "react"
-import { MessageSquarePlus, Bug, Sparkles, Send, X, CheckCircle2, AlertCircle } from "lucide-react"
-import { supportService } from "../services"
+import React, { useEffect, useRef, useState } from "react"
+import { AlertCircle, Bug, CheckCircle2, MessageSquarePlus, Send, Sparkles, X } from "lucide-react"
+import { useLanguage } from "@/context/LanguageContext"
+import { useDialogFocus } from "@/hooks/useDialogFocus"
+import { w5Support } from "@/i18n/w5Support"
+import { supportService } from "@/services"
 
-/** @param {{ isOpen: boolean, onClose: () => void, onSuccess?: (ticket: unknown) => void, initialContext?: { tag?: string, isBug?: boolean, page?: string, [key: string]: unknown } }} props */
-export function SupportFeedbackModal({ isOpen, onClose, initialContext = {}, onSuccess }) {
-  const [ticketType, setTicketType] = useState("feedback") // 'feedback' | 'bug' | 'other'
+const EMPTY_CONTEXT = Object.freeze({})
+
+/** @typedef {{ id?: string | number }} SupportTicket */
+
+/** @param {{ isOpen: boolean, onClose: () => void, onSuccess?: (ticket: SupportTicket) => void, initialContextRecord?: Record<string, unknown> & { tag?: string, isBug?: boolean, page?: string }, initialContext?: Record<string, unknown> & { tag?: string, isBug?: boolean, page?: string } }} props */
+export function SupportFeedbackModal({ isOpen, onClose, onSuccess, initialContextRecord, initialContext = EMPTY_CONTEXT }) {
+  const { lang, t } = useLanguage()
+  const words = w5Support[lang] || w5Support.en
+  const text = (key) => t(key, words[key] || w5Support.en[key] || key)
+  const context = initialContextRecord ?? initialContext
+  const [ticketType, setTicketType] = useState("feedback")
   const [subject, setSubject] = useState("")
   const [message, setMessage] = useState("")
-  const [tag, setTag] = useState(initialContext.tag || "general")
+  const [tag, setTag] = useState("general")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submittedTicket, setSubmittedTicket] = useState(null)
   const [error, setError] = useState(null)
+  const dialogRef = useRef(null)
+
+  useDialogFocus(dialogRef, isOpen, () => {
+    if (!isSubmitting) onClose()
+  })
 
   useEffect(() => {
-    if (isOpen) {
-      setSubmittedTicket(null)
-      setError(null)
-      setSubject("")
-      setMessage("")
-      if (initialContext.tag) setTag(initialContext.tag)
-      if (initialContext.isBug) setTicketType("bug")
-    }
-  }, [isOpen, initialContext])
+    if (!isOpen) return
+    setSubmittedTicket(null)
+    setError(null)
+    setSubject("")
+    setMessage("")
+    setTicketType(context.isBug ? "bug" : "feedback")
+    setTag(context.tag || "general")
+  }, [isOpen, context.isBug, context.tag])
 
   if (!isOpen) return null
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const handleClose = () => {
+    if (!isSubmitting) onClose()
+  }
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    if (isSubmitting) return
     if (!subject.trim()) {
-      setError("Please provide a subject for your ticket.")
+      setError(text("missingSubject"))
       return
     }
     if (!message.trim()) {
-      setError("Please provide details for your ticket.")
+      setError(text("missingDetails"))
       return
     }
 
     setIsSubmitting(true)
     setError(null)
-
     try {
-      const res = await supportService.createTicket({
+      const ticket = await supportService.createTicket({
         type: ticketType,
         subject: subject.trim(),
         message: message.trim(),
-        tag: tag || initialContext.tag || "general",
+        tag: tag || context.tag || "general",
         context_data: {
-          ...initialContext,
+          ...context,
           url: window.location.pathname,
           userAgent: navigator.userAgent,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       })
-      setSubmittedTicket(res)
-      onSuccess?.(res)
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message || "Failed to submit request. Please try again."
-      setError(typeof detail === "string" ? detail : "Failed to submit request. Please try again.")
+      setSubmittedTicket(ticket || {})
+      try {
+        onSuccess?.(ticket)
+      } catch (callbackError) {
+        console.error("Support submission callback failed", callbackError)
+      }
+    } catch (submitError) {
+      const detail = submitError?.response?.data?.detail || submitError?.message
+      setError(typeof detail === "string" ? detail : text("submitFailed"))
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  const contextPage = typeof context.page === "string" ? context.page : ""
+  const ticketId = submittedTicket?.id
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="support-modal-title"
+        className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl"
+      >
+        <div className="flex items-center justify-between gap-4 p-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-xl ${ticketType === "bug" ? "bg-rose-500/10 text-rose-400" : "bg-teal-500/10 text-teal-400"}`}>
-              {ticketType === "bug" ? <Bug className="w-5 h-5" /> : <MessageSquarePlus className="w-5 h-5" />}
+              {ticketType === "bug" ? <Bug className="w-5 h-5" aria-hidden="true" /> : <MessageSquarePlus className="w-5 h-5" aria-hidden="true" />}
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white">
-                {ticketType === "bug" ? "Report an Issue" : "Submit Feedback or Request"}
+              <h2 id="support-modal-title" className="text-lg font-bold text-white">
+                {ticketType === "bug" ? text("modalBugTitle") : text("modalTitle")}
               </h2>
               <p className="text-xs text-slate-400">
-                {initialContext.page ? `Context: ${initialContext.page} screen` : "We read every ticket and reply directly."}
+                {contextPage ? text("contextLabel").replace("{page}", contextPage) : text("modalIntro")}
               </p>
             </div>
           </div>
           <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            type="button"
+            onClick={handleClose}
+            disabled={isSubmitting}
+            aria-label={text("close")}
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition disabled:opacity-50"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {submittedTicket ? (
           <div className="p-8 text-center space-y-4">
             <div className="w-12 h-12 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-6 h-6" />
+              <CheckCircle2 className="w-6 h-6" aria-hidden="true" />
             </div>
-            <h3 className="text-xl font-bold text-white">Ticket Submitted!</h3>
+            <h3 className="text-xl font-bold text-white">{text("ticketSubmitted")}</h3>
             <p className="text-sm text-slate-300">
-              Your ticket <span className="text-teal-400 font-semibold">#{submittedTicket.id.slice(0, 8)}</span> has been received. Our team has been notified and you will receive in-app notifications as soon as we reply.
+              {text("ticketReceived")}{ticketId ? <> <span className="text-teal-400 font-semibold">#{String(ticketId).slice(0, 8)}</span></> : null}
             </p>
-            <div className="pt-4">
-              <button
-                onClick={onClose}
-                className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-sm transition"
-              >
-                Done
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              disabled={isSubmitting}
+              className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-sm transition disabled:opacity-50"
+            >
+              {text("done")}
+            </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {error && (
-              <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
+              <div role="alert" className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
                 {error}
               </div>
             )}
 
-            {/* Type selector */}
             <div className="grid grid-cols-3 gap-2">
               {[
-                { id: "feedback", label: "Suggestion", icon: Sparkles },
-                { id: "bug", label: "Bug Report", icon: Bug },
-                { id: "other", label: "Support", icon: MessageSquarePlus }
-              ].map((t) => {
-                const Icon = t.icon
-                const isSelected = ticketType === t.id
+                { id: "feedback", label: "ticketTypeFeedback", icon: Sparkles },
+                { id: "bug", label: "ticketTypeBug", icon: Bug },
+                { id: "other", label: "ticketTypeOther", icon: MessageSquarePlus },
+              ].map((item) => {
+                const Icon = item.icon
+                const selected = ticketType === item.id
                 return (
                   <button
-                    key={t.id}
+                    key={item.id}
                     type="button"
-                    onClick={() => setTicketType(t.id)}
-                    className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-                      isSelected
-                        ? "bg-slate-800 border-teal-500 text-teal-400 ring-1 ring-teal-500/30"
-                        : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/60"
-                    }`}
+                    aria-pressed={selected}
+                    onClick={() => setTicketType(item.id)}
+                    className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${selected ? "bg-slate-800 border-teal-500 text-teal-400 ring-1 ring-teal-500/30" : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/60"}`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
-                    {t.label}
+                    <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+                    {text(item.label)}
                   </button>
                 )
               })}
             </div>
 
-            {/* Subject */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">Subject</label>
+              <label htmlFor="support-subject" className="block text-xs font-medium text-slate-300 mb-1.5">{text("subject")}</label>
               <input
+                id="support-subject"
                 type="text"
                 required
                 value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder={ticketType === "bug" ? "e.g. Scraper returned zero results on brand X" : "e.g. Can we add CSV export?"}
+                onChange={(event) => setSubject(event.target.value)}
+                placeholder={ticketType === "bug" ? text("bugSubjectPlaceholder") : text("subjectPlaceholder")}
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-teal-500/60 transition"
               />
             </div>
 
-            {/* Message */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">Description & Details</label>
+              <label htmlFor="support-details" className="block text-xs font-medium text-slate-300 mb-1.5">{text("details")}</label>
               <textarea
+                id="support-details"
                 required
                 rows={4}
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Please describe what happened or what improvement you'd like to see..."
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder={text("detailsPlaceholder")}
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-teal-500/60 transition resize-none"
               />
             </div>
 
-            {/* Feature Tag */}
             <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1.5">Related Feature</label>
+              <label htmlFor="support-feature" className="block text-xs font-medium text-slate-400 mb-1.5">{text("relatedFeature")}</label>
               <select
+                id="support-feature"
                 value={tag}
-                onChange={(e) => setTag(e.target.value)}
+                onChange={(event) => setTag(event.target.value)}
                 className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 text-xs focus:outline-none focus:border-teal-500/60"
               >
-                <option value="discover">Discover / Scraper</option>
-                <option value="intelligence">Intelligence & Teardowns</option>
-                <option value="create">Create Studio</option>
-                <option value="performance">Performance & Scoring</option>
-                <option value="billing">Billing & Credits</option>
-                <option value="general">General / Other</option>
+                <option value="discover">{text("featureDiscover")}</option>
+                <option value="intelligence">{text("featureIntelligence")}</option>
+                <option value="create">{text("featureCreate")}</option>
+                <option value="performance">{text("featurePerformance")}</option>
+                <option value="billing">{text("featureBilling")}</option>
+                <option value="general">{text("featureGeneral")}</option>
               </select>
             </div>
 
-            {/* Footer */}
             <div className="flex justify-end items-center gap-3 pt-4 border-t border-slate-800">
               <button
                 type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition"
+                onClick={handleClose}
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white transition disabled:opacity-50"
               >
-                Cancel
+                {text("cancel")}
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || !subject.trim() || !message.trim()}
                 className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-slate-950 font-semibold text-xs flex items-center gap-2 transition"
               >
-                {isSubmitting ? "Sending..." : <><Send className="w-3.5 h-3.5" /> Submit Ticket</>}
+                {isSubmitting ? text("submitting") : <><Send className="w-3.5 h-3.5" aria-hidden="true" /> {text("submitTicket")}</>}
               </button>
             </div>
           </form>
@@ -208,5 +238,3 @@ export function SupportFeedbackModal({ isOpen, onClose, initialContext = {}, onS
     </div>
   )
 }
-
-export default SupportFeedbackModal
