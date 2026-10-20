@@ -14,6 +14,7 @@ from app.core.observability import log_event
 from app.schemas.discover import SearchParams, Job
 
 logger = logging.getLogger(__name__)
+_active_discovery_tasks = {}
 
 
 def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] = None) -> bool:
@@ -116,6 +117,7 @@ def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] =
 
 from app.schemas.common import Paginated
 from app.models.scrape_job import ScrapeJob
+from app.models.work_item import WorkItem
 from app.models.organization import Organization
 from app.models.user import User
 from app.core.config import settings
@@ -139,6 +141,7 @@ def _job_response(job: ScrapeJob) -> Job:
         elapsed_ms=int(job.elapsed_ms or 0),
         created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
         completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
+        deadline_at=job.deadline_at.isoformat() if job.deadline_at else None,
         error=job.error_msg,
         failure_kind=job.failure_kind,
         entity_profile=getattr(job, "entity_profile", None),
@@ -176,6 +179,187 @@ def _utcnow() -> datetime.datetime:
     comparison the reconciliation sweep needs to make.
     """
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+DISCOVER_TERMINAL_STATUSES = {"succeeded", "failed", "cancelled", "timed_out"}
+
+
+async def _lock_active_discovery_job(
+    db,
+    job_id: str,
+    *,
+    work_item_id: Optional[str] = None,
+    lease_owner: Optional[str] = None,
+    lease_generation: Optional[int] = None,
+) -> Optional[ScrapeJob]:
+    job = (
+        await db.execute(
+            select(ScrapeJob).where(ScrapeJob.id == job_id).with_for_update()
+        )
+    ).scalars().first()
+    if job is None or job.status not in ("queued", "running"):
+        return None
+    if work_item_id is not None:
+        item_id = (
+            await db.execute(
+                select(WorkItem.id).where(
+                    WorkItem.id == work_item_id,
+                    WorkItem.job_id == job_id,
+                    WorkItem.status == "running",
+                    WorkItem.lease_owner == lease_owner,
+                    WorkItem.attempt_count == lease_generation,
+                    WorkItem.lease_until > _utcnow(),
+                ).with_for_update()
+            )
+        ).scalar_one_or_none()
+        if item_id is None:
+            return None
+    return job
+
+
+async def _discovery_attempt_is_current(
+    job_id: str,
+    *,
+    work_item_id: Optional[str] = None,
+    lease_owner: Optional[str] = None,
+    lease_generation: Optional[int] = None,
+) -> bool:
+    async with async_session_maker() as db:
+        job = await _lock_active_discovery_job(
+            db,
+            job_id,
+            work_item_id=work_item_id,
+            lease_owner=lease_owner,
+            lease_generation=lease_generation,
+        )
+        return job is not None
+
+
+def _set_discovery_terminal(
+    job: ScrapeJob,
+    *,
+    status: str,
+    failure_kind: Optional[str] = None,
+    error: Optional[str] = None,
+    stage_label: Optional[str] = None,
+) -> None:
+    job.status = status
+    job.stage = status
+    job.stage_label = stage_label or error or status.replace("_", " ").title()
+    job.failure_kind = failure_kind
+    job.error_msg = error
+    job.completed_at = _utcnow()
+    job.stage_index = job.stages_total or 5
+    if status in ("succeeded", "failed"):
+        job.progress = 1.0
+
+
+async def _finalize_discovery_job(
+    job_id: str,
+    *,
+    status: str,
+    failure_kind: Optional[str] = None,
+    error: Optional[str] = None,
+    work_item_id: Optional[str] = None,
+    lease_owner: Optional[str] = None,
+    lease_generation: Optional[int] = None,
+    refund_reason: Optional[str] = None,
+) -> bool:
+    if status not in DISCOVER_TERMINAL_STATUSES:
+        raise ValueError(f"invalid Discover terminal status: {status}")
+    async with async_session_maker() as db:
+        job = await _lock_active_discovery_job(
+            db,
+            job_id,
+            work_item_id=work_item_id,
+            lease_owner=lease_owner,
+            lease_generation=lease_generation,
+        )
+        if job is None:
+            return False
+        org_id = job.org_id
+        _set_discovery_terminal(
+            job,
+            status=status,
+            failure_kind=failure_kind,
+            error=error,
+        )
+        job.elapsed_ms = max(0, int((_utcnow() - job.created_at).total_seconds() * 1000))
+        if work_item_id and status in ("cancelled", "timed_out"):
+            item = (
+                await db.execute(
+                    select(WorkItem).where(WorkItem.id == work_item_id).with_for_update()
+                )
+            ).scalars().first()
+            if item is not None and item.status == "running":
+                item.cancel_requested = _utcnow().isoformat()
+        await db.commit()
+        if refund_reason:
+            try:
+                await refund(db, org_id, DISCOVER_SEARCH_CREDIT_COST, refund_reason, job_id)
+            except Exception as exc:
+                log_event(
+                    logger,
+                    "discover_terminal_refund_failed",
+                    error=exc,
+                    job_id=job_id,
+                    tenant_id=org_id,
+                )
+        return True
+
+
+async def cancel_search(
+    db: AsyncSession,
+    job_id: str,
+    *,
+    user_org_ids: Optional[List[str]],
+) -> Job:
+    query = select(ScrapeJob).where(ScrapeJob.id == job_id)
+    if user_org_ids is not None:
+        if not user_org_ids:
+            raise HTTPException(status_code=404, detail="Job not found")
+        query = query.where(ScrapeJob.org_id.in_(user_org_ids))
+    job = (await db.execute(query.with_for_update())).scalars().first()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status in DISCOVER_TERMINAL_STATUSES:
+        return _job_response(job)
+
+    org_id = job.org_id
+    _set_discovery_terminal(
+        job,
+        status="cancelled",
+        failure_kind="cancelled",
+        error="The search was cancelled.",
+    )
+    now = _utcnow()
+    items = (
+        await db.execute(
+            select(WorkItem).where(
+                WorkItem.job_id == job_id,
+                WorkItem.org_id == org_id,
+                WorkItem.status.in_(("queued", "leased", "running")),
+            ).with_for_update()
+        )
+    ).scalars().all()
+    for item in items:
+        item.cancel_requested = now.isoformat()
+        item.updated_at = now
+        if item.status == "queued":
+            item.status = "canceled"
+            item.lease_owner = None
+            item.lease_until = None
+    await db.commit()
+
+    try:
+        await refund(db, org_id, DISCOVER_SEARCH_CREDIT_COST, "cancelled", job_id)
+    except Exception as exc:
+        log_event(logger, "discover_cancel_refund_failed", error=exc, job_id=job_id, tenant_id=org_id)
+    task = _active_discovery_tasks.get(job_id)
+    if task is not None and task is not asyncio.current_task() and not task.done():
+        task.cancel()
+    await db.refresh(job)
+    return _job_response(job)
 
 def _discovery_cache_provider_identity() -> str:
     """Describe the configured fallback chain without retaining credentials."""
@@ -264,12 +448,17 @@ async def trigger_search(
     # any credits are charged.
     from app.services.work_outbox import enqueue_work, inline_execution_enabled
     inline = inline_execution_enabled()
+    created_at = _utcnow()
+    deadline_at = created_at + datetime.timedelta(
+        seconds=max(1, int(settings.DISCOVER_JOB_DEADLINE_S))
+    )
     new_job = ScrapeJob(
         org_id=org_id,
         query=scrape_query,
         cache_identity=cache_identity,
         status="running" if inline else "queued",
-        created_at=_utcnow(),
+        created_at=created_at,
+        deadline_at=deadline_at,
         progress=0.1 if inline else 0.0,
         stage="init" if inline else "queued",
         stage_label="Initializing Search" if inline else "Queued",
@@ -349,7 +538,8 @@ async def trigger_search(
         stages_total=new_job.stages_total,
         records_found=new_job.record_count,
         elapsed_ms=new_job.elapsed_ms,
-        created_at=new_job.created_at.isoformat() + "Z" if new_job.created_at else ""
+        created_at=new_job.created_at.isoformat() + "Z" if new_job.created_at else "",
+        deadline_at=new_job.deadline_at.isoformat() if new_job.deadline_at else None,
     )
 
 async def get_job_status(db: AsyncSession, job_id: str, user_org_ids: Optional[List[str]] = None) -> Job:
@@ -377,6 +567,22 @@ async def get_job_status(db: AsyncSession, job_id: str, user_org_ids: Optional[L
     # missing one (404, never 403) so job ids cannot be enumerated.
     if user_org_ids is not None and job.org_id not in user_org_ids:
         raise HTTPException(status_code=404, detail="Job not found")
+
+    now = _utcnow()
+    deadline_at = job.deadline_at
+    if deadline_at is None and job.created_at is not None:
+        deadline_at = job.created_at + datetime.timedelta(
+            seconds=max(1, int(settings.DISCOVER_JOB_DEADLINE_S))
+        )
+    if job.status in ("queued", "running") and deadline_at is not None and deadline_at <= now:
+        await _finalize_discovery_job(
+            job_id,
+            status="timed_out",
+            failure_kind="deadline",
+            error="The search exceeded its server time limit. Please retry.",
+            refund_reason="deadline",
+        )
+        await db.refresh(job)
 
     return _job_response(job)
 
@@ -428,32 +634,141 @@ async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_s
         has_more=(offset + page_size) < total
     )
 
-async def update_job_stage(db: AsyncSession, job_id: str, stage: str, label: str, progress: float, stage_index: int):
-    result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
-    job = result.scalar_one_or_none()
-    if job:
-        job.stage = stage
-        job.stage_label = label
-        job.progress = progress
-        job.stage_index = stage_index
-        await db.commit()
+async def update_job_stage(
+    db: AsyncSession,
+    job_id: str,
+    stage: str,
+    label: str,
+    progress: float,
+    stage_index: int,
+    *,
+    work_item_id: Optional[str] = None,
+    lease_owner: Optional[str] = None,
+    lease_generation: Optional[int] = None,
+) -> bool:
+    job = await _lock_active_discovery_job(
+        db,
+        job_id,
+        work_item_id=work_item_id,
+        lease_owner=lease_owner,
+        lease_generation=lease_generation,
+    )
+    if job is None:
+        return False
+    job.stage = stage
+    job.stage_label = label
+    job.progress = progress
+    job.stage_index = stage_index
+    await db.commit()
+    return True
 
-async def run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
+
+async def run_discovery_pipeline(
+    job_id: str,
+    query: str,
+    filters: dict = None,
+    *,
+    work_item_id: Optional[str] = None,
+    lease_owner: Optional[str] = None,
+    lease_generation: Optional[int] = None,
+):
     """Claim the job for this process, then run it.
 
     The heartbeat is what lets a restart distinguish this job from an
     abandoned one; see job_reconciliation.
     """
-    async with heartbeat("scrape_jobs", job_id):
-        await _run_discovery_pipeline(job_id, query, filters)
+    async with async_session_maker() as db:
+        job = await _lock_active_discovery_job(
+            db,
+            job_id,
+            work_item_id=work_item_id,
+            lease_owner=lease_owner,
+            lease_generation=lease_generation,
+        )
+        if job is None:
+            return
+        deadline_at = job.deadline_at
+        if deadline_at is None:
+            created_at = job.created_at or _utcnow()
+            if created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=datetime.timezone.utc)
+            deadline_at = created_at + datetime.timedelta(
+                seconds=max(1, int(settings.DISCOVER_JOB_DEADLINE_S))
+            )
+        elif deadline_at.tzinfo is None:
+            deadline_at = deadline_at.replace(tzinfo=datetime.timezone.utc)
+        remaining_s = (deadline_at - _utcnow()).total_seconds()
+
+    if remaining_s <= 0:
+        await _finalize_discovery_job(
+            job_id,
+            status="timed_out",
+            failure_kind="deadline",
+            error="The search exceeded its server time limit. Please retry.",
+            work_item_id=work_item_id,
+            lease_owner=lease_owner,
+            lease_generation=lease_generation,
+            refund_reason="deadline",
+        )
+        return
+
+    task = asyncio.current_task()
+    _active_discovery_tasks[job_id] = task
+    try:
+        async with heartbeat(
+            "scrape_jobs",
+            job_id,
+            work_item_id=work_item_id,
+            lease_owner=lease_owner,
+            lease_generation=lease_generation,
+        ):
+            try:
+                await asyncio.wait_for(
+                    _run_discovery_pipeline(
+                        job_id,
+                        query,
+                        filters,
+                        work_item_id=work_item_id,
+                        lease_owner=lease_owner,
+                        lease_generation=lease_generation,
+                    ),
+                    timeout=remaining_s,
+                )
+            except TimeoutError:
+                await _finalize_discovery_job(
+                    job_id,
+                    status="timed_out",
+                    failure_kind="deadline",
+                    error="The search exceeded its server time limit. Please retry.",
+                    work_item_id=work_item_id,
+                    lease_owner=lease_owner,
+                    lease_generation=lease_generation,
+                    refund_reason="deadline",
+                )
+    finally:
+        if _active_discovery_tasks.get(job_id) is task:
+            _active_discovery_tasks.pop(job_id, None)
 
 
-async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None):
+async def _run_discovery_pipeline(
+    job_id: str,
+    query: str,
+    filters: dict = None,
+    *,
+    work_item_id: Optional[str] = None,
+    lease_owner: Optional[str] = None,
+    lease_generation: Optional[int] = None,
+):
     query = (query or "").strip()
     start_time = time.time()
     async with async_session_maker() as db:
-        result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
-        job = result.scalar_one_or_none()
+        job = await _lock_active_discovery_job(
+            db,
+            job_id,
+            work_item_id=work_item_id,
+            lease_owner=lease_owner,
+            lease_generation=lease_generation,
+        )
         if not job:
             return
         org_id = job.org_id
@@ -466,10 +781,17 @@ async def _run_discovery_pipeline(job_id: str, query: str, filters: dict = None)
             try:
                 await _recheck(db, owner, required_credits=0.0, feature_name="discover", lock_row=False)
             except HTTPException:
-                job.status = "failed"
-                job.failure_kind = "entitlement"
-                job.stage_label = "Workspace is not entitled to run this search"
-                await db.commit()
+                await db.rollback()
+                await _finalize_discovery_job(
+                    job_id,
+                    status="failed",
+                    failure_kind="entitlement",
+                    error="Workspace is not entitled to run this search.",
+                    work_item_id=work_item_id,
+                    lease_owner=lease_owner,
+                    lease_generation=lease_generation,
+                    refund_reason="entitlement",
+                )
                 return
         job.status = "running"
         job.stage = "init"
