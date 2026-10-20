@@ -62,17 +62,17 @@ function StateFrame({
   title,
   description,
   action,
-  meta,
-  icon: Icon,
+  meta = null,
+  icon: Icon = null,
   size = "default",
-  className,
+  className = "",
 }) {
   const large = size === "lg"
   return (
     <div
       className={cn(
         "grid-backdrop flex flex-1 flex-col items-center justify-center gap-4 px-6 py-16",
-        className,
+        className = "",
       )}
     >
       <div
@@ -125,7 +125,7 @@ export function EmptyState({
   action,
   icon,
   size = "default",
-  className,
+  className = "",
 }) {
   return (
     <StateFrame
