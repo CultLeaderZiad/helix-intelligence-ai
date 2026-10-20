@@ -1,0 +1,269 @@
+
+> helix-intelligence@0.1.0 lint /tmp/hoplite/workspace
+> eslint src --max-warnings 0
+
+
+/tmp/hoplite/workspace/src/app/ProtectedRoute.jsx
+  1:10  error  'useEffect' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/app/Sidebar.jsx
+  3:72  error  'UserCheck' is defined but never used  no-unused-vars
+  8:10  error  'KeyHint' is defined but never used    no-unused-vars
+
+/tmp/hoplite/workspace/src/app/navigation.js
+  1:45  error  'BookOpen' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/components/LanguageSwitcher.jsx
+  3:10  error  'Globe' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/components/NotificationBell.jsx
+  37:10  error  'loading' is assigned a value but never used     no-unused-vars
+  37:19  error  'setLoading' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/components/OnboardingWizardModal.jsx
+   3:10  error  'accountService' is defined but never used              no-unused-vars
+  47:10  error  'competitorText' is assigned a value but never used     no-unused-vars
+  47:26  error  'setCompetitorText' is assigned a value but never used  no-unused-vars
+  49:24  error  'setIsSubmitting' is assigned a value but never used    no-unused-vars
+
+/tmp/hoplite/workspace/src/components/SavedDraftsModal.jsx
+  2:56  error  'Search' is defined but never used    no-unused-vars
+  2:64  error  'Sparkles' is defined but never used  no-unused-vars
+  4:10  error  'Panel' is defined but never used     no-unused-vars
+
+/tmp/hoplite/workspace/src/features/discover/CreativeDetailPanel.jsx
+  227:21  error  'url' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/features/discover/EntityDossierCard.jsx
+    4:3   error  'ShieldAlert' is defined but never used     no-unused-vars
+    5:3   error  'Tv' is defined but never used              no-unused-vars
+   11:3   error  'Share2' is defined but never used          no-unused-vars
+   13:3   error  'Target' is defined but never used          no-unused-vars
+   15:3   error  'Users' is defined but never used           no-unused-vars
+   17:3   error  'Video' is defined but never used           no-unused-vars
+  186:14  error  'isRtl' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/features/discover/FilterRail.jsx
+  2:10  error  'Button' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/features/docs/DocSearchModal.jsx
+   7:3   error  'ChevronRight' is defined but never used   no-unused-vars
+  10:3   error  'FileText' is defined but never used       no-unused-vars
+  12:3   error  'ArrowUpDown' is defined but never used    no-unused-vars
+  13:3   error  'Sparkles' is defined but never used       no-unused-vars
+  15:20  error  'DOCS_REGISTRY' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/features/docs/DocsLayout.jsx
+  13:3   error  'Sparkles' is defined but never used           no-unused-vars
+  14:3   error  'Layers' is defined but never used             no-unused-vars
+  18:3   error  'CheckCircle2' is defined but never used       no-unused-vars
+  19:3   error  'FileText' is defined but never used           no-unused-vars
+  22:25  error  'searchDocs' is defined but never used         no-unused-vars
+  31:9   error  'navigate' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/features/scout/MapsLeadDetailPanel.jsx
+  2:10  error  'Building2' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/features/scout/MapsLeadsTable.jsx
+  2:51  error  'Share2' is defined but never used  no-unused-vars
+  2:66  error  'Copy' is defined but never used    no-unused-vars
+
+/tmp/hoplite/workspace/src/features/scout/MapsQueryForm.jsx
+  2:69  error  'Sparkles' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/features/scout/ScoutJobProgress.jsx
+  42:21  error  'isVerified' is assigned a value but never used  no-unused-vars
+  43:21  error  'isOk' is assigned a value but never used        no-unused-vars
+
+/tmp/hoplite/workspace/src/features/scout/ScoutModeTabs.jsx
+  2:25  error  'CheckCircle2' is defined but never used  no-unused-vars
+  2:39  error  'ShieldCheck' is defined but never used   no-unused-vars
+
+/tmp/hoplite/workspace/src/features/scout/TargetCategoryField.jsx
+  2:10  error  'Sparkles' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/hooks/useAsync.js
+  43:5  error  Definition for rule 'react-hooks/exhaustive-deps' was not found  react-hooks/exhaustive-deps
+  52:5  error  Definition for rule 'react-hooks/exhaustive-deps' was not found  react-hooks/exhaustive-deps
+
+/tmp/hoplite/workspace/src/pages/ApiKeysPage.jsx
+  18:3  error  'Check' is defined but never used       no-unused-vars
+  21:3  error  'ArrowRight' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/BillingPage.jsx
+   8:3   error  'CheckCircle2' is defined but never used    no-unused-vars
+   9:3   error  'AlertTriangle' is defined but never used   no-unused-vars
+  34:10  error  'error' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/DashboardPage.jsx
+  16:3  error  'ExternalLink' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/GuidePage.jsx
+  11:3  error  'Bookmark' is defined but never used    no-unused-vars
+  13:3  error  'CreditCard' is defined but never used  no-unused-vars
+  14:3  error  'Sparkles' is defined but never used    no-unused-vars
+  15:3  error  'Zap' is defined but never used         no-unused-vars
+  16:3  error  'ArrowRight' is defined but never used  no-unused-vars
+  18:3  error  'Flame' is defined but never used       no-unused-vars
+  19:3  error  'Clock' is defined but never used       no-unused-vars
+  21:3  error  'HelpCircle' is defined but never used  no-unused-vars
+  22:3  error  'Code' is defined but never used        no-unused-vars
+  23:3  error  'Sliders' is defined but never used     no-unused-vars
+  24:3  error  'Database' is defined but never used    no-unused-vars
+  25:3  error  'Cpu' is defined but never used         no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/MonitorsPage.jsx
+  26:1  error  'react' import is duplicated  no-duplicate-imports
+
+/tmp/hoplite/workspace/src/pages/NotificationsPage.jsx
+  3:56  error  'Sparkles' is defined but never used  no-unused-vars
+  3:77  error  'Trash2' is defined but never used    no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/PerformancePage.jsx
+  14:3  error  'Flame' is defined but never used         no-unused-vars
+  20:3  error  'CheckCircle' is defined but never used   no-unused-vars
+  23:3  error  'ArrowUpRight' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/ProfileSettingsPage.jsx
+  2:16  error  'Mail' is defined but never used           no-unused-vars
+  8:11  error  'user' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/PublicPlaybookPage.jsx
+  3:37  error  'ExternalLink' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/PublicUpdatesPage.jsx
+  12:3  error  'SlidersHorizontal' is defined but never used  no-unused-vars
+  13:3  error  'ChevronRight' is defined but never used       no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/ScoutLeadGenerationPage.jsx
+  70:9  error  'offline' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/ScoutPage.jsx
+  3:40  error  'RefreshCw' is defined but never used   no-unused-vars
+  3:75  error  'ArrowRight' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/SupportPage.jsx
+  2:71  error  'ChevronRight' is defined but never used   no-unused-vars
+  9:11  error  'user' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/SwipeFilesPage.jsx
+  12:3   error  'ExternalLink' is defined but never used                  no-unused-vars
+  15:3   error  'FolderPlus' is defined but never used                    no-unused-vars
+  17:3   error  'Tag' is defined but never used                           no-unused-vars
+  24:3   error  'Play' is defined but never used                          no-unused-vars
+  25:3   error  'ArrowRight' is defined but never used                    no-unused-vars
+  34:14  error  'isRtl' is assigned a value but never used                no-unused-vars
+  38:10  error  'error' is assigned a value but never used                no-unused-vars
+  39:28  error  'setActiveCollection' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/TeamPage.jsx
+   9:3  error  'Mail' is defined but never used         no-unused-vars
+  13:3  error  'ShieldCheck' is defined but never used  no-unused-vars
+  14:3  error  'Copy' is defined but never used         no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/admin/AuditLogPage.jsx
+  11:3  error  'Search' is defined but never used    no-unused-vars
+  16:3  error  'Shield' is defined but never used    no-unused-vars
+  17:3  error  'Activity' is defined but never used  no-unused-vars
+  18:3  error  'User' is defined but never used      no-unused-vars
+  19:3  error  'Clock' is defined but never used     no-unused-vars
+  20:3  error  'Coins' is defined but never used     no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/admin/DataSourcesPage.jsx
+   11:3   error  'Activity' is defined but never used               no-unused-vars
+   13:3   error  'CheckCircle2' is defined but never used           no-unused-vars
+   14:3   error  'AlertTriangle' is defined but never used          no-unused-vars
+   15:3   error  'XCircle' is defined but never used                no-unused-vars
+   16:3   error  'Server' is defined but never used                 no-unused-vars
+   17:3   error  'Cpu' is defined but never used                    no-unused-vars
+   18:3   error  'Radio' is defined but never used                  no-unused-vars
+   19:3   error  'ShieldCheck' is defined but never used            no-unused-vars
+   20:3   error  'Zap' is defined but never used                    no-unused-vars
+   22:3   error  'ExternalLink' is defined but never used           no-unused-vars
+   23:3   error  'Layers' is defined but never used                 no-unused-vars
+  106:10  error  'activeTab' is assigned a value but never used     no-unused-vars
+  106:21  error  'setActiveTab' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/admin/FeatureFlagsPage.jsx
+  3:16  error  'Sliders' is defined but never used         no-unused-vars
+  3:25  error  'CheckCircle2' is defined but never used    no-unused-vars
+  3:50  error  'ShieldCheck' is defined but never used     no-unused-vars
+  7:10  error  'orgs' is assigned a value but never used   no-unused-vars
+  9:10  error  'error' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/admin/OrganizationsPage.jsx
+   9:3   error  'AlertTriangle' is defined but never used   no-unused-vars
+  12:3   error  'PlusCircle' is defined but never used      no-unused-vars
+  13:3   error  'ShieldAlert' is defined but never used     no-unused-vars
+  21:10  error  'error' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/admin/ScrapeJobsPage.jsx
+  13:3  error  'CheckCircle2' is defined but never used  no-unused-vars
+  14:3  error  'XCircle' is defined but never used       no-unused-vars
+  15:3  error  'Clock' is defined but never used         no-unused-vars
+  16:3  error  'Play' is defined but never used          no-unused-vars
+  17:3  error  'ExternalLink' is defined but never used  no-unused-vars
+  18:3  error  'Layers' is defined but never used        no-unused-vars
+  19:3  error  'Database' is defined but never used      no-unused-vars
+  20:3  error  'ArrowUpDown' is defined but never used   no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/admin/SubscriptionsPlansPage.jsx
+   8:3   error  'Sparkles' is defined but never used        no-unused-vars
+  11:3   error  'ShieldCheck' is defined but never used     no-unused-vars
+  20:10  error  'error' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/admin/SupportAdminPage.jsx
+  2:33  error  'CheckCircle2' is defined but never used  no-unused-vars
+  2:47  error  'Clock' is defined but never used         no-unused-vars
+  2:75  error  'Filter' is defined but never used        no-unused-vars
+  2:94  error  'ChevronRight' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/admin/SystemHealthPage.jsx
+  12:3  error  'CheckCircle2' is defined but never used   no-unused-vars
+  13:3  error  'AlertTriangle' is defined but never used  no-unused-vars
+  14:3  error  'Server' is defined but never used         no-unused-vars
+  18:3  error  'Radio' is defined but never used          no-unused-vars
+  19:3  error  'Clock' is defined but never used          no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/admin/UpdatesPage.jsx
+  19:3   error  'Calendar' is defined but never used  no-unused-vars
+  20:3   error  'Bold' is defined but never used      no-unused-vars
+  21:3   error  'List' is defined but never used      no-unused-vars
+  22:3   error  'Heading' is defined but never used   no-unused-vars
+  23:11  error  'LinkIcon' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/admin/UsagePage.jsx
+  14:3   error  'User' is defined but never used            no-unused-vars
+  15:3   error  'Building' is defined but never used        no-unused-vars
+  21:10  error  'error' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/auth/ForgotPasswordPage.jsx
+  29:10  error  'isSlow' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/auth/ResetPasswordPage.jsx
+  10:10  error  'Input' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/auth/SignInPage.jsx
+  22:36  error  'isResolving' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/auth/SignUpPage.jsx
+  13:10  error  'ServiceError' is defined but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/docs/DocsHomePage.jsx
+  11:3   error  'Terminal' is defined but never used           no-unused-vars
+  12:3   error  'Zap' is defined but never used                no-unused-vars
+  13:3   error  'HelpCircle' is defined but never used         no-unused-vars
+  14:3   error  'ExternalLink' is defined but never used       no-unused-vars
+  19:10  error  'DOCS_REGISTRY' is defined but never used      no-unused-vars
+  54:9   error  'navigate' is assigned a value but never used  no-unused-vars
+
+/tmp/hoplite/workspace/src/pages/docs/ScoutCliDocsPage.jsx
+  3:31  error  'Download' is defined but never used  no-unused-vars
+  3:41  error  'Shield' is defined but never used    no-unused-vars
+
+/tmp/hoplite/workspace/src/services/mock/adminService.mock.js
+  1:10  error  'ServiceError' is defined but never used  no-unused-vars
+
+✖ 159 problems (159 errors, 0 warnings)
+
+ ELIFECYCLE  Command failed with exit code 1.
