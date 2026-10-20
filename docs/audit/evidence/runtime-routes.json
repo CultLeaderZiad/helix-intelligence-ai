@@ -1,0 +1,1318 @@
+{
+  "source": "Actual local GET /api/openapi.json; excludes include_in_schema=False and infrastructure endpoints",
+  "count": 165,
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/auth/sign-up",
+      "operationId": "signup_api_auth_sign_up_post",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/sign-in",
+      "operationId": "signin_api_auth_sign_in_post",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "operationId": "signout_api_auth_logout_post",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/sign-out",
+      "operationId": "signout_api_auth_sign_out_post",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "operationId": "forgot_password_api_auth_forgot_password_post",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "operationId": "reset_password_api_auth_reset_password_post",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "operationId": "get_session_api_auth_session_get",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/session/onboarding/complete",
+      "operationId": "complete_onboarding_api_auth_session_onboarding_complete_post",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/webhook",
+      "operationId": "neon_auth_webhook_api_auth_webhook_post",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/profile",
+      "operationId": "get_profile_api_account_profile_get",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/account/profile",
+      "operationId": "update_profile_api_account_profile_patch",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/avatar",
+      "operationId": "upload_avatar_api_account_avatar_post",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/usage/today",
+      "operationId": "get_today_real_usage_api_account_usage_today_get",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/trial-status",
+      "operationId": "get_trial_status_api_account_trial_status_get",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/onboarding-complete",
+      "operationId": "complete_onboarding_api_account_onboarding_complete_post",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/access",
+      "operationId": "get_access_status_api_account_access_get",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/access-requests",
+      "operationId": "create_access_request_api_account_access_requests_post",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/access-grants",
+      "operationId": "reject_self_grant_api_account_access_grants_post",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/workspace",
+      "operationId": "select_workspace_api_account_workspace_post",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/billing",
+      "operationId": "get_billing_api_account_billing_get",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/billing/provider-events",
+      "operationId": "billing_provider_events_api_account_billing_provider_events_post",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/api-keys",
+      "operationId": "list_api_keys_api_account_api_keys_get",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/api-keys",
+      "operationId": "create_api_key_api_account_api_keys_post",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/account/api-keys/{key_id}",
+      "operationId": "revoke_api_key_api_account_api_keys__key_id__delete",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/team",
+      "operationId": "get_team_api_account_team_get",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/team/invites",
+      "operationId": "invite_team_member_api_account_team_invites_post",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/account/team/invites/{invite_id}",
+      "operationId": "cancel_team_invite_api_account_team_invites__invite_id__delete",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/team/invites/accept",
+      "operationId": "accept_team_invite_api_account_team_invites_accept_post",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/account/team/members/{member_id}",
+      "operationId": "remove_team_member_api_account_team_members__member_id__delete",
+      "tags": [
+        "account"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/",
+      "operationId": "get_notifications_api_notifications__get",
+      "tags": [
+        "notifications"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "operationId": "get_notifications_api_notifications_get",
+      "tags": [
+        "notifications"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/{notification_id}/read",
+      "operationId": "mark_notification_read_api_notifications__notification_id__read_post",
+      "tags": [
+        "notifications"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/read-all",
+      "operationId": "mark_all_notifications_read_api_notifications_read_all_post",
+      "tags": [
+        "notifications"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/discovery/jobs",
+      "operationId": "search_api_discovery_jobs_post",
+      "tags": [
+        "discovery"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/discovery/jobs",
+      "operationId": "list_jobs_api_discovery_jobs_get",
+      "tags": [
+        "discovery"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/discovery/jobs/{job_id}",
+      "operationId": "get_job_api_discovery_jobs__job_id__get",
+      "tags": [
+        "discovery"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/discovery/jobs/{job_id}/results",
+      "operationId": "get_job_results_api_discovery_jobs__job_id__results_get",
+      "tags": [
+        "discovery"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/creatives/",
+      "operationId": "get_creatives_api_creatives__get",
+      "tags": [
+        "creatives"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/creatives",
+      "operationId": "get_creatives_api_creatives_get",
+      "tags": [
+        "creatives"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/creatives/saved",
+      "operationId": "get_saved_creatives_api_creatives_saved_get",
+      "tags": [
+        "creatives"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/creatives/custom",
+      "operationId": "add_custom_swipe_reference_api_creatives_custom_post",
+      "tags": [
+        "creatives"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/creatives/{creative_id}/save",
+      "operationId": "save_creative_to_swipe_file_api_creatives__creative_id__save_post",
+      "tags": [
+        "creatives"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/creatives/{creative_id}/save",
+      "operationId": "unsave_creative_from_swipe_file_api_creatives__creative_id__save_delete",
+      "tags": [
+        "creatives"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/creatives/{creative_id}/insights",
+      "operationId": "get_creative_insights_api_creatives__creative_id__insights_get",
+      "tags": [
+        "creatives"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/creatives/{creative_id}/generate-insights",
+      "operationId": "generate_creative_insights_api_creatives__creative_id__generate_insights_post",
+      "tags": [
+        "creatives"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/creatives/{creative_id}",
+      "operationId": "get_creative_api_creatives__creative_id__get",
+      "tags": [
+        "creatives"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/creatives/translate-copy",
+      "operationId": "translate_copy_api_creatives_translate_copy_post",
+      "tags": [
+        "creatives"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/brands/",
+      "operationId": "get_brands_api_brands__get",
+      "tags": [
+        "brands"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/patterns/",
+      "operationId": "get_patterns_api_patterns__get",
+      "tags": [
+        "patterns"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/patterns/generate",
+      "operationId": "generate_patterns_api_patterns_generate_post",
+      "tags": [
+        "patterns"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/insights/",
+      "operationId": "list_insights_api_insights__get",
+      "tags": [
+        "insights"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/media/jobs",
+      "operationId": "create_media_job_api_media_jobs_post",
+      "tags": [
+        "media"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/media/models",
+      "operationId": "get_available_models_api_media_models_get",
+      "tags": [
+        "media"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/media/providers",
+      "operationId": "get_media_providers_api_media_providers_get",
+      "tags": [
+        "media"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/media/jobs/{job_id}",
+      "operationId": "get_media_job_api_media_jobs__job_id__get",
+      "tags": [
+        "media"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/media/jobs/{job_id}/cancel",
+      "operationId": "cancel_media_job_api_media_jobs__job_id__cancel_post",
+      "tags": [
+        "media"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/media/upload",
+      "operationId": "upload_file_api_media_upload_post",
+      "tags": [
+        "media"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/providers",
+      "operationId": "get_workspace_providers_api_workspaces_providers_get",
+      "tags": [
+        "providers"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/provider-credentials/google-gemini",
+      "operationId": "save_gemini_credential_api_workspaces_provider_credentials_google_gemini_post",
+      "tags": [
+        "providers"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workspaces/provider-credentials/google-gemini",
+      "operationId": "delete_gemini_credential_api_workspaces_provider_credentials_google_gemini_delete",
+      "tags": [
+        "providers"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/provider-credentials/google-gemini/test",
+      "operationId": "test_gemini_credential_api_workspaces_provider_credentials_google_gemini_test_post",
+      "tags": [
+        "providers"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/provider-mode",
+      "operationId": "set_workspace_provider_mode_api_workspaces_provider_mode_post",
+      "tags": [
+        "providers"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/updates",
+      "operationId": "list_published_updates_api_updates_get",
+      "tags": [
+        "updates"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/updates/banner",
+      "operationId": "get_active_banner_api_updates_banner_get",
+      "tags": [
+        "updates"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/updates/admin/all",
+      "operationId": "admin_list_updates_api_updates_admin_all_get",
+      "tags": [
+        "updates"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/updates/admin",
+      "operationId": "admin_create_update_api_updates_admin_post",
+      "tags": [
+        "updates"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/updates/admin/{update_id}",
+      "operationId": "admin_get_update_api_updates_admin__update_id__get",
+      "tags": [
+        "updates"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/updates/admin/{update_id}",
+      "operationId": "admin_update_update_api_updates_admin__update_id__post",
+      "tags": [
+        "updates"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/updates/admin/{update_id}",
+      "operationId": "admin_update_update_api_updates_admin__update_id__put",
+      "tags": [
+        "updates"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/updates/admin/{update_id}",
+      "operationId": "admin_update_update_api_updates_admin__update_id__patch",
+      "tags": [
+        "updates"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/updates/admin/{update_id}",
+      "operationId": "admin_delete_update_api_updates_admin__update_id__delete",
+      "tags": [
+        "updates"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/overview/stats",
+      "operationId": "get_overview_api_admin_overview_stats_get",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/jobs",
+      "operationId": "list_jobs_api_admin_jobs_get",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system/health",
+      "operationId": "get_health_api_admin_system_health_get",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/plans",
+      "operationId": "list_plans_api_admin_plans_get",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/plans",
+      "operationId": "create_plan_api_admin_plans_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/plans/{plan_id}",
+      "operationId": "update_plan_api_admin_plans__plan_id__put",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/plans/{plan_id}",
+      "operationId": "delete_plan_api_admin_plans__plan_id__delete",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/organizations",
+      "operationId": "list_organizations_api_admin_organizations_get",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations/{org_id}/grant-credits",
+      "operationId": "grant_credits_api_admin_organizations__org_id__grant_credits_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations/{org_id}/switch-plan",
+      "operationId": "switch_plan_api_admin_organizations__org_id__switch_plan_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations/{org_id}/feature-flags",
+      "operationId": "update_feature_flags_api_admin_organizations__org_id__feature_flags_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/usage",
+      "operationId": "get_usage_summary_api_admin_usage_get",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/usage/logs",
+      "operationId": "get_usage_logs_filtered_api_admin_usage_logs_get",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "operationId": "list_users_api_admin_users_get",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/status",
+      "operationId": "update_user_status_api_admin_users__user_id__status_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/ban",
+      "operationId": "ban_user_api_admin_users__user_id__ban_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/role",
+      "operationId": "update_user_role_api_admin_users__user_id__role_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/plan",
+      "operationId": "switch_user_plan_api_admin_users__user_id__plan_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/impersonate",
+      "operationId": "impersonate_user_api_admin_users__user_id__impersonate_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/broadcast",
+      "operationId": "broadcast_announcement_api_admin_broadcast_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/support/tickets",
+      "operationId": "list_admin_tickets_api_admin_support_tickets_get",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/support/tickets/{ticket_id}/reply",
+      "operationId": "reply_admin_ticket_api_admin_support_tickets__ticket_id__reply_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/support/tickets/{ticket_id}/status",
+      "operationId": "update_admin_ticket_status_api_admin_support_tickets__ticket_id__status_patch",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/access-requests",
+      "operationId": "list_access_requests_api_admin_access_requests_get",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/access-requests/{request_id}/approve",
+      "operationId": "approve_access_request_api_admin_access_requests__request_id__approve_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/access-requests/{request_id}/reject",
+      "operationId": "reject_access_request_api_admin_access_requests__request_id__reject_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations/{org_id}/access-grant",
+      "operationId": "grant_organization_access_api_admin_organizations__org_id__access_grant_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations/{org_id}/access-revoke",
+      "operationId": "revoke_organization_access_api_admin_organizations__org_id__access_revoke_post",
+      "tags": [
+        "admin"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/tickets",
+      "operationId": "create_ticket_api_support_tickets_post",
+      "tags": [
+        "support"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/tickets",
+      "operationId": "list_tickets_api_support_tickets_get",
+      "tags": [
+        "support"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/tickets/{ticket_id}",
+      "operationId": "get_ticket_api_support_tickets__ticket_id__get",
+      "tags": [
+        "support"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/tickets/{ticket_id}/reply",
+      "operationId": "reply_ticket_api_support_tickets__ticket_id__reply_post",
+      "tags": [
+        "support"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/playbooks",
+      "operationId": "compile_playbook_api_playbooks_post",
+      "tags": [
+        "playbooks"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/playbooks",
+      "operationId": "list_playbooks_api_playbooks_get",
+      "tags": [
+        "playbooks"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/playbooks/public/{public_id}",
+      "operationId": "get_public_playbook_api_playbooks_public__public_id__get",
+      "tags": [
+        "playbooks"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard/metrics",
+      "operationId": "get_metrics_api_dashboard_metrics_get",
+      "tags": [
+        "dashboard"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/simulation/segments",
+      "operationId": "list_audience_segments_api_simulation_segments_get",
+      "tags": [
+        "simulation"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/simulation/creatives/{creative_id}/simulate",
+      "operationId": "simulate_creative_api_simulation_creatives__creative_id__simulate_post",
+      "tags": [
+        "simulation"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/health/live",
+      "operationId": "liveness_api_health_live_get",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/health/ready",
+      "operationId": "readiness_api_health_ready_get",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/health/",
+      "operationId": "health_check_api_health__get",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "operationId": "root_api_health_get",
+      "tags": []
+    },
+    {
+      "method": "GET",
+      "path": "/api/monitors/",
+      "operationId": "list_monitors_api_monitors__get",
+      "tags": [
+        "monitors"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/monitors/",
+      "operationId": "create_monitor_api_monitors__post",
+      "tags": [
+        "monitors"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/monitors",
+      "operationId": "list_monitors_api_monitors_get",
+      "tags": [
+        "monitors"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/monitors",
+      "operationId": "create_monitor_api_monitors_post",
+      "tags": [
+        "monitors"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/monitors/events",
+      "operationId": "list_events_api_monitors_events_get",
+      "tags": [
+        "monitors"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/monitors/{monitor_id}",
+      "operationId": "update_monitor_api_monitors__monitor_id__patch",
+      "tags": [
+        "monitors"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/monitors/{monitor_id}",
+      "operationId": "delete_monitor_api_monitors__monitor_id__delete",
+      "tags": [
+        "monitors"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/monitors/{monitor_id}/run",
+      "operationId": "run_monitor_now_api_monitors__monitor_id__run_post",
+      "tags": [
+        "monitors"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/monitors/tick",
+      "operationId": "tick_api_monitors_tick_post",
+      "tags": [
+        "monitors"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/jobs",
+      "operationId": "create_scout_job_api_scout_jobs_post",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/jobs/{job_id}",
+      "operationId": "get_scout_job_api_scout_jobs__job_id__get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/jobs/{job_id}/leads",
+      "operationId": "get_scout_leads_api_scout_jobs__job_id__leads_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/org-jobs",
+      "operationId": "get_org_scout_jobs_api_scout_org_jobs_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/latest-job",
+      "operationId": "get_latest_scout_job_api_scout_latest_job_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/export",
+      "operationId": "export_scout_leads_csv_api_scout_export_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/maps/jobs",
+      "operationId": "create_maps_job_api_scout_maps_jobs_post",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/maps/jobs/{job_id}",
+      "operationId": "get_maps_job_api_scout_maps_jobs__job_id__get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/maps/jobs/{job_id}/leads",
+      "operationId": "get_maps_leads_api_scout_maps_jobs__job_id__leads_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/maps/org-jobs",
+      "operationId": "get_org_maps_jobs_api_scout_maps_org_jobs_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/maps/latest-job",
+      "operationId": "get_latest_maps_job_api_scout_maps_latest_job_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/maps/export",
+      "operationId": "export_maps_leads_csv_api_scout_maps_export_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/settings",
+      "operationId": "get_scout_settings_api_scout_settings_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/settings",
+      "operationId": "update_scout_settings_api_scout_settings_post",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scout/jobs",
+      "operationId": "create_scout_job_api_v1_scout_jobs_post",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/jobs/{job_id}",
+      "operationId": "get_scout_job_api_v1_scout_jobs__job_id__get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/jobs/{job_id}/leads",
+      "operationId": "get_scout_leads_api_v1_scout_jobs__job_id__leads_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/org-jobs",
+      "operationId": "get_org_scout_jobs_api_v1_scout_org_jobs_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/latest-job",
+      "operationId": "get_latest_scout_job_api_v1_scout_latest_job_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/export",
+      "operationId": "export_scout_leads_csv_api_v1_scout_export_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scout/maps/jobs",
+      "operationId": "create_maps_job_api_v1_scout_maps_jobs_post",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/maps/jobs/{job_id}",
+      "operationId": "get_maps_job_api_v1_scout_maps_jobs__job_id__get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/maps/jobs/{job_id}/leads",
+      "operationId": "get_maps_leads_api_v1_scout_maps_jobs__job_id__leads_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/maps/org-jobs",
+      "operationId": "get_org_maps_jobs_api_v1_scout_maps_org_jobs_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/maps/latest-job",
+      "operationId": "get_latest_maps_job_api_v1_scout_maps_latest_job_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/maps/export",
+      "operationId": "export_maps_leads_csv_api_v1_scout_maps_export_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/settings",
+      "operationId": "get_scout_settings_api_v1_scout_settings_get",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scout/settings",
+      "operationId": "update_scout_settings_api_v1_scout_settings_post",
+      "tags": [
+        "scout"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/leadgen/jobs",
+      "operationId": "create_leadgen_job_api_scout_leadgen_jobs_post",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/jobs/{job_id}",
+      "operationId": "get_leadgen_job_api_scout_leadgen_jobs__job_id__get",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/jobs/{job_id}/leads",
+      "operationId": "list_leadgen_leads_api_scout_leadgen_jobs__job_id__leads_get",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/jobs/{job_id}/leads/{lead_id}",
+      "operationId": "get_leadgen_lead_api_scout_leadgen_jobs__job_id__leads__lead_id__get",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/leadgen/jobs/{job_id}/pause",
+      "operationId": "pause_leadgen_job_api_scout_leadgen_jobs__job_id__pause_post",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/leadgen/jobs/{job_id}/resume",
+      "operationId": "resume_leadgen_job_api_scout_leadgen_jobs__job_id__resume_post",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/jobs/{job_id}/export.csv",
+      "operationId": "export_leadgen_csv_api_scout_leadgen_jobs__job_id__export_csv_get",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/jobs/{job_id}/export.jsonl",
+      "operationId": "export_leadgen_jsonl_api_scout_leadgen_jobs__job_id__export_jsonl_get",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/recipes",
+      "operationId": "list_recipes_api_scout_leadgen_recipes_get",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/worker/health",
+      "operationId": "worker_health_api_scout_leadgen_worker_health_get",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/leadgen/worker/heartbeat",
+      "operationId": "worker_heartbeat_api_scout_leadgen_worker_heartbeat_post",
+      "tags": [
+        "leadgen"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/uploads/{filename}",
+      "operationId": "get_upload_uploads__filename__get",
+      "tags": [
+        "uploads"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "operationId": "root_health_get",
+      "tags": []
+    },
+    {
+      "method": "GET",
+      "path": "/api",
+      "operationId": "root_api_get",
+      "tags": []
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "operationId": "root__get",
+      "tags": []
+    }
+  ]
+}
