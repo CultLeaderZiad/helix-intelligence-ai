@@ -1,0 +1,3949 @@
+{
+  "audit": {
+    "repository": "CultLeaderZiad/helix-intelligence-ai",
+    "artifactBranch": "audit/helix-full",
+    "artifactHead": "af5cdf9",
+    "auditedSourceSnapshot": "eab70cc",
+    "comparison": "5b45806",
+    "sourceAudit": "Static source review; no application code changed in this audit task.",
+    "browserEvidence": {
+      "source": "parent-managed local app, actual admin account, disposable empty database; signed-out state for public/auth routes; admin session for app/admin routes",
+      "manifest": "browser-captures.jsonl",
+      "records": 330,
+      "concretePaths": 68,
+      "routeLocalePairs": 136,
+      "routeCapturesByVariant": 204,
+      "interactiveCaptures": 126,
+      "allCaptureOk": true,
+      "screenshotLinkBasis": "Route screenshot links point at exact manifest file paths; links in this JSON are relative to docs/audit/evidence."
+    },
+    "comparisonNote": "The inspected app source snapshot is eab70cc. Current artifact branch HEAD is recorded separately; later docs-only commits must not be mistaken for the audited app snapshot.",
+    "statusLegend": {
+      "real": "Source/content and API or static implementation exist; live success is not implied.",
+      "partial": "Some UI/service path exists, but full capability, external provider, or live behavior is incomplete or unverified.",
+      "mock": "Mock adapter selected/configured; not evidence of provider output.",
+      "empty": "Expected not-found/empty state, not a product feature.",
+      "broken": "Use only when a reproducible failure is observed.",
+      "dead": "Use for code/path with no reachable UI entry point."
+    },
+    "verificationCaveat": "Capture ok means the capture operation completed. It does not establish hydrated data, successful API requests, provider availability, or long-term route health."
+  },
+  "routeDefinitions": [
+    {
+      "path": "/",
+      "component": "LandingPage",
+      "sourceEvidence": [
+        "src/App.jsx:181",
+        "README.md"
+      ]
+    },
+    {
+      "path": "/sign-in",
+      "component": "SignInPage",
+      "sourceEvidence": [
+        "src/App.jsx:183",
+        "src/services/api/authService.api.js"
+      ]
+    },
+    {
+      "path": "/sign-up",
+      "component": "SignUpPage",
+      "sourceEvidence": [
+        "src/App.jsx:184",
+        "src/services/api/authService.api.js"
+      ]
+    },
+    {
+      "path": "/forgot-password",
+      "component": "ForgotPasswordPage",
+      "sourceEvidence": [
+        "src/App.jsx:185",
+        "src/services/api/authService.api.js"
+      ]
+    },
+    {
+      "path": "/reset-password",
+      "component": "ResetPasswordPage",
+      "sourceEvidence": [
+        "src/App.jsx:186",
+        "src/services/api/authService.api.js"
+      ]
+    },
+    {
+      "path": "/playbook/:publicId",
+      "component": "PublicPlaybookPage",
+      "sourceEvidence": [
+        "src/App.jsx:187",
+        "src/services/api/playbookService.api.js"
+      ]
+    },
+    {
+      "path": "/updates",
+      "component": "PublicUpdatesPage",
+      "sourceEvidence": [
+        "src/App.jsx:188",
+        "src/services/api/updatesService.api.js"
+      ]
+    },
+    {
+      "path": "/legal",
+      "component": "LegalPage",
+      "sourceEvidence": [
+        "src/App.jsx:189"
+      ]
+    },
+    {
+      "path": "/legal/:section",
+      "component": "LegalPage",
+      "sourceEvidence": [
+        "src/App.jsx:190"
+      ]
+    },
+    {
+      "path": "/privacy",
+      "component": "LegalPage",
+      "sourceEvidence": [
+        "src/App.jsx:191"
+      ]
+    },
+    {
+      "path": "/terms",
+      "component": "LegalPage",
+      "sourceEvidence": [
+        "src/App.jsx:192"
+      ]
+    },
+    {
+      "path": "/cookies",
+      "component": "LegalPage",
+      "sourceEvidence": [
+        "src/App.jsx:193"
+      ]
+    },
+    {
+      "path": "/docs",
+      "component": "DocsHomePage",
+      "sourceEvidence": [
+        "src/App.jsx:196",
+        "src/features/docs/docsData.js"
+      ]
+    },
+    {
+      "path": "/docs/scout-cli",
+      "component": "ScoutCliDocsPage",
+      "sourceEvidence": [
+        "src/App.jsx:197"
+      ]
+    },
+    {
+      "path": "/docs/:section",
+      "component": "DocsDetailPage",
+      "sourceEvidence": [
+        "src/App.jsx:198",
+        "src/features/docs/docsData.js"
+      ]
+    },
+    {
+      "path": "/docs/:section/:slug",
+      "component": "DocsDetailPage",
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ]
+    },
+    {
+      "path": "/admin",
+      "component": "OverviewPage",
+      "sourceEvidence": [
+        "src/App.jsx:202-205",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/guide",
+      "component": "GuidePage",
+      "sourceEvidence": [
+        "src/App.jsx:206",
+        "src/app/admin/adminNavigation.js"
+      ]
+    },
+    {
+      "path": "/admin/organizations",
+      "component": "OrganizationsPage",
+      "sourceEvidence": [
+        "src/App.jsx:207",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/access-requests",
+      "component": "AccessRequestsPage",
+      "sourceEvidence": [
+        "src/App.jsx:208",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/subscriptions",
+      "component": "SubscriptionsPlansPage",
+      "sourceEvidence": [
+        "src/App.jsx:209",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/usage",
+      "component": "UsagePage",
+      "sourceEvidence": [
+        "src/App.jsx:210",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/feature-flags",
+      "component": "FeatureFlagsPage",
+      "sourceEvidence": [
+        "src/App.jsx:211",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/users",
+      "component": "UsersPage",
+      "sourceEvidence": [
+        "src/App.jsx:212",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/updates",
+      "component": "UpdatesPage",
+      "sourceEvidence": [
+        "src/App.jsx:213",
+        "src/pages/admin/UpdatesPage.jsx:484-513",
+        "src/services/api/updatesService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/support",
+      "component": "SupportAdminPage",
+      "sourceEvidence": [
+        "src/App.jsx:214",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/data-sources",
+      "component": "DataSourcesPage",
+      "sourceEvidence": [
+        "src/App.jsx:215",
+        "src/pages/admin/DataSourcesPage.jsx:106",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/scrape-jobs",
+      "component": "ScrapeJobsPage",
+      "sourceEvidence": [
+        "src/App.jsx:216",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/health",
+      "component": "SystemHealthPage",
+      "sourceEvidence": [
+        "src/App.jsx:217",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "path": "/admin/audit-log",
+      "component": "AuditLogPage",
+      "sourceEvidence": [
+        "src/App.jsx:217",
+        "src/pages/admin/AuditLogPage.jsx",
+        "src/services/api/adminService.api.js:85"
+      ]
+    },
+    {
+      "path": "/discover",
+      "component": "DiscoverPage",
+      "sourceEvidence": [
+        "src/App.jsx:231",
+        "src/pages/DiscoverPage.jsx",
+        "src/services/api/discoverService.api.js"
+      ]
+    },
+    {
+      "path": "/intelligence",
+      "component": "IntelligencePage",
+      "sourceEvidence": [
+        "src/App.jsx:232",
+        "src/pages/IntelligencePage.jsx",
+        "src/services/api/creativeService.api.js",
+        "src/services/api/analysisService.api.js"
+      ]
+    },
+    {
+      "path": "/create",
+      "component": "CreatePage",
+      "sourceEvidence": [
+        "src/App.jsx:233",
+        "src/pages/CreatePage.jsx",
+        "src/services/api/mediaService.api.js"
+      ]
+    },
+    {
+      "path": "/monitors",
+      "component": "MonitorsPage",
+      "sourceEvidence": [
+        "src/App.jsx:234",
+        "src/services/api/monitorService.api.js"
+      ]
+    },
+    {
+      "path": "/scout",
+      "component": "Navigate",
+      "sourceEvidence": [
+        "src/App.jsx:235"
+      ]
+    },
+    {
+      "path": "/scout/lead-generation",
+      "component": "ScoutLeadGenerationPage",
+      "sourceEvidence": [
+        "src/App.jsx:236",
+        "src/services/api/leadgen.js"
+      ]
+    },
+    {
+      "path": "/scout/:mode",
+      "component": "ScoutPage",
+      "sourceEvidence": [
+        "src/App.jsx:237",
+        "src/pages/ScoutPage.jsx:30,59,259-284",
+        "src/services/api/scoutService.api.js",
+        "src/services/api/mapsScoutService.api.js"
+      ]
+    },
+    {
+      "path": "/performance",
+      "component": "PerformancePage",
+      "sourceEvidence": [
+        "src/App.jsx:238",
+        "src/pages/PerformancePage.jsx:137,434"
+      ]
+    },
+    {
+      "path": "/dashboard",
+      "component": "DashboardPage",
+      "sourceEvidence": [
+        "src/App.jsx:239",
+        "src/services/api/dashboardService.api.js"
+      ]
+    },
+    {
+      "path": "/swipe-files",
+      "component": "SwipeFilesPage",
+      "sourceEvidence": [
+        "src/App.jsx:240",
+        "src/services/api/creativeService.api.js"
+      ]
+    },
+    {
+      "path": "/guide",
+      "component": "GuidePage",
+      "sourceEvidence": [
+        "src/App.jsx:241"
+      ]
+    },
+    {
+      "path": "/billing",
+      "component": "BillingPage",
+      "sourceEvidence": [
+        "src/App.jsx:242",
+        "src/services/api/accountService.api.js"
+      ]
+    },
+    {
+      "path": "/api-keys",
+      "component": "ApiKeysPage",
+      "sourceEvidence": [
+        "src/App.jsx:243",
+        "src/services/api/accountService.api.js"
+      ]
+    },
+    {
+      "path": "/team",
+      "component": "TeamPage",
+      "sourceEvidence": [
+        "src/App.jsx:244",
+        "src/services/api/accountService.api.js"
+      ]
+    },
+    {
+      "path": "/team/accept",
+      "component": "TeamAcceptPage",
+      "sourceEvidence": [
+        "src/App.jsx:245",
+        "src/app/ProtectedRoute.jsx:21-29",
+        "src/services/api/accountService.api.js"
+      ]
+    },
+    {
+      "path": "/settings",
+      "component": "ProfileSettingsPage",
+      "sourceEvidence": [
+        "src/App.jsx:246",
+        "src/services/api/accountService.api.js"
+      ]
+    },
+    {
+      "path": "/support",
+      "component": "SupportPage",
+      "sourceEvidence": [
+        "src/App.jsx:247",
+        "src/services/api/supportService.api.js"
+      ]
+    },
+    {
+      "path": "/notifications",
+      "component": "NotificationsPage",
+      "sourceEvidence": [
+        "src/App.jsx:248",
+        "src/pages/NotificationsPage.jsx:170-181"
+      ]
+    },
+    {
+      "path": "*",
+      "component": "NotFoundPage",
+      "sourceEvidence": [
+        "src/App.jsx:229-257",
+        "src/app/ProtectedRoute.jsx:21-36"
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "path": "/",
+      "screenKey": "home",
+      "kind": "public",
+      "component": "LandingPage",
+      "tabs": [],
+      "purpose": "Marketing landing and product CTA",
+      "audience": "public",
+      "status": "partial",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:181",
+        "README.md"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/landing-en.png",
+          "link": "../screens/landing-en.png",
+          "ok": true,
+          "loadMs": 1591
+        },
+        "ar": {
+          "file": "screens/landing-ar.png",
+          "link": "../screens/landing-ar.png",
+          "ok": true,
+          "loadMs": 1576
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/admin",
+      "screenKey": "admin",
+      "kind": "admin",
+      "component": "OverviewPage",
+      "tabs": [],
+      "purpose": "Operations overview",
+      "audience": "admin",
+      "status": "real",
+      "apiCalls": [
+        "GET /admin/overview/stats"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:202-205",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-en.png",
+          "link": "../screens/admin-en.png",
+          "ok": true,
+          "loadMs": 2183
+        },
+        "ar": {
+          "file": "screens/admin-ar.png",
+          "link": "../screens/admin-ar.png",
+          "ok": true,
+          "loadMs": 3497
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-settled",
+          "label": "settled",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-tab-settled-en.png",
+              "link": "../screens/admin-tab-settled-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-tab-settled-ar.png",
+              "link": "../screens/admin-tab-settled-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ],
+      "browserNote": "Parent reports capture remained at loading state after 1 second; this is a brief snapshot, not sustained evidence that the route is broken."
+    },
+    {
+      "path": "/admin/access-requests",
+      "screenKey": "admin-access-requests",
+      "kind": "admin",
+      "component": "AccessRequestsPage",
+      "tabs": [],
+      "purpose": "Review, grant, or reject access requests",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "/admin/access-requests"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:208",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-access-requests-en.png",
+          "link": "../screens/admin-access-requests-en.png",
+          "ok": true,
+          "loadMs": 2813
+        },
+        "ar": {
+          "file": "screens/admin-access-requests-ar.png",
+          "link": "../screens/admin-access-requests-ar.png",
+          "ok": true,
+          "loadMs": 2602
+        }
+      },
+      "capturedStates": [],
+      "controls": [
+        {
+          "label": "Approve",
+          "selector": "getByRole(\"button\", { name: \"Approve\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Reject",
+          "selector": "getByRole(\"button\", { name: \"Reject\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Revoke",
+          "selector": "getByRole(\"button\", { name: \"Revoke\", exact: true })",
+          "kind": "button"
+        }
+      ]
+    },
+    {
+      "path": "/admin/audit-log",
+      "screenKey": "admin-audit-log",
+      "kind": "admin",
+      "component": "AuditLogPage",
+      "tabs": [],
+      "purpose": "Administrative audit events",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "GET /admin/usage/logs?page=&page_size=30&provider=&operation=&user_id="
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:217",
+        "src/pages/admin/AuditLogPage.jsx",
+        "src/services/api/adminService.api.js:85"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-audit-log-en.png",
+          "link": "../screens/admin-audit-log-en.png",
+          "ok": true,
+          "loadMs": 2224
+        },
+        "ar": {
+          "file": "screens/admin-audit-log-ar.png",
+          "link": "../screens/admin-audit-log-ar.png",
+          "ok": true,
+          "loadMs": 2667
+        }
+      },
+      "capturedStates": [],
+      "controls": [
+        {
+          "label": "Provider filter",
+          "kind": "filter"
+        },
+        {
+          "label": "Operation filter",
+          "kind": "filter"
+        },
+        {
+          "label": "User filter",
+          "kind": "search"
+        }
+      ]
+    },
+    {
+      "path": "/admin/data-sources",
+      "screenKey": "admin-data-sources",
+      "kind": "admin",
+      "component": "DataSourcesPage",
+      "tabs": [],
+      "purpose": "Provider/ingestion health",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "GET /admin/system/health"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:215",
+        "src/pages/admin/DataSourcesPage.jsx:106",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": "Unmatched provider status falls back to Operational & Available in failover stack; activeTab has no rendered control found.",
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-data-sources-en.png",
+          "link": "../screens/admin-data-sources-en.png",
+          "ok": true,
+          "loadMs": 3224
+        },
+        "ar": {
+          "file": "screens/admin-data-sources-ar.png",
+          "link": "../screens/admin-data-sources-ar.png",
+          "ok": true,
+          "loadMs": 3931
+        }
+      },
+      "capturedStates": [],
+      "controls": [
+        {
+          "label": "Probe All Sources",
+          "selector": "getByRole(\"button\", { name: \"Probe All Sources\", exact: true })",
+          "kind": "button"
+        }
+      ]
+    },
+    {
+      "path": "/admin/feature-flags",
+      "screenKey": "admin-feature-flags",
+      "kind": "admin",
+      "component": "FeatureFlagsPage",
+      "tabs": [],
+      "purpose": "Feature flag controls",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "/admin feature-flag actions"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:211",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-feature-flags-en.png",
+          "link": "../screens/admin-feature-flags-en.png",
+          "ok": true,
+          "loadMs": 3206
+        },
+        "ar": {
+          "file": "screens/admin-feature-flags-ar.png",
+          "link": "../screens/admin-feature-flags-ar.png",
+          "ok": true,
+          "loadMs": 2032
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/admin/guide",
+      "screenKey": "admin-guide",
+      "kind": "admin",
+      "component": "GuidePage",
+      "tabs": [
+        {
+          "label": "Overview",
+          "selector": "getByRole(\"button\", { name: \"Overview\", exact: true })",
+          "kind": "content selector"
+        },
+        {
+          "label": "Discover",
+          "selector": "getByRole(\"button\", { name: \"Discover\", exact: true })",
+          "kind": "content selector"
+        },
+        {
+          "label": "Intelligence",
+          "selector": "getByRole(\"button\", { name: \"Intelligence\", exact: true })",
+          "kind": "content selector"
+        },
+        {
+          "label": "Create",
+          "selector": "getByRole(\"button\", { name: \"Create\", exact: true })",
+          "kind": "content selector"
+        },
+        {
+          "label": "Performance",
+          "selector": "getByRole(\"button\", { name: \"Performance\", exact: true })",
+          "kind": "content selector"
+        },
+        {
+          "label": "Admin",
+          "selector": "getByRole(\"button\", { name: \"Admin\", exact: true })",
+          "kind": "content selector"
+        }
+      ],
+      "purpose": "Operating playbook",
+      "audience": "admin",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:206",
+        "src/app/admin/adminNavigation.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-guide-en.png",
+          "link": "../screens/admin-guide-en.png",
+          "ok": true,
+          "loadMs": 3659
+        },
+        "ar": {
+          "file": "screens/admin-guide-ar.png",
+          "link": "../screens/admin-guide-ar.png",
+          "ok": true,
+          "loadMs": 4047
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-Helix-Architecture-The-4-Loops",
+          "label": "Helix Architecture The 4 Loops",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-guide-tab-Helix-Architecture-The-4-Loops-en.png",
+              "link": "../screens/admin-guide-tab-Helix-Architecture-The-4-Loops-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-guide-tab-Helix-Architecture-The-4-Loops-ar.png",
+              "link": "../screens/admin-guide-tab-Helix-Architecture-The-4-Loops-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Discover-Competitor-Ad-Extraction",
+          "label": "Discover Competitor Ad Extraction",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-guide-tab-Discover-Competitor-Ad-Extraction-en.png",
+              "link": "../screens/admin-guide-tab-Discover-Competitor-Ad-Extraction-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-guide-tab-Discover-Competitor-Ad-Extraction-ar.png",
+              "link": "../screens/admin-guide-tab-Discover-Competitor-Ad-Extraction-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Intelligence-Pattern-Synthesis-Teardowns",
+          "label": "Intelligence Pattern Synthesis Teardowns",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-guide-tab-Intelligence-Pattern-Synthesis-Teardowns-en.png",
+              "link": "../screens/admin-guide-tab-Intelligence-Pattern-Synthesis-Teardowns-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-guide-tab-Intelligence-Pattern-Synthesis-Teardowns-ar.png",
+              "link": "../screens/admin-guide-tab-Intelligence-Pattern-Synthesis-Teardowns-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Create-Studio-AI-Generation",
+          "label": "Create Studio AI Generation",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-guide-tab-Create-Studio-AI-Generation-en.png",
+              "link": "../screens/admin-guide-tab-Create-Studio-AI-Generation-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-guide-tab-Create-Studio-AI-Generation-ar.png",
+              "link": "../screens/admin-guide-tab-Create-Studio-AI-Generation-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Performance-Longevity-Fatigue-Tracking",
+          "label": "Performance Longevity Fatigue Tracking",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-guide-tab-Performance-Longevity-Fatigue-Tracking-en.png",
+              "link": "../screens/admin-guide-tab-Performance-Longevity-Fatigue-Tracking-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-guide-tab-Performance-Longevity-Fatigue-Tracking-ar.png",
+              "link": "../screens/admin-guide-tab-Performance-Longevity-Fatigue-Tracking-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Admin-Center-Operations",
+          "label": "Admin Center Operations",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-guide-tab-Admin-Center-Operations-en.png",
+              "link": "../screens/admin-guide-tab-Admin-Center-Operations-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-guide-tab-Admin-Center-Operations-ar.png",
+              "link": "../screens/admin-guide-tab-Admin-Center-Operations-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "path": "/admin/health",
+      "screenKey": "admin-health",
+      "kind": "admin",
+      "component": "SystemHealthPage",
+      "tabs": [],
+      "purpose": "System health",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "GET /admin/system/health"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:217",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-health-en.png",
+          "link": "../screens/admin-health-en.png",
+          "ok": true,
+          "loadMs": 2722
+        },
+        "ar": {
+          "file": "screens/admin-health-ar.png",
+          "link": "../screens/admin-health-ar.png",
+          "ok": true,
+          "loadMs": 2795
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/admin/organizations",
+      "screenKey": "admin-organizations",
+      "kind": "admin",
+      "component": "OrganizationsPage",
+      "tabs": [],
+      "purpose": "Organization operations",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "/admin/organizations and organization actions"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:207",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-organizations-en.png",
+          "link": "../screens/admin-organizations-en.png",
+          "ok": true,
+          "loadMs": 2968
+        },
+        "ar": {
+          "file": "screens/admin-organizations-ar.png",
+          "link": "../screens/admin-organizations-ar.png",
+          "ok": true,
+          "loadMs": 2428
+        }
+      },
+      "capturedStates": [],
+      "controls": [
+        {
+          "label": "Search organizations",
+          "selector": "getByRole(\"textbox\", { name: /search/i })",
+          "kind": "search"
+        }
+      ]
+    },
+    {
+      "path": "/admin/scrape-jobs",
+      "screenKey": "admin-scrape-jobs",
+      "kind": "admin",
+      "component": "ScrapeJobsPage",
+      "tabs": [],
+      "purpose": "Scrape job operations",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "/admin/jobs"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:216",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-scrape-jobs-en.png",
+          "link": "../screens/admin-scrape-jobs-en.png",
+          "ok": true,
+          "loadMs": 4283
+        },
+        "ar": {
+          "file": "screens/admin-scrape-jobs-ar.png",
+          "link": "../screens/admin-scrape-jobs-ar.png",
+          "ok": true,
+          "loadMs": 4018
+        }
+      },
+      "capturedStates": [],
+      "controls": [
+        {
+          "label": "Status filter: all / running / succeeded / failed / queued",
+          "selector": "getByRole(\"button\", { name: /All|Running|Succeeded|Failed|Queued/ })",
+          "kind": "filter"
+        },
+        {
+          "label": "Search jobs, tenant, or ID",
+          "selector": "getByRole(\"textbox\", { name: /search/i })",
+          "kind": "search"
+        },
+        {
+          "label": "Auto-refresh and manual refresh",
+          "kind": "actions"
+        }
+      ]
+    },
+    {
+      "path": "/admin/subscriptions",
+      "screenKey": "admin-subscriptions",
+      "kind": "admin",
+      "component": "SubscriptionsPlansPage",
+      "tabs": [],
+      "purpose": "Internal plans and subscription administration",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "/admin/plans"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:209",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": "No payment provider/checkout evidenced.",
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-subscriptions-en.png",
+          "link": "../screens/admin-subscriptions-en.png",
+          "ok": true,
+          "loadMs": 2950
+        },
+        "ar": {
+          "file": "screens/admin-subscriptions-ar.png",
+          "link": "../screens/admin-subscriptions-ar.png",
+          "ok": true,
+          "loadMs": 2244
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/admin/support",
+      "screenKey": "admin-support",
+      "kind": "admin",
+      "component": "SupportAdminPage",
+      "tabs": [],
+      "purpose": "Support ticket queue",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "/admin/support/tickets"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:214",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-support-en.png",
+          "link": "../screens/admin-support-en.png",
+          "ok": true,
+          "loadMs": 2376
+        },
+        "ar": {
+          "file": "screens/admin-support-ar.png",
+          "link": "../screens/admin-support-ar.png",
+          "ok": true,
+          "loadMs": 2984
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-All-Types",
+          "label": "All Types",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-support-tab-All-Types-en.png",
+              "link": "../screens/admin-support-tab-All-Types-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-support-tab-All-Types-ar.png",
+              "link": "../screens/admin-support-tab-All-Types-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-All-Statuses",
+          "label": "All Statuses",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-support-tab-All-Statuses-en.png",
+              "link": "../screens/admin-support-tab-All-Statuses-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-support-tab-All-Statuses-ar.png",
+              "link": "../screens/admin-support-tab-All-Statuses-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Open",
+          "label": "Open",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-support-tab-Open-en.png",
+              "link": "../screens/admin-support-tab-Open-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-support-tab-Open-ar.png",
+              "link": "../screens/admin-support-tab-Open-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-In-Progress",
+          "label": "In Progress",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-support-tab-In-Progress-en.png",
+              "link": "../screens/admin-support-tab-In-Progress-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-support-tab-In-Progress-ar.png",
+              "link": "../screens/admin-support-tab-In-Progress-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Resolved",
+          "label": "Resolved",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-support-tab-Resolved-en.png",
+              "link": "../screens/admin-support-tab-Resolved-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-support-tab-Resolved-ar.png",
+              "link": "../screens/admin-support-tab-Resolved-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Bug-Reports",
+          "label": "Bug Reports",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-support-tab-Bug-Reports-en.png",
+              "link": "../screens/admin-support-tab-Bug-Reports-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-support-tab-Bug-Reports-ar.png",
+              "link": "../screens/admin-support-tab-Bug-Reports-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Feedback-Ideas",
+          "label": "Feedback Ideas",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-support-tab-Feedback-Ideas-en.png",
+              "link": "../screens/admin-support-tab-Feedback-Ideas-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-support-tab-Feedback-Ideas-ar.png",
+              "link": "../screens/admin-support-tab-Feedback-Ideas-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Support",
+          "label": "Support",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-support-tab-Support-en.png",
+              "link": "../screens/admin-support-tab-Support-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-support-tab-Support-ar.png",
+              "link": "../screens/admin-support-tab-Support-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ],
+      "controls": [
+        {
+          "label": "Status filter: All Statuses / Open / In Progress / Resolved",
+          "selector": "getByRole(\"combobox\").nth(0)",
+          "kind": "filter"
+        },
+        {
+          "label": "Type filter: All Types / Bug Reports / Feedback Ideas / Support",
+          "selector": "getByRole(\"combobox\").nth(1)",
+          "kind": "filter"
+        },
+        {
+          "label": "Refresh tickets",
+          "kind": "action"
+        }
+      ]
+    },
+    {
+      "path": "/admin/updates",
+      "screenKey": "admin-updates",
+      "kind": "admin",
+      "component": "UpdatesPage",
+      "tabs": [
+        {
+          "label": "Editor",
+          "selector": "getByRole(\"button\", { name: \"Editor\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Preview",
+          "selector": "getByRole(\"button\", { name: \"Preview\", exact: true })",
+          "kind": "button"
+        }
+      ],
+      "purpose": "Update/banners editor and preview",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "/updates/admin",
+        "/updates/admin/all",
+        "/updates/banner",
+        "/updates/admin/{id}"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:213",
+        "src/pages/admin/UpdatesPage.jsx:484-513",
+        "src/services/api/updatesService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-updates-en.png",
+          "link": "../screens/admin-updates-en.png",
+          "ok": true,
+          "loadMs": 2669
+        },
+        "ar": {
+          "file": "screens/admin-updates-ar.png",
+          "link": "../screens/admin-updates-ar.png",
+          "ok": true,
+          "loadMs": 2773
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-new-editor",
+          "label": "new editor",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-updates-tab-new-editor-en.png",
+              "link": "../screens/admin-updates-tab-new-editor-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-updates-tab-new-editor-ar.png",
+              "link": "../screens/admin-updates-tab-new-editor-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-preview",
+          "label": "preview",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-updates-tab-preview-en.png",
+              "link": "../screens/admin-updates-tab-preview-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-updates-tab-preview-ar.png",
+              "link": "../screens/admin-updates-tab-preview-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-editor",
+          "label": "editor",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-updates-tab-editor-en.png",
+              "link": "../screens/admin-updates-tab-editor-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-updates-tab-editor-ar.png",
+              "link": "../screens/admin-updates-tab-editor-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ],
+      "controls": [
+        {
+          "label": "New Update",
+          "selector": "getByRole(\"button\", { name: \"New Update\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Publish",
+          "selector": "getByRole(\"button\", { name: \"Publish\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Save Draft",
+          "selector": "getByRole(\"button\", { name: \"Save Draft\", exact: true })",
+          "kind": "button"
+        }
+      ]
+    },
+    {
+      "path": "/admin/usage",
+      "screenKey": "admin-usage",
+      "kind": "admin",
+      "component": "UsagePage",
+      "tabs": [],
+      "purpose": "Usage and metering",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "/admin/usage",
+        "/admin/usage/logs"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:210",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-usage-en.png",
+          "link": "../screens/admin-usage-en.png",
+          "ok": true,
+          "loadMs": 2992
+        },
+        "ar": {
+          "file": "screens/admin-usage-ar.png",
+          "link": "../screens/admin-usage-ar.png",
+          "ok": true,
+          "loadMs": 2491
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-settled",
+          "label": "settled",
+          "screenshots": {
+            "en": {
+              "file": "screens/admin-usage-tab-settled-en.png",
+              "link": "../screens/admin-usage-tab-settled-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/admin-usage-tab-settled-ar.png",
+              "link": "../screens/admin-usage-tab-settled-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ],
+      "controls": [
+        {
+          "label": "Provider filter",
+          "selector": "getByRole(\"combobox\").nth(0)",
+          "kind": "filter"
+        },
+        {
+          "label": "Search usage",
+          "kind": "search"
+        }
+      ]
+    },
+    {
+      "path": "/admin/users",
+      "screenKey": "admin-users",
+      "kind": "admin",
+      "component": "UsersPage",
+      "tabs": [],
+      "purpose": "User administration",
+      "audience": "admin",
+      "status": "partial",
+      "apiCalls": [
+        "/admin/users and user actions"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:212",
+        "src/services/api/adminService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/admin-users-en.png",
+          "link": "../screens/admin-users-en.png",
+          "ok": true,
+          "loadMs": 2253
+        },
+        "ar": {
+          "file": "screens/admin-users-ar.png",
+          "link": "../screens/admin-users-ar.png",
+          "ok": true,
+          "loadMs": 2884
+        }
+      },
+      "capturedStates": [],
+      "controls": [
+        {
+          "label": "Search users",
+          "selector": "getByRole(\"textbox\", { name: /search/i })",
+          "kind": "search"
+        }
+      ]
+    },
+    {
+      "path": "/api-keys",
+      "screenKey": "api-keys",
+      "kind": "workspace",
+      "component": "ApiKeysPage",
+      "tabs": [],
+      "purpose": "Workspace API key management",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "/account/api-keys",
+        "workspace provider request"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:243",
+        "src/services/api/accountService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/api-keys-en.png",
+          "link": "../screens/api-keys-en.png",
+          "ok": true,
+          "loadMs": 18597
+        },
+        "ar": {
+          "file": "screens/api-keys-ar.png",
+          "link": "../screens/api-keys-ar.png",
+          "ok": true,
+          "loadMs": 15541
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-spa-navigation",
+          "label": "spa navigation",
+          "screenshots": {
+            "en": {
+              "file": "screens/api-keys-tab-spa-navigation-en.png",
+              "link": "../screens/api-keys-tab-spa-navigation-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/api-keys-tab-spa-navigation-ar.png",
+              "link": "../screens/api-keys-tab-spa-navigation-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ],
+      "browserNote": "Observed direct deep-link returned backend {\"detail\":\"Not Found\"} via Vite /api-prefix proxy. In-app SPA-navigation capture is listed separately in capturedStates; do not treat direct response as page component rendering."
+    },
+    {
+      "path": "/billing",
+      "screenKey": "billing",
+      "kind": "workspace",
+      "component": "BillingPage",
+      "tabs": [],
+      "purpose": "Plan, usage, credits and access requests",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "GET /account/billing",
+        "GET /account/usage/today",
+        "GET /account/access",
+        "/account/access-requests"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:242",
+        "src/services/api/accountService.api.js"
+      ],
+      "sourceNote": "Manual access request/admin grant is evidenced; no checkout provider.",
+      "screenshots": {
+        "en": {
+          "file": "screens/billing-en.png",
+          "link": "../screens/billing-en.png",
+          "ok": true,
+          "loadMs": 3984
+        },
+        "ar": {
+          "file": "screens/billing-ar.png",
+          "link": "../screens/billing-ar.png",
+          "ok": true,
+          "loadMs": 5954
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/cookies",
+      "screenKey": "cookies",
+      "kind": "public",
+      "component": "LegalPage",
+      "tabs": [],
+      "purpose": "Cookie information alias using LegalPage",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:193"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/cookies-en.png",
+          "link": "../screens/cookies-en.png",
+          "ok": true,
+          "loadMs": 2117
+        },
+        "ar": {
+          "file": "screens/cookies-ar.png",
+          "link": "../screens/cookies-ar.png",
+          "ok": true,
+          "loadMs": 1382
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/create",
+      "screenKey": "create",
+      "kind": "workspace",
+      "component": "CreatePage",
+      "tabs": [
+        {
+          "label": "Image Creative",
+          "selector": "getByRole(\"button\", { name: \"Image Creative\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Video Motion",
+          "selector": "getByRole(\"button\", { name: \"Video Motion\", exact: true })",
+          "kind": "button"
+        }
+      ],
+      "purpose": "Creative remix and media generation",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "GET /creatives/{id}",
+        "POST /media/jobs",
+        "GET /media/jobs/{id}"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:233",
+        "src/pages/CreatePage.jsx",
+        "src/services/api/mediaService.api.js"
+      ],
+      "sourceNote": "README says planned; ARCHITECTURE says live. Provider/output not verified. Static CREATIVE_MODES in eab70cc lists four image and four video styles; some extra style-name capture variants are therefore kept as observed screenshots, not claimed as source controls.",
+      "screenshots": {
+        "en": {
+          "file": "screens/create-en.png",
+          "link": "../screens/create-en.png",
+          "ok": true,
+          "loadMs": 2928
+        },
+        "ar": {
+          "file": "screens/create-ar.png",
+          "link": "../screens/create-ar.png",
+          "ok": true,
+          "loadMs": 2791
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-Image-Creative",
+          "label": "Image Creative",
+          "screenshots": {
+            "en": {
+              "file": "screens/create-tab-Image-Creative-en.png",
+              "link": "../screens/create-tab-Image-Creative-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/create-tab-Image-Creative-ar.png",
+              "link": "../screens/create-tab-Image-Creative-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Video-Motion",
+          "label": "Video Motion",
+          "screenshots": {
+            "en": {
+              "file": "screens/create-tab-Video-Motion-en.png",
+              "link": "../screens/create-tab-Video-Motion-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/create-tab-Video-Motion-ar.png",
+              "link": "../screens/create-tab-Video-Motion-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Image-Creative-Quick-Concept",
+          "label": "Image Creative Quick Concept",
+          "screenshots": {
+            "en": {
+              "file": "screens/create-tab-Image-Creative-Quick-Concept-en.png",
+              "link": "../screens/create-tab-Image-Creative-Quick-Concept-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/create-tab-Image-Creative-Quick-Concept-ar.png",
+              "link": "../screens/create-tab-Image-Creative-Quick-Concept-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Image-Creative-Commercial-Ad-Still",
+          "label": "Image Creative Commercial Ad Still",
+          "screenshots": {
+            "en": {
+              "file": "screens/create-tab-Image-Creative-Commercial-Ad-Still-en.png",
+              "link": "../screens/create-tab-Image-Creative-Commercial-Ad-Still-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/create-tab-Image-Creative-Commercial-Ad-Still-ar.png",
+              "link": "../screens/create-tab-Image-Creative-Commercial-Ad-Still-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Image-Creative-Storyboard-Frame",
+          "label": "Image Creative Storyboard Frame",
+          "screenshots": {
+            "en": {
+              "file": "screens/create-tab-Image-Creative-Storyboard-Frame-en.png",
+              "link": "../screens/create-tab-Image-Creative-Storyboard-Frame-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/create-tab-Image-Creative-Storyboard-Frame-ar.png",
+              "link": "../screens/create-tab-Image-Creative-Storyboard-Frame-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Image-Creative-Graphic-Layout",
+          "label": "Image Creative Graphic Layout",
+          "screenshots": {
+            "en": {
+              "file": "screens/create-tab-Image-Creative-Graphic-Layout-en.png",
+              "link": "../screens/create-tab-Image-Creative-Graphic-Layout-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/create-tab-Image-Creative-Graphic-Layout-ar.png",
+              "link": "../screens/create-tab-Image-Creative-Graphic-Layout-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Video-Motion-Ad-Concept-Short",
+          "label": "Video Motion Ad Concept Short",
+          "screenshots": {
+            "en": {
+              "file": "screens/create-tab-Video-Motion-Ad-Concept-Short-en.png",
+              "link": "../screens/create-tab-Video-Motion-Ad-Concept-Short-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/create-tab-Video-Motion-Ad-Concept-Short-ar.png",
+              "link": "../screens/create-tab-Video-Motion-Ad-Concept-Short-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Video-Motion-Explainer",
+          "label": "Video Motion Explainer",
+          "screenshots": {
+            "en": {
+              "file": "screens/create-tab-Video-Motion-Explainer-en.png",
+              "link": "../screens/create-tab-Video-Motion-Explainer-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/create-tab-Video-Motion-Explainer-ar.png",
+              "link": "../screens/create-tab-Video-Motion-Explainer-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Video-Motion-UGC-Clip",
+          "label": "Video Motion UGC Clip",
+          "screenshots": {
+            "en": {
+              "file": "screens/create-tab-Video-Motion-UGC-Clip-en.png",
+              "link": "../screens/create-tab-Video-Motion-UGC-Clip-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/create-tab-Video-Motion-UGC-Clip-ar.png",
+              "link": "../screens/create-tab-Video-Motion-UGC-Clip-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ],
+      "controls": [
+        {
+          "label": "Creative style: Commercial Ad Still (Default)",
+          "selector": "getByRole(\"button\", { name: /Commercial Ad Still/ })",
+          "kind": "style selector"
+        },
+        {
+          "label": "Creative style: Quick Concept",
+          "selector": "getByRole(\"button\", { name: /Quick Concept/ })",
+          "kind": "style selector"
+        },
+        {
+          "label": "Creative style: Cinematic Luxury",
+          "selector": "getByRole(\"button\", { name: /Cinematic Luxury/ })",
+          "kind": "style selector"
+        },
+        {
+          "label": "Creative style: Storyboard Frame",
+          "selector": "getByRole(\"button\", { name: /Storyboard Frame/ })",
+          "kind": "style selector"
+        },
+        {
+          "label": "Video style: Quick Motion",
+          "selector": "getByRole(\"button\", { name: /Quick Motion/ })",
+          "kind": "style selector"
+        },
+        {
+          "label": "Video style: Commercial Video",
+          "selector": "getByRole(\"button\", { name: /Commercial Video/ })",
+          "kind": "style selector"
+        },
+        {
+          "label": "Video style: Before → After",
+          "selector": "getByRole(\"button\", { name: /Before → After/ })",
+          "kind": "style selector"
+        },
+        {
+          "label": "Video style: Keyframed Video",
+          "selector": "getByRole(\"button\", { name: /Keyframed Video/ })",
+          "kind": "style selector"
+        },
+        {
+          "label": "Saved Drafts & Searches",
+          "selector": "getByRole(\"button\", { name: /Saved Drafts & Searches/ })",
+          "kind": "action"
+        }
+      ]
+    },
+    {
+      "path": "/dashboard",
+      "screenKey": "dashboard",
+      "kind": "workspace",
+      "component": "DashboardPage",
+      "tabs": [],
+      "purpose": "Workspace metrics and playbook compilation",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "GET /dashboard/metrics",
+        "/playbooks"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:239",
+        "src/services/api/dashboardService.api.js"
+      ],
+      "sourceNote": "Path declaration is relative.",
+      "screenshots": {
+        "en": {
+          "file": "screens/dashboard-en.png",
+          "link": "../screens/dashboard-en.png",
+          "ok": true,
+          "loadMs": 2918
+        },
+        "ar": {
+          "file": "screens/dashboard-ar.png",
+          "link": "../screens/dashboard-ar.png",
+          "ok": true,
+          "loadMs": 2742
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-settled",
+          "label": "settled",
+          "screenshots": {
+            "en": {
+              "file": "screens/dashboard-tab-settled-en.png",
+              "link": "../screens/dashboard-tab-settled-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/dashboard-tab-settled-ar.png",
+              "link": "../screens/dashboard-tab-settled-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ],
+      "browserNote": "Parent reports capture remained at loading state after 1 second; this is a brief snapshot, not sustained evidence that the route is broken."
+    },
+    {
+      "path": "/discover",
+      "screenKey": "discover",
+      "kind": "workspace",
+      "component": "DiscoverPage",
+      "tabs": [],
+      "purpose": "Competitive ad search and results",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "POST /discovery/jobs",
+        "GET /discovery/jobs/{id}",
+        "GET /discovery/jobs/{id}/results"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:231",
+        "src/pages/DiscoverPage.jsx",
+        "src/services/api/discoverService.api.js"
+      ],
+      "sourceNote": "Audit brief reports production stuck at resolving sources; not reproduced.",
+      "screenshots": {
+        "en": {
+          "file": "screens/discover-en.png",
+          "link": "../screens/discover-en.png",
+          "ok": true,
+          "loadMs": 4036
+        },
+        "ar": {
+          "file": "screens/discover-ar.png",
+          "link": "../screens/discover-ar.png",
+          "ok": true,
+          "loadMs": 4342
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-filters",
+          "label": "filters",
+          "screenshots": {
+            "en": {
+              "file": "screens/discover-tab-filters-en.png",
+              "link": "../screens/discover-tab-filters-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/discover-tab-filters-ar.png",
+              "link": "../screens/discover-tab-filters-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-drafts-history",
+          "label": "drafts history",
+          "screenshots": {
+            "en": {
+              "file": "screens/discover-tab-drafts-history-en.png",
+              "link": "../screens/discover-tab-drafts-history-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/discover-tab-drafts-history-ar.png",
+              "link": "../screens/discover-tab-drafts-history-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "path": "/docs",
+      "screenKey": "docs",
+      "kind": "docs",
+      "component": "DocsHomePage",
+      "tabs": [],
+      "purpose": "Documentation index",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:196",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-en.png",
+          "link": "../screens/docs-en.png",
+          "ok": true,
+          "loadMs": 2269
+        },
+        "ar": {
+          "file": "screens/docs-ar.png",
+          "link": "../screens/docs-ar.png",
+          "ok": true,
+          "loadMs": 1238
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/api-reference",
+      "screenKey": "docs-api-reference",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "First registered article in a docs section",
+      "audience": "public",
+      "status": "partial",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:198",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-api-reference-en.png",
+          "link": "../screens/docs-api-reference-en.png",
+          "ok": true,
+          "loadMs": 2085
+        },
+        "ar": {
+          "file": "screens/docs-api-reference-ar.png",
+          "link": "../screens/docs-api-reference-ar.png",
+          "ok": true,
+          "loadMs": 2157
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/api-reference/authentication",
+      "screenKey": "docs-api-reference-authentication",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-api-reference-authentication-en.png",
+          "link": "../screens/docs-api-reference-authentication-en.png",
+          "ok": true,
+          "loadMs": 1980
+        },
+        "ar": {
+          "file": "screens/docs-api-reference-authentication-ar.png",
+          "link": "../screens/docs-api-reference-authentication-ar.png",
+          "ok": true,
+          "loadMs": 2845
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/api-reference/credit-costs-and-limits",
+      "screenKey": "docs-api-reference-credit-costs-and-limits",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-api-reference-credit-costs-and-limits-en.png",
+          "link": "../screens/docs-api-reference-credit-costs-and-limits-en.png",
+          "ok": true,
+          "loadMs": 1766
+        },
+        "ar": {
+          "file": "screens/docs-api-reference-credit-costs-and-limits-ar.png",
+          "link": "../screens/docs-api-reference-credit-costs-and-limits-ar.png",
+          "ok": true,
+          "loadMs": 1526
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/api-reference/endpoint-creatives",
+      "screenKey": "docs-api-reference-endpoint-creatives",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-api-reference-endpoint-creatives-en.png",
+          "link": "../screens/docs-api-reference-endpoint-creatives-en.png",
+          "ok": true,
+          "loadMs": 1234
+        },
+        "ar": {
+          "file": "screens/docs-api-reference-endpoint-creatives-ar.png",
+          "link": "../screens/docs-api-reference-endpoint-creatives-ar.png",
+          "ok": true,
+          "loadMs": 1667
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/api-reference/endpoint-discover",
+      "screenKey": "docs-api-reference-endpoint-discover",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-api-reference-endpoint-discover-en.png",
+          "link": "../screens/docs-api-reference-endpoint-discover-en.png",
+          "ok": true,
+          "loadMs": 1889
+        },
+        "ar": {
+          "file": "screens/docs-api-reference-endpoint-discover-ar.png",
+          "link": "../screens/docs-api-reference-endpoint-discover-ar.png",
+          "ok": true,
+          "loadMs": 1922
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/api-reference/endpoint-media-generate",
+      "screenKey": "docs-api-reference-endpoint-media-generate",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-api-reference-endpoint-media-generate-en.png",
+          "link": "../screens/docs-api-reference-endpoint-media-generate-en.png",
+          "ok": true,
+          "loadMs": 1873
+        },
+        "ar": {
+          "file": "screens/docs-api-reference-endpoint-media-generate-ar.png",
+          "link": "../screens/docs-api-reference-endpoint-media-generate-ar.png",
+          "ok": true,
+          "loadMs": 1284
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/api-reference/endpoint-monitors",
+      "screenKey": "docs-api-reference-endpoint-monitors",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-api-reference-endpoint-monitors-en.png",
+          "link": "../screens/docs-api-reference-endpoint-monitors-en.png",
+          "ok": true,
+          "loadMs": 2219
+        },
+        "ar": {
+          "file": "screens/docs-api-reference-endpoint-monitors-ar.png",
+          "link": "../screens/docs-api-reference-endpoint-monitors-ar.png",
+          "ok": true,
+          "loadMs": 1115
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/scout-cli",
+      "screenKey": "docs-scout-cli",
+      "kind": "docs",
+      "component": "ScoutCliDocsPage",
+      "tabs": [],
+      "purpose": "Dedicated Scout CLI docs",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:197"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-scout-cli-en.png",
+          "link": "../screens/docs-scout-cli-en.png",
+          "ok": true,
+          "loadMs": 1749
+        },
+        "ar": {
+          "file": "screens/docs-scout-cli-ar.png",
+          "link": "../screens/docs-scout-cli-ar.png",
+          "ok": true,
+          "loadMs": 1955
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide",
+      "screenKey": "docs-user-guide",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "First registered article in a docs section",
+      "audience": "public",
+      "status": "partial",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:198",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-en.png",
+          "link": "../screens/docs-user-guide-en.png",
+          "ok": true,
+          "loadMs": 3195
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-ar.png",
+          "link": "../screens/docs-user-guide-ar.png",
+          "ok": true,
+          "loadMs": 2030
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/concept-audience-simulation",
+      "screenKey": "docs-user-guide-concept-audience-simulation",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-concept-audience-simulation-en.png",
+          "link": "../screens/docs-user-guide-concept-audience-simulation-en.png",
+          "ok": true,
+          "loadMs": 1476
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-concept-audience-simulation-ar.png",
+          "link": "../screens/docs-user-guide-concept-audience-simulation-ar.png",
+          "ok": true,
+          "loadMs": 2673
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/concept-competitor-monitors",
+      "screenKey": "docs-user-guide-concept-competitor-monitors",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-concept-competitor-monitors-en.png",
+          "link": "../screens/docs-user-guide-concept-competitor-monitors-en.png",
+          "ok": true,
+          "loadMs": 1478
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-concept-competitor-monitors-ar.png",
+          "link": "../screens/docs-user-guide-concept-competitor-monitors-ar.png",
+          "ok": true,
+          "loadMs": 1712
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/concept-estimated-vs-real-data",
+      "screenKey": "docs-user-guide-concept-estimated-vs-real-data",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-concept-estimated-vs-real-data-en.png",
+          "link": "../screens/docs-user-guide-concept-estimated-vs-real-data-en.png",
+          "ok": true,
+          "loadMs": 2782
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-concept-estimated-vs-real-data-ar.png",
+          "link": "../screens/docs-user-guide-concept-estimated-vs-real-data-ar.png",
+          "ok": true,
+          "loadMs": 1882
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/concept-how-discover-works",
+      "screenKey": "docs-user-guide-concept-how-discover-works",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-concept-how-discover-works-en.png",
+          "link": "../screens/docs-user-guide-concept-how-discover-works-en.png",
+          "ok": true,
+          "loadMs": 2166
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-concept-how-discover-works-ar.png",
+          "link": "../screens/docs-user-guide-concept-how-discover-works-ar.png",
+          "ok": true,
+          "loadMs": 2152
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/concept-scoring-system",
+      "screenKey": "docs-user-guide-concept-scoring-system",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-concept-scoring-system-en.png",
+          "link": "../screens/docs-user-guide-concept-scoring-system-en.png",
+          "ok": true,
+          "loadMs": 2014
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-concept-scoring-system-ar.png",
+          "link": "../screens/docs-user-guide-concept-scoring-system-ar.png",
+          "ok": true,
+          "loadMs": 1965
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/faq",
+      "screenKey": "docs-user-guide-faq",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-faq-en.png",
+          "link": "../screens/docs-user-guide-faq-en.png",
+          "ok": true,
+          "loadMs": 2684
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-faq-ar.png",
+          "link": "../screens/docs-user-guide-faq-ar.png",
+          "ok": true,
+          "loadMs": 2102
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/lead-generation",
+      "screenKey": "docs-user-guide-lead-generation",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-lead-generation-en.png",
+          "link": "../screens/docs-user-guide-lead-generation-en.png",
+          "ok": true,
+          "loadMs": 1872
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-lead-generation-ar.png",
+          "link": "../screens/docs-user-guide-lead-generation-ar.png",
+          "ok": true,
+          "loadMs": 2042
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/quickstart-account-and-trial",
+      "screenKey": "docs-user-guide-quickstart-account-and-trial",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-quickstart-account-and-trial-en.png",
+          "link": "../screens/docs-user-guide-quickstart-account-and-trial-en.png",
+          "ok": true,
+          "loadMs": 2459
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-quickstart-account-and-trial-ar.png",
+          "link": "../screens/docs-user-guide-quickstart-account-and-trial-ar.png",
+          "ok": true,
+          "loadMs": 1886
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/quickstart-credits-and-limits",
+      "screenKey": "docs-user-guide-quickstart-credits-and-limits",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-quickstart-credits-and-limits-en.png",
+          "link": "../screens/docs-user-guide-quickstart-credits-and-limits-en.png",
+          "ok": true,
+          "loadMs": 2014
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-quickstart-credits-and-limits-ar.png",
+          "link": "../screens/docs-user-guide-quickstart-credits-and-limits-ar.png",
+          "ok": true,
+          "loadMs": 1809
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/quickstart-first-search",
+      "screenKey": "docs-user-guide-quickstart-first-search",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-quickstart-first-search-en.png",
+          "link": "../screens/docs-user-guide-quickstart-first-search-en.png",
+          "ok": true,
+          "loadMs": 2540
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-quickstart-first-search-ar.png",
+          "link": "../screens/docs-user-guide-quickstart-first-search-ar.png",
+          "ok": true,
+          "loadMs": 2672
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/quickstart-reading-intelligence",
+      "screenKey": "docs-user-guide-quickstart-reading-intelligence",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-quickstart-reading-intelligence-en.png",
+          "link": "../screens/docs-user-guide-quickstart-reading-intelligence-en.png",
+          "ok": true,
+          "loadMs": 1815
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-quickstart-reading-intelligence-ar.png",
+          "link": "../screens/docs-user-guide-quickstart-reading-intelligence-ar.png",
+          "ok": true,
+          "loadMs": 2608
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/docs/user-guide/quickstart-remix-studio",
+      "screenKey": "docs-user-guide-quickstart-remix-studio",
+      "kind": "docs",
+      "component": "DocsDetailPage",
+      "tabs": [],
+      "purpose": "Registered static Markdown article",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:199",
+        "src/features/docs/docsData.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/docs-user-guide-quickstart-remix-studio-en.png",
+          "link": "../screens/docs-user-guide-quickstart-remix-studio-en.png",
+          "ok": true,
+          "loadMs": 1923
+        },
+        "ar": {
+          "file": "screens/docs-user-guide-quickstart-remix-studio-ar.png",
+          "link": "../screens/docs-user-guide-quickstart-remix-studio-ar.png",
+          "ok": true,
+          "loadMs": 1667
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/forgot-password",
+      "screenKey": "forgot-password",
+      "kind": "auth",
+      "component": "ForgotPasswordPage",
+      "tabs": [],
+      "purpose": "Request password reset",
+      "audience": "public",
+      "status": "partial",
+      "apiCalls": [
+        "POST /auth/forgot-password"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:185",
+        "src/services/api/authService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/forgot-password-en.png",
+          "link": "../screens/forgot-password-en.png",
+          "ok": true,
+          "loadMs": 1687
+        },
+        "ar": {
+          "file": "screens/forgot-password-ar.png",
+          "link": "../screens/forgot-password-ar.png",
+          "ok": true,
+          "loadMs": 1874
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/guide",
+      "screenKey": "guide",
+      "kind": "workspace",
+      "component": "GuidePage",
+      "tabs": [
+        {
+          "label": "Overview",
+          "selector": "getByRole(\"button\", { name: \"Overview\", exact: true })",
+          "kind": "content selector"
+        },
+        {
+          "label": "Discover",
+          "selector": "getByRole(\"button\", { name: \"Discover\", exact: true })",
+          "kind": "content selector"
+        },
+        {
+          "label": "Intelligence",
+          "selector": "getByRole(\"button\", { name: \"Intelligence\", exact: true })",
+          "kind": "content selector"
+        },
+        {
+          "label": "Create",
+          "selector": "getByRole(\"button\", { name: \"Create\", exact: true })",
+          "kind": "content selector"
+        },
+        {
+          "label": "Performance",
+          "selector": "getByRole(\"button\", { name: \"Performance\", exact: true })",
+          "kind": "content selector"
+        },
+        {
+          "label": "Admin",
+          "selector": "getByRole(\"button\", { name: \"Admin\", exact: true })",
+          "kind": "content selector"
+        }
+      ],
+      "purpose": "In-app guide",
+      "audience": "user",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:241"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/guide-en.png",
+          "link": "../screens/guide-en.png",
+          "ok": true,
+          "loadMs": 3032
+        },
+        "ar": {
+          "file": "screens/guide-ar.png",
+          "link": "../screens/guide-ar.png",
+          "ok": true,
+          "loadMs": 4023
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-Helix-Architecture-The-4-Loops",
+          "label": "Helix Architecture The 4 Loops",
+          "screenshots": {
+            "en": {
+              "file": "screens/guide-tab-Helix-Architecture-The-4-Loops-en.png",
+              "link": "../screens/guide-tab-Helix-Architecture-The-4-Loops-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/guide-tab-Helix-Architecture-The-4-Loops-ar.png",
+              "link": "../screens/guide-tab-Helix-Architecture-The-4-Loops-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Discover-Competitor-Ad-Extraction",
+          "label": "Discover Competitor Ad Extraction",
+          "screenshots": {
+            "en": {
+              "file": "screens/guide-tab-Discover-Competitor-Ad-Extraction-en.png",
+              "link": "../screens/guide-tab-Discover-Competitor-Ad-Extraction-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/guide-tab-Discover-Competitor-Ad-Extraction-ar.png",
+              "link": "../screens/guide-tab-Discover-Competitor-Ad-Extraction-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Intelligence-Pattern-Synthesis-Teardowns",
+          "label": "Intelligence Pattern Synthesis Teardowns",
+          "screenshots": {
+            "en": {
+              "file": "screens/guide-tab-Intelligence-Pattern-Synthesis-Teardowns-en.png",
+              "link": "../screens/guide-tab-Intelligence-Pattern-Synthesis-Teardowns-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/guide-tab-Intelligence-Pattern-Synthesis-Teardowns-ar.png",
+              "link": "../screens/guide-tab-Intelligence-Pattern-Synthesis-Teardowns-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Create-Studio-AI-Generation",
+          "label": "Create Studio AI Generation",
+          "screenshots": {
+            "en": {
+              "file": "screens/guide-tab-Create-Studio-AI-Generation-en.png",
+              "link": "../screens/guide-tab-Create-Studio-AI-Generation-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/guide-tab-Create-Studio-AI-Generation-ar.png",
+              "link": "../screens/guide-tab-Create-Studio-AI-Generation-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Performance-Longevity-Fatigue-Tracking",
+          "label": "Performance Longevity Fatigue Tracking",
+          "screenshots": {
+            "en": {
+              "file": "screens/guide-tab-Performance-Longevity-Fatigue-Tracking-en.png",
+              "link": "../screens/guide-tab-Performance-Longevity-Fatigue-Tracking-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/guide-tab-Performance-Longevity-Fatigue-Tracking-ar.png",
+              "link": "../screens/guide-tab-Performance-Longevity-Fatigue-Tracking-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Admin-Center-Operations",
+          "label": "Admin Center Operations",
+          "screenshots": {
+            "en": {
+              "file": "screens/guide-tab-Admin-Center-Operations-en.png",
+              "link": "../screens/guide-tab-Admin-Center-Operations-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/guide-tab-Admin-Center-Operations-ar.png",
+              "link": "../screens/guide-tab-Admin-Center-Operations-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "path": "/intelligence",
+      "screenKey": "intelligence",
+      "kind": "workspace",
+      "component": "IntelligencePage",
+      "tabs": [],
+      "purpose": "Insights, creative/pattern analysis, playbook",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "/creatives",
+        "/patterns",
+        "/creatives/{id}/insights",
+        "/insights",
+        "/playbooks"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:232",
+        "src/pages/IntelligencePage.jsx",
+        "src/services/api/creativeService.api.js",
+        "src/services/api/analysisService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/intelligence-en.png",
+          "link": "../screens/intelligence-en.png",
+          "ok": true,
+          "loadMs": 2262
+        },
+        "ar": {
+          "file": "screens/intelligence-ar.png",
+          "link": "../screens/intelligence-ar.png",
+          "ok": true,
+          "loadMs": 2171
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/legal",
+      "screenKey": "legal",
+      "kind": "public",
+      "component": "LegalPage",
+      "tabs": [],
+      "purpose": "Legal index",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:189"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/legal-en.png",
+          "link": "../screens/legal-en.png",
+          "ok": true,
+          "loadMs": 1855
+        },
+        "ar": {
+          "file": "screens/legal-ar.png",
+          "link": "../screens/legal-ar.png",
+          "ok": true,
+          "loadMs": 1463
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/legal/privacy",
+      "screenKey": "legal-privacy",
+      "kind": "public",
+      "component": "LegalPage",
+      "tabs": [],
+      "purpose": "Section-specific legal content",
+      "audience": "public",
+      "status": "partial",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:190"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/legal-privacy-en.png",
+          "link": "../screens/legal-privacy-en.png",
+          "ok": true,
+          "loadMs": 1725
+        },
+        "ar": {
+          "file": "screens/legal-privacy-ar.png",
+          "link": "../screens/legal-privacy-ar.png",
+          "ok": true,
+          "loadMs": 1902
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/monitors",
+      "screenKey": "monitors",
+      "kind": "workspace",
+      "component": "MonitorsPage",
+      "tabs": [],
+      "purpose": "Competitor monitor management, runs and events",
+      "audience": "user",
+      "status": "real",
+      "apiCalls": [
+        "/monitors/",
+        "/monitors/{id}",
+        "/monitors/{id}/run",
+        "/monitors/events"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:234",
+        "src/services/api/monitorService.api.js"
+      ],
+      "sourceNote": "API-only service; live behavior not tested.",
+      "screenshots": {
+        "en": {
+          "file": "screens/monitors-en.png",
+          "link": "../screens/monitors-en.png",
+          "ok": true,
+          "loadMs": 2364
+        },
+        "ar": {
+          "file": "screens/monitors-ar.png",
+          "link": "../screens/monitors-ar.png",
+          "ok": true,
+          "loadMs": 2337
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/not-a-real-route",
+      "screenKey": "not-a-real-route",
+      "kind": "not-found",
+      "component": "NotFoundPage",
+      "tabs": [],
+      "purpose": "Not-found page after protected route group",
+      "audience": "authenticated fallback",
+      "status": "empty",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:229-257",
+        "src/app/ProtectedRoute.jsx:21-36"
+      ],
+      "sourceNote": "Unauthenticated unknown URLs are redirected to /sign-in before NotFoundPage; verify intended public 404 behavior.",
+      "screenshots": {
+        "en": {
+          "file": "screens/not-a-real-route-en.png",
+          "link": "../screens/not-a-real-route-en.png",
+          "ok": true,
+          "loadMs": 2930
+        },
+        "ar": {
+          "file": "screens/not-a-real-route-ar.png",
+          "link": "../screens/not-a-real-route-ar.png",
+          "ok": true,
+          "loadMs": 2083
+        }
+      },
+      "capturedStates": [],
+      "browserNote": "Intentional unknown-route sample; protected catch-all behavior depends on session state."
+    },
+    {
+      "path": "/notifications",
+      "screenKey": "notifications",
+      "kind": "workspace",
+      "component": "NotificationsPage",
+      "tabs": [
+        {
+          "label": "All",
+          "selector": "getByRole(\"button\", { name: \"All\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Unread",
+          "selector": "getByRole(\"button\", { name: /Unread/ })",
+          "kind": "button"
+        },
+        {
+          "label": "Announcements",
+          "selector": "getByRole(\"button\", { name: \"Announcements\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Alerts",
+          "selector": "getByRole(\"button\", { name: \"Alerts\", exact: true })",
+          "kind": "button"
+        }
+      ],
+      "purpose": "Notifications and published updates",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "/notifications/",
+        "/notifications/{id}/read",
+        "/notifications/read-all",
+        "GET /updates"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:248",
+        "src/pages/NotificationsPage.jsx:170-181"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/notifications-en.png",
+          "link": "../screens/notifications-en.png",
+          "ok": true,
+          "loadMs": 2883
+        },
+        "ar": {
+          "file": "screens/notifications-ar.png",
+          "link": "../screens/notifications-ar.png",
+          "ok": true,
+          "loadMs": 2673
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-All",
+          "label": "All",
+          "screenshots": {
+            "en": {
+              "file": "screens/notifications-tab-All-en.png",
+              "link": "../screens/notifications-tab-All-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/notifications-tab-All-ar.png",
+              "link": "../screens/notifications-tab-All-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Unread",
+          "label": "Unread",
+          "screenshots": {
+            "en": {
+              "file": "screens/notifications-tab-Unread-en.png",
+              "link": "../screens/notifications-tab-Unread-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/notifications-tab-Unread-ar.png",
+              "link": "../screens/notifications-tab-Unread-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Announcements",
+          "label": "Announcements",
+          "screenshots": {
+            "en": {
+              "file": "screens/notifications-tab-Announcements-en.png",
+              "link": "../screens/notifications-tab-Announcements-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/notifications-tab-Announcements-ar.png",
+              "link": "../screens/notifications-tab-Announcements-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Alerts",
+          "label": "Alerts",
+          "screenshots": {
+            "en": {
+              "file": "screens/notifications-tab-Alerts-en.png",
+              "link": "../screens/notifications-tab-Alerts-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/notifications-tab-Alerts-ar.png",
+              "link": "../screens/notifications-tab-Alerts-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "path": "/performance",
+      "screenKey": "performance",
+      "kind": "workspace",
+      "component": "PerformancePage",
+      "tabs": [],
+      "purpose": "Creative performance, format and time filters",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "/creatives",
+        "/monitors*"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:238",
+        "src/pages/PerformancePage.jsx:137,434"
+      ],
+      "sourceNote": "Path declaration is relative; product docs say planned while nav marks live.",
+      "screenshots": {
+        "en": {
+          "file": "screens/performance-en.png",
+          "link": "../screens/performance-en.png",
+          "ok": true,
+          "loadMs": 2348
+        },
+        "ar": {
+          "file": "screens/performance-ar.png",
+          "link": "../screens/performance-ar.png",
+          "ok": true,
+          "loadMs": 3061
+        }
+      },
+      "capturedStates": [],
+      "controls": [
+        {
+          "label": "All Formats",
+          "selector": "getByRole(\"button\", { name: \"All Formats\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "video",
+          "selector": "getByRole(\"button\", { name: \"video\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "image",
+          "selector": "getByRole(\"button\", { name: \"image\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Any Duration",
+          "selector": "getByRole(\"button\", { name: \"Any Duration\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "≥7d",
+          "selector": "getByRole(\"button\", { name: \"≥7d\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "≥14d",
+          "selector": "getByRole(\"button\", { name: \"≥14d\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "≥30d",
+          "selector": "getByRole(\"button\", { name: \"≥30d\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Search competitor or brand",
+          "selector": "getByRole(\"textbox\", { name: /search/i })",
+          "kind": "search"
+        }
+      ]
+    },
+    {
+      "path": "/playbook/audit-not-found",
+      "screenKey": "playbook-audit-not-found",
+      "kind": "public",
+      "component": "PublicPlaybookPage",
+      "tabs": [],
+      "purpose": "Shared/public playbook",
+      "audience": "public",
+      "status": "partial",
+      "apiCalls": [
+        "GET /playbooks/public/{id}"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:187",
+        "src/services/api/playbookService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/playbook-audit-not-found-en.png",
+          "link": "../screens/playbook-audit-not-found-en.png",
+          "ok": true,
+          "loadMs": 1568
+        },
+        "ar": {
+          "file": "screens/playbook-audit-not-found-ar.png",
+          "link": "../screens/playbook-audit-not-found-ar.png",
+          "ok": true,
+          "loadMs": 1480
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/privacy",
+      "screenKey": "privacy",
+      "kind": "public",
+      "component": "LegalPage",
+      "tabs": [],
+      "purpose": "Privacy alias using LegalPage",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:191"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/privacy-en.png",
+          "link": "../screens/privacy-en.png",
+          "ok": true,
+          "loadMs": 1935
+        },
+        "ar": {
+          "file": "screens/privacy-ar.png",
+          "link": "../screens/privacy-ar.png",
+          "ok": true,
+          "loadMs": 1424
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/reset-password",
+      "screenKey": "reset-password",
+      "kind": "auth",
+      "component": "ResetPasswordPage",
+      "tabs": [],
+      "purpose": "Complete reset using token",
+      "audience": "public",
+      "status": "partial",
+      "apiCalls": [
+        "POST /auth/reset-password"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:186",
+        "src/services/api/authService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/reset-password-en.png",
+          "link": "../screens/reset-password-en.png",
+          "ok": true,
+          "loadMs": 1883
+        },
+        "ar": {
+          "file": "screens/reset-password-ar.png",
+          "link": "../screens/reset-password-ar.png",
+          "ok": true,
+          "loadMs": 2034
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/scout",
+      "screenKey": "scout",
+      "kind": "redirect",
+      "component": "Navigate → /scout/social",
+      "tabs": [],
+      "purpose": "Redirect to social Scout",
+      "audience": "user",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:235"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/scout-en.png",
+          "link": "../screens/scout-en.png",
+          "ok": true,
+          "loadMs": 2606
+        },
+        "ar": {
+          "file": "screens/scout-ar.png",
+          "link": "../screens/scout-ar.png",
+          "ok": true,
+          "loadMs": 2083
+        }
+      },
+      "capturedStates": [],
+      "redirectTo": "/scout/social"
+    },
+    {
+      "path": "/scout/lead-generation",
+      "screenKey": "scout-lead-generation",
+      "kind": "workspace",
+      "component": "ScoutLeadGenerationPage",
+      "tabs": [],
+      "purpose": "Lead generation jobs and leads",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "/scout/leadgen/jobs",
+        "/scout/leadgen/jobs/{id}",
+        "/scout/leadgen/jobs/{id}/leads",
+        "/scout/leadgen/recipes",
+        "/scout/leadgen/worker/health"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:236",
+        "src/services/api/leadgen.js"
+      ],
+      "sourceNote": "External worker/runtime not verified; no mock adapter.",
+      "screenshots": {
+        "en": {
+          "file": "screens/scout-lead-generation-en.png",
+          "link": "../screens/scout-lead-generation-en.png",
+          "ok": true,
+          "loadMs": 2769
+        },
+        "ar": {
+          "file": "screens/scout-lead-generation-ar.png",
+          "link": "../screens/scout-lead-generation-ar.png",
+          "ok": true,
+          "loadMs": 3085
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/scout/maps",
+      "screenKey": "scout-maps",
+      "kind": "workspace",
+      "component": "ScoutPage",
+      "tabs": [
+        {
+          "label": "Active Workspace",
+          "selector": "getByRole(\"button\", { name: \"Active Workspace\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Org Social Jobs",
+          "selector": "getByRole(\"button\", { name: /^Org Social Jobs/ })",
+          "kind": "button"
+        },
+        {
+          "label": "Org Maps Jobs",
+          "selector": "getByRole(\"button\", { name: /^Org Maps Jobs/ })",
+          "kind": "button"
+        }
+      ],
+      "purpose": "Social or Maps Scout; intended concrete routes /scout/social and /scout/maps",
+      "audience": "user (admin-only queue tabs inside page)",
+      "status": "partial",
+      "apiCalls": [
+        "/scout/jobs*",
+        "/scout/org-jobs",
+        "/scout/latest-job",
+        "/scout/settings",
+        "/scout/maps/jobs*",
+        "/scout/maps/org-jobs",
+        "/scout/maps/latest-job"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:237",
+        "src/pages/ScoutPage.jsx:30,59,259-284",
+        "src/services/api/scoutService.api.js",
+        "src/services/api/mapsScoutService.api.js"
+      ],
+      "sourceNote": "Arbitrary mode strings do not have a dedicated route declaration.",
+      "screenshots": {
+        "en": {
+          "file": "screens/scout-maps-en.png",
+          "link": "../screens/scout-maps-en.png",
+          "ok": true,
+          "loadMs": 2989
+        },
+        "ar": {
+          "file": "screens/scout-maps-ar.png",
+          "link": "../screens/scout-maps-ar.png",
+          "ok": true,
+          "loadMs": 3585
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-Active-Workspace",
+          "label": "Active Workspace",
+          "screenshots": {
+            "en": {
+              "file": "screens/scout-maps-tab-Active-Workspace-en.png",
+              "link": "../screens/scout-maps-tab-Active-Workspace-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/scout-maps-tab-Active-Workspace-ar.png",
+              "link": "../screens/scout-maps-tab-Active-Workspace-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Org-Social-Jobs",
+          "label": "Org Social Jobs",
+          "screenshots": {
+            "en": {
+              "file": "screens/scout-maps-tab-Org-Social-Jobs-en.png",
+              "link": "../screens/scout-maps-tab-Org-Social-Jobs-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/scout-maps-tab-Org-Social-Jobs-ar.png",
+              "link": "../screens/scout-maps-tab-Org-Social-Jobs-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Org-Maps-Jobs",
+          "label": "Org Maps Jobs",
+          "screenshots": {
+            "en": {
+              "file": "screens/scout-maps-tab-Org-Maps-Jobs-en.png",
+              "link": "../screens/scout-maps-tab-Org-Maps-Jobs-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/scout-maps-tab-Org-Maps-Jobs-ar.png",
+              "link": "../screens/scout-maps-tab-Org-Maps-Jobs-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "path": "/scout/social",
+      "screenKey": "scout-social",
+      "kind": "workspace",
+      "component": "ScoutPage",
+      "tabs": [
+        {
+          "label": "Active Workspace",
+          "selector": "getByRole(\"button\", { name: \"Active Workspace\", exact: true })",
+          "kind": "button"
+        },
+        {
+          "label": "Org Social Jobs",
+          "selector": "getByRole(\"button\", { name: /^Org Social Jobs/ })",
+          "kind": "button"
+        },
+        {
+          "label": "Org Maps Jobs",
+          "selector": "getByRole(\"button\", { name: /^Org Maps Jobs/ })",
+          "kind": "button"
+        }
+      ],
+      "purpose": "Social or Maps Scout; intended concrete routes /scout/social and /scout/maps",
+      "audience": "user (admin-only queue tabs inside page)",
+      "status": "partial",
+      "apiCalls": [
+        "/scout/jobs*",
+        "/scout/org-jobs",
+        "/scout/latest-job",
+        "/scout/settings",
+        "/scout/maps/jobs*",
+        "/scout/maps/org-jobs",
+        "/scout/maps/latest-job"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:237",
+        "src/pages/ScoutPage.jsx:30,59,259-284",
+        "src/services/api/scoutService.api.js",
+        "src/services/api/mapsScoutService.api.js"
+      ],
+      "sourceNote": "Arbitrary mode strings do not have a dedicated route declaration.",
+      "screenshots": {
+        "en": {
+          "file": "screens/scout-social-en.png",
+          "link": "../screens/scout-social-en.png",
+          "ok": true,
+          "loadMs": 2924
+        },
+        "ar": {
+          "file": "screens/scout-social-ar.png",
+          "link": "../screens/scout-social-ar.png",
+          "ok": true,
+          "loadMs": 2715
+        }
+      },
+      "capturedStates": [
+        {
+          "variant": "tab-Active-Workspace",
+          "label": "Active Workspace",
+          "screenshots": {
+            "en": {
+              "file": "screens/scout-social-tab-Active-Workspace-en.png",
+              "link": "../screens/scout-social-tab-Active-Workspace-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/scout-social-tab-Active-Workspace-ar.png",
+              "link": "../screens/scout-social-tab-Active-Workspace-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Org-Social-Jobs",
+          "label": "Org Social Jobs",
+          "screenshots": {
+            "en": {
+              "file": "screens/scout-social-tab-Org-Social-Jobs-en.png",
+              "link": "../screens/scout-social-tab-Org-Social-Jobs-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/scout-social-tab-Org-Social-Jobs-ar.png",
+              "link": "../screens/scout-social-tab-Org-Social-Jobs-ar.png",
+              "ok": true
+            }
+          }
+        },
+        {
+          "variant": "tab-Org-Maps-Jobs",
+          "label": "Org Maps Jobs",
+          "screenshots": {
+            "en": {
+              "file": "screens/scout-social-tab-Org-Maps-Jobs-en.png",
+              "link": "../screens/scout-social-tab-Org-Maps-Jobs-en.png",
+              "ok": true
+            },
+            "ar": {
+              "file": "screens/scout-social-tab-Org-Maps-Jobs-ar.png",
+              "link": "../screens/scout-social-tab-Org-Maps-Jobs-ar.png",
+              "ok": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "path": "/settings",
+      "screenKey": "settings",
+      "kind": "workspace",
+      "component": "ProfileSettingsPage",
+      "tabs": [],
+      "purpose": "Profile and avatar settings",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "GET/PATCH /account/profile",
+        "POST /account/avatar"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:246",
+        "src/services/api/accountService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/settings-en.png",
+          "link": "../screens/settings-en.png",
+          "ok": true,
+          "loadMs": 3864
+        },
+        "ar": {
+          "file": "screens/settings-ar.png",
+          "link": "../screens/settings-ar.png",
+          "ok": true,
+          "loadMs": 2998
+        }
+      },
+      "capturedStates": [],
+      "controls": [
+        {
+          "label": "Upload/change profile photo",
+          "kind": "form action"
+        },
+        {
+          "label": "Edit name; email is disabled",
+          "kind": "form control"
+        },
+        {
+          "label": "Current/new/confirm password fields",
+          "kind": "form controls"
+        },
+        {
+          "label": "Save Settings",
+          "selector": "getByRole(\"button\", { name: \"Save Settings\" })",
+          "kind": "action"
+        }
+      ],
+      "browserNote": "Source shows one profile/settings form, not a tabbed settings screen; EN/AR route screenshots are linked."
+    },
+    {
+      "path": "/sign-in",
+      "screenKey": "sign-in",
+      "kind": "auth",
+      "component": "SignInPage",
+      "tabs": [],
+      "purpose": "User sign-in",
+      "audience": "public",
+      "status": "partial",
+      "apiCalls": [
+        "POST /auth/sign-in",
+        "GET /auth/session"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:183",
+        "src/services/api/authService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/sign-in-en.png",
+          "link": "../screens/sign-in-en.png",
+          "ok": true,
+          "loadMs": 1834
+        },
+        "ar": {
+          "file": "screens/sign-in-ar.png",
+          "link": "../screens/sign-in-ar.png",
+          "ok": true,
+          "loadMs": 1739
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/sign-up",
+      "screenKey": "sign-up",
+      "kind": "auth",
+      "component": "SignUpPage",
+      "tabs": [],
+      "purpose": "Account registration",
+      "audience": "public",
+      "status": "partial",
+      "apiCalls": [
+        "POST /auth/sign-up"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:184",
+        "src/services/api/authService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/sign-up-en.png",
+          "link": "../screens/sign-up-en.png",
+          "ok": true,
+          "loadMs": 1288
+        },
+        "ar": {
+          "file": "screens/sign-up-ar.png",
+          "link": "../screens/sign-up-ar.png",
+          "ok": true,
+          "loadMs": 1856
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/support",
+      "screenKey": "support",
+      "kind": "workspace",
+      "component": "SupportPage",
+      "tabs": [],
+      "purpose": "Support ticket list, detail, reply",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "/support/tickets",
+        "/support/tickets/{id}",
+        "/support/tickets/{id}/reply"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:247",
+        "src/services/api/supportService.api.js"
+      ],
+      "sourceNote": "API-only service; live state not tested.",
+      "screenshots": {
+        "en": {
+          "file": "screens/support-en.png",
+          "link": "../screens/support-en.png",
+          "ok": true,
+          "loadMs": 4110
+        },
+        "ar": {
+          "file": "screens/support-ar.png",
+          "link": "../screens/support-ar.png",
+          "ok": true,
+          "loadMs": 2797
+        }
+      },
+      "capturedStates": [],
+      "controls": [
+        {
+          "label": "Create a ticket",
+          "kind": "action"
+        },
+        {
+          "label": "Select ticket / view conversation",
+          "kind": "navigation"
+        },
+        {
+          "label": "Reply to ticket",
+          "kind": "form action"
+        }
+      ],
+      "browserNote": "Source shows ticket list/detail/reply flow, not tabs."
+    },
+    {
+      "path": "/swipe-files",
+      "screenKey": "swipe-files",
+      "kind": "workspace",
+      "component": "SwipeFilesPage",
+      "tabs": [],
+      "purpose": "Saved and custom creative swipe files",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "/creatives/saved",
+        "/creatives/custom",
+        "media upload"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:240",
+        "src/services/api/creativeService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/swipe-files-en.png",
+          "link": "../screens/swipe-files-en.png",
+          "ok": true,
+          "loadMs": 2023
+        },
+        "ar": {
+          "file": "screens/swipe-files-ar.png",
+          "link": "../screens/swipe-files-ar.png",
+          "ok": true,
+          "loadMs": 2787
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/team",
+      "screenKey": "team",
+      "kind": "workspace",
+      "component": "TeamPage",
+      "tabs": [],
+      "purpose": "Team members and invitations",
+      "audience": "user",
+      "status": "partial",
+      "apiCalls": [
+        "/account/team",
+        "/account/team/invites",
+        "/account/team/members"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:244",
+        "src/services/api/accountService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/team-en.png",
+          "link": "../screens/team-en.png",
+          "ok": true,
+          "loadMs": 3157
+        },
+        "ar": {
+          "file": "screens/team-ar.png",
+          "link": "../screens/team-ar.png",
+          "ok": true,
+          "loadMs": 2390
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/team/accept",
+      "screenKey": "team-accept",
+      "kind": "workspace",
+      "component": "TeamAcceptPage",
+      "tabs": [],
+      "purpose": "Accept team invitation",
+      "audience": "authenticated invitee",
+      "status": "partial",
+      "apiCalls": [
+        "account team invite acceptance"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:245",
+        "src/app/ProtectedRoute.jsx:21-29",
+        "src/services/api/accountService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/team-accept-en.png",
+          "link": "../screens/team-accept-en.png",
+          "ok": true,
+          "loadMs": 3528
+        },
+        "ar": {
+          "file": "screens/team-accept-ar.png",
+          "link": "../screens/team-accept-ar.png",
+          "ok": true,
+          "loadMs": 2791
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/terms",
+      "screenKey": "terms",
+      "kind": "public",
+      "component": "LegalPage",
+      "tabs": [],
+      "purpose": "Terms alias using LegalPage",
+      "audience": "public",
+      "status": "real",
+      "apiCalls": [],
+      "sourceEvidence": [
+        "src/App.jsx:192"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/terms-en.png",
+          "link": "../screens/terms-en.png",
+          "ok": true,
+          "loadMs": 1956
+        },
+        "ar": {
+          "file": "screens/terms-ar.png",
+          "link": "../screens/terms-ar.png",
+          "ok": true,
+          "loadMs": 1793
+        }
+      },
+      "capturedStates": []
+    },
+    {
+      "path": "/updates",
+      "screenKey": "updates",
+      "kind": "public",
+      "component": "PublicUpdatesPage",
+      "tabs": [],
+      "purpose": "Published product updates",
+      "audience": "public",
+      "status": "partial",
+      "apiCalls": [
+        "GET /updates"
+      ],
+      "sourceEvidence": [
+        "src/App.jsx:188",
+        "src/services/api/updatesService.api.js"
+      ],
+      "sourceNote": null,
+      "screenshots": {
+        "en": {
+          "file": "screens/updates-en.png",
+          "link": "../screens/updates-en.png",
+          "ok": true,
+          "loadMs": 2107
+        },
+        "ar": {
+          "file": "screens/updates-ar.png",
+          "link": "../screens/updates-ar.png",
+          "ok": true,
+          "loadMs": 1308
+        }
+      },
+      "capturedStates": []
+    }
+  ],
+  "tabControlNotes": [
+    "The tabs array lists actual local-view switches or content-topic selectors. No discovered switch is claimed to expose ARIA role=tab semantics unless stated.",
+    "Filters/actions are listed separately in controls; they are not mislabeled as tabs.",
+    "Settings and user Support have no source-discovered tab switcher; their main form actions are listed under controls.",
+    "Admin Data Sources has an activeTab state initialized but no rendered tab interaction found."
+  ],
+  "localizationEvidence": {
+    "provider": "src/context/LanguageContext.jsx:637-638",
+    "switcher": "src/components/LanguageSwitcher.jsx:12,17",
+    "findings": [
+      "EN/AR dictionary and document lang/dir switching exist.",
+      "Direct English literals remain in IntelligencePage, CreatePage, MonitorsPage, SupportPage, and PerformancePage.",
+      "Selective dir=auto exists; RTL layout quality is only what appears in captured screenshots and remains breakpoint/component-specific."
+    ],
+    "examples": [
+      "src/pages/IntelligencePage.jsx:480",
+      "src/pages/CreatePage.jsx:541,551,592",
+      "src/pages/MonitorsPage.jsx:128",
+      "src/pages/SupportPage.jsx:265",
+      "src/pages/PerformancePage.jsx:329",
+      "src/pages/admin/AccessRequestsPage.jsx:114-167"
+    ]
+  },
+  "apiFamilies": {
+    "auth": "/auth/*",
+    "account": "/account/*",
+    "admin": "/admin/*",
+    "discovery": [
+      "/discovery/jobs",
+      "/discovery/jobs/{id}",
+      "/discovery/jobs/{id}/results"
+    ],
+    "creativeAnalysis": [
+      "/creatives*",
+      "/patterns*",
+      "/insights*"
+    ],
+    "media": [
+      "/media/jobs",
+      "/media/jobs/{id}",
+      "/media/jobs/{id}/cancel"
+    ],
+    "scout": [
+      "/scout/*",
+      "/scout/maps/*",
+      "/scout/leadgen/*"
+    ],
+    "monitors": "/monitors*",
+    "dashboard": "/dashboard/metrics",
+    "notifications": "/notifications*",
+    "playbooks": "/playbooks*",
+    "support": "/support/tickets*",
+    "updates": "/updates*",
+    "serviceBoundary": "src/services/index.js; API modules in src/services/api/; optional mocks in src/services/mock/; transport in src/services/http.js",
+    "environment": "VITE_DATA_SOURCE defaults to api; production rejects mock source. This audit did not inspect runtime env values."
+  },
+  "sourceFindings": [
+    {
+      "finding": "Primary navigation marks six sections live although README says Discover is the only end-to-end loop and describes other sidebar items as placeholders; current routes/services exist for more than Discover. README and ARCHITECTURE also conflict on Create status.",
+      "evidence": [
+        "src/app/navigation.js:15-55",
+        "README.md:9-12",
+        "ARCHITECTURE.md:10-13"
+      ]
+    },
+    {
+      "finding": "No /messages route is declared; map Messages & Updates label to /notifications or remove it.",
+      "evidence": [
+        "src/App.jsx:181-256",
+        "src/app/Sidebar.jsx",
+        "src/app/CommandBar.jsx"
+      ]
+    },
+    {
+      "finding": "/guide, /admin/guide, /docs and playbook surfaces use overlapping labels/content purposes.",
+      "evidence": [
+        "src/App.jsx:187,196-199,206,241"
+      ]
+    },
+    {
+      "finding": "Legal aliases reuse LegalPage; billing UI is access/usage, not a payment checkout; hide trial/purchase claims until backed by a billing provider.",
+      "evidence": [
+        "src/App.jsx:189-193,242",
+        "src/pages/BillingPage.jsx",
+        "API_CONTRACTS.md"
+      ]
+    },
+    {
+      "finding": "Data-source fallback reports unmatched services as operational; must not be treated as provider verification.",
+      "evidence": [
+        "src/pages/admin/DataSourcesPage.jsx",
+        "src/services/api/adminService.api.js"
+      ]
+    },
+    {
+      "finding": "AdminPendingPage scaffold is not referenced by any route; it is an orphan component, not evidence that routed admin pages are placeholders.",
+      "evidence": [
+        "src/pages/admin/AdminPendingPage.jsx",
+        "src/App.jsx:202-217"
+      ]
+    }
+  ],
+  "browserObservations": [
+    {
+      "path": "/api-keys",
+      "finding": "Direct URL returns backend Not Found JSON under the local Vite /api-prefix proxy; a separate in-app SPA-navigation capture is present.",
+      "evidence": "screens/api-keys-en.png plus manifest entry variant=spa-navigation; both locales observed."
+    },
+    {
+      "path": "/admin",
+      "finding": "Capture remained in loading state after one second according to parent; no sustained wait was done to establish a persistent failure.",
+      "classification": "pending-longer-runtime-check"
+    },
+    {
+      "path": "/dashboard",
+      "finding": "Capture remained in loading state after one second according to parent; no sustained wait was done to establish a persistent failure.",
+      "classification": "pending-longer-runtime-check"
+    },
+    {
+      "path": "all route captures",
+      "finding": "All 136 route/locale pairs and interactive records have ok=true in the parent capture manifest. This only means capture succeeded."
+    }
+  ],
+  "unverified": [
+    "Provider-backed data quality and persistent backend responses beyond the captured empty disposable database.",
+    "Whether /admin and /dashboard settle after more than one second.",
+    "API key direct-link proxy and intended hosting behavior outside this local Vite setup.",
+    "Accessibility behavior beyond static selectors and the captured visual state."
+  ]
+}
