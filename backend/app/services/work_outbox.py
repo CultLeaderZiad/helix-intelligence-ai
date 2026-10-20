@@ -8,6 +8,8 @@ reported as aborted.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import datetime
 import logging
 import os
@@ -23,6 +25,7 @@ from app.core.tenancy import (
     tenant_scope,
 )
 from app.db.session import async_session_maker, worker_session_maker
+from app.models.scrape_job import ScrapeJob
 from app.models.work_item import WorkItem
 from app.services.ai.call_policy import RetryableProviderError
 
@@ -30,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 QUEUED = "queued"
 LEASED = "leased"
+RUNNING = "running"
 SUCCEEDED = "succeeded"
 DEAD = "dead"
 CANCELED = "canceled"
@@ -149,7 +153,7 @@ async def mark_provider_started(item_id: str, operation_id: Optional[str] = None
 
 
 async def request_cancel(job_id: str) -> str:
-    """Cancel queued work. Work whose provider call already started is not aborted."""
+    """Signal active work and immediately cancel work that has not started."""
     async with async_session_maker() as db:
         items = (
             await db.execute(select(WorkItem).where(WorkItem.job_id == job_id))
@@ -161,10 +165,10 @@ async def request_cancel(job_id: str) -> str:
             if item.status in (SUCCEEDED, DEAD, CANCELED):
                 continue
             item.cancel_requested = _now().isoformat()
-            if item.provider_started_at is not None or item.status == LEASED:
-                state = "provider_not_aborted"
-            else:
+            if item.status == QUEUED:
                 item.status = CANCELED
+            else:
+                state = "cancellation_signaled"
             item.updated_at = _now()
         await db.commit()
         return state
@@ -179,17 +183,19 @@ async def requeue_expired_leases() -> int:
         rows = (
             await db.execute(
                 select(WorkItem).where(
-                    WorkItem.status == LEASED,
+                    WorkItem.status.in_((LEASED, RUNNING)),
                     WorkItem.lease_until.is_not(None),
                     WorkItem.lease_until < now,
-                )
+                ).with_for_update(skip_locked=True)
             )
         ).scalars().all()
         for item in rows:
             item.lease_owner = None
             item.lease_until = None
             item.updated_at = now
-            if int(item.attempt_count or 0) >= int(item.max_attempts or 1):
+            if item.cancel_requested:
+                item.status = CANCELED
+            elif int(item.attempt_count or 0) >= int(item.max_attempts or 1):
                 item.status = DEAD
                 item.last_error = item.last_error or "lease expired after the last attempt"
             else:
