@@ -1,0 +1,4 @@
+
+> helix-intelligence@0.1.0 build /tmp/hoplite/workspace
+> node scripts/generate_docs_git_meta.js && vite build
+
