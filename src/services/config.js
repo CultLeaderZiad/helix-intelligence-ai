@@ -8,7 +8,7 @@
  * No component or hook changes. Nothing else in the app reads these vars.
  */
 
-const env = import.meta.env ?? {}
+const env = import.meta.env
 
 const VALID_DATA_SOURCES = ["api", "mock"]
 const rawDataSource = (env.VITE_DATA_SOURCE ?? "api").trim().toLowerCase()
