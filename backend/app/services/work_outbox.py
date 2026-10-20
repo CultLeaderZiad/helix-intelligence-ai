@@ -8,6 +8,8 @@ reported as aborted.
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import datetime
 import logging
 import os
@@ -23,6 +25,7 @@ from app.core.tenancy import (
     tenant_scope,
 )
 from app.db.session import async_session_maker, worker_session_maker
+from app.models.scrape_job import ScrapeJob
 from app.models.work_item import WorkItem
 from app.services.ai.call_policy import RetryableProviderError
 
@@ -30,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 QUEUED = "queued"
 LEASED = "leased"
+RUNNING = "running"
 SUCCEEDED = "succeeded"
 DEAD = "dead"
 CANCELED = "canceled"
