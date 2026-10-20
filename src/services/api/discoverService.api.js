@@ -8,12 +8,17 @@ import { request } from "../http"
  * requires zero component or hook changes.
  *
  * Expected endpoints:
- *   POST /v1/discovery/jobs         -> Job
- *   GET  /v1/discovery/jobs/{id}    -> Job
- *   GET  /v1/discovery/jobs/{id}/results -> Paginated<Creative>
- *   GET  /v1/discovery/jobs         -> Paginated<Job>
+ *   POST /api/discovery/jobs         -> Job
+ *   GET  /api/discovery/jobs/{id}    -> Job
+ *   POST /api/discovery/jobs/{id}/cancel -> Job or cancellation acknowledgement
+ *   GET  /api/discovery/jobs/{id}/results -> Paginated<Creative>
+ *   GET  /api/discovery/jobs         -> Paginated<Job>
  */
 const discoverService = {
+  /**
+   * @param {import('../contracts').SearchParams} [params]
+   * @param {{signal?: AbortSignal}} [options]
+   */
   search(params = {}, { signal } = {}) {
     const { query = "", filters = {}, sort = "composite_desc", query_language = "en" } = params
     const finalQuery = query.trim() || "*"
@@ -24,12 +29,25 @@ const discoverService = {
     })
   },
 
+  /** @param {string} jobId @param {{signal?: AbortSignal}} [options] */
   getJobStatus(jobId, { signal } = {}) {
-    return request(`/discovery/jobs/${jobId}`, { signal })
+    return request(`/discovery/jobs/${encodeURIComponent(jobId)}`, { signal })
   },
 
+  /** @param {string} jobId */
+  cancelJob(jobId) {
+    return request(`/discovery/jobs/${encodeURIComponent(jobId)}/cancel`, {
+      method: "POST",
+    })
+  },
+
+  /**
+   * @param {string} jobId
+   * @param {{page?: number, page_size?: number, sort?: string}} [params]
+   * @param {{signal?: AbortSignal}} [options]
+   */
   getJobResults(jobId, { page = 1, page_size = 20, sort } = {}, { signal } = {}) {
-    return request(`/discovery/jobs/${jobId}/results`, {
+    return request(`/discovery/jobs/${encodeURIComponent(jobId)}/results`, {
       signal,
       params: { page, page_size, sort },
     })
