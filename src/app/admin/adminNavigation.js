@@ -1,3 +1,4 @@
+import { EXPERIMENTAL_FEATURES_ENABLED } from "@/lib/productFeatures"
 import {
   LayoutDashboard,
   Building2,
@@ -21,7 +22,7 @@ import {
  */
 export const ADMIN_HOME = "/admin"
 
-export const ADMIN_NAV_GROUPS = [
+const ALL_ADMIN_NAV_GROUPS = [
   {
     label: "Overview",
     items: [
@@ -149,4 +150,6 @@ export const ADMIN_NAV_GROUPS = [
 ]
 
 /** Flattened lookup for routing and the document title. */
+export const ADMIN_NAV_GROUPS = ALL_ADMIN_NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => EXPERIMENTAL_FEATURES_ENABLED || !["admin-guide", "subscriptions", "usage", "data-sources", "scrape-jobs", "feature-flags"].includes(item.key)) })).filter((group) => group.items.length > 0)
+
 export const ADMIN_NAV_ITEMS = ADMIN_NAV_GROUPS.flatMap((g) => g.items)
