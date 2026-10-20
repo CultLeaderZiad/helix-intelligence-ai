@@ -3,7 +3,7 @@ import { scoreFillClass, scoreTextClass } from "@/lib/score"
 import { formatScore } from "@/lib/format"
 
 /** Tabular-nums readout. Numbers must never shift width between renders. */
-export function MetricValue({ value, unit, className, muted, ...props }) {
+export function MetricValue({ value, unit = null, className = "", muted = false, ...props }) {
   return (
     <span
       className={cn(

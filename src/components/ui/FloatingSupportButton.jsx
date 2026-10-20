@@ -3,7 +3,7 @@ import { MessageSquarePlus } from "lucide-react"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 import { cn } from "@/lib/utils"
 
-export function FloatingSupportButton({ className, contextData = {} }) {
+export function FloatingSupportButton({ className = "", contextData = {} }) {
   const [modalOpen, setModalOpen] = useState(false)
 
   return (

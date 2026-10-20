@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useLocation } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import { AdminSidebar } from "./AdminSidebar"
 import { StatusBar } from "@/app/StatusBar"
 import { Button } from "@/components/ui/Button"
 import { UpdatesBanner } from "@/components/UpdatesBanner"
+import { useRoutePosition } from "@/hooks/useRoutePosition"
+import { useDialogFocus } from "@/hooks/useDialogFocus"
+import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * Operations console chrome — the structural twin of AppShell, with its
@@ -16,8 +19,14 @@ import { UpdatesBanner } from "@/components/UpdatesBanner"
  * get the full viewport width on small screens.
  */
 export function AdminShell({ children }) {
+  const { t } = useLanguage()
+  const drawerRef = useRef(null)
+  const mainRef = useRef(null)
   const [navOpen, setNavOpen] = useState(false)
+  useDialogFocus(drawerRef, navOpen, () => setNavOpen(false))
   const location = useLocation()
+
+  useRoutePosition(mainRef)
 
   // Auto-close mobile drawer on route change
   useEffect(() => {
@@ -62,7 +71,7 @@ export function AdminShell({ children }) {
               <div
                 className="flex-1 overflow-y-auto"
                 onClick={(e) => {
-                  if (e.target.closest('a')) setNavOpen(false)
+                  if (e.target instanceof Element && e.target.closest('a')) setNavOpen(false)
                 }}
               >
                 <AdminSidebar className="w-full border-r-0" />
@@ -71,14 +80,14 @@ export function AdminShell({ children }) {
           </div>
         ) : null}
 
-        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+        <main ref={mainRef} tabIndex={-1} className="flex min-w-0 flex-1 flex-col overflow-y-auto">
           {/* Sticky Mobile Header */}
           <div className="sticky top-0 z-30 flex h-11 shrink-0 items-center gap-2 border-b border-border bg-surface/95 backdrop-blur-md px-2.5 md:hidden">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setNavOpen(true)}
-              aria-label="Open navigation"
+              aria-label={t("openMenu")}
               className="h-8 w-8 text-text-muted hover:text-text"
             >
               {navOpen ? (
