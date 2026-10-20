@@ -75,26 +75,10 @@ export function CreatePage() {
   
   const { job, result, error, isServiceRestart, submit, isBusy } = useMediaGenerate()
 
-  const isTrial = user?.plan_id?.startsWith("plan_trial") || user?.plan === "trial" || user?.role !== "admin"
   const isAdmin = user?.role === "admin"
-  
-  // Image Limits
-  const imagesUsedToday = user?.images_used_today || 0
-  const imagesDailyLimit = user?.images_daily_limit ?? 5
-  const imagesRemainingToday = user?.images_remaining_today !== undefined ? user.images_remaining_today : (imagesDailyLimit - imagesUsedToday)
-  
-  // Video Limits
-  const videosUsedToday = user?.videos_used_today || 0
-  const videosDailyLimit = user?.videos_daily_limit ?? 3
-  const videosRemainingToday = user?.videos_remaining_today !== undefined ? user.videos_remaining_today : (videosDailyLimit - videosUsedToday)
-  
-  const remainingToday = activeCategory === "video" ? videosRemainingToday : imagesRemainingToday
-  const dailyLimit = activeCategory === "video" ? videosDailyLimit : imagesDailyLimit
-  const usedToday = activeCategory === "video" ? videosUsedToday : imagesUsedToday
-  
-  const daysLeft = user?.trial_days_remaining !== undefined ? user.trial_days_remaining : 7
-  const isTrialExpired = user?.requires_plan || (isTrial && !isAdmin && daysLeft <= 0)
-  const isDailyLimitReached = isTrial && !isAdmin && remainingToday <= 0
+  const hasCreateAccess = user?.access_status === "approved" && (user?.feature_flags?.create === true || user?.feature_flags?.create_media === true)
+  const remainingToday = activeCategory === "video" ? user?.videos_remaining_today : user?.images_remaining_today
+  const isDailyLimitReached = !isAdmin && typeof remainingToday === "number" && remainingToday <= 0
 
   // Load source creative if sourceId is in URL, or inherit from activeCreative or Discover search
   useEffect(() => {
@@ -190,7 +174,7 @@ export function CreatePage() {
   }
 
   const handleGenerate = () => {
-    if (!brief.trim() || isDailyLimitReached || isTrialExpired) return
+    if (!brief.trim() || isDailyLimitReached || !hasCreateAccess) return
     
     const params = {
       mode: selectedMode,
@@ -249,9 +233,7 @@ export function CreatePage() {
         className=""
         trail={["Helix", "Create", "Remix Studio"]}
         meta={
-          isAdmin 
-            ? "Helix High-Res Engine · Admin Unlimited"
-            : `Trial: ${usedToday}/${dailyLimit} images today · ${daysLeft} days left`
+          hasCreateAccess ? t("accessApproved") : t("grantRequired")
         }
         actions={
           <div className="flex items-center gap-2">
@@ -285,44 +267,7 @@ export function CreatePage() {
       <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
         <div className="flex flex-col gap-6">
 
-          {/* Trial Usage Indicator Bar */}
-          {isTrial && !isAdmin && (
-            <div className={`rounded-lg border p-4 flex items-center justify-between ${
-              isTrialExpired 
-                ? "border-destructive/40 bg-destructive/10 text-destructive"
-                : isDailyLimitReached
-                ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-                : "border-primary/30 bg-primary/5 text-primary-light"
-            }`}>
-              <div className="flex items-center gap-3">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-text">
-                    {isTrialExpired 
-                      ? "7-Day Free Trial Ended" 
-                      : isDailyLimitReached 
-                      ? `Daily ${activeCategory === "video" ? "Video" : "Image"} Limit Reached (${usedToday}/${dailyLimit})` 
-                      : `7-Day Free Trial: ${usedToday} of ${dailyLimit} ${activeCategory === "video" ? "videos" : "images"} used today`}
-                  </span>
-                  <span className="text-[11px] text-text-muted">
-                    {isTrialExpired 
-                      ? "Creation stays off until a platform admin approves this workspace." 
-                      : isDailyLimitReached 
-                      ? t("dailyAllowance") 
-                      : `${daysLeft} days remaining · ${imagesDailyLimit} images and ${videosDailyLimit} videos per day.`}
-                  </span>
-                </div>
-              </div>
-
-              {(isTrialExpired || isDailyLimitReached) && (
-                <Link to="/billing">
-                  <Button size="xs" variant="primary" className="font-semibold gap-1 text-black">
-                    {t("requestAccess")} <ArrowRight className="w-3.5 h-3.5" />
-                  </Button>
-                </Link>
-              )}
-            </div>
-          )}
+          {!hasCreateAccess && <p role="status" className="border border-border bg-surface p-4 text-sm">{t(user?.access_status === "pending" ? "grantRequired" : "grantUnavailable")}</p>}
 
           {/* Quick Discovered Ads Selector Bar */}
           {discoveredItems.length > 0 && (
@@ -404,7 +349,7 @@ export function CreatePage() {
                   }`}
                 >
                   <Video className="h-4 w-4 text-accent" />
-                  Video Motion {isTrial && !isAdmin && <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-2 text-accent ml-1 font-mono font-bold">3/day Trial</span>}
+                  Video Motion
                 </button>
               </div>
 
@@ -620,7 +565,7 @@ export function CreatePage() {
                 size="md"
                 variant="primary"
                 onClick={handleGenerate}
-                disabled={isBusy || !brief.trim() || isDailyLimitReached || isTrialExpired}
+                disabled={isBusy || !brief.trim() || isDailyLimitReached || !hasCreateAccess}
                 className="w-full flex items-center justify-center gap-2 text-sm font-bold shadow-lg"
               >
                 {isBusy ? (
@@ -628,10 +573,10 @@ export function CreatePage() {
                     <Loader className="h-4 w-4 animate-spin text-black" />
                     {customApiKey.trim() ? "Generating with BYOK..." : "Synthesizing Creative..."}
                   </>
-                ) : isTrialExpired ? (
-                  "Trial Ended — Select a Plan to Generate"
+                ) : !hasCreateAccess ? (
+                  t("grantRequired")
                 ) : isDailyLimitReached ? (
-                  `Daily Limit Reached (${usedToday}/${dailyLimit} ${activeCategory === "video" ? "Videos" : "Images"} Used Today)`
+                  t("usageLimitReached")
                 ) : (
                   <>
                     <Wand2 className="h-4 w-4 text-black" />
