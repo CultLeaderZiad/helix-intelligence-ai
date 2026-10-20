@@ -1,8 +1,10 @@
+import { EXPERIMENTAL_FEATURES_ENABLED } from "@/lib/productFeatures"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { NAV_SECTIONS } from "./navigation"
+import { useLanguage } from "@/context/LanguageContext"
 import { KeyHint } from "@/components/ui/KeyHint"
 
 /**
@@ -10,6 +12,7 @@ import { KeyHint } from "@/components/ui/KeyHint"
  * Escape closes, focus is trapped to the input. Not a decorative shell.
  */
 export function CommandBar({ open, onClose }) {
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const inputRef = useRef(null)
   const [query, setQuery] = useState("")
@@ -19,16 +22,17 @@ export function CommandBar({ open, onClose }) {
     () => [
       ...NAV_SECTIONS.map((s) => ({
         id: s.key,
-        label: `Go to ${s.label}`,
-        hint: s.status === "pending" ? "no source" : "live",
+        label: t("goToSurface").replace("{name}", t(s.key, s.label)),
+        hint: t("workspaceNavigation"),
         run: () => navigate(s.path),
       })),
-      // Scout sub-surfaces (sidebar keeps one Scout entry; sub-nav lives inside Scout)
+      ...(EXPERIMENTAL_FEATURES_ENABLED ? [
       { id: "scout-social", label: "Go to Scout · Social / Atlas", hint: "live", run: () => navigate("/scout/social") },
       { id: "scout-leadgen", label: "Go to Scout · Lead Generation", hint: "scrapling_engine", run: () => navigate("/scout/lead-generation") },
-      { id: "scout-maps", label: "Go to Scout · Maps", hint: "live", run: () => navigate("/scout/maps") },
+      { id: "scout-maps", label: "Go to Scout · Maps", hint: "experimental", run: () => navigate("/scout/maps") },
+      ] : []),
     ],
-    [navigate],
+    [navigate, t],
   )
 
   const matches = useMemo(() => {
