@@ -1,0 +1,35 @@
+
+> helix-intelligence@0.1.0 test /tmp/hoplite/workspace
+> node --test src/services/__tests__/sessionStore.w0.test.js src/pages/__tests__/team-accept-w1.test.mjs && vitest run --config vitest.config.js
+
+✔ team accept route is registered and the invite link matches it (13.665243ms)
+✔ invite email uses the send_email contract and the accept path (0.187409ms)
+✔ setAccessToken writes one localStorage key and clears sessionStorage (0.620859ms)
+✔ getAccessToken migrates a sessionStorage token once (0.112416ms)
+✔ clearSession removes both stores (0.172269ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 833.674272
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m/tmp/hoplite/workspace[39m
+
+ [32m✓[39m src/components/ui/__tests__/ConfirmDialog.w4.test.jsx [2m([22m[2m4 tests[22m[2m)[22m[33m 414[2mms[22m[39m
+   [32m✓[39m ConfirmDialog focus lifecycle [2m(4)[22m
+     [33m[2m✓[22m[39m keeps focus while callbacks change and invokes the latest handlers[33m 372[2mms[22m[39m
+ [32m✓[39m src/hooks/__tests__/adapter-cancellation.w3.test.jsx [2m([22m[2m36 tests[22m[2m)[22m[33m 1048[2mms[22m[39m
+   [32m✓[39m discovery: component through real API adapter to fetch [2m(16)[22m
+     [33m[2m✓[22m[39m unmount rejects an actual native fetch with AbortError[33m 498[2mms[22m[39m
+ [32m✓[39m src/components/__tests__/ErrorBoundary.w4.test.jsx [2m([22m[2m1 test[22m[2m)[22m[33m 312[2mms[22m[39m
+   [32m✓[39m ErrorBoundary [2m(1)[22m
+     [33m[2m✓[22m[39m uses the active locale and does not expose the thrown error[33m 311[2mms[22m[39m
+ [32m✓[39m src/components/ui/__tests__/PillNav.w3.test.jsx [2m([22m[2m2 tests[22m[2m)[22m[32m 266[2mms[22m[39m
+ [32m✓[39m src/context/__tests__/auth-context.w4.test.jsx [2m([22m[2m2 tests[22m[2m)[22m[33m 303[2mms[22m[39m
+ [32m✓[39m src/hooks/__tests__/request-lifecycle.w3.test.jsx [2m([22m[2m21 tests[22m[2m)[22m[32m 168[2mms[22m[39m
+ [32m✓[39m src/app/__tests__/OnboardingTour.w3.test.jsx [2m([22m[2m4 tests[22m[2m)[22m[32m 55[2mms[22m[39m
+ [32m✓[39m src/features/marketing/__tests__/marketing-w4.test.jsx [2m([22m[2m3 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+ [32m✓[39m src/context/__tests__/search-session.w4.test.jsx [2m([22m[2m3 tests[22m[2m)[22m[32m 64[2mms[22m[39m
