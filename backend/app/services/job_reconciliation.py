@@ -92,7 +92,7 @@ async def _sweep_table(
         AND NOT EXISTS (
             SELECT 1 FROM work_items wi
             WHERE wi.job_id = {table}.id
-              AND wi.status IN ('queued', 'leased')
+              AND wi.status IN ('queued', 'leased', 'running')
               AND wi.attempt_count < wi.max_attempts
         )
     """
@@ -147,7 +147,7 @@ async def _sweep_unrefunded_failed_jobs() -> List[Dict[str, Any]]:
             SELECT sj.id, sj.org_id
             FROM scrape_jobs sj
             JOIN usage_logs ul_charge ON ul_charge.job_id = sj.id AND ul_charge.credits_deducted > 0
-            WHERE sj.status = 'failed'
+            WHERE sj.status IN ('failed', 'cancelled', 'timed_out')
               AND COALESCE(sj.completed_at, sj.heartbeat_at, sj.created_at) >= :refund_cutoff
               AND NOT EXISTS (
                   SELECT 1 FROM usage_logs ul_refund
@@ -158,6 +158,43 @@ async def _sweep_unrefunded_failed_jobs() -> List[Dict[str, Any]]:
         """)
         rows = (await db.execute(query, {"refund_cutoff": refund_cutoff})).mappings().all()
         return [dict(r) for r in rows]
+
+
+async def _sweep_expired_discover_deadlines() -> List[Dict[str, Any]]:
+    now = datetime.datetime.now(datetime.timezone.utc)
+    async with worker_session_maker() as db:
+        await apply_maintenance_context(db, BOOT_ID)
+        lock_suffix = " FOR UPDATE SKIP LOCKED" if db.bind and db.bind.dialect.name == "postgresql" else ""
+        rows = (
+            await db.execute(
+                text(
+                    "SELECT id, org_id FROM scrape_jobs "
+                    "WHERE status IN ('queued', 'running') AND deadline_at IS NOT NULL "
+                    f"AND deadline_at <= :now ORDER BY deadline_at LIMIT 100{lock_suffix}"
+                ),
+                {"now": now},
+            )
+        ).mappings().all()
+        if not rows:
+            return []
+        org_ids = list(dict.fromkeys(row["org_id"] for row in rows))
+        ids = [row["id"] for row in rows]
+        parameters = {f"job_{index}": job_id for index, job_id in enumerate(ids)}
+        placeholders = ", ".join(f":job_{index}" for index in range(len(ids)))
+        with tenant_scope(org_ids, "", platform_admin=False, enforce=True):
+            await apply_tenant_context(db)
+            await db.execute(
+                text(
+                    "UPDATE scrape_jobs SET status = 'timed_out', failure_kind = 'deadline', "
+                    "error_msg = 'The search exceeded its server time limit. Please retry.', "
+                    "stage = 'timed_out', stage_label = 'Search timed out', completed_at = :now "
+                    f"WHERE id IN ({placeholders}) AND status IN ('queued', 'running') "
+                    "AND deadline_at <= :now"
+                ),
+                {**parameters, "now": now},
+            )
+            await db.commit()
+        return [dict(row) for row in rows]
 
 
 async def _sweep_monitor_runs() -> int:
@@ -250,12 +287,19 @@ async def _sweep_monitor_runs() -> int:
 
 async def reconcile_once() -> Dict[str, int]:
     """One reconciliation pass. Safe to call repeatedly."""
-    swept = {"discover": 0, "media": 0, "refunded": 0, "monitor_runs": 0}
+    swept = {"discover": 0, "timed_out": 0, "media": 0, "refunded": 0, "monitor_runs": 0}
     try:
         from app.services.work_outbox import requeue_expired_leases
         swept["requeued"] = await requeue_expired_leases()
     except Exception as exc:
         logger.error("Work lease requeue failed: %s", exc)
+
+    expired_deadlines = []
+    try:
+        expired_deadlines = await _sweep_expired_discover_deadlines()
+        swept["timed_out"] = len(expired_deadlines)
+    except Exception as exc:
+        logger.error("Discover deadline sweep failed: %s", exc)
 
     try:
         discover_rows = await _sweep_table(
@@ -275,7 +319,7 @@ async def reconcile_once() -> Dict[str, int]:
     except Exception as e:
         logger.error("Sweep unrefunded failed jobs failed: %s", e)
 
-    all_to_refund = {r["id"]: r for r in discover_rows}
+    all_to_refund = {r["id"]: r for r in [*discover_rows, *expired_deadlines]}
     for r in failed_unrefunded:
         all_to_refund[r["id"]] = r
 
