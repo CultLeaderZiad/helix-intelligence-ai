@@ -8,7 +8,7 @@ const TONES = {
 }
 
 /** Keyboard affordance. Present because this UI expects to be driven by keys. */
-export function KeyHint({ tone = "default", children, className }) {
+export function KeyHint({ tone = "default", children, className = "" }) {
   return (
     <kbd
       className={cn(
