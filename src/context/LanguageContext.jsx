@@ -1,7 +1,9 @@
+import { w5Shell } from "@/i18n/w5Shell"
 import React, { createContext, useContext, useState, useEffect } from "react"
 
 const translations = {
   en: {
+    ...w5Shell.en,
     impersonationTitle: "Confirm user impersonation",
     impersonationDescription: "You will access {email}'s workspace with a short-lived, attributed session. To return to administration, sign out and sign in again. No administrator credential is kept for returning.",
     impersonationConfirm: "Impersonate user",
@@ -307,6 +309,7 @@ const translations = {
     footerBeta: "BETA PREVIEW",
   },
   ar: {
+    ...w5Shell.ar,
     impersonationTitle: "تأكيد الدخول بهوية المستخدم",
     impersonationDescription: "ستدخل مساحة عمل {email} بجلسة قصيرة المدة ومنسوبة إلى المسؤول. للعودة إلى الإدارة، سجّل الخروج ثم سجّل الدخول مجدداً. لا تُحفظ بيانات دخول المسؤول للعودة.",
     impersonationConfirm: "الدخول بهوية المستخدم",
