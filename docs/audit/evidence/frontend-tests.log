@@ -1,0 +1,23 @@
+
+> helix-intelligence@0.1.0 test /tmp/hoplite/workspace
+> node --test src/services/__tests__/sessionStore.w0.test.js src/pages/__tests__/team-accept-w1.test.mjs && vitest run --config vitest.config.js
+
+✔ team accept route is registered and the invite link matches it (13.665243ms)
+✔ invite email uses the send_email contract and the accept path (0.187409ms)
+✔ setAccessToken writes one localStorage key and clears sessionStorage (0.620859ms)
+✔ getAccessToken migrates a sessionStorage token once (0.112416ms)
+✔ clearSession removes both stores (0.172269ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 833.674272
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.5 [39m[90m/tmp/hoplite/workspace[39m
+
+ [32m✓[39m src/components/ui/__tests__/ConfirmDialog.w4.test.jsx [2m([22m[2m4 tests[22m[2m)[22m[33m 414[2mms[22m[39m
+   [32m✓[39m ConfirmDialog focus lifecycle [2m(4)[22m
+     [33m[2m✓[22m[39m keeps focus while callbacks change and invokes the latest handlers[33m 372[2mms[22m[39m
