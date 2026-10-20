@@ -30,6 +30,7 @@ class Job(BaseModel):
     elapsed_ms: int
     created_at: str
     completed_at: Optional[str] = None
+    deadline_at: Optional[str] = None
     error: Optional[str] = None
     # 'service_restart' when the process died mid-run, 'error' when the
     # pipeline itself failed. Lets the UI say which happened instead of
