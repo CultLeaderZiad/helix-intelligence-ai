@@ -1,6 +1,5 @@
 import { request, ServiceError } from "../http"
 import {
-  clearCachedUser,
   clearSession,
   getAccessToken,
   getCachedUser as readCachedUser,
@@ -35,8 +34,23 @@ function storeToken(token) {
 }
 
 export function clearAllTenantStorage() {
+  notifySessionClearing()
   clearSession()
-  clearCachedUser()
+}
+
+function notifySessionClearing() {
+  if (typeof window === "undefined") return
+  try {
+    window.dispatchEvent(new Event("helix:session-clearing"))
+  } catch {
+    // Session cleanup must still proceed if event dispatch is unavailable.
+  }
+}
+
+function storeSession(token, user) {
+  clearAllTenantStorage()
+  if (user) storeUser(user)
+  storeToken(token)
 }
 
 function clearToken() {
@@ -111,6 +125,7 @@ const authService = {
    * Sign in with email + password.
    * Stores the returned JWT and returns the user shape.
    */
+  /** @param {{ email?: string, password?: string }} [credentials] */
   async signIn({ email, password } = {}) {
     const session = await request("/auth/sign-in", {
       method: "POST",
@@ -123,9 +138,8 @@ const authService = {
       })
     }
 
-    storeToken(session.access_token)
     const user = sessionToUser(session)
-    storeUser(user)
+    storeSession(session.access_token, user)
     return { user }
   },
 
@@ -133,6 +147,7 @@ const authService = {
    * Register a new account.
    * Stores the returned JWT and returns the user shape.
    */
+  /** @param {{ name?: string, email?: string, password?: string, utm_source?: string, utm_medium?: string, utm_campaign?: string, utm_term?: string, utm_content?: string, referrer?: string }} [params] */
   async signUp({ name, email, password, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer } = {}) {
     const cleanName = name ? String(name).trim() : undefined
     const cleanEmail = String(email ?? "").trim().toLowerCase()
@@ -158,9 +173,8 @@ const authService = {
       })
     }
 
-    storeToken(session.access_token)
     const user = sessionToUser(session, cleanName)
-    storeUser(user)
+    storeSession(session.access_token, user)
     return { user }
   },
 
@@ -168,6 +182,7 @@ const authService = {
    * Sign out — always clears local token and cached profile.
    */
   async signOut() {
+    notifySessionClearing()
     try {
       await request("/auth/sign-out", { method: "POST" })
     } catch {
@@ -184,6 +199,7 @@ const authService = {
    * whether or not the account exists (no account enumeration). Returns
    * The backend does not return a reset URL. Delivery is email-only.
    */
+  /** @param {{ email?: string }} [params] */
   async requestPasswordReset({ email } = {}) {
     const payload = await request("/auth/forgot-password", {
       method: "POST",
@@ -196,6 +212,7 @@ const authService = {
    * Redeem a reset token with a new password. The backend returns a fresh
    * session, so a successful reset signs the user straight in.
    */
+  /** @param {{ token?: string, newPassword?: string }} [params] */
   async resetPassword({ token, newPassword } = {}) {
     const session = await request("/auth/reset-password", {
       method: "POST",
@@ -206,8 +223,20 @@ const authService = {
         code: "no_token",
       })
     }
-    storeToken(session.access_token)
-    return { user: sessionToUser(session) }
+    const user = sessionToUser(session)
+    storeSession(session.access_token, user)
+    return { user }
+  },
+
+  /** @param {string} token */
+  switchToImpersonatedSession(token) {
+    if (!token) {
+      throw new ServiceError("Impersonation did not return an access token", {
+        code: "no_token",
+      })
+    }
+    clearAllTenantStorage()
+    storeToken(token)
   },
 
   /**
