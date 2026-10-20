@@ -12,12 +12,12 @@ import {
   Wand2,
   ChevronDown,
   ArrowRight,
-  Lock,
   RefreshCw,
   Settings2,
   Key,
   HelpCircle,
-  Bookmark
+  Bookmark,
+  MessageSquarePlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { creativeService } from "@/services"
@@ -25,7 +25,6 @@ import { useMediaGenerate } from "@/hooks/useMediaGenerate"
 import { useSearchContext } from "@/context/SearchContext"
 import { useAuth } from "@/context/AuthContext"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
-import { MessageSquarePlus } from "lucide-react"
 import { AudienceSimulationPanel } from "@/features/create/AudienceSimulationPanel"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 
@@ -59,6 +58,7 @@ export function CreatePage() {
   
   const { user } = useAuth()
   const { latestSearch, activeCreative, selectActiveCreative } = useSearchContext()
+  const setActiveCreative = /** @type {(creative: object) => void} */ (selectActiveCreative)
   
   const [sourceCreative, setSourceCreative] = useState(null)
   const [activeCategory, setActiveCategory] = useState("image")
@@ -73,7 +73,7 @@ export function CreatePage() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showDraftsModal, setShowDraftsModal] = useState(false)
   
-  const { phase, job, result, error, isServiceRestart, submit, cancel, isBusy } = useMediaGenerate()
+  const { job, result, error, isServiceRestart, submit, isBusy } = useMediaGenerate()
 
   const isTrial = user?.plan_id?.startsWith("plan_trial") || user?.plan === "trial" || user?.role !== "admin"
   const isAdmin = user?.role === "admin"
@@ -227,19 +227,15 @@ export function CreatePage() {
     : null
 
   let displayUrl = null
-  let isVideo = false
   if (result) {
     if (result.type === "video" && result.video?.url) {
       displayUrl = result.video.url
-      isVideo = true
     } else if (result.type === "image" && result.image?.url) {
       displayUrl = result.image.url
     } else if (result.url) {
       displayUrl = result.url
-      isVideo = displayUrl.endsWith(".mp4") || displayUrl.includes("video")
     } else if (result.result_url) {
       displayUrl = result.result_url
-      isVideo = displayUrl.endsWith(".mp4")
     } else if (result.images && result.images.length > 0) {
       displayUrl = result.images[0].url
     }
@@ -250,6 +246,7 @@ export function CreatePage() {
   return (
     <div className="w-full flex-1 flex flex-col">
       <BreadcrumbBar
+        className=""
         trail={["Helix", "Create", "Remix Studio"]}
         meta={
           isAdmin 
@@ -277,7 +274,7 @@ export function CreatePage() {
               Report Issue
             </Button>
             {latestSearch ? (
-              <Button size="xs" variant="ghost" onClick={() => navigate("/discover")}>
+              <Button size="xs" variant="ghost" onClick={() => navigate("/discover")} className="">
                 From Search: "{latestSearch.query}" ({latestSearch.total} ads)
               </Button>
             ) : null}
@@ -359,7 +356,7 @@ export function CreatePage() {
                       type="button"
                       onClick={() => {
                         applyCreativeToBrief(c)
-                        selectActiveCreative(c)
+                        setActiveCreative(c)
                         setShowAdPicker(false)
                       }}
                       className="flex items-start gap-2 rounded border border-border bg-surface p-2 text-left hover:border-accent transition-colors"
@@ -766,6 +763,7 @@ export function CreatePage() {
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
         initialContext={{ page: "Create Remix Studio", category: activeCategory, mode: selectedMode, tag: "create" }}
+        onSuccess={() => setIsSupportOpen(false)}
       />
 
       <SavedDraftsModal
@@ -775,7 +773,7 @@ export function CreatePage() {
         onSelectSearch={(searchItem) => {
           if (searchItem.items && searchItem.items.length) {
             applyCreativeToBrief(searchItem.items[0])
-            selectActiveCreative(searchItem.items[0])
+            setActiveCreative(searchItem.items[0])
           } else {
             setBrief(
               `Commercial advertising creative inspired by market intelligence for "${searchItem.query}".\nStyle & Visual Direction: ${STYLE_PROMPTS.premium_ad}`
