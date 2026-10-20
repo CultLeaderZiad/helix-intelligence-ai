@@ -5,6 +5,23 @@ const STORAGE_LATEST_KEY = "helix_latest_search"
 const STORAGE_HISTORY_KEY = "helix_search_history"
 const STORAGE_ACTIVE_CREATIVE_KEY = "helix_active_creative"
 const STORAGE_DRAFTS_KEY = "helix_saved_drafts"
+const STORAGE_KEYS = [
+  STORAGE_LATEST_KEY,
+  STORAGE_HISTORY_KEY,
+  STORAGE_ACTIVE_CREATIVE_KEY,
+  STORAGE_DRAFTS_KEY,
+]
+
+function purgeUserSearchCache(userId) {
+  if (!userId || typeof window === "undefined") return
+  try {
+    for (const key of STORAGE_KEYS) {
+      window.localStorage.removeItem(`${key}_${userId}`)
+    }
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
+}
 
 const SearchContext = createContext({
   latestSearch: null,
@@ -31,6 +48,19 @@ export function SearchProvider({ children }) {
   const [activeCreative, setActiveCreative] = useState(null)
   const [drafts, setDrafts] = useState([])
 
+  useEffect(() => {
+    const clearPrivateCache = () => {
+      purgeUserSearchCache(prevUserIdRef.current)
+      prevUserIdRef.current = null
+      setLatestSearch(null)
+      setSearchHistory([])
+      setActiveCreative(null)
+      setDrafts([])
+    }
+    window.addEventListener("helix:session-clearing", clearPrivateCache)
+    return () => window.removeEventListener("helix:session-clearing", clearPrivateCache)
+  }, [])
+
   // Synchronize state with current user session (F12, F43)
   useEffect(() => {
     // Purge any legacy un-namespaced test fixtures
@@ -46,14 +76,7 @@ export function SearchProvider({ children }) {
     if (!userId) {
       const previous = prevUserIdRef.current
       if (previous) {
-        try {
-          localStorage.removeItem(`${STORAGE_LATEST_KEY}_${previous}`)
-          localStorage.removeItem(`${STORAGE_HISTORY_KEY}_${previous}`)
-          localStorage.removeItem(`${STORAGE_ACTIVE_CREATIVE_KEY}_${previous}`)
-          localStorage.removeItem(`${STORAGE_DRAFTS_KEY}_${previous}`)
-        } catch {
-          // storage can be blocked
-        }
+        purgeUserSearchCache(previous)
       }
       setLatestSearch(null)
       setSearchHistory([])
