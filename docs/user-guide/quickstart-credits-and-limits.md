@@ -1,53 +1,21 @@
-# Quick Start: Credit Balances & Daily Limits
+# Access, usage, and limits
 
-Helix Intelligence uses a transparent credit ledger. Every loop and operation has an explicit credit cost tied to real compute.
+Access is administrator-approved. Helix does not offer purchasable subscriptions or a trial-to-payment upgrade flow.
 
----
+## Read the workspace state
 
-## 1. Where to Find Your Balance
+Open **Access & Usage** to see the current server-reported grant status and recorded usage. Pending, rejected, expired, and revoked access are different states; only an active grant authorizes its listed features.
 
-You can check your credit standing and consumption at any time:
+Usage limits protect a workspace and its provider budget. They are not prices. Limits and available features come from the administrator's grant and server configuration, not a promise in this guide.
 
-1. **Top Workspace Banner**: Displays your remaining daily credits and active trial countdown.
-2. **Billing & Meter Page**: Visit [/billing](/billing) in your workspace sidebar for:
-   - Total Organization Credit Balance.
-   - Daily Quota Used today vs. Daily Maximum.
-   - Exact UTC Reset Timestamp (**00:00 UTC**).
-   - Historical consumption graph and itemized audit log.
+## Searches and failures
 
----
+A Discover request has a server deadline. It can end as succeeded, failed, cancelled, or timed out. Use the displayed retry action after checking the reason. Cancelling should be confirmed by the server; closing the tab alone is not proof that work stopped.
 
-## 2. In-App Credit Cost Schedule
+The backend records reservations, usage, and compensation to avoid duplicate charges or refunds. If an operation fails or is cancelled, inspect the recorded outcome rather than assuming a browser message proves the accounting result.
 
-Every operation deducts a fixed number of credits. These values match the live system billing engine:
+## Provider availability
 
-| Action | Cost (Credits) | Real Operation |
-| :--- | :--- | :--- |
-| **Discover Search Job** | `1.0` | Live ad library scrape across Meta, TikTok, and Google Ads indexes. |
-| **Discover Deep Fallback** | `2.0` | Extended multi-page deep extraction when a brand has sparse recent ads. |
-| **AI Creative Insight** | `0.5` | Deep LLM hook breakdown, angle classification, and script transcription. |
-| **Pattern Pack Extraction** | `0.5` | Clustering winning angles across a brand's top 10 ads into a reusable blueprint. |
-| **AI Assistant Query** | `0.25` | Asking questions to the interactive creative advisor in Discover/Intelligence. |
-| **Audience Simulation** | `1.0` | Running multi-persona synthetic audience rehearsal on a creative brief. |
-| **Generate Image Asset** | `2.0` | Gemini text-to-image or remix visual generation. |
-| **Generate Video Asset** | `5.0` | Gemini motion-video render. |
+A configured data source can be unavailable or return no records. Unknown metrics are not replaced with invented scores or performance claims. An empty result is not the same as a provider outage.
 
----
-
-## 3. Daily Limits and Auto-Reset
-
-To safeguard against runaway loops, accounts have daily limits:
-- **Daily Trial Limit**: Up to 20 discovery requests / 25 credits per day during the trial.
-- **Pro / Scale Plans**: Higher daily ceilings (up to 500+ credits/day) with unlimited total pool.
-- **Daily Reset Time**: All daily consumption counters automatically reset at **00:00:00 UTC** every night.
-
-> [!TIP]
-> If an extraction job fails due to an upstream ad-network timeout or transient connection issue, **credits are automatically refunded** to your balance. Helix never charges you for an incomplete run.
-
----
-
-## Next Steps: Core Concepts
-
-Now that you understand the basic workflow, explore our Core Concepts to understand how Helix works under the hood:
-
-👉 [What Discover Actually Does (and Its Limits)](/docs/user-guide/concept-how-discover-works)
+Contact your workspace administrator when access or limits prevent a permitted task. There is no checkout button to resolve a pending grant.
