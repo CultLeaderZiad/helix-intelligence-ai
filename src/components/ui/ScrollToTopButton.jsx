@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { ArrowUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export function ScrollToTopButton({ threshold = 350, className, containerRef = null }) {
+export function ScrollToTopButton({ threshold = 350, className = "", containerRef = null }) {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
