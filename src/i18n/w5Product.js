@@ -1,5 +1,6 @@
 export const w5Product = {
   en: {
+    onboardingSaveFailed: "Setup could not be saved on the server. Retry to prevent it reopening.",
     goToSurface: "Go to {name}",
     accessStatusLabel: "Access status", unknownValue: "Not available", loading: "Loading…", requestNoteLabel: "Note for the administrator (optional)", sendingRequest: "Sending…", accessRequestSent: "Request submitted for administrator review.", recordedUsage: "Recorded workspace usage", searchesLabel: "Searches today", usageDisclosure: "Usage comes from server records. Internal limits are not prices or payment balances.",
     accessUsage: "Access & Usage", workspaceNavigation: "Workspace", docsNavigation: "Documentation",
@@ -13,6 +14,7 @@ export const w5Product = {
     sourceDocs: "Read the documentation", accessDescription: "Access is granted by an administrator, not purchased. Submit a request and review the server-reported status.",
   },
   ar: {
+    onboardingSaveFailed: "تعذّر حفظ الإعداد على الخادم. أعد المحاولة لمنع ظهوره مجدداً.",
     goToSurface: "انتقل إلى {name}",
     accessStatusLabel: "حالة الوصول", unknownValue: "غير متاح", loading: "جارٍ التحميل…", requestNoteLabel: "ملاحظة للمشرف (اختياري)", sendingRequest: "جارٍ الإرسال…", accessRequestSent: "تم إرسال الطلب لمراجعة المشرف.", recordedUsage: "الاستخدام المسجّل لمساحة العمل", searchesLabel: "عمليات البحث اليوم", usageDisclosure: "يأتي الاستخدام من سجلات الخادم. الحدود الداخلية ليست أسعاراً أو أرصدة دفع.",
     accessUsage: "الوصول والاستخدام", workspaceNavigation: "مساحة العمل", docsNavigation: "التوثيق",
