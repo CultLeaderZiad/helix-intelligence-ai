@@ -1,0 +1,74 @@
+[
+  {
+    "method": "GET",
+    "path": "/api/openapi.json",
+    "name": "openapi",
+    "schema": false
+  },
+  {
+    "method": "HEAD",
+    "path": "/api/openapi.json",
+    "name": "openapi",
+    "schema": false
+  },
+  {
+    "method": "GET",
+    "path": "/docs",
+    "name": "swagger_ui_html",
+    "schema": false
+  },
+  {
+    "method": "HEAD",
+    "path": "/docs",
+    "name": "swagger_ui_html",
+    "schema": false
+  },
+  {
+    "method": "GET",
+    "path": "/docs/oauth2-redirect",
+    "name": "swagger_ui_redirect",
+    "schema": false
+  },
+  {
+    "method": "HEAD",
+    "path": "/docs/oauth2-redirect",
+    "name": "swagger_ui_redirect",
+    "schema": false
+  },
+  {
+    "method": "GET",
+    "path": "/redoc",
+    "name": "redoc_html",
+    "schema": false
+  },
+  {
+    "method": "HEAD",
+    "path": "/redoc",
+    "name": "redoc_html",
+    "schema": false
+  },
+  {
+    "method": "GET",
+    "path": "/api/health",
+    "name": "root",
+    "schema": true
+  },
+  {
+    "method": "GET",
+    "path": "/health",
+    "name": "root",
+    "schema": true
+  },
+  {
+    "method": "GET",
+    "path": "/api",
+    "name": "root",
+    "schema": true
+  },
+  {
+    "method": "GET",
+    "path": "/",
+    "name": "root",
+    "schema": true
+  }
+]
