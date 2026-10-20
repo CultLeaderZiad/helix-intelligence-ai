@@ -77,7 +77,7 @@ export function AppShell({ children }) {
               onClick={() => setNavOpen(false)}
               aria-hidden="true"
             />
-            <div className="relative flex flex-col z-10 w-[240px] max-w-[85vw] h-full shadow-2xl bg-surface border-r border-border animate-in slide-in-from-left duration-200">
+            <div className="relative flex flex-col z-10 w-[240px] max-w-[85vw] h-full shadow-2xl bg-surface border-e border-border">
               <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-surface-2">
                 <div className="flex items-center gap-2">
                   <img
@@ -85,7 +85,7 @@ export function AppShell({ children }) {
                     alt="Helix"
                     className="h-4 w-4 shrink-0 rounded-[3px] object-contain"
                   />
-                  <span className="font-mono text-xs font-bold text-text">Helix Navigation</span>
+                  <span className="font-mono text-xs font-bold text-text">{t("primaryNavigation")}</span>
                 </div>
                 <button
                   type="button"
