@@ -2,11 +2,11 @@ import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { Button } from "@/components/ui/Button"
-import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States"
+import { EmptyState, SkeletonRows } from "@/components/ui/States"
 import { InfoTip } from "@/components/ui/InfoTip"
 import { useLanguage } from "@/context/LanguageContext"
 import { useSearchContext } from "@/context/SearchContext"
-import { creativeService, analysisService } from "@/services"
+import { creativeService, analysisService, playbookService } from "@/services"
 import {
   Network,
   Sparkles,
@@ -16,24 +16,18 @@ import {
   Brain,
   Lightbulb,
   ArrowRight,
-  TrendingUp,
   Clock,
   Layers,
-  ChevronRight,
   CheckCircle2,
   AlertTriangle,
   Play,
   Image as ImageIcon,
-  Share2,
   BookOpen,
   Globe,
   Languages,
   Loader2,
-  Key,
   Tag,
-  FileText
 } from "lucide-react"
-import { playbookService } from "@/services"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 
 const COPY_LANGUAGES = [
@@ -194,7 +188,9 @@ function getClientSideTranslation(creative, lang = "en") {
 export function IntelligencePage() {
   const navigate = useNavigate()
   const { latestSearch, searchHistory, activeCreative, selectActiveCreative, selectSearchSession } = useSearchContext()
-  const { t, isRtl } = useLanguage()
+  const setActiveCreative = /** @type {(creative: object) => void} */ (selectActiveCreative)
+  const setSearchSession = /** @type {(session: object) => void} */ (selectSearchSession)
+  const { t } = useLanguage()
   
   const [creatives, setCreatives] = useState([])
   const [selectedCreativeId, setSelectedCreativeId] = useState(null)
@@ -205,7 +201,8 @@ export function IntelligencePage() {
   const [generatingPatterns, setGeneratingPatterns] = useState(false)
   const [compilingPlaybook, setCompilingPlaybook] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
-  const [error, setError] = useState(null)
+  const [loadError, setLoadError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [analysisError, setAnalysisError] = useState(null)
 
   // Language & Copy breakdown state
@@ -220,9 +217,10 @@ export function IntelligencePage() {
     let isMounted = true
     async function loadData() {
       setLoading(true)
-      setError(null)
+      setLoadError(false)
       try {
         if (latestSearch?.query) {
+          if (!isMounted) return
           const items = latestSearch.items || []
           setCreatives(items)
           setSelectedCreativeId(items[0]?.id || activeCreative?.id || null)
@@ -243,11 +241,11 @@ export function IntelligencePage() {
           if (isMounted && patRes?.items) {
             setPatterns(patRes.items)
           }
-        } catch (e) {
-          console.warn("Could not fetch pattern list", e)
+        } catch {
+          console.warn("Pattern loading failed; the analysis page remains available.")
         }
-      } catch (err) {
-        if (isMounted) setError(err)
+      } catch {
+        if (isMounted) setLoadError(true)
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -255,7 +253,7 @@ export function IntelligencePage() {
 
     loadData()
     return () => { isMounted = false }
-  }, [latestSearch, activeCreative?.id])
+  }, [latestSearch, activeCreative?.id, loadAttempt])
 
   const selectedCreative = creatives.find((c) => c.id === selectedCreativeId)
 
@@ -390,7 +388,7 @@ export function IntelligencePage() {
 
   function handleSendToCreate(creative) {
     if (creative) {
-      selectActiveCreative(creative)
+      setActiveCreative(creative)
       navigate(`/create?sourceId=${creative.id}`)
     }
   }
@@ -400,6 +398,7 @@ export function IntelligencePage() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <BreadcrumbBar
+        className=""
         trail={[t("helix", "Helix"), t("intelligence", "Intelligence"), t("patternExtraction", "Pattern Extraction")]}
         meta={
           latestSearch
@@ -455,7 +454,7 @@ export function IntelligencePage() {
                 aria-label="Switch active corpus search session"
                 onChange={(e) => {
                   const target = searchHistory.find((s) => s.query === e.target.value)
-                  if (target) selectSearchSession(target)
+                  if (target) setSearchSession(target)
                 }}
                 className="text-[11px] font-mono bg-surface border border-border rounded px-2 py-1 text-text focus:outline-none focus:border-accent"
               >
@@ -468,10 +467,10 @@ export function IntelligencePage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button size="xs" variant="ghost" onClick={() => navigate("/discover")}>
+            <Button size="xs" variant="ghost" onClick={() => navigate("/discover")} className="">
               {t("runNewSearch")}
             </Button>
-            <Button size="xs" variant="outline" onClick={() => navigate("/create")}>
+            <Button size="xs" variant="outline" onClick={() => navigate("/create")} className="">
               {t("goToCreate")}
             </Button>
           </div>
@@ -479,7 +478,7 @@ export function IntelligencePage() {
       ) : (
         <div className="flex items-center justify-between border-b border-border bg-surface px-4 py-2 text-xs text-text-muted">
           <span>Tip: Run a search in <strong>Discover</strong> to extract competitive patterns from fresh ad library data.</span>
-          <Button size="xs" variant="primary" onClick={() => navigate("/discover")}>
+          <Button size="xs" variant="primary" onClick={() => navigate("/discover")} className="">
             {t("openDiscover")}
           </Button>
         </div>
@@ -487,7 +486,14 @@ export function IntelligencePage() {
 
       {loading ? (
         <div className="p-6">
-          <SkeletonRows rows={8} />
+          <SkeletonRows rows={8}  className=""/>
+        </div>
+      ) : loadError ? (
+        <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+          <p className="text-sm font-semibold text-text">{t("requestFailed", "Request failed")}</p>
+          <Button size="sm" variant="primary" onClick={() => setLoadAttempt((attempt) => attempt + 1)} className="">
+            {t("retrySearch", "Retry search")}
+          </Button>
         </div>
       ) : creatives.length === 0 ? (
         <div className="p-8">
@@ -496,11 +502,11 @@ export function IntelligencePage() {
             title={t("noCorpusTitle")}
             description={t("noCorpusDesc")}
             action={
-              <Button size="sm" variant="primary" onClick={() => navigate("/discover")}>
+              <Button size="sm" variant="primary" onClick={() => navigate("/discover")} className="">
                 {t("openDiscover")}
               </Button>
             }
-          />
+           className=""/>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 flex-1 min-h-0 border-b border-border">
@@ -600,7 +606,7 @@ export function IntelligencePage() {
                     type="button"
                     onClick={() => {
                       setSelectedCreativeId(c.id)
-                      selectActiveCreative(c)
+                      setActiveCreative(c)
                     }}
                     className={`w-full text-left p-3 transition-colors flex items-start gap-3 ${
                       isSelected
@@ -1058,6 +1064,7 @@ export function IntelligencePage() {
         isOpen={isSupportOpen}
         onClose={() => setIsSupportOpen(false)}
         initialContext={{ page: "Intelligence & Patterns", tag: "intelligence" }}
+        onSuccess={() => setIsSupportOpen(false)}
       />
     </div>
   )
