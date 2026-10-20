@@ -19,6 +19,7 @@ class ScrapeJob(Base):
     status = Column(String, default="queued") # 'queued' | 'running' | 'succeeded' | 'failed'
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    deadline_at = Column(DateTime(timezone=True), nullable=True)
     record_count = Column(Integer, default=0)
     
     # extra fields for frontend contract matching
