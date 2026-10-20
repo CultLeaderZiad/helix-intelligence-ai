@@ -1,4 +1,5 @@
 import { PublicHeader } from "@/app/PublicHeader"
+import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * Shared frame for the pre-auth pages. Public surface (PublicHeader), not
@@ -11,8 +12,10 @@ import { PublicHeader } from "@/app/PublicHeader"
  * not landing on a marketing page. No gradient, no glass, no shadow.
  */
 export function AuthLayout({ eyebrow, title, description, children, footer }) {
+  const { isRtl } = useLanguage()
+
   return (
-    <div className="flex min-h-dvh flex-col bg-bg">
+    <div dir={isRtl ? "rtl" : "ltr"} className="flex min-h-dvh flex-col bg-bg">
       <PublicHeader />
 
       <main className="grid-backdrop relative flex flex-1 flex-col items-center justify-center px-4 py-12">
