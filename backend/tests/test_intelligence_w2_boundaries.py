@@ -103,7 +103,8 @@ async def test_provider_http_exception_is_not_unbound_local():
     with pytest.raises(HTTPException) as exc:
         await Boom().generate_insight(creative)
     assert exc.value.status_code == 503
-    assert "provider down" in str(exc.value.detail)
+    assert exc.value.detail == "AI insight generation is temporarily unavailable."
+    assert "provider down" not in str(exc.value.detail)
 
 
 @pytest.mark.asyncio
