@@ -20,11 +20,20 @@ function safeLazy(importFn) {
     try {
       return await importFn()
     } catch (err) {
-      console.warn("Stale chunk detected. Refreshing application...", err)
-      const lastReload = Number(sessionStorage.getItem("chunk_reload_lock") || 0)
+      console.warn("A lazy-loaded module failed to load.")
+      let lastReload
+      try {
+        lastReload = Number(window.sessionStorage.getItem("chunk_reload_lock") || 0)
+      } catch {
+        throw err
+      }
       const now = Date.now()
       if (now - lastReload > 8000) {
-        sessionStorage.setItem("chunk_reload_lock", String(now))
+        try {
+          window.sessionStorage.setItem("chunk_reload_lock", String(now))
+        } catch {
+          throw err
+        }
         window.location.reload()
         return new Promise(() => {})
       }
@@ -41,7 +50,7 @@ const ResetPasswordPage = safeLazy(() => import("@/pages/auth/ResetPasswordPage"
 const DiscoverPage = safeLazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
 const IntelligencePage = safeLazy(() => import("@/pages/IntelligencePage").then(m => ({ default: m.IntelligencePage })))
 const PerformancePage = safeLazy(() => import("./pages/PerformancePage").then(m => ({ default: m.default || m.PerformancePage })))
-const DashboardPage = safeLazy(() => import("./pages/DashboardPage").then(m => ({ default: m.default || m.DashboardPage })))
+const DashboardPage = safeLazy(() => import("./pages/DashboardPage").then(m => ({ default: m.default })))
 const CreatePage = safeLazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
 const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
 const GuidePage = safeLazy(() => import("@/pages/GuidePage").then(m => ({ default: m.GuidePage })))

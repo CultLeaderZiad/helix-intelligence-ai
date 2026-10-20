@@ -5,6 +5,23 @@ const STORAGE_LATEST_KEY = "helix_latest_search"
 const STORAGE_HISTORY_KEY = "helix_search_history"
 const STORAGE_ACTIVE_CREATIVE_KEY = "helix_active_creative"
 const STORAGE_DRAFTS_KEY = "helix_saved_drafts"
+const STORAGE_KEYS = [
+  STORAGE_LATEST_KEY,
+  STORAGE_HISTORY_KEY,
+  STORAGE_ACTIVE_CREATIVE_KEY,
+  STORAGE_DRAFTS_KEY,
+]
+
+function purgeUserSearchCache(userId) {
+  if (!userId || typeof window === "undefined") return
+  try {
+    for (const key of STORAGE_KEYS) {
+      window.localStorage.removeItem(`${key}_${userId}`)
+    }
+  } catch {
+    // Storage can be unavailable in restricted browser contexts.
+  }
+}
 
 const SearchContext = createContext({
   latestSearch: null,
@@ -30,6 +47,20 @@ export function SearchProvider({ children }) {
   const [searchHistory, setSearchHistory] = useState([])
   const [activeCreative, setActiveCreative] = useState(null)
   const [drafts, setDrafts] = useState([])
+  const [cacheScope, setCacheScope] = useState(null)
+
+  useEffect(() => {
+    const clearPrivateCache = () => {
+      purgeUserSearchCache(prevUserIdRef.current)
+      prevUserIdRef.current = null
+      setLatestSearch(null)
+      setSearchHistory([])
+      setActiveCreative(null)
+      setDrafts([])
+    }
+    window.addEventListener("helix:session-clearing", clearPrivateCache)
+    return () => window.removeEventListener("helix:session-clearing", clearPrivateCache)
+  }, [])
 
   // Synchronize state with current user session (F12, F43)
   useEffect(() => {
@@ -46,20 +77,14 @@ export function SearchProvider({ children }) {
     if (!userId) {
       const previous = prevUserIdRef.current
       if (previous) {
-        try {
-          localStorage.removeItem(`${STORAGE_LATEST_KEY}_${previous}`)
-          localStorage.removeItem(`${STORAGE_HISTORY_KEY}_${previous}`)
-          localStorage.removeItem(`${STORAGE_ACTIVE_CREATIVE_KEY}_${previous}`)
-          localStorage.removeItem(`${STORAGE_DRAFTS_KEY}_${previous}`)
-        } catch {
-          // storage can be blocked
-        }
+        purgeUserSearchCache(previous)
       }
       setLatestSearch(null)
       setSearchHistory([])
       setActiveCreative(null)
       setDrafts([])
       prevUserIdRef.current = null
+      setCacheScope(null)
       return
     }
 
@@ -95,7 +120,18 @@ export function SearchProvider({ children }) {
     }
 
     prevUserIdRef.current = userId
+    setCacheScope(userId)
   }, [userId])
+
+  useEffect(() => {
+    if (!userId || cacheScope !== userId) return
+    try {
+      localStorage.setItem(`${STORAGE_HISTORY_KEY}_${userId}`, JSON.stringify(searchHistory))
+      localStorage.setItem(`${STORAGE_DRAFTS_KEY}_${userId}`, JSON.stringify(drafts))
+    } catch {
+      // Storage may be unavailable; committed in-memory state remains usable.
+    }
+  }, [userId, cacheScope, searchHistory, drafts])
 
   const saveCompletedSearch = useCallback((searchData) => {
     if (!searchData || !searchData.query) return
@@ -122,13 +158,6 @@ export function SearchProvider({ children }) {
     setSearchHistory((prev) => {
       const filtered = prev.filter((p) => p.query.toLowerCase() !== entry.query.toLowerCase())
       const updated = [entry, ...filtered].slice(0, 15) // Keep last 15 searches
-      if (userId) {
-        try {
-          localStorage.setItem(`${STORAGE_HISTORY_KEY}_${userId}`, JSON.stringify(updated))
-        } catch (e) {
-          console.warn("Failed to persist search history", e)
-        }
-      }
       return updated
     })
   }, [userId])
@@ -187,13 +216,6 @@ export function SearchProvider({ children }) {
     setDrafts((prev) => {
       const filtered = prev.filter((d) => d.id !== id)
       const updated = [entry, ...filtered].slice(0, 30) // Keep up to 30 drafts
-      if (userId) {
-        try {
-          localStorage.setItem(`${STORAGE_DRAFTS_KEY}_${userId}`, JSON.stringify(updated))
-        } catch (e) {
-          console.warn("Failed to persist drafts to localStorage", e)
-        }
-      }
       return updated
     })
     return entry
@@ -202,13 +224,6 @@ export function SearchProvider({ children }) {
   const deleteDraft = useCallback((draftId) => {
     setDrafts((prev) => {
       const updated = prev.filter((d) => d.id !== draftId)
-      if (userId) {
-        try {
-          localStorage.setItem(`${STORAGE_DRAFTS_KEY}_${userId}`, JSON.stringify(updated))
-        } catch (e) {
-          console.warn("Failed to update drafts in localStorage", e)
-        }
-      }
       return updated
     })
   }, [userId])
