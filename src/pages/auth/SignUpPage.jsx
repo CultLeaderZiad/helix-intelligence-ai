@@ -7,12 +7,12 @@ import { AuthLayout } from "@/features/auth/AuthLayout"
 import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
 import { PasswordStrength } from "@/features/auth/PasswordStrength"
-import { validateSignUp } from "@/features/auth/validation"
+import { formatAuthFieldError, validateSignUp } from "@/features/auth/validation"
 import { Input, PasswordInput } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
-import { ServiceError } from "@/services"
 import { getAttribution, clearAttribution } from "@/lib/utm"
 import { track } from "@/lib/analytics"
+import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * Sign up. New accounts are always created as 'customer' server-side —
@@ -22,11 +22,11 @@ import { track } from "@/lib/analytics"
  */
 export function SignUpPage() {
   const { signUp, isAuthenticated } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
 
   const [values, setValues] = useState({ name: "", email: "", password: "" })
   const [consentAgreed, setConsentAgreed] = useState(false)
-  const [marketingOptIn, setMarketingOptIn] = useState(false)
   const [errors, setErrors] = useState({})
   const [authError, setAuthError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -44,12 +44,14 @@ export function SignUpPage() {
 
   if (isAuthenticated) return <Navigate to={APP_HOME} replace />
 
+  /** @param {"name" | "email" | "password"} key @param {string} value */
   function update(key, value) {
     setValues((s) => ({ ...s, [key]: value }))
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }))
     if (authError) setAuthError(null)
   }
 
+  /** @param {import("react").FormEvent<HTMLFormElement>} [event] */
   async function onSubmit(event) {
     if (event?.preventDefault) event.preventDefault()
     if (submitting) return
@@ -57,23 +59,23 @@ export function SignUpPage() {
     setAuthError(null)
     const nextErrors = validateSignUp(values)
     if (!consentAgreed) {
-      nextErrors.consent = "You must accept the Terms and Privacy Policy to create an account."
+      nextErrors.consent = t("authMustAcceptConsent", "Accept the Terms of Service and Privacy Policy to continue.")
     }
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
       const firstMsg = nextErrors.name
-        ? "Please enter your full name."
+        ? t("authNameRequired", "Enter your full name.")
         : nextErrors.email === "invalid email"
-        ? "Please enter a valid email address."
+        ? t("authEmailInvalid", "Enter a valid email address.")
         : nextErrors.email
-        ? "Email address is required."
+        ? t("authEmailRequired", "Email address is required.")
         : nextErrors.password === "min 8 chars"
-        ? "Password must be at least 8 characters long."
+        ? t("authPasswordMin", "Password must be at least 8 characters.")
         : nextErrors.password
-        ? "Password is required."
-        : "Please accept the Terms of Service and Privacy Policy to proceed."
+        ? t("authPasswordRequired", "Password is required.")
+        : t("authMustAcceptConsent", "Accept the Terms of Service and Privacy Policy to continue.")
       setAuthError({
-        status: "validation error",
+        status: t("authValidationError", "Check the highlighted fields"),
         tone: "danger",
         message: firstMsg,
       })
@@ -117,24 +119,23 @@ export function SignUpPage() {
       if (isDuplicate) {
         setErrors((prev) => ({ ...prev, email: "already registered" }))
         setAuthError({
-          status: "account exists",
+          status: t("authAccountExistsStatus", "Account already exists"),
           tone: "info",
-          message: "An account with this email already exists.",
+          message: t("authAccountExistsMessage", "An account with this email already exists. Sign in instead."),
           isDuplicate: true,
         })
       } else if (isCold) {
         setAuthError({
-          status: "server waking",
+          status: t("authServerWakingStatus", "Server waking"),
           tone: "warning",
-          message: "The backend server is waking up. Click retry below to complete your registration.",
+          message: t("authBackendWaking", "The service is starting. Retry to complete sign in."),
           isColdStart: true,
         })
       } else {
-        const errorDetail = err?.response?.data?.detail || err?.message || "Sign up failed. Please check your credentials and try again."
         setAuthError({
-          status: "signup failed",
+          status: t("authSignupFailed", "Unable to create your account. Please try again."),
           tone: "danger",
-          message: typeof errorDetail === "string" ? errorDetail : "Sign up failed. Please try again.",
+          message: t("authSignupFailed", "Unable to create your account. Please try again."),
           isColdStart: false,
         })
       }
@@ -144,17 +145,17 @@ export function SignUpPage() {
 
   return (
     <AuthLayout
-      eyebrow="Get started"
-      title="Create your Helix account"
-      description="Start with the Discover loop. New accounts join as an analyst."
+      eyebrow={t("authAccess", "Access")}
+      title={t("authCreateAccountTitle", "Create an account")}
+      description={t("authCreateAccountDescription", "Create an account to request workspace access. An administrator may need to approve access to features.")}
       footer={
         <>
-          Already have an account?{" "}
+          {t("authAlreadyAccount", "Already have an account?")} {" "}
           <Link
             to="/sign-in"
             className="text-accent transition-colors hover:text-accent-dim"
           >
-            Sign in
+            {t("authSignInLink", "Sign in")}
           </Link>
         </>
       }
@@ -172,16 +173,16 @@ export function SignUpPage() {
                   variant="outline"
                   onClick={() => navigate("/sign-in", { state: { email: values.email.trim() } })}
                 >
-                  Sign in
+                  {t("authSignInLink", "Sign in")}
                 </Button>
               ) : authError.isColdStart ? (
                 <Button
                   type="button"
                   size="xs"
                   variant="outline"
-                  onClick={onSubmit}
+                  onClick={() => void onSubmit()}
                 >
-                  Retry
+                  {t("authRetry", "Retry")}
                 </Button>
               ) : null
             }
@@ -190,14 +191,14 @@ export function SignUpPage() {
           </FormBanner>
         ) : null}
 
-        <AuthField id="name" label="Name" error={errors.name}>
+        <AuthField id="name" label={t("authFullName", "Full name")} error={formatAuthFieldError(errors.name, t)}>
           <Input
             id="name"
             name="name"
             type="text"
             autoComplete="name"
             autoFocus
-            placeholder="Ada Lovelace"
+            placeholder={t("authFullNamePlaceholder", "Your name")}
             value={values.name}
             disabled={submitting}
             aria-invalid={Boolean(errors.name)}
@@ -206,13 +207,13 @@ export function SignUpPage() {
           />
         </AuthField>
 
-        <AuthField id="email" label="Email" error={errors.email}>
+        <AuthField id="email" label={t("authEmail", "Email")} error={formatAuthFieldError(errors.email, t)}>
           <Input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="you@company.com"
+            placeholder={t("authEmailPlaceholder", "you@company.com")}
             value={values.email}
             disabled={submitting}
             aria-invalid={Boolean(errors.email)}
@@ -221,12 +222,12 @@ export function SignUpPage() {
           />
         </AuthField>
 
-        <AuthField id="password" label="Password" error={errors.password}>
+        <AuthField id="password" label={t("authPassword", "Password")} error={formatAuthFieldError(errors.password, t)}>
           <PasswordInput
             id="password"
             name="password"
             autoComplete="new-password"
-            placeholder="At least 8 characters"
+            placeholder={t("authPasswordMin", "Password must be at least 8 characters.")}
             value={values.password}
             disabled={submitting}
             aria-invalid={Boolean(errors.password)}
@@ -251,13 +252,13 @@ export function SignUpPage() {
               required
             />
             <span className="leading-relaxed">
-              I agree to the{" "}
+              {t("authTermsConsent", "I agree to the")} {" "}
               <a href="/terms" target="_blank" rel="noreferrer" className="text-accent hover:underline">
-                Terms of Service
+                {t("authTerms", "Terms of Service")}
               </a>{" "}
-              and{" "}
+              {t("authAnd", "and")} {" "}
               <a href="/privacy" target="_blank" rel="noreferrer" className="text-accent hover:underline">
-                Privacy Policy
+                {t("authPrivacy", "Privacy Policy")}
               </a>
               .
             </span>
@@ -266,16 +267,6 @@ export function SignUpPage() {
             <p className="text-[11px] text-danger font-mono" role="alert">{errors.consent}</p>
           )}
 
-          <label htmlFor="marketing-optin" className="flex items-start gap-2.5 cursor-pointer text-text-faint select-none">
-            <input
-              type="checkbox"
-              id="marketing-optin"
-              checked={marketingOptIn}
-              onChange={(e) => setMarketingOptIn(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded-xs border-border bg-surface-2 accent-accent focus:ring-1 focus:ring-accent"
-            />
-            <span className="leading-relaxed">Send me product updates and major release announcements (optional).</span>
-          </label>
         </div>
 
         <Button
@@ -288,11 +279,11 @@ export function SignUpPage() {
           {submitting ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              {isSlow ? "Waking server (connecting)…" : "Creating account…"}
+              {isSlow ? t("authWakingServer", "Connecting to the server…") : t("authCreatingAccount", "Creating account…")}
             </>
           ) : (
             <>
-              Create account
+              {t("authCreateAccountButton", "Create account")}
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </>
           )}
