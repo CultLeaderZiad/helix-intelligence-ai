@@ -1,0 +1,48 @@
+Helix Intelligence: full product + technical audit (Hoplite)
+Repo: CultLeaderZiad/helix-intelligence-ai. Audit branch fix/intelligence-W4 (the latest stacked work: W0 → W1 → W2 → W3 → W4). Compare with main (5b45806, live in production) where it matters.
+
+Rules
+Read-only on the app code. Do NOT change app code, push to main, merge, deploy, or touch production or real accounts.
+Your only write is a new branch audit/helix-full created from fix/intelligence-W4. It may contain only files under docs/audit/, and goes in ONE draft PR with base fix/intelligence-W4 (never main).
+Base every claim on evidence (file path, command output, or screenshot). Never invent numbers. Mark anything you couldn't check as "not verified".
+No fake data. If a page needs a provider key you don't have, say so instead of mocking it.
+Read README.md, ARCHITECTURE.md, DEVELOPMENT.md and API_CONTRACTS.md (and DESIGN_SYSTEM.md if present) first.
+
+Context
+Helix is a competitive ad-intelligence workstation. It has four loops: Discover (the only one built end to end), Intelligence (mine recurring creative patterns), Create (draft creative briefed on those patterns) and Performance (feed live results back into scoring).
+Stack: Vite/React frontend on Vercel. FastAPI + async SQLAlchemy + Alembic on Neon Postgres. API and scrapling worker on Render.
+It must support EN and AR (RTL), tenant isolation, and real AI results only.
+There is NO billing provider: access is granted manually by an admin. Production currently shows a "Trial ended — select a plan" banner and a "Billing & Meter" page, which conflicts with that decision.
+A Discover live search on production gets stuck at "resolving sources".
+Sidebar: Discover, Intelligence, Create, Performance, Monitors, Scout, Swipe Files, Dashboard, Playbook & Guide, Docs & API Reference, Billing & Meter, Support & Feedback, Profile & Settings, Messages & Updates.
+Do
+Run the app in your managed preview (frontend + backend + a disposable Postgres with migrations at head). Open EVERY route and tab in EN and AR. For each one, take a screenshot and save it under docs/audit/screens/.
+Write docs/audit/HELIX-AUDIT.md in Egyptian Arabic, with technical terms, paths and code in English. Sections:
+What Helix is: the idea, who it's for, and the problem it solves, in 5–8 lines. Add a 1-paragraph English pitch that can be pasted into tools like Higgsfield or a pitch deck, and a mermaid diagram of the end-to-end system.
+Page-by-page inventory: for every route, give the path, what it does, its status (real / partial / mock / empty / broken / dead), the endpoints it calls, the key components, and a screenshot link. Flag routes that are unclear, duplicated or orphaned, and confusing navigation.
+API inventory:
+Every backend endpoint (method + path), marked as used by the frontend, unused, or called by the frontend but missing.
+Every external provider (Meta ad library, adyntel, scrapegraph, scrapling, LLMs, Resend, R2, etc.): where it's used, whether it's paid, whether it's wired up or dead, and which env vars it needs.
+Weight and performance: real build chunk sizes, the heaviest and unused npm/Python dependencies, wasteful polling and repeated requests, slow DB queries, and preview load timings.
+Features with no clear need or that hurt the core: for each, recommend keep / merge / cut / hide-until-built, with the reason. Include the billing/trial leftovers and any mock UI for loops that aren't built.
+Risks to the core: what can break Discover, single points of failure, migration and schema fragility, auth and tenant risks, and the root cause of the "resolving sources" hang (trace the code path and reproduce it in the preview if possible).
+Frontend / backend / database: the architecture in plain words, the main tables and what each holds, and what to replace or simplify.
+Strategy (clearly labeled as opinion): is it viable as open source, as a profitable SaaS, or as open-core? Give honest pros and cons grounded in the code. Name the smallest focused product worth shipping, and an ordered 3–5 step roadmap.
+Backend verdict: grade the backend (good / acceptable / bad) on structure, API design and consistency, error handling, auth and tenant isolation, DB and migrations, tests and CI, observability, security, performance, and scalability. For each one, give evidence and the concrete fix.
+What to remove: a ranked cut list (pages, endpoints, providers, dependencies, tables, env vars). For each item give the impact, the risk of removing it, and how to remove it safely.
+High-end distribution plan: what it would take to ship Helix to many users at a high quality bar:
+Production hardening: uptime, monitoring and error reporting, rate limits, queues and workers, caching, CDN, backups.
+Onboarding and admin-granted access.
+EN/AR + RTL polish, performance budgets, accessibility, and SEO for the marketing pages.
+Security and compliance (privacy, terms, data deletion).
+Docs and public API.
+Go-to-market channels and pricing options (as opinion only, no prices). Order it by leverage, with effort estimates labeled as estimates.
+Open the draft PR. Its description should hold a short summary of the top 10 findings and links to the report and screenshots.
+Final reply
+Post the following as a PR comment and as your final message:
+
+the PR link
+the top 10 findings
+what you verified (commands, preview, screenshots)
+what is not verified
+the single P0 next step

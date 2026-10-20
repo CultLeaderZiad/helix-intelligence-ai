@@ -93,10 +93,10 @@
  *
  * @typedef {Object} Job
  * @property {string} job_id
- * @property {'queued'|'running'|'succeeded'|'failed'} status
+ * @property {'queued'|'running'|'cancelling'|'cancel_requested'|'succeeded'|'failed'|'cancelled'|'timed_out'} status
  * @property {number} progress            0..1
  * @property {string} stage               stage key, see DISCOVERY_STAGES
- * @property {string} stage_label
+ * @property {string} stage_label        latest server-reported progress label
  * @property {number} stage_index
  * @property {number} stages_total
  * @property {number} records_found
