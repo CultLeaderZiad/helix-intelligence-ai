@@ -1,0 +1,138 @@
+.......................................................................F [ 31%]
+........................................................................ [ 63%]
+.....................F.................................................. [ 95%]
+..........                                                               [100%]
+=================================== FAILURES ===================================
+______________ test_provider_http_exception_is_not_unbound_local _______________
+
+    @pytest.mark.asyncio
+    async def test_provider_http_exception_is_not_unbound_local():
+        class Boom(AIProvider):
+            async def _call_api(self, messages):
+                raise HTTPException(status_code=503, detail="provider down")
+    
+        creative = CreativeSchema(
+            id="creative-1",
+            brand_id="brand",
+            platform="meta",
+            format="image",
+            headline="Hello",
+            body="Body",
+            cta="Shop",
+            variant_count=1,
+            scores={"hook": None, "clarity": None, "retention": None, "composite": None},
+            metrics={},
+            pattern_ids=[],
+        )
+        with pytest.raises(HTTPException) as exc:
+            await Boom().generate_insight(creative)
+        assert exc.value.status_code == 503
+>       assert "provider down" in str(exc.value.detail)
+E       AssertionError: assert 'provider down' in 'AI insight generation is temporarily unavailable.'
+E        +  where 'AI insight generation is temporarily unavailable.' = str('AI insight generation is temporarily unavailable.')
+E        +    where 'AI insight generation is temporarily unavailable.' = HTTPException(status_code=503, detail='AI insight generation is temporarily unavailable.').detail
+E        +      where HTTPException(status_code=503, detail='AI insight generation is temporarily unavailable.') = <ExceptionInfo HTTPException(status_code=503, detail='AI insight generation is temporarily unavailable.') tblen=2>.value
+
+tests/test_intelligence_w2_boundaries.py:106: AssertionError
+------------------------------ Captured log call -------------------------------
+WARNING  app.services.ai.base:observability.py:34 {"event":"ai_insight_failed","request_id":null,"tenant_id":null,"actor_id":null,"job_id":null,"error_type":"HTTPException"}
+______ test_failure_after_tenancy_preserves_stamp_and_retry_reaches_head _______
+
+    def test_failure_after_tenancy_preserves_stamp_and_retry_reaches_head():
+        url = os.environ.get("TEST_DATABASE_URL", "")
+        if not url.startswith(("postgresql://", "postgres://", "postgresql+asyncpg://")):
+            pytest.skip("migration failure regression requires TEST_DATABASE_URL for real PostgreSQL")
+        if shutil.which("psql") is None:
+            pytest.skip("migration failure regression requires the PostgreSQL psql client")
+    
+        database = f"helix_migration_fail_{uuid.uuid4().hex[:12]}"
+        try:
+>           proof.prove_failure_after_tenancy_is_retryable(database)
+
+tests/test_migration_failure.py:27: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+database = 'helix_migration_fail_882ef737a2cd'
+
+    def prove_failure_after_tenancy_is_retryable(database: str = LATER_FAIL_DB) -> None:
+        """Fail f8 after its first DDL; e7 schema and stamp must remain durable."""
+        _recreate(database)
+        _must(_alembic("upgrade", BEFORE_TENANCY, database=database), "later-fail stamp before tenancy")
+        # A real PostgreSQL exception, not a mocked migration runner. f8 adds a
+        # users column before creating access_requests, so the failure also proves
+        # that the partially executed next revision rolls back as a unit.
+        _sql(
+            database,
+            """
+            CREATE FUNCTION helix_proof_fail_after_tenancy() RETURNS event_trigger
+            LANGUAGE plpgsql AS $$
+            BEGIN
+                IF current_query() ~* 'CREATE TABLE[[:space:]]+access_requests' THEN
+                    RAISE EXCEPTION 'injected failure after e7c1a9b4d2f0';
+                END IF;
+            END;
+            $$;
+            CREATE EVENT TRIGGER helix_proof_fail_after_tenancy
+            ON ddl_command_start EXECUTE FUNCTION helix_proof_fail_after_tenancy();
+            """,
+        )
+        try:
+            failed = _alembic("upgrade", "head", database=database)
+            if failed.returncode == 0:
+                raise SystemExit("injected post-tenancy failure did not fire")
+            if "injected failure after e7c1a9b4d2f0" not in failed.stdout + failed.stderr:
+                sys.stderr.write(failed.stdout + failed.stderr)
+                raise SystemExit("upgrade failed for a reason other than the injected failure")
+            if _version(database) != "e7c1a9b4d2f0":
+                raise SystemExit(f"post-tenancy failure left incorrect version {_version(database)}")
+            for table in ("pattern_quarantine", "operation_idempotency", "credit_reservations", "credit_ledger"):
+                if _scalar(database, f"SELECT to_regclass('public.{table}')") is None:
+                    raise SystemExit(f"stamped tenancy schema is missing {table}")
+            if _scalar(database, "SELECT to_regclass('public.access_requests')") is not None:
+                raise SystemExit("failed next revision committed access_requests")
+            if _sql(
+                database,
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'is_platform_admin'",
+            ):
+                raise SystemExit("failed next revision committed users.is_platform_admin")
+            print("ok post-tenancy failure preserved e7 schema/stamp and rolled back next revision")
+        finally:
+            _sql(database, "DROP EVENT TRIGGER helix_proof_fail_after_tenancy")
+            _sql(database, "DROP FUNCTION helix_proof_fail_after_tenancy()")
+        _must(_alembic("upgrade", "head", database=database), "later-fail retry upgrade head")
+        if _version(database) != RLS_DENY_REVISION:
+>           raise SystemExit("post-tenancy retry did not reach head")
+E           SystemExit: post-tenancy retry did not reach head
+
+scripts/prove_prod_schema_reconcile.py:395: SystemExit
+----------------------------- Captured stdout call -----------------------------
+ok later-fail stamp before tenancy (exit 0)
+ok post-tenancy failure preserved e7 schema/stamp and rolled back next revision
+ok later-fail retry upgrade head (exit 0)
+=============================== warnings summary ===============================
+app/db/base.py:3
+  /tmp/hoplite/workspace/backend/tests/../app/db/base.py:3: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+app/schemas/media.py:67
+  /tmp/hoplite/workspace/backend/tests/../app/schemas/media.py:67: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class MediaGenerationJobResponse(BaseModel):
+
+app/schemas/app_update.py:34
+  /tmp/hoplite/workspace/backend/tests/../app/schemas/app_update.py:34: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class AppUpdateResponse(AppUpdateBase):
+
+tests/test_intelligence_w2_leftovers.py::test_adyntel_empty_200_stays_empty_and_library_does_not_count_a_failure
+  /tmp/hoplite/workspace/backend/tests/../app/services/scraping/adyntel_provider.py:107: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_intelligence_w3_queries.py: 14 warnings
+  /tmp/hoplite/workspace/backend/tests/../app/services/creative_service.py:202: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    first_seen=datetime.datetime.utcnow().isoformat() + "Z"
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_intelligence_w2_boundaries.py::test_provider_http_exception_is_not_unbound_local
+FAILED tests/test_migration_failure.py::test_failure_after_tenancy_preserves_stamp_and_retry_reaches_head
+2 failed, 224 passed, 18 warnings in 141.20s (0:02:21)
