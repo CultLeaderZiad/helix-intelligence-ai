@@ -18,7 +18,6 @@ from app.services.scout_service import enrich_from_website
 from app.services.scrapegraph_lead_service import (
     extract_business_with_scrapegraph,
     get_scrapegraph_key,
-    extract_profile_with_scrapegraph,
     search_leads_with_scrapegraph,
 )
 
