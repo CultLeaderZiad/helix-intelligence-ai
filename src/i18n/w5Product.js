@@ -1,5 +1,7 @@
 export const w5Product = {
   en: {
+    backToWorkspace: "Back to workspace", adminGroup_Overview: "Overview", adminGroup_Accounts: "Accounts", adminGroup_Billing: "Usage", adminGroup_Data: "Data", adminGroup_System: "System", "adminNav_dashboard": "Overview", "adminNav_organizations": "Organizations", "adminNav_access-requests": "Access requests", "adminNav_users": "Users", "adminNav_support": "Support tickets", "adminNav_updates": "Updates", "adminNav_health": "Observed system health", "adminNav_audit-log": "Audit log",
+    onboardingSaveFailed: "Setup could not be saved on the server. Retry to prevent it reopening.",
     goToSurface: "Go to {name}",
     accessStatusLabel: "Access status", unknownValue: "Not available", loading: "Loading…", requestNoteLabel: "Note for the administrator (optional)", sendingRequest: "Sending…", accessRequestSent: "Request submitted for administrator review.", recordedUsage: "Recorded workspace usage", searchesLabel: "Searches today", usageDisclosure: "Usage comes from server records. Internal limits are not prices or payment balances.",
     accessUsage: "Access & Usage", workspaceNavigation: "Workspace", docsNavigation: "Documentation",
@@ -13,6 +15,8 @@ export const w5Product = {
     sourceDocs: "Read the documentation", accessDescription: "Access is granted by an administrator, not purchased. Submit a request and review the server-reported status.",
   },
   ar: {
+    backToWorkspace: "العودة إلى مساحة العمل", adminGroup_Overview: "نظرة عامة", adminGroup_Accounts: "الحسابات", adminGroup_Billing: "الاستخدام", adminGroup_Data: "البيانات", adminGroup_System: "النظام", "adminNav_dashboard": "نظرة عامة", "adminNav_organizations": "المؤسسات", "adminNav_access-requests": "طلبات الوصول", "adminNav_users": "المستخدمون", "adminNav_support": "طلبات الدعم", "adminNav_updates": "التحديثات", "adminNav_health": "حالة النظام المرصودة", "adminNav_audit-log": "سجل التدقيق",
+    onboardingSaveFailed: "تعذّر حفظ الإعداد على الخادم. أعد المحاولة لمنع ظهوره مجدداً.",
     goToSurface: "انتقل إلى {name}",
     accessStatusLabel: "حالة الوصول", unknownValue: "غير متاح", loading: "جارٍ التحميل…", requestNoteLabel: "ملاحظة للمشرف (اختياري)", sendingRequest: "جارٍ الإرسال…", accessRequestSent: "تم إرسال الطلب لمراجعة المشرف.", recordedUsage: "الاستخدام المسجّل لمساحة العمل", searchesLabel: "عمليات البحث اليوم", usageDisclosure: "يأتي الاستخدام من سجلات الخادم. الحدود الداخلية ليست أسعاراً أو أرصدة دفع.",
     accessUsage: "الوصول والاستخدام", workspaceNavigation: "مساحة العمل", docsNavigation: "التوثيق",
