@@ -104,6 +104,8 @@ function deriveJob(record) {
   const now = Date.now()
   const elapsed = now - record.started_at
 
+  if (record.terminal_job) return record.terminal_job
+
   if (record.forced_error) {
     return {
       job_id: record.job_id,
@@ -230,6 +232,28 @@ const discoverService = {
       })
     }
     return deriveJob(record)
+  },
+
+  async cancelJob(jobId) {
+    const record = jobStore.get(jobId)
+    if (!record) {
+      throw new ServiceError(`Job ${jobId} not found`, {
+        status: 404,
+        code: "job_not_found",
+      })
+    }
+
+    const current = deriveJob(record)
+    if (isTerminalJobStatus(current.status)) return current
+
+    record.terminal_job = {
+      ...current,
+      status: "cancelled",
+      stage_label: "Cancelled",
+      completed_at: new Date().toISOString(),
+      error: null,
+    }
+    return record.terminal_job
   },
 
   /**
