@@ -1,0 +1,386 @@
+{
+  "measurement": {
+    "capturedAtUtc": "2026-10-20",
+    "branch": "audit/helix-full",
+    "method": "Existing installed workspaces only; no package installation, provider call, production query, or database mutation.",
+    "node": "v24.22.0",
+    "pnpm": "9.15.4",
+    "python": "3.12.3",
+    "pythonEnvironment": "/tmp/w4-venv"
+  },
+  "build": {
+    "command": "pnpm build",
+    "result": "passed",
+    "distBytes": 1958073,
+    "emittedFiles": 122,
+    "largestAssets": [
+      {
+        "path": "dist/assets/index-CuzHoytb.js",
+        "bytes": 481532,
+        "gzipBytes": 147494
+      },
+      {
+        "path": "dist/assets/DocSearchModal-1NVj4Zf_.js",
+        "bytes": 182288,
+        "gzipBytes": 51820
+      },
+      {
+        "path": "dist/assets/index-cRSK3YUL.css",
+        "bytes": 135665,
+        "gzipBytes": 25694
+      },
+      {
+        "path": "dist/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2",
+        "bytes": 85068,
+        "gzipBytes": 85109
+      },
+      {
+        "path": "dist/brand/helix-logo.png",
+        "bytes": 80628,
+        "gzipBytes": 78422
+      },
+      {
+        "path": "dist/brand/helix-mark.png",
+        "bytes": 80628,
+        "gzipBytes": 78422
+      },
+      {
+        "path": "dist/assets/ScoutPage-D7qscLw1.js",
+        "bytes": 71115,
+        "gzipBytes": 15094
+      },
+      {
+        "path": "dist/assets/DiscoverPage-BR_vSBz3.js",
+        "bytes": 64062,
+        "gzipBytes": 18852
+      },
+      {
+        "path": "dist/assets/inter-latin-wght-normal-Dx4kXJAl.woff2",
+        "bytes": 48256,
+        "gzipBytes": 48249
+      },
+      {
+        "path": "dist/assets/ScoutLeadGenerationPage-Bw0NbW__.js",
+        "bytes": 41262,
+        "gzipBytes": 10690
+      },
+      {
+        "path": "dist/assets/jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2",
+        "bytes": 40404,
+        "gzipBytes": 40437
+      },
+      {
+        "path": "dist/assets/IntelligencePage-D8t2Fb8o.js",
+        "bytes": 35566,
+        "gzipBytes": 10721
+      },
+      {
+        "path": "dist/assets/CreatePage-GRcwbt8o.js",
+        "bytes": 33132,
+        "gzipBytes": 9789
+      },
+      {
+        "path": "dist/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2",
+        "bytes": 25960,
+        "gzipBytes": 25988
+      },
+      {
+        "path": "dist/assets/driver.js-Dj4CfABu.js",
+        "bytes": 25413,
+        "gzipBytes": 7281
+      },
+      {
+        "path": "dist/assets/DocsDetailPage-BAaHn1ji.js",
+        "bytes": 24939,
+        "gzipBytes": 7022
+      },
+      {
+        "path": "dist/assets/DashboardPage-BIWuR3on.js",
+        "bytes": 21237,
+        "gzipBytes": 5317
+      },
+      {
+        "path": "dist/assets/inter-greek-wght-normal-CkhJZR-_.woff2",
+        "bytes": 18996,
+        "gzipBytes": 19024
+      },
+      {
+        "path": "dist/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2",
+        "bytes": 18748,
+        "gzipBytes": 18776
+      },
+      {
+        "path": "dist/assets/UpdatesPage-h90t7YM8.js",
+        "bytes": 17889,
+        "gzipBytes": 4900
+      }
+    ]
+  },
+  "javascript": {
+    "runtimeDependencyCount": 10,
+    "developmentDependencyCount": 16,
+    "installedPackageDirectoryCount": 397,
+    "nodeModulesBytes": 261427981,
+    "pnpmStoreBytes": 249317694,
+    "runtimeDependencies": [
+      {
+        "name": "@fontsource-variable/inter",
+        "manifestVersion": "^5.3.0",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/@fontsource-variable+inter@5.3.0/node_modules/@fontsource-variable/inter",
+        "packageContentBytes": 1909049,
+        "literalSourceReferenceFound": true
+      },
+      {
+        "name": "@fontsource-variable/jetbrains-mono",
+        "manifestVersion": "^5.3.0",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/@fontsource-variable+jetbrains-mono@5.3.0/node_modules/@fontsource-variable/jetbrains-mono",
+        "packageContentBytes": 203866,
+        "literalSourceReferenceFound": true
+      },
+      {
+        "name": "clsx",
+        "manifestVersion": "^2.1.1",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/clsx@2.1.1/node_modules/clsx",
+        "packageContentBytes": 8555,
+        "literalSourceReferenceFound": true
+      },
+      {
+        "name": "driver.js",
+        "manifestVersion": "^1.8.0",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/driver.js@1.8.0/node_modules/driver.js",
+        "packageContentBytes": 156054,
+        "literalSourceReferenceFound": true
+      },
+      {
+        "name": "gsap",
+        "manifestVersion": "^3.15.0",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/gsap@3.15.0/node_modules/gsap",
+        "packageContentBytes": 6258071,
+        "literalSourceReferenceFound": true
+      },
+      {
+        "name": "lucide-react",
+        "manifestVersion": "^1.16.0",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/lucide-react@1.17.0_react@19.2.4/node_modules/lucide-react",
+        "packageContentBytes": 30191967,
+        "literalSourceReferenceFound": true
+      },
+      {
+        "name": "react",
+        "manifestVersion": "^19",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/react@19.2.4/node_modules/react",
+        "packageContentBytes": 171604,
+        "literalSourceReferenceFound": true
+      },
+      {
+        "name": "react-dom",
+        "manifestVersion": "^19",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/react-dom@19.2.4_react@19.2.4/node_modules/react-dom",
+        "packageContentBytes": 7319413,
+        "literalSourceReferenceFound": true
+      },
+      {
+        "name": "react-router-dom",
+        "manifestVersion": "^7.9.6",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/react-router-dom@7.18.2_react-dom@19.2.4_react@19.2.4__react@19.2.4/node_modules/react-router-dom",
+        "packageContentBytes": 5398,
+        "literalSourceReferenceFound": true
+      },
+      {
+        "name": "tailwind-merge",
+        "manifestVersion": "^3.3.1",
+        "installedPath": "/tmp/hoplite/workspace/node_modules/.pnpm/tailwind-merge@3.4.0/node_modules/tailwind-merge",
+        "packageContentBytes": 934340,
+        "literalSourceReferenceFound": true
+      }
+    ],
+    "largestPnpmStoreEntriesApproxKiB": [
+      {
+        "entry": "lucide-react@1.17.0_react@19.2.4",
+        "kibibytes": 26115
+      },
+      {
+        "entry": "typescript@5.9.3",
+        "kibibytes": 23108
+      },
+      {
+        "entry": "playwright-core@1.62.1",
+        "kibibytes": 12987
+      },
+      {
+        "entry": "@esbuild+linux-x64@0.28.2",
+        "kibibytes": 11162
+      },
+      {
+        "entry": "lightningcss-linux-x64-gnu@1.32.0",
+        "kibibytes": 9823
+      },
+      {
+        "entry": "lightningcss-linux-x64-musl@1.32.0",
+        "kibibytes": 9803
+      },
+      {
+        "entry": "react-dom@19.2.4_react@19.2.4",
+        "kibibytes": 7159
+      },
+      {
+        "entry": "@opentelemetry+semantic-conventions@1.43.0",
+        "kibibytes": 6655
+      },
+      {
+        "entry": "gsap@3.15.0",
+        "kibibytes": 6138
+      },
+      {
+        "entry": "jsdom@30.1.3",
+        "kibibytes": 5578
+      },
+      {
+        "entry": "playwright@1.62.1",
+        "kibibytes": 4960
+      },
+      {
+        "entry": "zod@4.4.3",
+        "kibibytes": 4556
+      },
+      {
+        "entry": "react-router@7.18.2_react-dom@19.2.4_react@19.2.4__react@19.2.4",
+        "kibibytes": 3543
+      },
+      {
+        "entry": "eslint@9.39.5_jiti@2.7.0",
+        "kibibytes": 3047
+      },
+      {
+        "entry": "@tailwindcss+oxide-linux-x64-musl@4.3.3",
+        "kibibytes": 2947
+      }
+    ]
+  },
+  "python": {
+    "requirementsFile": "backend/requirements.txt",
+    "environmentBytes": 205461619,
+    "sitePackagesPath": "/usr/local/lib/python3.12/dist-packages",
+    "sitePackagesBytes": 0,
+    "installedDistributionCount": 12,
+    "requirements": [
+      {
+        "requirement": "fastapi==0.141.1",
+        "name": "fastapi",
+        "installedVersion": null
+      },
+      {
+        "requirement": "asyncpg==0.31.0",
+        "name": "asyncpg",
+        "installedVersion": null
+      },
+      {
+        "requirement": "alembic==1.19.1",
+        "name": "alembic",
+        "installedVersion": null
+      },
+      {
+        "requirement": "pydantic-settings==2.15.0",
+        "name": "pydantic-settings",
+        "installedVersion": null
+      },
+      {
+        "requirement": "bcrypt==5.0.0",
+        "name": "bcrypt",
+        "installedVersion": null
+      },
+      {
+        "requirement": "python-multipart==0.0.32",
+        "name": "python-multipart",
+        "installedVersion": null
+      },
+      {
+        "requirement": "httpx==0.28.1",
+        "name": "httpx",
+        "installedVersion": null
+      },
+      {
+        "requirement": "python-dotenv==1.2.3",
+        "name": "python-dotenv",
+        "installedVersion": null
+      },
+      {
+        "requirement": "boto3==1.43.93",
+        "name": "boto3",
+        "installedVersion": null
+      },
+      {
+        "requirement": "Pillow==12.3.0",
+        "name": "Pillow",
+        "installedVersion": null
+      },
+      {
+        "requirement": "aiosqlite==0.22.1",
+        "name": "aiosqlite",
+        "installedVersion": null
+      }
+    ],
+    "largestInstalledDistributionsByRecordSize": [
+      {
+        "name": "PyGObject",
+        "version": "3.48.2",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "argcomplete",
+        "version": "3.1.4",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "click",
+        "version": "8.1.6",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "colorama",
+        "version": "0.4.6",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "dbus-python",
+        "version": "1.3.2",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "packaging",
+        "version": "24.0",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "pip",
+        "version": "24.0",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "pipx",
+        "version": "1.4.3",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "platformdirs",
+        "version": "4.2.0",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "setuptools",
+        "version": "68.1.2",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "userpath",
+        "version": "1.9.1",
+        "recordedFileBytes": 0
+      },
+      {
+        "name": "wheel",
+        "version": "0.42.0",
+        "recordedFileBytes": 0
+      }
+    ]
+  }
+}
