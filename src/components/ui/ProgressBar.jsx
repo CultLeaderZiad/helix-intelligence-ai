@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
  * animation fallback by design — if we do not know the progress, we
  * should not imply that we do.
  */
-export function ProgressBar({ value = 0, tone = "accent", className, striped = false }) {
+export function ProgressBar({ value = 0, tone = "accent", className = "", striped = false }) {
   const pct = Math.max(0, Math.min(100, value * 100))
   const fill = {
     accent: "bg-accent",
