@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from "react"
-import { User, Mail, Lock, Camera, CheckCircle2, AlertCircle, Save, Shield, Eye, EyeOff } from "lucide-react"
-import { accountService } from "../services"
+import { User, Lock, Camera, CheckCircle2, AlertCircle, Save, Shield, Eye, EyeOff, RotateCcw } from "lucide-react"
+import { accountService, authService } from "../services"
 import { useAuth } from "../context/AuthContext"
+import { useLanguage } from "../context/LanguageContext"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
+import { getW5OnboardingText, ONBOARDING_TOUR_RESTART_EVENT } from "../i18n/w5Onboarding"
 
 export function ProfileSettingsPage() {
-  const { user, refreshSession } = useAuth()
+  const { refreshSession } = useAuth()
+  const { lang, t } = useLanguage()
   const fileInputRef = useRef(null)
+  const [isRestartingTour, setIsRestartingTour] = useState(false)
+
+  const onboardingText = (key) => t(key, getW5OnboardingText(lang, key))
 
   const [profile, setProfile] = useState({
     full_name: "",
@@ -109,6 +115,26 @@ export function ProfileSettingsPage() {
     }
   }
 
+  const handleRestartTour = async () => {
+    setErrorMessage("")
+    setSuccessMessage("")
+    setIsRestartingTour(true)
+    try {
+      await authService.restartOnboarding()
+      if (refreshSession) await refreshSession()
+      window.dispatchEvent(
+        new CustomEvent(ONBOARDING_TOUR_RESTART_EVENT, {
+          detail: { source: "settings", persisted: true },
+        }),
+      )
+      setSuccessMessage(onboardingText("w5_settings_tour_success"))
+    } catch (error) {
+      setErrorMessage(error?.message || onboardingText("w5_settings_tour_error"))
+    } finally {
+      setIsRestartingTour(false)
+    }
+  }
+
   return (
     <div className="flex flex-col flex-1 min-h-0 font-sans">
       <BreadcrumbBar trail={["Helix", "Settings", "Account & Profile"]} />
@@ -134,6 +160,24 @@ export function ProfileSettingsPage() {
           {errorMessage}
         </div>
       )}
+
+      <section className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="font-semibold text-white">{onboardingText("w5_settings_tour_title")}</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-400">
+            {onboardingText("w5_settings_tour_description")}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleRestartTour}
+          disabled={isRestartingTour}
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 text-sm font-semibold text-slate-100 transition hover:border-teal-500 hover:bg-teal-500/10 disabled:cursor-wait disabled:opacity-60"
+        >
+          <RotateCcw className={`h-4 w-4 ${isRestartingTour ? "animate-spin" : ""}`} aria-hidden="true" />
+          {onboardingText(isRestartingTour ? "w5_settings_tour_restarting" : "w5_settings_tour_restart")}
+        </button>
+      </section>
 
       {/* Form Container */}
       <form onSubmit={handleSaveProfile} className="space-y-6">
