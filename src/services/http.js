@@ -31,6 +31,22 @@ function buildQuery(params = {}) {
   return qs ? `?${qs}` : ""
 }
 
+function errorMessageFrom(detail, fallback) {
+  if (typeof detail === "string" && detail.trim()) return detail
+  if (Array.isArray(detail)) {
+    for (const entry of detail) {
+      const message = errorMessageFrom(entry, "")
+      if (message) return message
+    }
+  } else if (detail && typeof detail === "object") {
+    for (const key of ["message", "msg", "detail"]) {
+      const message = errorMessageFrom(detail[key], "")
+      if (message) return message
+    }
+  }
+  return fallback
+}
+
 /**
  * Keep-alive & warm-up system:
  * Pings backend health in the background on startup and every 3 minutes
@@ -117,13 +133,12 @@ export async function request(path, options = {}) {
   }
 }
 
-async function requestAttempt(path, options, retryCount = 0) {
+async function requestAttempt(path, options, retryCount = 0, sessionToken = getAccessToken()) {
   const { method = "GET", params, body, signal, headers: extraHeaders } = options
   if (signal.aborted) throw abortError(signal)
   const url = `${API_BASE_URL}${path}${buildQuery(params)}`
 
-  const token = getAccessToken()
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+  const authHeader = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}
 
   const upperMethod = (method || "GET").toUpperCase()
   const isIdempotentMethod = upperMethod === "GET" || upperMethod === "HEAD" || upperMethod === "OPTIONS"
@@ -158,7 +173,7 @@ async function requestAttempt(path, options, retryCount = 0) {
     if (isSafeToRetry && retryCount < 6) {
       const delay = Math.min(3500, 1000 * Math.pow(1.3, retryCount))
       await retryDelay(delay, signal)
-      return requestAttempt(path, options, retryCount + 1)
+      return requestAttempt(path, options, retryCount + 1, sessionToken)
     }
 
     throw new ServiceError(
@@ -176,7 +191,7 @@ async function requestAttempt(path, options, retryCount = 0) {
   if (isSafeToRetry && [502, 503, 504].includes(res.status) && !isJsonError && retryCount < 8) {
     const delay = Math.min(4000, 1200 * Math.pow(1.3, retryCount))
     await retryDelay(delay, signal)
-    return requestAttempt(path, options, retryCount + 1)
+    return requestAttempt(path, options, retryCount + 1, sessionToken)
   }
 
   if (!res.ok) {
@@ -185,15 +200,14 @@ async function requestAttempt(path, options, retryCount = 0) {
     try {
       const payload = await res.json()
       detail = payload?.detail ?? payload?.message ?? detail
-      if (Array.isArray(detail) && detail.length > 0) {
-        detail = detail[0].msg || detail[0].message || "Validation error"
-      } else if (typeof detail === "object" && detail !== null) {
-        if (detail.code) errorCode = detail.code
-        if (detail.message) detail = detail.message
+      if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+        const structuredDetail = /** @type {{ code?: string }} */ (detail)
+        if (typeof structuredDetail.code === "string") errorCode = structuredDetail.code
       }
     } catch {
       /* non-JSON error body */
     }
+    detail = errorMessageFrom(detail, res.status === 422 ? "Validation error" : "Request failed")
     if (signal.aborted) throw abortError(signal)
 
     if (typeof detail === "string") {
@@ -214,12 +228,12 @@ async function requestAttempt(path, options, retryCount = 0) {
     // Only dispatch unauthorized event for non-auth endpoints!
     // Never trigger sign-out while the user is actively on sign-in, sign-up, or session checks!
     const isAuthRoute = path.startsWith("/auth/") || path === "/auth"
-    if (res.status === 401 && !isAuthRoute) {
+    if (res.status === 401 && !isAuthRoute && getAccessToken() === sessionToken) {
       window.dispatchEvent(new CustomEvent("helix:unauthorized"))
     }
 
     throw new ServiceError(
-      typeof detail === "string" ? detail : "Request failed",
+      detail,
       { status: res.status, code: errorCode },
     )
   }
@@ -257,6 +271,10 @@ export async function uploadFile(path, formData, options = {}) {
       const payload = await res.json()
       detail = payload?.detail ?? payload?.message ?? detail
     } catch {}
+    const isAuthRoute = path.startsWith("/auth/") || path === "/auth"
+    if (res.status === 401 && !isAuthRoute && getAccessToken() === token) {
+      window.dispatchEvent(new CustomEvent("helix:unauthorized"))
+    }
     throw new ServiceError(typeof detail === "string" ? detail : "Upload failed", { status: res.status })
   }
 
