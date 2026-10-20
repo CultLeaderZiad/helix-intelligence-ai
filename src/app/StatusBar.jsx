@@ -1,139 +1,29 @@
-import { Database, Clock, Layers, HelpCircle } from "lucide-react"
-import { useLocation, Link } from "react-router-dom"
-import { cn } from "@/lib/utils"
-import { DATA_SOURCE } from "@/services"
-import { API_BASE_URL } from "@/services/config"
-import { formatDuration, formatInt } from "@/lib/format"
-import { useTelemetry } from "./TelemetryContext"
+import { Activity } from "lucide-react"
+import { Link, useLocation } from "react-router-dom"
+import { useTelemetry } from "@/app/TelemetryContext"
 import { useAuth } from "@/context/AuthContext"
+import { useLanguage } from "@/context/LanguageContext"
 
-/**
- * State word tone. The live *dot* carries the accent (it is a status
- * indicator); the word beside it does not, so lime stays a single signal
- * in the strip rather than two.
- */
-const STATE_TONE = {
-  idle: "text-text-faint",
-  running: "text-text",
-  ready: "text-success",
-  error: "text-danger",
-}
-
-/**
- * Bottom instrument strip. Every value here is measured, not invented:
- * source comes from config, latency from the service response, records
- * from the completed job.
- */
 export function StatusBar() {
-  const location = useLocation()
   const { telemetry } = useTelemetry()
-  const { user, isAuthenticated } = useAuth()
-
-  // Only display raw backend API URL when user is an admin AND specifically on an admin dashboard route
-  const isAdminRoute = location.pathname.startsWith("/admin")
-  const showAdminDiagnostics = (user?.role === "admin" || user?.is_superuser === true || user?.is_admin === true) && isAdminRoute
-  const isTrial = user?.plan_id?.includes("trial") || user?.trial_days_remaining != null
+  const { user } = useAuth()
+  const { t } = useLanguage()
+  const location = useLocation()
+  const showAdminDiagnostics = location.pathname.startsWith("/admin") && user?.role === "admin"
 
   return (
-    <footer className="flex h-7 shrink-0 items-center gap-4 border-t border-border bg-surface px-3 font-mono text-[10px] uppercase tracking-[0.06em] text-text-faint">
-      {showAdminDiagnostics ? (
-        <>
-          <span className="flex items-center gap-1.5">
-            <Database className="h-3 w-3 text-text-faint" aria-hidden="true" />
-            <span className={DATA_SOURCE === "mock" ? "text-warning" : "text-success font-medium"}>
-              {DATA_SOURCE === "mock" ? "mock fixtures" : API_BASE_URL}
-            </span>
-          </span>
-
-          <span className="h-3 w-px bg-border" aria-hidden="true" />
-
-          <span className="flex items-center gap-1.5">
-            <Layers className="h-3 w-3" aria-hidden="true" />
-            <span className="tnum">
-              {telemetry.records === null ? "no set" : `${formatInt(telemetry.records)} rec`}
-            </span>
-          </span>
-
-          <span className="flex items-center gap-1.5">
-            <Clock className="h-3 w-3" aria-hidden="true" />
-            <span className="tnum">
-              {telemetry.tookMs === null ? "—" : formatDuration(telemetry.tookMs)}
-            </span>
-          </span>
-
-          <span className="tnum hidden sm:inline">req {formatInt(telemetry.requests)}</span>
-        </>
-      ) : (
-        <span className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
-          <span className="text-text-muted font-medium tracking-wider">ALL SYSTEMS NOMINAL</span>
-        </span>
-      )}
-
-      <span className="ml-auto flex items-center gap-4">
-        {isAuthenticated && isTrial && (
-          <span className="flex items-center gap-1.5 border-l border-border pl-4">
-            <span className="text-accent">{user.trial_days_remaining}d left</span>
-            <span className="text-text-muted">·</span>
-            <span className="text-accent">{Number(user.credit_balance || 0).toFixed(1)}cr</span>
-            {user.daily_credit_limit != null && (
-              <>
-                <span className="text-text-muted">·</span>
-                <span className="flex items-center gap-1">
-                  <span className="text-text-muted">today</span>
-                  <span
-                    className={cn("tnum", {
-                      "text-success": Number(user.daily_credits_remaining || 0) > 1,
-                      "text-warning": Number(user.daily_credits_remaining || 0) > 0 && Number(user.daily_credits_remaining || 0) <= 1,
-                      "text-danger": Number(user.daily_credits_remaining || 0) <= 0,
-                    })}
-                  >
-                    {Number(user.daily_credits_used || 0).toFixed(1)}/{Number(user.daily_credit_limit || 0).toFixed(1)}
-                  </span>
-                </span>
-              </>
-            )}
-          </span>
+    <footer className="flex h-6 shrink-0 items-center justify-between border-t border-border bg-bg px-3 font-mono text-[10px] text-text-faint">
+      <div className="flex min-w-0 items-center gap-2 truncate">
+        <Activity className="h-2.5 w-2.5 shrink-0" aria-hidden="true" />
+        <span>{t("workspaceStatus")}</span>
+        {showAdminDiagnostics && (
+          <span>{t("requestsLabel")}: {telemetry.requests}</span>
         )}
-
-        <span className="flex items-center gap-1.5">
-          {showAdminDiagnostics && telemetry.lastJobId ? (
-            <span className="hidden truncate text-text-muted md:inline">
-              {telemetry.lastJobId}
-            </span>
-          ) : null}
-          <span
-            className={cn("h-1.5 w-1.5 rounded-full", {
-              "bg-border-strong": telemetry.state === "idle",
-              "bg-accent animate-pulse": telemetry.state === "running",
-              "bg-success": telemetry.state === "ready",
-              "bg-danger": telemetry.state === "error",
-            })}
-            aria-hidden="true"
-          />
-          <span className={cn(STATE_TONE[telemetry.state])}>{telemetry.state}</span>
-        </span>
-
-        <span className="hidden items-center gap-2 border-l border-border pl-3 sm:flex">
-          <img
-            src="/brand/helix-logo.png"
-            alt="Helix"
-            className="h-3.5 w-3.5 rounded-[2px] object-contain opacity-80"
-          />
-          <span className="font-mono text-[9px] tracking-[0.12em] text-text-faint">
-            POWERED BY HELIX
-          </span>
-        </span>
-
-        <Link
-          to="/support"
-          className="flex items-center gap-1 border-l border-border pl-3 text-text-faint hover:text-accent transition-colors"
-          title="Open Support & Feedback"
-        >
-          <HelpCircle className="h-3 w-3 text-accent" />
-          <span>SUPPORT</span>
-        </Link>
-      </span>
+        {showAdminDiagnostics && telemetry.latency != null && (
+          <span>{telemetry.latency} ms</span>
+        )}
+      </div>
+      <Link to="/support" className="hover:text-text-muted">{t("supportLabel")}</Link>
     </footer>
   )
 }
