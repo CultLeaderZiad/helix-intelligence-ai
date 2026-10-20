@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { 
   BookOpen, 
   Code2, 
@@ -10,25 +10,22 @@ import {
   ExternalLink, 
   ArrowLeft, 
   ArrowRight,
-  Sparkles,
-  Layers,
   Terminal,
   Clock,
   Calendar,
-  CheckCircle2,
-  FileText,
   GitCommit
 } from 'lucide-react'
-import { DOCS_REGISTRY, searchDocs, getAdjacentDocs } from './docsData'
+import { DOCS_REGISTRY, getAdjacentDocs } from './docsData'
 import { slugify } from './MarkdownRenderer'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { DocSearchModal } from './DocSearchModal'
 import { ScrollToTopButton } from '@/components/ui/ScrollToTopButton'
 import { SkipToContent } from '@/components/ui/SkipToContent'
+import { useLanguage } from '@/context/LanguageContext'
 
 export function DocsLayout({ activeDoc, children }) {
   const location = useLocation()
-  const navigate = useNavigate()
+  const { t, lang, isRtl } = useLanguage()
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [activeHeading, setActiveHeading] = useState('')
@@ -139,13 +136,8 @@ export function DocsLayout({ activeDoc, children }) {
     return getAdjacentDocs(activeDoc.section, activeDoc.slug)
   }, [activeDoc])
 
-  // Close mobile drawer on route change
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
-
   return (
-    <div className="min-h-screen bg-bg text-text flex flex-col font-sans selection:bg-accent selection:text-black">
+    <div dir={isRtl ? 'rtl' : 'ltr'} className="min-h-screen bg-bg text-text flex flex-col font-sans selection:bg-accent selection:text-black">
       {/* Skip to Content for keyboard accessibility */}
       <SkipToContent targetId="main-content" />
 
@@ -156,7 +148,7 @@ export function DocsLayout({ activeDoc, children }) {
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="lg:hidden p-1.5 rounded-md hover:bg-surface-2 text-text-muted hover:text-text"
-            aria-label="Toggle Navigation"
+            aria-label={t('docsToggleNavigation', 'Toggle navigation')}
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -164,7 +156,7 @@ export function DocsLayout({ activeDoc, children }) {
           <Link to="/" className="flex items-center gap-2 group">
             <img src="/brand/helix-mark.svg" alt="Helix" className="h-5 w-5 rounded-[3px] object-contain" />
             <span className="font-mono text-sm font-bold tracking-tight text-text group-hover:text-accent transition-colors">
-              Helix <span className="text-text-muted font-normal">Docs</span>
+              Helix <span className="text-text-muted font-normal">{t('docsBrand', 'Documentation')}</span>
             </span>
           </Link>
 
@@ -181,7 +173,7 @@ export function DocsLayout({ activeDoc, children }) {
               }`}
             >
               <BookOpen className="h-3.5 w-3.5 text-accent" />
-              <span>User Guide</span>
+              <span>{t('docsUserGuide', 'User guide')}</span>
             </Link>
             <Link
               to="/docs/api-reference/authentication"
@@ -192,7 +184,7 @@ export function DocsLayout({ activeDoc, children }) {
               }`}
             >
               <Code2 className="h-3.5 w-3.5 text-accent" />
-              <span>API Reference</span>
+              <span>{t('docsApiReference', 'API reference')}</span>
             </Link>
           </div>
         </div>
@@ -203,11 +195,11 @@ export function DocsLayout({ activeDoc, children }) {
             type="button"
             onClick={() => setSearchModalOpen(true)}
             className="w-full h-8 pl-3 pr-2 text-xs bg-surface-2 hover:bg-surface-3 border border-border hover:border-accent/40 rounded-md text-text-muted flex items-center justify-between transition-colors group cursor-pointer shadow-xs"
-            aria-label="Search documentation"
+            aria-label={t('docsOpenSearch', 'Search documentation')}
           >
             <div className="flex items-center gap-2">
               <Search className="h-3.5 w-3.5 text-text-faint group-hover:text-accent transition-colors" />
-              <span className="text-text-faint group-hover:text-text-muted transition-colors">Search documentation, guides & API...</span>
+              <span className="text-text-faint group-hover:text-text-muted transition-colors">{t('docsSearchPlaceholder', 'Search topics, guides, and API reference…')}</span>
             </div>
             <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono text-text-faint bg-surface border border-border rounded shadow-2xs">
               <span className="text-xs">⌘</span>K
@@ -222,8 +214,8 @@ export function DocsLayout({ activeDoc, children }) {
             type="button"
             onClick={() => setSearchModalOpen(true)}
             className="md:hidden p-1.5 rounded-md hover:bg-surface-2 text-text-muted hover:text-accent transition-colors"
-            aria-label="Search documentation"
-            title="Search (⌘K)"
+            aria-label={t('docsOpenSearch', 'Search documentation')}
+            title={t('docsSearchShortcut', 'Search (⌘K)')}
           >
             <Search className="h-4 w-4" />
           </button>
@@ -233,7 +225,7 @@ export function DocsLayout({ activeDoc, children }) {
             to="/discover"
             className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono font-medium border border-border bg-surface-2 hover:bg-surface-3 text-text transition-colors"
           >
-            <span>Open Console</span>
+            <span>{t('docsOpenConsole', 'Open workspace')}</span>
             <ExternalLink className="h-3 w-3 text-text-faint" />
           </Link>
         </div>
@@ -244,9 +236,9 @@ export function DocsLayout({ activeDoc, children }) {
           style={{ width: `${scrollProgress}%` }}
           role="progressbar"
           aria-valuenow={Math.round(scrollProgress)}
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-label="Reading progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={t('docsReadingProgress', 'Reading progress')}
         />
       </header>
 
@@ -254,13 +246,13 @@ export function DocsLayout({ activeDoc, children }) {
       <div className="flex-1 flex w-full max-w-[1520px] mx-auto">
         {/* LEFT NAVIGATION SIDEBAR */}
         <aside
-          className={`fixed inset-y-14 left-0 z-30 w-72 border-r border-border bg-surface flex flex-col transition-transform duration-200 lg:static lg:w-64 lg:shrink-0 ${
-            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          className={`fixed inset-y-14 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-30 w-72 border-border bg-surface flex flex-col transition-transform duration-200 lg:static lg:w-64 lg:shrink-0 ${
+            mobileMenuOpen ? 'translate-x-0' : isRtl ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0'
           }`}
         >
           {/* Section audience switcher on mobile */}
           <div className="p-3 border-b border-border sm:hidden flex flex-col gap-1.5">
-            <span className="font-mono text-[10px] text-text-faint uppercase tracking-wider">Documentation Mode</span>
+            <span className="font-mono text-[10px] text-text-faint uppercase tracking-wider">{t('docsMode', 'Documentation mode')}</span>
             <div className="grid grid-cols-2 gap-1 rounded bg-surface-2 p-0.5 border border-border">
               <Link
                 to="/docs/user-guide/quickstart-account-and-trial"
@@ -268,7 +260,7 @@ export function DocsLayout({ activeDoc, children }) {
                   activeSectionKey === 'user-guide' ? 'bg-surface text-text font-semibold' : 'text-text-muted'
                 }`}
               >
-                User Guide
+                {t('docsUserGuide', 'User guide')}
               </Link>
               <Link
                 to="/docs/api-reference/authentication"
@@ -276,7 +268,7 @@ export function DocsLayout({ activeDoc, children }) {
                   activeSectionKey === 'api-reference' ? 'bg-surface text-text font-semibold' : 'text-text-muted'
                 }`}
               >
-                API Reference
+                {t('docsApiReference', 'API reference')}
               </Link>
             </div>
           </div>
@@ -290,11 +282,11 @@ export function DocsLayout({ activeDoc, children }) {
                 <Terminal className="h-4 w-4 text-accent" />
               )}
               <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-text">
-                {currentSectionConfig.sectionLabel}
+                {activeSectionKey === 'user-guide' ? t('docsUserGuide', 'User guide') : t('docsApiReference', 'API reference')}
               </h2>
             </div>
             <p className="text-[11px] text-text-faint leading-relaxed mt-1">
-              {currentSectionConfig.audience}
+              {activeSectionKey === 'user-guide' ? t('docsGuideDescription', 'Product guides for analysts and workspace members.') : t('docsApiDescription', 'Technical reference for API access and integrations.')}
             </p>
           </div>
 
@@ -304,18 +296,18 @@ export function DocsLayout({ activeDoc, children }) {
               type="button"
               onClick={() => setSearchModalOpen(true)}
               className="w-full flex items-center justify-between px-3 py-2 rounded-md border border-border bg-surface-2 hover:bg-surface-3 text-xs text-text-muted hover:text-text transition-colors group cursor-pointer"
-              aria-label="Search Docs"
+              aria-label={t('docsOpenSearch', 'Search documentation')}
             >
               <span className="flex items-center gap-2">
                 <Search className="h-3.5 w-3.5 text-accent" />
-                <span className="font-medium text-text-muted group-hover:text-text">Search docs...</span>
+                <span className="font-medium text-text-muted group-hover:text-text">{t('docsSearch', 'Search')}</span>
               </span>
               <kbd className="text-[10px] font-mono text-text-faint bg-surface px-1.5 py-0.5 rounded border border-border">⌘K</kbd>
             </button>
           </div>
 
           {/* Navigation Links Tree */}
-          <nav className="flex-1 overflow-y-auto p-3 space-y-5 scrollbar-thin">
+            <nav aria-label={t('docsNavigation', 'Documentation navigation')} className="flex-1 overflow-y-auto p-3 space-y-5 scrollbar-thin">
             {currentSectionConfig.groups.map((group) => (
               <div key={group.groupTitle} className="space-y-1">
                 <p className="px-2 font-mono text-[10px] font-bold uppercase tracking-wider text-text-faint">
@@ -350,9 +342,9 @@ export function DocsLayout({ activeDoc, children }) {
           <div className="p-3 border-t border-border bg-surface-2/40">
             <div className="p-2.5 rounded border border-border/80 bg-surface text-[11px] text-text-muted">
               <span className="font-mono text-[10px] text-accent font-semibold uppercase block mb-1">
-                Static Git Docs
+                {t('docsStaticSource', 'Repository-maintained documentation')}
               </span>
-              Built with zero runtime CMS. Versioned in git alongside the application code.
+              {t('docsStaticSourceDescription', 'Source files are versioned with the application. Confirm current behavior against the API contract.')}
             </div>
           </div>
         </aside>
@@ -370,7 +362,7 @@ export function DocsLayout({ activeDoc, children }) {
           {/* Breadcrumb row */}
           {activeDoc && (
             <div className="flex items-center gap-1.5 text-xs font-mono text-text-faint mb-6">
-              <Link to="/docs" className="hover:text-text transition-colors">Docs</Link>
+              <Link to="/docs" className="hover:text-text transition-colors">{t('docsBrand', 'Documentation')}</Link>
               <ChevronRight className="h-3 w-3" />
               <Link to={`/docs/${activeDoc.section}/${activeDoc.slug}`} className="text-text-muted hover:text-text">
                 {activeDoc.sectionLabel}
@@ -378,23 +370,28 @@ export function DocsLayout({ activeDoc, children }) {
               <ChevronRight className="h-3 w-3" />
               <span className="text-accent truncate">{activeDoc.title}</span>
 
-              <div className="ml-auto flex items-center gap-3 text-[11px] text-text-faint">
+              <div className="ms-auto flex items-center gap-3 text-[11px] text-text-faint">
                 {activeDoc.lastUpdated && (
                   <span className="hidden sm:flex items-center gap-1.5" title={`Git commit: ${activeDoc.commitHash || 'recent'}`}>
                     <Calendar className="h-3 w-3 text-accent" />
-                    <span>Updated {activeDoc.lastUpdated}</span>
+                    <span>{t('docsUpdated', 'Updated')} {activeDoc.lastUpdated}</span>
                   </span>
                 )}
                 <span className="hidden sm:inline-block text-border/80">•</span>
                 <div className="flex items-center gap-1.5">
                   <Clock className="h-3 w-3" />
-                  <span>{activeDoc.readTime} read</span>
+                  <span>{activeDoc.readTime} {t('docsReadTime', 'min read')}</span>
                 </div>
               </div>
             </div>
           )}
 
           {/* Render article children */}
+          {lang === 'ar' && activeDoc ? (
+            <p role="note" dir="rtl" className="mb-6 rounded-sm border border-border bg-surface-2 px-3 py-2 text-xs leading-relaxed text-text-muted">
+              {t('docsEnglishNotice', 'Technical documentation is currently shown in English; an Arabic translation is not available yet.')}
+            </p>
+          ) : null}
           <article className="min-w-0">{children}</article>
 
           {/* Article Footer Git Provenance Metadata */}
@@ -403,7 +400,7 @@ export function DocsLayout({ activeDoc, children }) {
               <div className="flex items-center gap-2">
                 <Calendar className="h-3.5 w-3.5 text-accent shrink-0" />
                 <span>
-                  Last updated from git on <strong className="font-mono text-[11.5px] text-text font-semibold">{activeDoc.lastUpdated || 'recent'}</strong>
+                  {t('docsLastUpdatedFromGit', 'Last updated from git on')} <strong className="font-mono text-[11.5px] text-text font-semibold">{activeDoc.lastUpdated || 'recent'}</strong>
                 </span>
                 {activeDoc.commitHash && (
                   <span className="font-mono text-[10px] text-text-faint bg-surface-2 px-1.5 py-0.5 rounded border border-border flex items-center gap-1">
@@ -413,7 +410,7 @@ export function DocsLayout({ activeDoc, children }) {
                 )}
               </div>
               <span className="text-[11px] text-text-faint font-mono">
-                Static Git Docs • Auto-synced
+                {t('docsStaticSource', 'Repository-maintained documentation')}
               </span>
             </div>
           )}
@@ -427,8 +424,8 @@ export function DocsLayout({ activeDoc, children }) {
                   className="group flex flex-col items-start p-3 rounded-md border border-border bg-surface hover:bg-surface-2 transition-colors max-w-[45%]"
                 >
                   <span className="flex items-center gap-1 text-[11px] font-mono text-text-faint group-hover:text-accent">
-                    <ArrowLeft className="h-3 w-3" />
-                    Previous
+                    {isRtl ? <ArrowRight className="h-3 w-3" /> : <ArrowLeft className="h-3 w-3" />}
+                    {t('docsPrevious', 'Previous')}
                   </span>
                   <span className="text-xs font-medium text-text mt-1 truncate w-full text-left">
                     {adjacent.prev.title}
@@ -443,7 +440,7 @@ export function DocsLayout({ activeDoc, children }) {
                 >
                   <span className="flex items-center gap-1 text-[11px] font-mono text-text-faint group-hover:text-accent">
                     Next
-                    <ArrowRight className="h-3 w-3" />
+                    {isRtl ? <ArrowLeft className="h-3 w-3" /> : <ArrowRight className="h-3 w-3" />}
                   </span>
                   <span className="text-xs font-medium text-text mt-1 truncate w-full text-right">
                     {adjacent.next.title}
@@ -458,7 +455,7 @@ export function DocsLayout({ activeDoc, children }) {
         {tableOfContents.length > 0 && (
           <aside className="hidden xl:block w-56 shrink-0 py-8 px-4 border-l border-border/70 sticky top-14 h-[calc(100vh-3.5rem)] overflow-y-auto">
             <p className="font-mono text-[10px] font-bold uppercase tracking-wider text-text-faint mb-3">
-              On This Page
+              {t('docsOnThisPage', 'On this page')}
             </p>
             <ul className="space-y-1 text-xs">
               {tableOfContents.map((heading) => {
@@ -492,7 +489,7 @@ export function DocsLayout({ activeDoc, children }) {
                 }}
                 className="text-[11px] font-mono text-text-faint hover:text-accent transition-colors"
               >
-                ↑ Back to top
+                ↑ {t('docsBackToTop', 'Back to top')}
               </a>
             </div>
           </aside>
