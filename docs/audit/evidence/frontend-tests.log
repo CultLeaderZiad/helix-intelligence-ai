@@ -1,0 +1,17 @@
+
+> helix-intelligence@0.1.0 test /tmp/hoplite/workspace
+> node --test src/services/__tests__/sessionStore.w0.test.js src/pages/__tests__/team-accept-w1.test.mjs && vitest run --config vitest.config.js
+
+✔ team accept route is registered and the invite link matches it (13.665243ms)
+✔ invite email uses the send_email contract and the accept path (0.187409ms)
+✔ setAccessToken writes one localStorage key and clears sessionStorage (0.620859ms)
+✔ getAccessToken migrates a sessionStorage token once (0.112416ms)
+✔ clearSession removes both stores (0.172269ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 833.674272
