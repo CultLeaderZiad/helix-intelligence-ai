@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils"
 import { ProgressBar } from "@/components/ui/ProgressBar"
 import { scorePassword } from "./validation"
+import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * Password-strength readout built from the existing `ProgressBar` and the
@@ -9,14 +10,15 @@ import { scorePassword } from "./validation"
  * functional colour. Tone is reserved for meaning, as everywhere else.
  */
 const TIERS = [
-  { label: "—", tone: "muted", text: "text-text-faint" },
-  { label: "weak", tone: "danger", text: "text-danger" },
-  { label: "fair", tone: "warning", text: "text-warning" },
-  { label: "good", tone: "warning", text: "text-warning" },
-  { label: "strong", tone: "success", text: "text-success" },
+  { key: null, fallback: "—", tone: "muted", text: "text-text-faint" },
+  { key: "authStrengthWeak", fallback: "Weak", tone: "danger", text: "text-danger" },
+  { key: "authStrengthFair", fallback: "Fair", tone: "warning", text: "text-warning" },
+  { key: "authStrengthGood", fallback: "Good", tone: "warning", text: "text-warning" },
+  { key: "authStrengthStrong", fallback: "Strong", tone: "success", text: "text-success" },
 ]
 
 export function PasswordStrength({ value = "", className }) {
+  const { t } = useLanguage()
   const score = scorePassword(value)
   const tier = TIERS[score]
 
@@ -24,14 +26,14 @@ export function PasswordStrength({ value = "", className }) {
     <div className={cn("flex flex-col gap-1.5", className)} aria-live="polite">
       <ProgressBar value={score / 4} tone={tier.tone} />
       <div className="flex items-center justify-between">
-        <span className="label-mono">password strength</span>
+        <span className="label-mono">{t("authPasswordStrength", "Password strength")}</span>
         <span
           className={cn(
             "font-mono text-[10px] uppercase leading-none tracking-[0.08em]",
             tier.text,
           )}
         >
-          {tier.label}
+          {tier.key ? t(tier.key, tier.fallback) : tier.fallback}
         </span>
       </div>
     </div>
