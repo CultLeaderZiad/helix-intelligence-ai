@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { Radar, SearchX, Clock, RotateCcw } from "lucide-react"
+import { Radar, SearchX, Clock, RotateCcw, MessageSquarePlus } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useTelemetry } from "@/app/TelemetryContext"
 import { SearchQueryBar } from "@/features/discover/SearchQueryBar"
@@ -18,7 +18,6 @@ import { formatDuration, formatInt } from "@/lib/format"
 import { OnboardingTour } from "@/app/OnboardingTour"
 import { OnboardingWizardModal } from "@/components/OnboardingWizardModal"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
-import { MessageSquarePlus } from "lucide-react"
 import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 
@@ -54,6 +53,9 @@ export function DiscoverPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { latestSearch, saveCompletedSearch, selectActiveCreative, selectSearchSession } = useSearchContext()
+  const persistCompletedSearch = /** @type {(search: Record<string, unknown>) => void} */ (saveCompletedSearch)
+  const setActiveCreative = /** @type {(creative: object) => void} */ (selectActiveCreative)
+  const setSearchSession = /** @type {(session: object) => void} */ (selectSearchSession)
   const { t } = useLanguage()
   const [query, setQuery] = useState(() => searchParams.get("q") || latestSearch?.query || "")
   const [queryLanguage, setQueryLanguage] = useState(() => {
@@ -105,7 +107,7 @@ export function DiscoverPage() {
   /* Sync completed search results with SearchContext across tabs */
   useEffect(() => {
     if (phase === PHASE.READY && results && query) {
-      saveCompletedSearch({
+      persistCompletedSearch({
         query: query.trim(),
         jobId: job?.job_id,
         total: results.total,
@@ -113,13 +115,13 @@ export function DiscoverPage() {
         tookMs: results.took_ms,
       })
     }
-  }, [phase, results, query, job?.job_id, saveCompletedSearch])
+  }, [phase, results, query, job?.job_id, persistCompletedSearch])
 
   /* Sync active creative */
   useEffect(() => {
     if (selectedId && results?.items) {
       const active = results.items.find((i) => i.id === selectedId)
-      if (active) selectActiveCreative(active)
+      if (active) setActiveCreative(active)
     }
   }, [selectedId, results?.items, selectActiveCreative])
 
@@ -235,6 +237,7 @@ export function DiscoverPage() {
         }} 
       />
       <BreadcrumbBar
+        className=""
         trail={[t("discovery", "Discovery"), t("search", "Live Search"), query ? `"${query}"` : null].filter(Boolean)}
         meta={
           phase === PHASE.READY && results
@@ -340,11 +343,11 @@ export function DiscoverPage() {
                     variant="primary"
                     onClick={runDiscovery}
                     disabled={!query.trim()}
-                  >
+                   className="">
                     Run discovery
                   </Button>
                 }
-              />
+               className=""/>
             ) : null}
 
             {phase === PHASE.IDLE && items.length === 0 && displayJob?.entity_profile ? (
@@ -356,7 +359,7 @@ export function DiscoverPage() {
             {phase === PHASE.SUBMITTING ||
             phase === PHASE.RUNNING ||
             phase === PHASE.FETCHING_RESULTS ? (
-              <SkeletonRows rows={10} />
+              <SkeletonRows rows={10}  className=""/>
             ) : null}
 
             {phase === PHASE.ERROR && isServiceRestart(error) ? (
@@ -366,11 +369,11 @@ export function DiscoverPage() {
                 title="The service restarted while this search was running"
                 description="Nothing was wrong with your query. The backend restarted mid-run, so the job could not finish, and the credits for it have already been refunded to your balance. Running it again will start a fresh search."
                 action={
-                  <Button size="sm" variant="primary" onClick={retry}>
+                  <Button size="sm" variant="primary" onClick={retry} className="">
                     Run the search again
                   </Button>
                 }
-              />
+               className=""/>
             ) : null}
 
             {phase === PHASE.ERROR && !isServiceRestart(error) ? (
@@ -390,15 +393,15 @@ export function DiscoverPage() {
                 description={t("takingLongerDesc")}
                 action={
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="primary" onClick={retry}>
+                    <Button size="sm" variant="primary" onClick={retry} className="">
                       {t("retrySearch")}
                     </Button>
-                    <Button size="sm" variant="outline" onClick={cancel}>
+                    <Button size="sm" variant="outline" onClick={cancel} className="">
                       {t("cancel")}
                     </Button>
                   </div>
                 }
-              />
+               className=""/>
             ) : null}
 
             {phase === PHASE.READY && items.length === 0 ? (
@@ -437,12 +440,12 @@ export function DiscoverPage() {
                   }
                   action={
                     filtersWereApplied ? (
-                      <Button size="sm" variant="outline" onClick={clearFilters}>
+                      <Button size="sm" variant="outline" onClick={clearFilters} className="">
                         {t("clearFilters")}
                       </Button>
                     ) : null
                   }
-                />
+                 className=""/>
               )
             ) : null}
 
@@ -472,7 +475,7 @@ export function DiscoverPage() {
                       variant="outline"
                       disabled={!displayResults?.page || displayResults.page <= 1 || phase === PHASE.IDLE}
                       onClick={() => refine({ page: (displayResults?.page || 1) - 1, sort })}
-                    >
+                     className="">
                       Prev
                     </Button>
                     <Button
@@ -480,7 +483,7 @@ export function DiscoverPage() {
                       variant="outline"
                       disabled={!displayResults?.has_more || phase === PHASE.IDLE}
                       onClick={() => refine({ page: (displayResults?.page || 1) + 1, sort })}
-                    >
+                     className="">
                       Next
                     </Button>
                   </div>
@@ -505,12 +508,14 @@ export function DiscoverPage() {
         onClose={handleCloseOnboarding}
         onDismiss={handleDismissOnboarding}
         onDashboard={handleGoToDashboard}
+        onSearchSelect={(searchBrand) => setQuery(searchBrand)}
       />
 
       <SupportFeedbackModal
         isOpen={showSupportModal}
         onClose={() => setShowSupportModal(false)}
         initialContext={{ page: "Discover", query, tag: "discover" }}
+        onSuccess={() => setShowSupportModal(false)}
       />
 
       <SavedDraftsModal
@@ -518,7 +523,7 @@ export function DiscoverPage() {
         onClose={() => setShowDraftsModal(false)}
         currentQuery={query}
         onSelectSearch={(item) => {
-          selectSearchSession(item)
+          setSearchSession(item)
           setQuery(item.query)
         }}
         onSelectDraft={(draft) => {
