@@ -6,10 +6,10 @@ import { APP_HOME } from "@/app/ProtectedRoute"
 import { AuthLayout } from "@/features/auth/AuthLayout"
 import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
-import { validateEmailOnly } from "@/features/auth/validation"
+import { formatAuthFieldError, validateEmailOnly } from "@/features/auth/validation"
 import { Input } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
-import { ServiceError } from "@/services"
+import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * Forgot password. The service resolves ok even for an unknown address
@@ -19,6 +19,7 @@ import { ServiceError } from "@/services"
  */
 export function ForgotPasswordPage() {
   const { requestPasswordReset, isAuthenticated } = useAuth()
+  const { t } = useLanguage()
 
   const [email, setEmail] = useState("")
   const [error, setError] = useState(null)
@@ -40,6 +41,7 @@ export function ForgotPasswordPage() {
 
   if (isAuthenticated) return <Navigate to={APP_HOME} replace />
 
+  /** @param {import("react").FormEvent<HTMLFormElement>} [event] */
   async function onSubmit(event) {
     if (event?.preventDefault) event.preventDefault()
     setAuthError(null)
@@ -53,11 +55,12 @@ export function ForgotPasswordPage() {
       setSentTo(email.trim())
       setResetUrl(result?.reset_url ?? null)
     } catch (err) {
+      const isCold = err?.code === "network_error" || err?.code === "server_waking" || (err?.status >= 502 && err?.status <= 504)
       setAuthError({
-        status: "request failed",
-        tone: "danger",
-        message: err instanceof ServiceError ? err.message : (err?.message || "Could not send the reset link. Please try again."),
-        isColdStart: false,
+        status: isCold ? t("authServerWakingStatus", "Server waking") : t("authForgotFailed", "Unable to request a reset link. Please try again."),
+        tone: isCold ? "warning" : "danger",
+        message: isCold ? t("authBackendWaking", "The service is starting. Retry to complete sign in.") : t("authForgotFailed", "Unable to request a reset link. Please try again."),
+        isColdStart: isCold,
       })
       setSubmitting(false)
     }
@@ -69,31 +72,28 @@ export function ForgotPasswordPage() {
   if (sentTo) {
     return (
       <AuthLayout
-        eyebrow="Recovery"
-        title="Check your email"
+        eyebrow={t("authRecovery", "Recovery")}
+        title={t("authResetEmailSentTitle", "Check your email")}
         footer={
           <Link
             to="/sign-in"
             className="text-accent transition-colors hover:text-accent-dim"
           >
-            Return to sign in
+            {t("authBackToSignIn", "Back to sign in")}
           </Link>
         }
       >
         <div className="flex flex-col gap-4">
-          <FormBanner tone="success" status="request sent">
-            If an account exists for{" "}
-            <span className="font-mono text-text">{sentTo}</span>, a password
-            reset link is on its way.
+          <FormBanner tone="success" status={t("authRequestAccepted", "Request accepted")}>
+            {t("authResetEmailSent", "If an account exists for this address, a password-reset link has been sent.")}
           </FormBanner>
           {resetUrl ? (
             <div className="flex flex-col gap-2 rounded-sm border border-accent/30 bg-surface p-4">
               <p className="label-mono text-[10px] uppercase tracking-[0.08em] text-accent-dim">
-                dev-mode delivery — no mail provider configured
+                {t("authDevDeliveryLabel", "Development delivery · no mail provider configured")}
               </p>
               <p className="text-xs leading-relaxed text-text-muted">
-                Your backend is not sending email yet, so here is the link it
-                generated:
+                {t("authDevDeliveryExplanation", "Email delivery is not configured here. The backend returned this development reset link:")}
               </p>
               <Link
                 to={resetUrl.replace(/^https?:\/\/[^/]+/, "")}
@@ -109,8 +109,7 @@ export function ForgotPasswordPage() {
               aria-hidden="true"
             />
             <p>
-              The link expires shortly for security. Didn&apos;t get it? Check
-              spam, or{" "}
+              {t("authEmailDeliveryHelp", "If the message does not appear, check your spam folder or try another address.")} {" "}
               <button
                 type="button"
                 onClick={() => {
@@ -119,7 +118,7 @@ export function ForgotPasswordPage() {
                 }}
                 className="text-accent transition-colors hover:text-accent-dim"
               >
-                try another address
+                {t("authTryAnotherEmail", "Try another email")}
               </button>
               .
             </p>
@@ -131,16 +130,16 @@ export function ForgotPasswordPage() {
 
   return (
     <AuthLayout
-      eyebrow="Recovery"
-      title="Reset your password"
-      description="Enter the email on your account and we'll send a reset link."
+      eyebrow={t("authRecovery", "Recovery")}
+      title={t("authForgotTitle", "Reset your password")}
+      description={t("authForgotDescription", "Enter your email and we’ll send a password-reset link if an account exists.")}
       footer={
         <Link
           to="/sign-in"
           className="inline-flex items-center gap-1 text-accent transition-colors hover:text-accent-dim"
         >
           <ArrowLeft className="h-3 w-3" aria-hidden="true" />
-          Back to sign in
+          {t("authBackToSignIn", "Back to sign in")}
         </Link>
       }
     >
@@ -155,9 +154,9 @@ export function ForgotPasswordPage() {
                   type="button"
                   size="xs"
                   variant="outline"
-                  onClick={onSubmit}
+                  onClick={() => void onSubmit()}
                 >
-                  Retry
+                  {t("authRetry", "Retry")}
                 </Button>
               ) : null
             }
@@ -166,14 +165,14 @@ export function ForgotPasswordPage() {
           </FormBanner>
         ) : null}
 
-        <AuthField id="email" label="Email" error={error}>
+        <AuthField id="email" label={t("authEmail", "Email")} error={formatAuthFieldError(error, t)}>
           <Input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
             autoFocus
-            placeholder="you@company.com"
+            placeholder={t("authEmailPlaceholder", "you@company.com")}
             value={email}
             disabled={submitting}
             aria-invalid={Boolean(error)}
@@ -196,10 +195,10 @@ export function ForgotPasswordPage() {
           {submitting ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              Sending link…
+              {t("authSending", "Sending…")}
             </>
           ) : (
-            "Send reset link"
+            t("authSendResetLink", "Send reset link")
           )}
         </Button>
       </form>
