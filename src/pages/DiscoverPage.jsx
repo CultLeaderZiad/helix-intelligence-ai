@@ -20,6 +20,7 @@ import { OnboardingWizardModal } from "@/components/OnboardingWizardModal"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
+import w5Discover from "@/i18n/w5Discover"
 
 const EMPTY_FILTERS = {
   country: "ALL",
@@ -47,16 +48,16 @@ const EMPTY_FILTERS = {
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 
 export function DiscoverPage() {
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { latestSearch, saveCompletedSearch, selectActiveCreative, selectSearchSession } = useSearchContext()
   const persistCompletedSearch = /** @type {(search: Record<string, unknown>) => void} */ (saveCompletedSearch)
   const setActiveCreative = /** @type {(creative: object) => void} */ (selectActiveCreative)
   const setSearchSession = /** @type {(session: object) => void} */ (selectSearchSession)
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const copy = w5Discover[lang] ?? w5Discover.en
   const [query, setQuery] = useState(() => searchParams.get("q") || latestSearch?.query || "")
   const [queryLanguage, setQueryLanguage] = useState(() => {
     try {
@@ -78,7 +79,19 @@ export function DiscoverPage() {
   const isBelowLg = useIsBelowLg()
   const { report } = useTelemetry()
   const { user, completeOnboarding } = useAuth()
-  const { phase, job, results, error, submit, refine, cancel, retry, isBusy } =
+  const {
+    phase,
+    job,
+    results,
+    error,
+    cancelError,
+    submit,
+    refine,
+    cancel,
+    retry,
+    isBusy,
+    isCancelling,
+  } =
     useDiscoverySearch()
 
   useEffect(() => {
@@ -172,12 +185,6 @@ export function DiscoverPage() {
   function handleDismissOnboarding() {
     setShowOnboardingModal(false)
     completeOnboarding()
-  }
-
-  function handleGoToDashboard() {
-    setShowOnboardingModal(false)
-    completeOnboarding()
-    navigate("/dashboard")
   }
 
   function runDiscovery() {
@@ -278,7 +285,15 @@ export function DiscoverPage() {
       />
 
       {showProgress ? (
-        <JobProgress job={job} query={query} onCancel={cancel} />
+        <JobProgress
+          job={job}
+          query={query}
+          onCancel={cancel}
+          onRetry={retry}
+          cancelError={cancelError}
+          isCancelling={isCancelling}
+          showRetry={phase === PHASE.TIMED_OUT && job?.status === "succeeded"}
+        />
       ) : (
         <div id="tour-job-progress" className="w-full h-0" />
       )}
@@ -385,20 +400,17 @@ export function DiscoverPage() {
               />
             ) : null}
 
-            {phase === PHASE.TIMED_OUT ? (
+            {phase === PHASE.TIMED_OUT && !job ? (
               <EmptyState
                 icon={Clock}
                 size="lg"
                 status={t("stalled")}
                 title={t("takingLonger")}
-                description={t("takingLongerDesc")}
+                description={cancelError ? copy.timeoutNoJob : t("takingLongerDesc")}
                 action={
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="primary" onClick={retry} className="">
-                      {t("retrySearch")}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={cancel} className="">
-                      {t("cancel")}
+                      {copy.retrySearch}
                     </Button>
                   </div>
                 }
@@ -508,7 +520,6 @@ export function DiscoverPage() {
         isOpen={showOnboardingModal}
         onClose={handleCloseOnboarding}
         onDismiss={handleDismissOnboarding}
-        onDashboard={handleGoToDashboard}
         onSearchSelect={(searchBrand) => setQuery(searchBrand)}
       />
 
