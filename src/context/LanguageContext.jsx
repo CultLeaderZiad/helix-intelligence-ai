@@ -1,3 +1,4 @@
+import { w5AuthDocs } from "@/i18n/w5AuthDocs"
 import { w5Product } from "@/i18n/w5Product"
 import { w5Onboarding } from "@/i18n/w5Onboarding"
 import * as w5Discover from "@/i18n/w5Discover"
@@ -7,6 +8,7 @@ import React, { createContext, useContext, useState, useEffect } from "react"
 const translations = {
   en: {
     ...w5Shell.en,
+    ...w5AuthDocs.en,
     ...w5Product.en,
     ...w5Onboarding.en,
     ...w5Discover.en,
@@ -316,6 +318,7 @@ const translations = {
   },
   ar: {
     ...w5Shell.ar,
+    ...w5AuthDocs.ar,
     ...w5Product.ar,
     ...w5Onboarding.ar,
     ...w5Discover.ar,
