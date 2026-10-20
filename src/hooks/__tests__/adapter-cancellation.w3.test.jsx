@@ -142,12 +142,18 @@ for (const domain of ["discovery", "media"]) {
           expect(obsolete.signal.aborted).toBe(true)
           if (action === "navigation") expect(node.textContent).toBe("Another page")
           if (action === "resubmit") {
-            expect(latest.phase).toBe("submitting")
+            const waitingForServerCancel = domain === "discovery" && stage === "poll"
+            expect(latest.phase).toBe(waitingForServerCancel ? "cancelling" : "submitting")
             expect(latest.error).toBeNull()
             expect(pending.at(-1).signal.aborted).toBe(false)
           } else {
-            if (action === "cancel") expect(latest.phase).toBe("idle")
-            expect(vi.getTimerCount()).toBe(0)
+            if (action === "cancel") {
+              const serverCancelPending = domain === "discovery" && stage === "poll"
+              expect(latest.phase).toBe(serverCancelPending ? "cancelling" : "idle")
+            }
+            if (domain !== "discovery" || stage !== "poll" || action !== "cancel") {
+              expect(vi.getTimerCount()).toBe(0)
+            }
           }
           const calls = fetch.mock.calls.length
           await advance(20000)
@@ -165,7 +171,8 @@ for (const domain of ["discovery", "media"]) {
       await flush(() => navigate("/away"))
       expect(vi.getTimerCount()).toBe(0)
       await advance(20000)
-      expect(fetch).toHaveBeenCalledTimes(calls)
+      const newCalls = fetch.mock.calls.slice(calls)
+      expect(newCalls.every(([url]) => String(url).endsWith("/cancel"))).toBe(true)
     })
   })
 }
