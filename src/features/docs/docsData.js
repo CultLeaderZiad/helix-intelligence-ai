@@ -143,8 +143,8 @@ export const DOCS_REGISTRY = [
           },
           {
             slug: 'credit-costs-and-limits',
-            title: 'Credit Costs & Rate Limits',
-            description: 'Official CREDIT_COSTS table synced with backend billing logic.',
+            title: 'Access and Usage Controls',
+            description: 'Server-enforced access grants, usage limits, and job outcomes.',
             file: 'api-reference/credit-costs-and-limits.md',
             readTime: '4 min',
           },
