@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { Button } from "@/components/ui/Button"
-import { EmptyState, ErrorState, SkeletonRows } from "@/components/ui/States"
+import { EmptyState, SkeletonRows } from "@/components/ui/States"
 import { InfoTip } from "@/components/ui/InfoTip"
 import { useLanguage } from "@/context/LanguageContext"
 import { useSearchContext } from "@/context/SearchContext"
@@ -16,22 +16,17 @@ import {
   Brain,
   Lightbulb,
   ArrowRight,
-  TrendingUp,
   Clock,
   Layers,
-  ChevronRight,
   CheckCircle2,
   AlertTriangle,
   Play,
   Image as ImageIcon,
-  Share2,
   BookOpen,
   Globe,
   Languages,
   Loader2,
-  Key,
   Tag,
-  FileText
 } from "lucide-react"
 import { playbookService } from "@/services"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
@@ -194,7 +189,7 @@ function getClientSideTranslation(creative, lang = "en") {
 export function IntelligencePage() {
   const navigate = useNavigate()
   const { latestSearch, searchHistory, activeCreative, selectActiveCreative, selectSearchSession } = useSearchContext()
-  const { t, isRtl } = useLanguage()
+  const { t } = useLanguage()
   
   const [creatives, setCreatives] = useState([])
   const [selectedCreativeId, setSelectedCreativeId] = useState(null)
@@ -205,7 +200,8 @@ export function IntelligencePage() {
   const [generatingPatterns, setGeneratingPatterns] = useState(false)
   const [compilingPlaybook, setCompilingPlaybook] = useState(false)
   const [isSupportOpen, setIsSupportOpen] = useState(false)
-  const [error, setError] = useState(null)
+  const [loadError, setLoadError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [analysisError, setAnalysisError] = useState(null)
 
   // Language & Copy breakdown state
@@ -220,9 +216,10 @@ export function IntelligencePage() {
     let isMounted = true
     async function loadData() {
       setLoading(true)
-      setError(null)
+      setLoadError(false)
       try {
         if (latestSearch?.query) {
+          if (!isMounted) return
           const items = latestSearch.items || []
           setCreatives(items)
           setSelectedCreativeId(items[0]?.id || activeCreative?.id || null)
@@ -243,11 +240,11 @@ export function IntelligencePage() {
           if (isMounted && patRes?.items) {
             setPatterns(patRes.items)
           }
-        } catch (e) {
-          console.warn("Could not fetch pattern list", e)
+        } catch {
+          console.warn("Pattern loading failed; the analysis page remains available.")
         }
-      } catch (err) {
-        if (isMounted) setError(err)
+      } catch {
+        if (isMounted) setLoadError(true)
       } finally {
         if (isMounted) setLoading(false)
       }
@@ -255,7 +252,7 @@ export function IntelligencePage() {
 
     loadData()
     return () => { isMounted = false }
-  }, [latestSearch, activeCreative?.id])
+  }, [latestSearch, activeCreative?.id, loadAttempt])
 
   const selectedCreative = creatives.find((c) => c.id === selectedCreativeId)
 
@@ -488,6 +485,13 @@ export function IntelligencePage() {
       {loading ? (
         <div className="p-6">
           <SkeletonRows rows={8} />
+        </div>
+      ) : loadError ? (
+        <div role="alert" className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
+          <p className="text-sm font-semibold text-text">{t("requestFailed", "Request failed")}</p>
+          <Button size="sm" variant="primary" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
+            {t("retrySearch", "Retry search")}
+          </Button>
         </div>
       ) : creatives.length === 0 ? (
         <div className="p-8">
