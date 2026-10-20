@@ -4,19 +4,38 @@ import {
   Search, 
   BookOpen, 
   Code2, 
-  ChevronRight, 
   X, 
   Clock, 
-  FileText, 
   CornerDownLeft, 
-  ArrowUpDown,
-  Sparkles
 } from 'lucide-react'
-import { ALL_DOCS, DOCS_REGISTRY } from './docsData'
+import { ALL_DOCS } from './docsData'
+import { getDocsReferenceCopy } from './docsReferenceCopy'
+import { useLanguage } from '@/context/LanguageContext'
 import { cn } from '@/lib/utils'
+
+const SEARCH_LABELS = {
+  en: {
+    clear: 'Clear search',
+    noResultsHelp: 'Try a different search term.',
+    navigate: 'navigate',
+    select: 'select',
+    count: (count) => `${count} ${count === 1 ? 'result' : 'results'}`,
+  },
+  ar: {
+    clear: 'مسح البحث',
+    noResultsHelp: 'جرّب عبارة بحث مختلفة.',
+    navigate: 'تنقّل',
+    select: 'اختيار',
+    count: (count) => `النتائج: ${count}`,
+  },
+}
 
 export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
   const navigate = useNavigate()
+  const { lang, t } = useLanguage()
+  const labels = SEARCH_LABELS[lang] ?? SEARCH_LABELS.en
+  const referenceCopy = getDocsReferenceCopy(lang)
+  const text = (key) => t(key, key)
   const inputRef = useRef(null)
   const resultsRef = useRef(null)
   const [query, setQuery] = useState('')
@@ -142,7 +161,8 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Search Documentation"
+      aria-label={text('docsSearchTitle')}
+      dir={lang === 'ar' ? 'rtl' : 'ltr'}
       className="fixed inset-0 z-50 flex items-start justify-center p-3 sm:p-6 md:pt-20 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
       onClick={onClose}
     >
@@ -159,8 +179,8 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search docs, APIs, scoring models, CLI commands..."
-            className="flex-1 bg-transparent text-sm text-text placeholder:text-text-faint focus:outline-none font-sans"
+            placeholder={text('docsSearchHint')}
+            className="flex-1 bg-transparent text-start text-sm text-text placeholder:text-text-faint focus:outline-none font-sans"
             aria-autocomplete="list"
             aria-controls="doc-search-results"
           />
@@ -169,7 +189,7 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
               type="button"
               onClick={() => setQuery('')}
               className="p-1 rounded text-text-faint hover:text-text"
-              aria-label="Clear search"
+              aria-label={labels.clear}
             >
               <X className="h-4 w-4" />
             </button>
@@ -182,8 +202,8 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
 
         {/* Filter Pills */}
         <div className="flex items-center gap-2 px-4 py-2 border-b border-border/70 bg-surface/50 text-xs overflow-x-auto">
-          <span className="text-[11px] font-mono text-text-faint uppercase tracking-wider shrink-0 mr-1">
-            Filter:
+          <span className="text-[11px] font-mono text-text-faint uppercase tracking-wider shrink-0 me-1">
+            {text('docsSections')}:
           </span>
           <button
             type="button"
@@ -195,7 +215,7 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
                 : "bg-surface-2 text-text-muted hover:text-text border border-border"
             )}
           >
-            All Docs
+            {text('docsFilterAll')}
           </button>
           <button
             type="button"
@@ -208,7 +228,7 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
             )}
           >
             <BookOpen className="h-3 w-3" />
-            User Guide
+            {text('docsFilterGuide')}
           </button>
           <button
             type="button"
@@ -221,8 +241,13 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
             )}
           >
             <Code2 className="h-3 w-3" />
-            API Reference
+            {text('docsFilterApi')}
           </button>
+        </div>
+
+        <div role="note" className="border-b border-border/70 bg-surface-2/40 px-4 py-2 text-xs leading-relaxed text-text-muted">
+          <span>{referenceCopy.message}</span>
+          {lang === 'ar' && <span className="ms-1">{text('docsEnglishNotice')}</span>}
         </div>
 
         {/* Search Results List */}
@@ -237,9 +262,9 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
               <div className="inline-flex p-3 rounded-full bg-surface-2 text-text-muted mb-3 border border-border">
                 <Search className="h-6 w-6" />
               </div>
-              <h3 className="text-sm font-semibold text-text">No documentation found</h3>
+              <h3 className="text-sm font-semibold text-text">{text('docsSearchNoResults')}</h3>
               <p className="text-xs text-text-muted mt-1 max-w-sm mx-auto">
-                No matching topics for "{query}". Try searching for concepts like "scoring", "authentication", "leadgen", or "webhooks".
+                {labels.noResultsHelp}
               </p>
             </div>
           ) : (
@@ -255,7 +280,7 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
                   onClick={() => handleSelect(item)}
                   onMouseEnter={() => setCursor(idx)}
                   className={cn(
-                    "group relative p-3 rounded-lg cursor-pointer transition-colors text-left",
+                    "group relative p-3 rounded-lg cursor-pointer transition-colors text-start",
                     active ? "bg-surface-2 text-text" : "hover:bg-surface-2/60 text-text"
                   )}
                 >
@@ -272,20 +297,20 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
                           )}
                         >
                           {isApi ? <Code2 className="h-2.5 w-2.5" /> : <BookOpen className="h-2.5 w-2.5" />}
-                          {item.sectionLabel}
+                          {isApi ? text('docsApiReference') : text('docsUserGuide')}
                         </span>
                         <span className="text-[11px] text-text-faint font-mono">
                           {item.groupTitle}
                         </span>
                         {item.readTime && (
-                          <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-text-muted font-mono ml-auto">
+                          <span className="hidden sm:inline-flex items-center gap-1 text-[10px] text-text-muted font-mono ms-auto">
                             <Clock className="h-2.5 w-2.5" /> {item.readTime}
                           </span>
                         )}
                       </div>
 
                       {/* Title */}
-                      <div className="text-sm font-semibold text-text flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-start text-sm font-semibold text-text">
                         <span>{item.title}</span>
                       </div>
 
@@ -311,16 +336,14 @@ export function DocSearchModal({ open, onClose, initialSection = 'all' }) {
             <span className="flex items-center gap-1">
               <kbd className="px-1 py-0.5 bg-surface border border-border rounded text-[10px]">↑</kbd>
               <kbd className="px-1 py-0.5 bg-surface border border-border rounded text-[10px]">↓</kbd>
-              <span>navigate</span>
+              <span>{labels.navigate}</span>
             </span>
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-surface border border-border rounded text-[10px]">↵</kbd>
-              <span>select</span>
+              <span>{labels.select}</span>
             </span>
           </div>
-          <span className="text-text-muted">
-            {searchResults.length} {searchResults.length === 1 ? 'doc' : 'docs'}
-          </span>
+          <span className="text-text-muted">{labels.count(searchResults.length)}</span>
         </div>
       </div>
     </div>
