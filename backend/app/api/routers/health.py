@@ -31,14 +31,14 @@ async def readiness(response: Response):
                 await session.execute(select(User.id).limit(1))
 
         await asyncio.wait_for(_check_db(), timeout=3.0)
-        return {"status": "ready", "database": "connected"}
+        return {"status": "ready", "database": "connected", "providers": "not_checked"}
     except (asyncio.TimeoutError, TimeoutError):
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {"status": "unready", "database": "timeout", "detail": "Database ping timed out"}
+        return {"status": "unready", "database": "timeout", "providers": "not_checked", "detail": "Database ping timed out"}
     except Exception as exc:
         log_event(logger, "readiness_database_failed", error=exc)
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {"status": "unready", "database": "disconnected", "code": "database_unavailable", "detail": "Database is unavailable"}
+        return {"status": "unready", "database": "disconnected", "providers": "not_checked", "code": "database_unavailable", "detail": "Database is unavailable"}
 
 
 @router.get("")
@@ -80,6 +80,7 @@ async def health_check(
         "status": "ok" if db_status == "connected" else "degraded",
         "service": "helix-backend",
         "db": db_status,
+        "providers": "not_checked",
     }
     if db_error and is_admin_req:
         res["db_detail"] = db_error
