@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils"
 
 /** 1px border on a raised surface. No shadow, no gradient, ever. */
-export function Panel({ className, children, ...props }) {
+export function Panel({ className = "", children, ...props }) {
   return (
     <div
       className={cn("border border-border bg-surface rounded-sm", className)}
@@ -12,7 +12,7 @@ export function Panel({ className, children, ...props }) {
   )
 }
 
-export function PanelHeader({ className, children, ...props }) {
+export function PanelHeader({ className = "", children, ...props }) {
   return (
     <div
       className={cn(
@@ -26,7 +26,7 @@ export function PanelHeader({ className, children, ...props }) {
   )
 }
 
-export function PanelTitle({ className, children, ...props }) {
+export function PanelTitle({ className = "", children, ...props }) {
   return (
     <h2 className={cn("label-mono text-text", className)} {...props}>
       {children}
@@ -34,7 +34,7 @@ export function PanelTitle({ className, children, ...props }) {
   )
 }
 
-export function PanelBody({ className, children, ...props }) {
+export function PanelBody({ className = "", children, ...props }) {
   return (
     <div className={cn("p-3", className)} {...props}>
       {children}

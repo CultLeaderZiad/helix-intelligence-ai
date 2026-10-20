@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import { MessageSquarePlus, Bug, Sparkles, Send, X, CheckCircle2, AlertCircle } from "lucide-react"
 import { supportService } from "../services"
 
+/** @param {{ isOpen: boolean, onClose: () => void, onSuccess?: (ticket: unknown) => void, initialContext?: { tag?: string, isBug?: boolean, page?: string, [key: string]: unknown } }} props */
 export function SupportFeedbackModal({ isOpen, onClose, initialContext = {}, onSuccess }) {
   const [ticketType, setTicketType] = useState("feedback") // 'feedback' | 'bug' | 'other'
   const [subject, setSubject] = useState("")
