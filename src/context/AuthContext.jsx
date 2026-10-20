@@ -8,7 +8,7 @@ import {
   useState,
 } from "react"
 import { authService } from "@/services"
-import { getAccessToken, getCachedUser } from "@/services/sessionStore"
+import { getAccessToken, getCachedUser, setCachedUser } from "@/services/sessionStore"
 
 /**
  * ============================================================
@@ -57,6 +57,10 @@ export function AuthProvider({ children }) {
     }
     return AUTH_STATUS.UNAUTHENTICATED
   })
+
+  useEffect(() => {
+    if (user && getAccessToken()) setCachedUser(user)
+  }, [user])
 
   /* Resolve the persisted session once on mount. Uses SWR to absorb cold starts. */
   useEffect(() => {
@@ -157,13 +161,19 @@ export function AuthProvider({ children }) {
     setUser((prev) => (typeof updater === "function" ? updater(prev) : { ...prev, ...updater }))
   }, [])
 
-  const completeOnboarding = useCallback(async () => {
-    try {
-      await authService.completeOnboarding()
-      updateUser({ has_completed_onboarding: true })
-    } catch (err) {
-      console.error("Failed to complete onboarding:", err)
+  const refreshSession = useCallback(async () => {
+    const token = authService.getStoredToken()
+    const session = await authService.getSession()
+    if (token && token === authService.getStoredToken() && session?.user) {
+      setUser(session.user)
+      setStatus(AUTH_STATUS.AUTHENTICATED)
     }
+    return session?.user ?? null
+  }, [])
+
+  const completeOnboarding = useCallback(async () => {
+    await authService.completeOnboarding()
+    updateUser({ has_completed_onboarding: true })
   }, [updateUser])
 
   const value = useMemo(
@@ -180,8 +190,9 @@ export function AuthProvider({ children }) {
       resetPassword,
       updateUser,
       completeOnboarding,
+      refreshSession,
     }),
-    [user, status, signIn, signUp, signOut, requestPasswordReset, resetPassword, updateUser, completeOnboarding],
+    [user, status, signIn, signUp, signOut, requestPasswordReset, resetPassword, updateUser, completeOnboarding, refreshSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
