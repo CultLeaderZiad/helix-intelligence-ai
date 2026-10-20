@@ -1,11 +1,12 @@
-import { Radar, Network, PenLine, Activity, BookOpen, Eye, Crosshair } from "lucide-react"
+import { EXPERIMENTAL_FEATURES_ENABLED } from "@/lib/productFeatures"
+import { Radar, Network, PenLine, Activity, Eye, Crosshair } from "lucide-react"
 
 /**
  * The loops of the product. Single source of truth for the sidebar,
  * the command bar, and the document title — so a route can never appear
  * in one navigation surface and be missing from another.
  */
-export const NAV_SECTIONS = [
+const ALL_SECTIONS = [
   {
     key: "discover",
     path: "/discover",
@@ -55,3 +56,5 @@ export const NAV_SECTIONS = [
     status: "live",
   },
 ]
+
+export const NAV_SECTIONS = ALL_SECTIONS.filter((section) => section.key === "discover" || EXPERIMENTAL_FEATURES_ENABLED)
