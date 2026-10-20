@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { adminService } from "@/services"
-import { clearCachedUser, setAccessToken } from "@/services/sessionStore"
+import { adminService, authService } from "@/services"
 import { 
   Users, 
   UserCheck, 
@@ -123,12 +122,9 @@ export function UsersPage() {
     try {
       const res = await adminService.impersonateUser(impersonateTargetUser.id)
       if (res?.access_token) {
-        setAccessToken(res.access_token)
-        clearCachedUser()
+        authService.switchToImpersonatedSession(res.access_token)
         showToast(`Impersonating ${impersonateTargetUser.email}... Redirecting to Discovery.`)
-        setTimeout(() => {
-          window.location.href = "/discover"
-        }, 1200)
+        window.location.replace("/discover")
       }
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || "Failed to impersonate user")
