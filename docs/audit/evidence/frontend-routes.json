@@ -7,66 +7,14 @@
     "comparison": "5b45806",
     "sourceAudit": "Static source review; no application code changed in this audit task.",
     "browserEvidence": {
-      "source": "parent-managed local app, actual admin account, disposable empty database; signed-out state for public/auth routes; admin session for app/admin routes",
-      "manifest": "browser-captures.jsonl",
-      "records": 356,
-      "concretePaths": 68,
+      "source": "Parent-managed local app; actual admin account; disposable empty database; public/auth screens signed out; customer/admin areas captured with admin session.",
+      "routeScreenshotCount": 136,
       "routeLocalePairs": 136,
-      "routeCapturesByVariant": 204,
-      "interactiveCaptures": 152,
-      "allCaptureOk": true,
-      "screenshotLinkBasis": "Route screenshot links point at exact manifest file paths; links in this JSON are relative to docs/audit/evidence.",
-      "missingScreenshotArtifacts": 8,
-      "missingScreenshotVariants": [
-        {
-          "path": "/create",
-          "locale": "en",
-          "variant": "tab-Image-Creative-Graphic-Layout",
-          "expectedFile": "screens/create-tab-Image-Creative-Graphic-Layout-en.png"
-        },
-        {
-          "path": "/create",
-          "locale": "en",
-          "variant": "tab-Video-Motion-Ad-Concept-Short",
-          "expectedFile": "screens/create-tab-Video-Motion-Ad-Concept-Short-en.png"
-        },
-        {
-          "path": "/create",
-          "locale": "en",
-          "variant": "tab-Video-Motion-Explainer",
-          "expectedFile": "screens/create-tab-Video-Motion-Explainer-en.png"
-        },
-        {
-          "path": "/create",
-          "locale": "en",
-          "variant": "tab-Video-Motion-UGC-Clip",
-          "expectedFile": "screens/create-tab-Video-Motion-UGC-Clip-en.png"
-        },
-        {
-          "path": "/create",
-          "locale": "ar",
-          "variant": "tab-Image-Creative-Graphic-Layout",
-          "expectedFile": "screens/create-tab-Image-Creative-Graphic-Layout-ar.png"
-        },
-        {
-          "path": "/create",
-          "locale": "ar",
-          "variant": "tab-Video-Motion-Ad-Concept-Short",
-          "expectedFile": "screens/create-tab-Video-Motion-Ad-Concept-Short-ar.png"
-        },
-        {
-          "path": "/create",
-          "locale": "ar",
-          "variant": "tab-Video-Motion-Explainer",
-          "expectedFile": "screens/create-tab-Video-Motion-Explainer-ar.png"
-        },
-        {
-          "path": "/create",
-          "locale": "ar",
-          "variant": "tab-Video-Motion-UGC-Clip",
-          "expectedFile": "screens/create-tab-Video-Motion-UGC-Clip-ar.png"
-        }
-      ]
+      "uniqueActualScreenshotCount": 240,
+      "additionalScreenshots": "Remaining 104 screenshots cover modes, tabs, pending states, and other interaction states; the parent is generating BROWSER-INVENTORY.md and screens/README from the latest unique captures.",
+      "rawManifest": "browser-captures.jsonl contains selector attempts, including failures; it is not treated as a successful screenshot inventory.",
+      "invalidCreateAttempts": "Graphic Layout, Ad Concept Short, Explainer, and UGC Clip screenshots were deleted and have been excluded from capturedStates and all report links.",
+      "verificationCaveat": "A screenshot documents the visible captured state only; it does not establish API/provider success, hydration completion, or persistent route health."
     },
     "comparisonNote": "The inspected app source snapshot is eab70cc. Current artifact branch HEAD is recorded separately; later docs-only commits must not be mistaken for the audited app snapshot.",
     "statusLegend": {
@@ -77,7 +25,21 @@
       "broken": "Use only when a reproducible failure is observed.",
       "dead": "Use for code/path with no reachable UI entry point."
     },
-    "verificationCaveat": "Capture ok means the capture operation completed. It does not establish hydrated data, successful API requests, provider availability, or long-term route health."
+    "verificationCaveat": "Capture ok means the capture operation completed. It does not establish hydrated data, successful API requests, provider availability, or long-term route health.",
+    "screenshots": {
+      "status": "latest-parent-capture-set; parent-generated inventory pending",
+      "count": 240,
+      "routePairs": 136,
+      "remaining": "Modes, tabs, pending states, and other interactions; parent will inventory latest unique files.",
+      "deletedInvalidCreateStates": [
+        "Graphic Layout",
+        "Ad Concept Short",
+        "Explainer",
+        "UGC Clip"
+      ],
+      "links": "Only route EN/AR screenshots are linked in this artifact; parent owns latest capture inventory."
+    },
+    "browserVerification": "parent-managed-captures-present; do not infer root cause from screenshots"
   },
   "routeDefinitions": [
     {
@@ -1855,86 +1817,6 @@
               "file": "screens/create-tab-Image-Creative-Storyboard-Frame-ar.png",
               "link": "../screens/create-tab-Image-Creative-Storyboard-Frame-ar.png",
               "filePresent": true,
-              "ok": true,
-              "loadMs": null
-            }
-          }
-        },
-        {
-          "variant": "tab-Image-Creative-Graphic-Layout",
-          "label": "Image Creative Graphic Layout",
-          "screenshots": {
-            "en": {
-              "file": "screens/create-tab-Image-Creative-Graphic-Layout-en.png",
-              "link": null,
-              "filePresent": false,
-              "ok": true,
-              "loadMs": null
-            },
-            "ar": {
-              "file": "screens/create-tab-Image-Creative-Graphic-Layout-ar.png",
-              "link": null,
-              "filePresent": false,
-              "ok": true,
-              "loadMs": null
-            }
-          }
-        },
-        {
-          "variant": "tab-Video-Motion-Ad-Concept-Short",
-          "label": "Video Motion Ad Concept Short",
-          "screenshots": {
-            "en": {
-              "file": "screens/create-tab-Video-Motion-Ad-Concept-Short-en.png",
-              "link": null,
-              "filePresent": false,
-              "ok": true,
-              "loadMs": null
-            },
-            "ar": {
-              "file": "screens/create-tab-Video-Motion-Ad-Concept-Short-ar.png",
-              "link": null,
-              "filePresent": false,
-              "ok": true,
-              "loadMs": null
-            }
-          }
-        },
-        {
-          "variant": "tab-Video-Motion-Explainer",
-          "label": "Video Motion Explainer",
-          "screenshots": {
-            "en": {
-              "file": "screens/create-tab-Video-Motion-Explainer-en.png",
-              "link": null,
-              "filePresent": false,
-              "ok": true,
-              "loadMs": null
-            },
-            "ar": {
-              "file": "screens/create-tab-Video-Motion-Explainer-ar.png",
-              "link": null,
-              "filePresent": false,
-              "ok": true,
-              "loadMs": null
-            }
-          }
-        },
-        {
-          "variant": "tab-Video-Motion-UGC-Clip",
-          "label": "Video Motion UGC Clip",
-          "screenshots": {
-            "en": {
-              "file": "screens/create-tab-Video-Motion-UGC-Clip-en.png",
-              "link": null,
-              "filePresent": false,
-              "ok": true,
-              "loadMs": null
-            },
-            "ar": {
-              "file": "screens/create-tab-Video-Motion-UGC-Clip-ar.png",
-              "link": null,
-              "filePresent": false,
               "ok": true,
               "loadMs": null
             }
@@ -4485,24 +4367,29 @@
       "evidence": "screens/api-keys-en.png plus manifest entry variant=spa-navigation; both locales observed."
     },
     {
+      "path": "all route captures",
+      "finding": "All 136 route/locale pairs and interactive records have ok=true in the parent capture manifest. This only means capture succeeded."
+    },
+    {
       "path": "/admin",
-      "finding": "Parent reports initial capture still showed loading after about 1 second; separate tab-settled captures exist for EN/AR, but this is not sustained evidence of route/provider health.",
-      "classification": "not-proven-broken; longer-runtime-check-pending"
+      "finding": "A brief loading-state capture was observed; later settled capture evidence exists. No sustained failure or root cause is established.",
+      "classification": "root-cause-pending"
     },
     {
       "path": "/dashboard",
-      "finding": "Parent reports initial capture still showed loading after about 1 second; separate tab-settled captures exist for EN/AR, but this is not sustained evidence of route/provider health.",
-      "classification": "not-proven-broken; longer-runtime-check-pending"
+      "finding": "A brief loading-state capture was observed; later settled capture evidence exists. No sustained failure or root cause is established.",
+      "classification": "root-cause-pending"
     },
     {
-      "path": "all route captures",
-      "finding": "All 136 route/locale pairs and interactive records have ok=true in the parent capture manifest. This only means capture succeeded."
+      "path": "/api-keys",
+      "finding": "Direct navigation showed backend Not Found JSON in local Vite context; in-app SPA navigation is a distinct state. Root cause remains pending.",
+      "classification": "root-cause-pending"
     }
   ],
   "unverified": [
     "Provider-backed data quality and persistent backend responses beyond the captured empty disposable database.",
-    "Whether /admin and /dashboard settle after more than one second.",
-    "API key direct-link proxy and intended hosting behavior outside this local Vite setup.",
-    "Accessibility behavior beyond static selectors and the captured visual state."
+    "Accessibility behavior beyond static selectors and the captured visual state.",
+    "Root cause for direct /api-keys behavior and the initial loading observations on /admin and /dashboard; parent investigation pending.",
+    "The raw browser-captures.jsonl contains failed selector attempts and must not be interpreted as 356 successful screenshots."
   ]
 }
