@@ -261,7 +261,42 @@ const translations = {
     accessRevoked: "revoked",
     discoverNeedsAccess: "This workspace cannot run Discover until a platform admin approves access, or until it has enough credits. Request access from Billing.",
     teamNeedsAccess: "Team accounts stay off until a platform admin grants that feature. Request access for this workspace.",
-    dailyAllowance: "The daily allowance resets at 00:00 UTC. Request access if this limit needs to change."
+    dailyAllowance: "The daily allowance resets at 00:00 UTC. Request access if this limit needs to change.",
+    marketingHeroLabel: "AI-assisted advertising research and creative tools",
+    marketingHeroTitle: "Research advertising. Develop creative ideas.",
+    marketingHeroBody: "Helix brings advertising research and AI-assisted creative work into one workspace. Available sources and features depend on workspace configuration.",
+    marketingHeroCaveat: "AI-generated content and inferred signals may be inaccurate. Review them before relying on or publishing them.",
+    marketingAdminAccess: "Access is granted by an administrator. No public plans or checkout are available.",
+    marketingSignIn: "Sign in",
+    marketingCapabilities: "What Helix supports",
+    marketingCapabilitiesIntro: "A workspace for advertising research and creative work. Availability depends on administrator-granted access and configured services.",
+    marketingDiscoverTitle: "Advertising research",
+    marketingDiscoverBody: "Search supported public advertising sources when they are configured and available to your workspace.",
+    marketingCreativeTitle: "AI-assisted creative work",
+    marketingCreativeBody: "Use available AI tools to explore and draft creative ideas. Review generated content before use.",
+    marketingWorkspaceTitle: "Workspace tools",
+    marketingWorkspaceBody: "Keep research and creative work in a workspace. Access and available features are set by an administrator.",
+    marketingPricingTitle: "Access and availability",
+    marketingPricingBody: "Helix does not offer public plans or purchasable subscriptions at this time.",
+    marketingNoCheckout: "Checkout and payment-provider routes are unavailable.",
+    marketingAdminGrant: "An administrator must grant access; no trial or price is being offered here.",
+    legalTitle: "Legal and data disclosures",
+    legalDescription: "A consolidated engineering disclosure about the current product and data handling—not a set of approved legal policies.",
+    legalDraftLabel: "Draft — approval required",
+    legalDraftNotice: "This disclosure is not approved. Ziad and qualified counsel must review and approve it before publication.",
+    legalServiceHeading: "Service and access",
+    legalServiceBody: "Helix provides AI-assisted advertising research and creative tools. Access is granted manually by an administrator. No public prices, purchasable subscriptions, or checkout are offered. AI output and inferred signals are not verified facts.",
+    legalDataHeading: "Data and integrations",
+    legalDataBody: "The application may process account identity, workspace queries, public-source creative records, prompts, generated media, drafts, credit usage, and security or audit identifiers. Source-visible integrations include PostgreSQL/Neon, Render, Vercel, Cloudflare R2 or local upload storage, AI services (Groq, OpenRouter, Google Gemini, AIHubMix, Token Harbor, Pollinations), discovery/enrichment services (Adyntel, Apify, Meta, Bright Data, ScrapeGraphAI), and Resend email.",
+    legalProviderCaveat: "This is a source-code inventory, not confirmation that a provider is enabled, used, contracted, or compliant. Deployment, regions, retention, backups, and provider terms have not been verified.",
+    legalStorageDetail: "Source configuration references PostgreSQL/Neon and Cloudflare R2, with local-disk upload fallback. The active deployment target, durability, retention, backups, and deletion behavior have not been verified.",
+    legalSessionHeading: "Browser storage and deletion",
+    legalSessionBody: "The current session stores its access token and cached user in JavaScript-readable localStorage; it is not an HttpOnly cookie. An end-to-end account deletion path is not established. No deletion timeline or self-service deletion promise is made.",
+    legalContactHeading: "Contact and approval",
+    legalContactBody: "The privacy contact and rights-request process are pending operator verification. No contact address is published here. Operator identity, jurisdiction, retention, transfer safeguards, and final English and Arabic wording require approval.",
+    footerLegalPending: "Legal disclosures are drafts; privacy contact is pending verification.",
+    footerDescription: "Tools for advertising research and AI-assisted creative work.",
+    footerBeta: "BETA PREVIEW",
   },
   ar: {
     // Nav
@@ -523,11 +558,58 @@ const translations = {
     accessRevoked: "ملغى",
     discoverNeedsAccess: "لا يمكن تشغيل الاستكشاف حتى يوافق مشرف المنصة على الوصول، أو حتى تتوفر أرصدة كافية. اطلب الوصول من الفوترة.",
     teamNeedsAccess: "حسابات الفريق متوقفة حتى يمنح مشرف المنصة هذه الميزة. اطلب الوصول لمساحة العمل.",
-    dailyAllowance: "يتجدد الحد اليومي عند 00:00 بالتوقيت العالمي. اطلب الوصول إذا كان هذا الحد بحاجة إلى تغيير."
+    dailyAllowance: "يتجدد الحد اليومي عند 00:00 بالتوقيت العالمي. اطلب الوصول إذا كان هذا الحد بحاجة إلى تغيير.",
+    marketingHeroLabel: "أدوات بحث إعلاني وإنشاء مدعومة بالذكاء الاصطناعي",
+    marketingHeroTitle: "ابحث في الإعلانات. وطوّر أفكاراً إبداعية.",
+    marketingHeroBody: "يجمع Helix بين البحث الإعلاني والعمل الإبداعي المدعوم بالذكاء الاصطناعي في مساحة عمل واحدة. يعتمد توفر المصادر والميزات على إعداد مساحة العمل.",
+    marketingHeroCaveat: "قد تكون المخرجات المُنشأة بالذكاء الاصطناعي والإشارات المستنتجة غير دقيقة. راجعها قبل الاعتماد عليها أو نشرها.",
+    marketingAdminAccess: "يمنح المشرف الوصول يدوياً. لا تتوفر خطط عامة أو عملية دفع.",
+    marketingSignIn: "تسجيل الدخول",
+    marketingCapabilities: "ما يدعمه Helix",
+    marketingCapabilitiesIntro: "مساحة عمل للبحث الإعلاني والعمل الإبداعي. يعتمد التوفر على منح المشرف للصلاحية والخدمات المُهيأة.",
+    marketingDiscoverTitle: "البحث الإعلاني",
+    marketingDiscoverBody: "ابحث في مصادر الإعلانات العامة المدعومة عند تهيئتها وإتاحتها لمساحة عملك.",
+    marketingCreativeTitle: "عمل إبداعي مدعوم بالذكاء الاصطناعي",
+    marketingCreativeBody: "استخدم أدوات الذكاء الاصطناعي المتاحة لاستكشاف الأفكار الإبداعية وصياغتها. راجع المحتوى المُنشأ قبل استخدامه.",
+    marketingWorkspaceTitle: "أدوات مساحة العمل",
+    marketingWorkspaceBody: "احتفظ بأعمال البحث والإبداع في مساحة عمل. يحدد المشرف صلاحيات الوصول والميزات المتاحة.",
+    marketingPricingTitle: "الوصول والتوفر",
+    marketingPricingBody: "لا يقدم Helix حالياً خططاً عامة أو اشتراكات قابلة للشراء.",
+    marketingNoCheckout: "الدفع ومسارات مزودي الدفع غير متاحة.",
+    marketingAdminGrant: "يجب أن يمنح المشرف صلاحية الوصول؛ لا يُعرض هنا اشتراك تجريبي أو سعر.",
+    legalTitle: "الإفصاحات القانونية والبيانات",
+    legalDescription: "إفصاح هندسي موحّد عن المنتج الحالي ومعالجة البيانات، وليس مجموعة سياسات قانونية معتمدة.",
+    legalDraftLabel: "مسودة — تتطلب الموافقة",
+    legalDraftNotice: "هذه الإفصاحات غير معتمدة. يجب أن يراجعها ويوافق عليها زياد ومستشار قانوني مؤهل قبل النشر.",
+    legalServiceHeading: "الخدمة والوصول",
+    legalServiceBody: "يوفر Helix أدوات للبحث الإعلاني والعمل الإبداعي المدعوم بالذكاء الاصطناعي. يمنح المشرف الوصول يدوياً. لا تُعرض أسعار عامة أو اشتراكات قابلة للشراء أو خدمة دفع. مخرجات الذكاء الاصطناعي والإشارات المستنتجة ليست حقائق مؤكدة.",
+    legalDataHeading: "البيانات والتكاملات",
+    legalDataBody: "قد يعالج التطبيق هوية الحساب، واستعلامات مساحة العمل، وسجلات الإعلانات من المصادر العامة، والمطالبات، والوسائط المُنشأة، والمسودات، واستخدام الرصيد، ومعرّفات الأمان أو التدقيق. تشمل التكاملات الظاهرة في المصدر PostgreSQL/Neon وRender وVercel وCloudflare R2 أو التخزين المحلي للملفات، وخدمات الذكاء الاصطناعي (Groq وOpenRouter وGoogle Gemini وAIHubMix وToken Harbor وPollinations)، وخدمات الاكتشاف والإثراء (Adyntel وApify وMeta وBright Data وScrapeGraphAI)، وبريد Resend.",
+    legalProviderCaveat: "هذه قائمة بما يظهر في الشيفرة المصدرية، وليست تأكيداً على تفعيل أي مزود أو استخدامه أو التعاقد معه أو امتثاله. لم يتم التحقق من بيئة النشر أو المناطق أو مدة الاحتفاظ أو النسخ الاحتياطية أو شروط المزودين.",
+    legalStorageDetail: "تشير إعدادات المصدر إلى PostgreSQL/Neon وCloudflare R2، مع تخزين محلي على القرص كبديل لرفع الملفات. لم يتم التحقق من وجهة النشر الفعلية أو استدامة التخزين أو مدة الاحتفاظ أو النسخ الاحتياطية أو سلوك الحذف.",
+    legalSessionHeading: "تخزين المتصفح والحذف",
+    legalSessionBody: "تخزّن الجلسة الحالية رمز الوصول وبيانات المستخدم المؤقتة في localStorage القابل للقراءة من JavaScript؛ وهذا ليس ملف تعريف ارتباط HttpOnly. لم يتم إثبات مسار متكامل لحذف الحساب. لا يوجد وعد بمدة للحذف أو بحذف ذاتي.",
+    legalContactHeading: "التواصل والموافقة",
+    legalContactBody: "لا يزال التحقق من جهة التواصل للخصوصية وإجراءات طلبات الحقوق بانتظار المشغّل. لا يُنشر عنوان تواصل هنا. تتطلب هوية المشغّل والاختصاص القضائي والاحتفاظ ونقل البيانات والصياغة النهائية بالعربية والإنجليزية موافقة.",
+    footerLegalPending: "الإفصاحات القانونية مسودات؛ جهة التواصل للخصوصية بانتظار التحقق.",
+    footerDescription: "أدوات للبحث الإعلاني والعمل الإبداعي المدعوم بالذكاء الاصطناعي.",
+    footerBeta: "معاينة تجريبية",
   }
 }
 
-const LanguageContext = createContext()
+/** @typedef {{lang: string, setLang: (value: string | ((previous: string) => string)) => void, t: (key: string, fallback?: string) => string, toggleLanguage: () => void, isRtl: boolean}} LanguageContextValue */
+
+/** @type {(key: string, fallback?: string) => string} */
+const defaultTranslate = (key, fallback) => fallback || key
+
+/** @type {import("react").Context<LanguageContextValue>} */
+const LanguageContext = createContext({
+  lang: "en",
+  setLang: () => {},
+  t: defaultTranslate,
+  toggleLanguage: () => {},
+  isRtl: false,
+})
 
 export function LanguageProvider({ children }) {
   const [lang, setLang] = useState(() => {
