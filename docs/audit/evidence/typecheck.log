@@ -1,0 +1,4 @@
+
+> helix-intelligence@0.1.0 typecheck /tmp/hoplite/workspace
+> tsc -p jsconfig.json --pretty false
+
