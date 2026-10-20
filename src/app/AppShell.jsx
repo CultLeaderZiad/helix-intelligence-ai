@@ -1,12 +1,13 @@
-import { lazy, Suspense, useEffect, useState, useRef } from "react"
+import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import { useLocation } from "react-router-dom"
 import { Menu, X, Search } from "lucide-react"
 import { Sidebar } from "./Sidebar"
 import { StatusBar } from "./StatusBar"
 import { Button } from "@/components/ui/Button"
-import { TrialBanner } from "@/components/ui/TrialBanner"
 import { UpdatesBanner } from "@/components/UpdatesBanner"
 import { ScrollToTopButton } from "@/components/ui/ScrollToTopButton"
+import { useDialogFocus } from "@/hooks/useDialogFocus"
+import { useLanguage } from "@/context/LanguageContext"
 import { FloatingSupportButton } from "@/components/ui/FloatingSupportButton"
 import { SkipToContent } from "@/components/ui/SkipToContent"
 
@@ -18,8 +19,11 @@ const CommandBar = lazy(() => import("./CommandBar").then(module => ({ default: 
  * full viewport width on small screens.
  */
 export function AppShell({ children }) {
+  const { t } = useLanguage()
+  const drawerRef = useRef(null)
   const [commandOpen, setCommandOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
+  useDialogFocus(drawerRef, navOpen, () => setNavOpen(false))
   const location = useLocation()
   const mainRef = useRef(null)
 
@@ -93,7 +97,7 @@ export function AppShell({ children }) {
               <div
                 className="flex-1 overflow-y-auto"
                 onClick={(e) => {
-                  if (e.target.closest('a')) setNavOpen(false)
+                  if (e.target instanceof Element && e.target.closest('a')) setNavOpen(false)
                 }}
               >
                 <Sidebar
@@ -145,8 +149,7 @@ export function AppShell({ children }) {
           </div>
 
           <UpdatesBanner />
-          <TrialBanner />
-
+    
           {children}
         </main>
       </div>
