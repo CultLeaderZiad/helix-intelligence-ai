@@ -1,0 +1,3550 @@
+{
+  "metadata": {
+    "generated_by": "read-only Python AST and literal frontend request scan",
+    "source_commit": "eab70cc",
+    "mount_definition": "backend/app/main.py:95-122",
+    "base_prefix": "backend/app/core/config.py:9 (API_V1_STR=/api)",
+    "method": "route decorators + app.include_router; no app import, DB access, or provider calls",
+    "limits": "Static literals only. Dynamic URLs and external callers may be unresolved; frontend absence is not proof of no external use.",
+    "backend_router_declarations": 164,
+    "mounted_route_records": 166,
+    "route_records_total": 168,
+    "client_calls_literal": 125,
+    "frontend_refs_unmatched": 15
+  },
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/account/profile",
+      "declared_suffix": "/profile",
+      "handler": "get_profile",
+      "source": "backend/app/api/routers/account.py:56",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/account/profile",
+      "declared_suffix": "/profile",
+      "handler": "update_profile",
+      "source": "backend/app/api/routers/account.py:69",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "PATCH",
+          "path": "/account/profile",
+          "source": "src/services/api/accountService.api.js:5"
+        },
+        {
+          "method": "PATCH",
+          "path": "/account/profile",
+          "source": "src/services/api/accountService.api.js:9"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/avatar",
+      "declared_suffix": "/avatar",
+      "handler": "upload_avatar",
+      "source": "backend/app/api/routers/account.py:113",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/usage/today",
+      "declared_suffix": "/usage/today",
+      "handler": "get_today_real_usage",
+      "source": "backend/app/api/routers/account.py:140",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/trial-status",
+      "declared_suffix": "/trial-status",
+      "handler": "get_trial_status",
+      "source": "backend/app/api/routers/account.py:194",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/onboarding-complete",
+      "declared_suffix": "/onboarding-complete",
+      "handler": "complete_onboarding",
+      "source": "backend/app/api/routers/account.py:246",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/account/onboarding-complete",
+          "source": "src/services/api/accountService.api.js:26"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/access",
+      "declared_suffix": "/access",
+      "handler": "get_access_status",
+      "source": "backend/app/api/routers/account.py:255",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/access-requests",
+      "declared_suffix": "/access-requests",
+      "handler": "create_access_request",
+      "source": "backend/app/api/routers/account.py:267",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/account/access-requests",
+          "source": "src/services/api/accountService.api.js:40"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/access-grants",
+      "declared_suffix": "/access-grants",
+      "handler": "reject_self_grant",
+      "source": "backend/app/api/routers/account.py:285",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/workspace",
+      "declared_suffix": "/workspace",
+      "handler": "select_workspace",
+      "source": "backend/app/api/routers/account.py:298",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/account/workspace",
+          "source": "src/services/api/accountService.api.js:47"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/billing",
+      "declared_suffix": "/billing",
+      "handler": "get_billing",
+      "source": "backend/app/api/routers/account.py:327",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/account/billing",
+          "source": "src/services/api/accountService.api.js:32"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/billing/provider-events",
+      "declared_suffix": "/billing/provider-events",
+      "handler": "billing_provider_events",
+      "source": "backend/app/api/routers/account.py:335",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/api-keys",
+      "declared_suffix": "/api-keys",
+      "handler": "list_api_keys",
+      "source": "backend/app/api/routers/account.py:345",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/api-keys",
+      "declared_suffix": "/api-keys",
+      "handler": "create_api_key",
+      "source": "backend/app/api/routers/account.py:352",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/account/api-keys",
+          "source": "src/services/api/accountService.api.js:54"
+        },
+        {
+          "method": "POST",
+          "path": "/account/api-keys",
+          "source": "src/services/api/accountService.api.js:58"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/account/api-keys/{key_id}",
+      "declared_suffix": "/api-keys/{key_id}",
+      "handler": "revoke_api_key",
+      "source": "backend/app/api/routers/account.py:360",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "DELETE",
+          "path": "/account/api-keys/${keyId}",
+          "source": "src/services/api/accountService.api.js:65"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/team",
+      "declared_suffix": "/team",
+      "handler": "get_team",
+      "source": "backend/app/api/routers/account.py:369",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/team/invites",
+      "declared_suffix": "/team/invites",
+      "handler": "invite_team_member",
+      "source": "backend/app/api/routers/account.py:376",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/account/team/invites",
+          "source": "src/services/api/accountService.api.js:75"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/account/team/invites/{invite_id}",
+      "declared_suffix": "/team/invites/{invite_id}",
+      "handler": "cancel_team_invite",
+      "source": "backend/app/api/routers/account.py:384",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "DELETE",
+          "path": "/account/team/invites/${inviteId}",
+          "source": "src/services/api/accountService.api.js:82"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/team/invites/accept",
+      "declared_suffix": "/team/invites/accept",
+      "handler": "accept_team_invite",
+      "source": "backend/app/api/routers/account.py:392",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/account/team/invites/accept",
+          "source": "src/services/api/accountService.api.js:94"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/account/team/members/{member_id}",
+      "declared_suffix": "/team/members/{member_id}",
+      "handler": "remove_team_member",
+      "source": "backend/app/api/routers/account.py:400",
+      "mounted": true,
+      "mount": "account.router",
+      "frontend_refs": [
+        {
+          "method": "DELETE",
+          "path": "/account/team/members/${memberId}",
+          "source": "src/services/api/accountService.api.js:88"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/overview/stats",
+      "declared_suffix": "/overview/stats",
+      "handler": "get_overview",
+      "source": "backend/app/api/routers/admin.py:24",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/admin/overview/stats",
+          "source": "src/services/api/adminService.api.js:10"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/jobs",
+      "declared_suffix": "/jobs",
+      "handler": "list_jobs",
+      "source": "backend/app/api/routers/admin.py:28",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/admin/jobs",
+          "source": "src/services/api/adminService.api.js:14"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/system/health",
+      "declared_suffix": "/system/health",
+      "handler": "get_health",
+      "source": "backend/app/api/routers/admin.py:32",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/admin/system/health",
+          "source": "src/services/api/adminService.api.js:25"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/plans",
+      "declared_suffix": "/plans",
+      "handler": "list_plans",
+      "source": "backend/app/api/routers/admin.py:37",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/plans",
+      "declared_suffix": "/plans",
+      "handler": "create_plan",
+      "source": "backend/app/api/routers/admin.py:41",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/plans",
+          "source": "src/services/api/adminService.api.js:30"
+        },
+        {
+          "method": "POST",
+          "path": "/admin/plans",
+          "source": "src/services/api/adminService.api.js:34"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/plans/{plan_id}",
+      "declared_suffix": "/plans/{plan_id}",
+      "handler": "update_plan",
+      "source": "backend/app/api/routers/admin.py:49",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "PUT",
+          "path": "/admin/plans/${planId}",
+          "source": "src/services/api/adminService.api.js:41"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/admin/plans/{plan_id}",
+      "declared_suffix": "/plans/{plan_id}",
+      "handler": "delete_plan",
+      "source": "backend/app/api/routers/admin.py:58",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "DELETE",
+          "path": "/admin/plans/${planId}",
+          "source": "src/services/api/adminService.api.js:48"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/organizations",
+      "declared_suffix": "/organizations",
+      "handler": "list_organizations",
+      "source": "backend/app/api/routers/admin.py:67",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations/{org_id}/grant-credits",
+      "declared_suffix": "/organizations/{org_id}/grant-credits",
+      "handler": "grant_credits",
+      "source": "backend/app/api/routers/admin.py:71",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/organizations/${orgId}/grant-credits",
+          "source": "src/services/api/adminService.api.js:59"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations/{org_id}/switch-plan",
+      "declared_suffix": "/organizations/{org_id}/switch-plan",
+      "handler": "switch_plan",
+      "source": "backend/app/api/routers/admin.py:80",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/organizations/${orgId}/switch-plan",
+          "source": "src/services/api/adminService.api.js:66"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations/{org_id}/feature-flags",
+      "declared_suffix": "/organizations/{org_id}/feature-flags",
+      "handler": "update_feature_flags",
+      "source": "backend/app/api/routers/admin.py:89",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/organizations/${orgId}/feature-flags",
+          "source": "src/services/api/adminService.api.js:73"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/usage",
+      "declared_suffix": "/usage",
+      "handler": "get_usage_summary",
+      "source": "backend/app/api/routers/admin.py:99",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/admin/usage",
+          "source": "src/services/api/adminService.api.js:81"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/usage/logs",
+      "declared_suffix": "/usage/logs",
+      "handler": "get_usage_logs_filtered",
+      "source": "backend/app/api/routers/admin.py:103",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/admin/usage/logs",
+          "source": "src/services/api/adminService.api.js:85"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/users",
+      "declared_suffix": "/users",
+      "handler": "list_users",
+      "source": "backend/app/api/routers/admin.py:125",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/status",
+      "declared_suffix": "/users/{user_id}/status",
+      "handler": "update_user_status",
+      "source": "backend/app/api/routers/admin.py:129",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/users/${userId}/status",
+          "source": "src/services/api/adminService.api.js:94"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/ban",
+      "declared_suffix": "/users/{user_id}/ban",
+      "handler": "ban_user",
+      "source": "backend/app/api/routers/admin.py:138",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/users/${userId}/ban",
+          "source": "src/services/api/adminService.api.js:101"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/role",
+      "declared_suffix": "/users/{user_id}/role",
+      "handler": "update_user_role",
+      "source": "backend/app/api/routers/admin.py:147",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/users/${userId}/role",
+          "source": "src/services/api/adminService.api.js:108"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/plan",
+      "declared_suffix": "/users/{user_id}/plan",
+      "handler": "switch_user_plan",
+      "source": "backend/app/api/routers/admin.py:156",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/users/${userId}/plan",
+          "source": "src/services/api/adminService.api.js:115"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/users/{user_id}/impersonate",
+      "declared_suffix": "/users/{user_id}/impersonate",
+      "handler": "impersonate_user",
+      "source": "backend/app/api/routers/admin.py:165",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/users/${userId}/impersonate",
+          "source": "src/services/api/adminService.api.js:122"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/broadcast",
+      "declared_suffix": "/broadcast",
+      "handler": "broadcast_announcement",
+      "source": "backend/app/api/routers/admin.py:185",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/broadcast",
+          "source": "src/services/api/adminService.api.js:129"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/support/tickets",
+      "declared_suffix": "/support/tickets",
+      "handler": "list_admin_tickets",
+      "source": "backend/app/api/routers/admin.py:200",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/support/tickets/{ticket_id}/reply",
+      "declared_suffix": "/support/tickets/{ticket_id}/reply",
+      "handler": "reply_admin_ticket",
+      "source": "backend/app/api/routers/admin.py:212",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/support/tickets/${ticketId}/reply",
+          "source": "src/services/api/adminService.api.js:144"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/admin/support/tickets/{ticket_id}/status",
+      "declared_suffix": "/support/tickets/{ticket_id}/status",
+      "handler": "update_admin_ticket_status",
+      "source": "backend/app/api/routers/admin.py:224",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "PATCH",
+          "path": "/admin/support/tickets/${ticketId}/status",
+          "source": "src/services/api/adminService.api.js:183"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/access-requests",
+      "declared_suffix": "/access-requests",
+      "handler": "list_access_requests",
+      "source": "backend/app/api/routers/admin.py:245",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/access-requests/{request_id}/approve",
+      "declared_suffix": "/access-requests/{request_id}/approve",
+      "handler": "approve_access_request",
+      "source": "backend/app/api/routers/admin.py:255",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/access-requests/${requestId}/approve",
+          "source": "src/services/api/adminService.api.js:155"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/access-requests/{request_id}/reject",
+      "declared_suffix": "/access-requests/{request_id}/reject",
+      "handler": "reject_access_request",
+      "source": "backend/app/api/routers/admin.py:267",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/access-requests/${requestId}/reject",
+          "source": "src/services/api/adminService.api.js:162"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations/{org_id}/access-grant",
+      "declared_suffix": "/organizations/{org_id}/access-grant",
+      "handler": "grant_organization_access",
+      "source": "backend/app/api/routers/admin.py:277",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/organizations/${orgId}/access-grant",
+          "source": "src/services/api/adminService.api.js:169"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/organizations/{org_id}/access-revoke",
+      "declared_suffix": "/organizations/{org_id}/access-revoke",
+      "handler": "revoke_organization_access",
+      "source": "backend/app/api/routers/admin.py:289",
+      "mounted": true,
+      "mount": "admin.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/admin/organizations/${orgId}/access-revoke",
+          "source": "src/services/api/adminService.api.js:176"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": null,
+      "declared_suffix": "/{creative_id}/insights",
+      "handler": "get_creative_insights",
+      "source": "backend/app/api/routers/analysis.py:14",
+      "mounted": false,
+      "mount": "none",
+      "frontend_status": "not an HTTP endpoint: router declaration is not mounted"
+    },
+    {
+      "method": "POST",
+      "path": null,
+      "declared_suffix": "/{creative_id}/generate-insights",
+      "handler": "generate_creative_insights",
+      "source": "backend/app/api/routers/analysis.py:24",
+      "mounted": false,
+      "mount": "none",
+      "frontend_status": "not an HTTP endpoint: router declaration is not mounted"
+    },
+    {
+      "method": "GET",
+      "path": "/api/insights/",
+      "declared_suffix": "/",
+      "handler": "list_insights",
+      "source": "backend/app/api/routers/analysis.py:37",
+      "mounted": true,
+      "mount": "analysis.insights_router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/sign-up",
+      "declared_suffix": "/sign-up",
+      "handler": "signup",
+      "source": "backend/app/api/routers/auth.py:149",
+      "mounted": true,
+      "mount": "auth.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/auth/sign-up",
+          "source": "src/services/api/authService.api.js:182"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/sign-in",
+      "declared_suffix": "/sign-in",
+      "handler": "signin",
+      "source": "backend/app/api/routers/auth.py:179",
+      "mounted": true,
+      "mount": "auth.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/auth/sign-in",
+          "source": "src/services/api/authService.api.js:155"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/sign-out",
+      "declared_suffix": "/sign-out",
+      "handler": "signout",
+      "source": "backend/app/api/routers/auth.py:200",
+      "mounted": true,
+      "mount": "auth.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/auth/sign-out",
+          "source": "src/services/api/authService.api.js:217"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "declared_suffix": "/logout",
+      "handler": "signout",
+      "source": "backend/app/api/routers/auth.py:200",
+      "mounted": true,
+      "mount": "auth.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/forgot-password",
+      "declared_suffix": "/forgot-password",
+      "handler": "forgot_password",
+      "source": "backend/app/api/routers/auth.py:226",
+      "mounted": true,
+      "mount": "auth.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/auth/forgot-password",
+          "source": "src/services/api/authService.api.js:234"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/reset-password",
+      "declared_suffix": "/reset-password",
+      "handler": "reset_password",
+      "source": "backend/app/api/routers/auth.py:267",
+      "mounted": true,
+      "mount": "auth.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/auth/reset-password",
+          "source": "src/services/api/authService.api.js:248"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/session",
+      "declared_suffix": "/session",
+      "handler": "get_session",
+      "source": "backend/app/api/routers/auth.py:286",
+      "mounted": true,
+      "mount": "auth.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/auth/session",
+          "source": "src/services/api/authService.api.js:118"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/session/onboarding/complete",
+      "declared_suffix": "/session/onboarding/complete",
+      "handler": "complete_onboarding",
+      "source": "backend/app/api/routers/auth.py:290",
+      "mounted": true,
+      "mount": "auth.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/auth/session/onboarding/complete",
+          "source": "src/services/api/authService.api.js:279"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/webhook",
+      "declared_suffix": "/webhook",
+      "handler": "neon_auth_webhook",
+      "source": "backend/app/api/routers/auth.py:300",
+      "mounted": true,
+      "mount": "auth.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/creatives",
+      "declared_suffix": "/",
+      "handler": "get_creatives",
+      "source": "backend/app/api/routers/creatives.py:17",
+      "mounted": true,
+      "mount": "creatives.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/creatives",
+          "source": "src/services/api/creativeService.api.js:16"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/creatives/",
+      "declared_suffix": "/",
+      "handler": "get_creatives",
+      "source": "backend/app/api/routers/creatives.py:17",
+      "mounted": true,
+      "mount": "creatives.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/creatives",
+          "source": "src/services/api/creativeService.api.js:16"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/creatives/saved",
+      "declared_suffix": "/saved",
+      "handler": "get_saved_creatives",
+      "source": "backend/app/api/routers/creatives.py:30",
+      "mounted": true,
+      "mount": "creatives.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/creatives/custom",
+      "declared_suffix": "/custom",
+      "handler": "add_custom_swipe_reference",
+      "source": "backend/app/api/routers/creatives.py:40",
+      "mounted": true,
+      "mount": "creatives.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/creatives/custom",
+          "source": "src/services/api/creativeService.api.js:48"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/creatives/{creative_id}/save",
+      "declared_suffix": "/{creative_id}/save",
+      "handler": "save_creative_to_swipe_file",
+      "source": "backend/app/api/routers/creatives.py:48",
+      "mounted": true,
+      "mount": "creatives.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/creatives/${creativeId}/save",
+          "source": "src/services/api/creativeService.api.js:28"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/creatives/{creative_id}/save",
+      "declared_suffix": "/{creative_id}/save",
+      "handler": "unsave_creative_from_swipe_file",
+      "source": "backend/app/api/routers/creatives.py:57",
+      "mounted": true,
+      "mount": "creatives.router",
+      "frontend_refs": [
+        {
+          "method": "DELETE",
+          "path": "/creatives/${creativeId}/save",
+          "source": "src/services/api/creativeService.api.js:55"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/creatives/{creative_id}/insights",
+      "declared_suffix": "/{creative_id}/insights",
+      "handler": "get_creative_insights",
+      "source": "backend/app/api/routers/creatives.py:65",
+      "mounted": true,
+      "mount": "creatives.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/creatives/{creative_id}/generate-insights",
+      "declared_suffix": "/{creative_id}/generate-insights",
+      "handler": "generate_creative_insights",
+      "source": "backend/app/api/routers/creatives.py:82",
+      "mounted": true,
+      "mount": "creatives.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/creatives/${creativeId}/generate-insights",
+          "source": "src/services/api/analysisService.api.js:16"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/creatives/{creative_id}",
+      "declared_suffix": "/{creative_id}",
+      "handler": "get_creative",
+      "source": "backend/app/api/routers/creatives.py:97",
+      "mounted": true,
+      "mount": "creatives.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/creatives/${id}",
+          "source": "src/services/api/creativeService.api.js:20"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/brands/",
+      "declared_suffix": "/",
+      "handler": "get_brands",
+      "source": "backend/app/api/routers/creatives.py:107",
+      "mounted": true,
+      "mount": "creatives.brands_router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/brands",
+          "source": "src/services/api/creativeService.api.js:61"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/patterns/",
+      "declared_suffix": "/",
+      "handler": "get_patterns",
+      "source": "backend/app/api/routers/creatives.py:118",
+      "mounted": true,
+      "mount": "creatives.patterns_router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/patterns/generate",
+      "declared_suffix": "/generate",
+      "handler": "generate_patterns",
+      "source": "backend/app/api/routers/creatives.py:129",
+      "mounted": true,
+      "mount": "creatives.patterns_router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/patterns/generate",
+          "source": "src/services/api/analysisService.api.js:27"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/creatives/translate-copy",
+      "declared_suffix": "/translate-copy",
+      "handler": "translate_copy",
+      "source": "backend/app/api/routers/creatives.py:152",
+      "mounted": true,
+      "mount": "creatives.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/creatives/translate-copy",
+          "source": "src/services/api/creativeService.api.js:69"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/dashboard/metrics",
+      "declared_suffix": "/metrics",
+      "handler": "get_metrics",
+      "source": "backend/app/api/routers/dashboard.py:12",
+      "mounted": true,
+      "mount": "dashboard.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/dashboard/metrics",
+          "source": "src/services/api/dashboardService.api.js:5"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/discovery/jobs",
+      "declared_suffix": "/jobs",
+      "handler": "search",
+      "source": "backend/app/api/routers/discover.py:13",
+      "mounted": true,
+      "mount": "discover.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/discovery/jobs",
+          "source": "src/services/api/discoverService.api.js:20"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/discovery/jobs/{job_id}",
+      "declared_suffix": "/jobs/{job_id}",
+      "handler": "get_job",
+      "source": "backend/app/api/routers/discover.py:24",
+      "mounted": true,
+      "mount": "discover.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/discovery/jobs/${jobId}",
+          "source": "src/services/api/discoverService.api.js:28"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/discovery/jobs/{job_id}/results",
+      "declared_suffix": "/jobs/{job_id}/results",
+      "handler": "get_job_results",
+      "source": "backend/app/api/routers/discover.py:30",
+      "mounted": true,
+      "mount": "discover.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/discovery/jobs/${jobId}/results",
+          "source": "src/services/api/discoverService.api.js:32"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/discovery/jobs",
+      "declared_suffix": "/jobs",
+      "handler": "list_jobs",
+      "source": "backend/app/api/routers/discover.py:44",
+      "mounted": true,
+      "mount": "discover.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/discovery/jobs",
+          "source": "src/services/api/discoverService.api.js:39"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health/live",
+      "declared_suffix": "/live",
+      "handler": "liveness",
+      "source": "backend/app/api/routers/health.py:19",
+      "mounted": true,
+      "mount": "health.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health/ready",
+      "declared_suffix": "/ready",
+      "handler": "readiness",
+      "source": "backend/app/api/routers/health.py:25",
+      "mounted": true,
+      "mount": "health.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "declared_suffix": "/",
+      "handler": "health_check",
+      "source": "backend/app/api/routers/health.py:46",
+      "mounted": true,
+      "mount": "health.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "source": "src/services/http.js:67"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health/",
+      "declared_suffix": "/",
+      "handler": "health_check",
+      "source": "backend/app/api/routers/health.py:46",
+      "mounted": true,
+      "mount": "health.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "source": "src/services/http.js:67"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/leadgen/jobs",
+      "declared_suffix": "/jobs",
+      "handler": "create_leadgen_job",
+      "source": "backend/app/api/routers/leadgen.py:270",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/scout/leadgen/jobs",
+          "source": "src/services/api/leadgen.js:13"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/jobs/{job_id}",
+      "declared_suffix": "/jobs/{job_id}",
+      "handler": "get_leadgen_job",
+      "source": "backend/app/api/routers/leadgen.py:412",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/leadgen/jobs/${jobId}",
+          "source": "src/services/api/leadgen.js:18"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/jobs/{job_id}/leads",
+      "declared_suffix": "/jobs/{job_id}/leads",
+      "handler": "list_leadgen_leads",
+      "source": "backend/app/api/routers/leadgen.py:422",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/leadgen/jobs/${jobId}/leads",
+          "source": "src/services/api/leadgen.js:22"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/jobs/{job_id}/leads/{lead_id}",
+      "declared_suffix": "/jobs/{job_id}/leads/{lead_id}",
+      "handler": "get_leadgen_lead",
+      "source": "backend/app/api/routers/leadgen.py:438",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/leadgen/jobs/{job_id}/pause",
+      "declared_suffix": "/jobs/{job_id}/pause",
+      "handler": "pause_leadgen_job",
+      "source": "backend/app/api/routers/leadgen.py:452",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/scout/leadgen/jobs/${jobId}/pause",
+          "source": "src/services/api/leadgen.js:30"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/leadgen/jobs/{job_id}/resume",
+      "declared_suffix": "/jobs/{job_id}/resume",
+      "handler": "resume_leadgen_job",
+      "source": "backend/app/api/routers/leadgen.py:468",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/scout/leadgen/jobs/${jobId}/resume",
+          "source": "src/services/api/leadgen.js:34"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/jobs/{job_id}/export.csv",
+      "declared_suffix": "/jobs/{job_id}/export.csv",
+      "handler": "export_leadgen_csv",
+      "source": "backend/app/api/routers/leadgen.py:543",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/jobs/{job_id}/export.jsonl",
+      "declared_suffix": "/jobs/{job_id}/export.jsonl",
+      "handler": "export_leadgen_jsonl",
+      "source": "backend/app/api/routers/leadgen.py:568",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/recipes",
+      "declared_suffix": "/recipes",
+      "handler": "list_recipes",
+      "source": "backend/app/api/routers/leadgen.py:600",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/leadgen/recipes",
+          "source": "src/services/api/leadgen.js:38"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/leadgen/worker/health",
+      "declared_suffix": "/worker/health",
+      "handler": "worker_health",
+      "source": "backend/app/api/routers/leadgen.py:604",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/leadgen/worker/health",
+          "source": "src/services/api/leadgen.js:42"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/leadgen/worker/heartbeat",
+      "declared_suffix": "/worker/heartbeat",
+      "handler": "worker_heartbeat",
+      "source": "backend/app/api/routers/leadgen.py:683",
+      "mounted": true,
+      "mount": "leadgen.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/media/jobs",
+      "declared_suffix": "/jobs",
+      "handler": "create_media_job",
+      "source": "backend/app/api/routers/media.py:31",
+      "mounted": true,
+      "mount": "media.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/media/jobs",
+          "source": "src/services/api/mediaService.api.js:5"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/media/models",
+      "declared_suffix": "/models",
+      "handler": "get_available_models",
+      "source": "backend/app/api/routers/media.py:40",
+      "mounted": true,
+      "mount": "media.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/media/providers",
+      "declared_suffix": "/providers",
+      "handler": "get_media_providers",
+      "source": "backend/app/api/routers/media.py:46",
+      "mounted": true,
+      "mount": "media.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/media/jobs/{job_id}",
+      "declared_suffix": "/jobs/{job_id}",
+      "handler": "get_media_job",
+      "source": "backend/app/api/routers/media.py:64",
+      "mounted": true,
+      "mount": "media.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/media/jobs/${jobId}",
+          "source": "src/services/api/mediaService.api.js:17"
+        },
+        {
+          "method": "GET",
+          "path": "/media/jobs/${jobId}",
+          "source": "src/services/api/mediaService.api.js:29"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/media/jobs/{job_id}/cancel",
+      "declared_suffix": "/jobs/{job_id}/cancel",
+      "handler": "cancel_media_job",
+      "source": "backend/app/api/routers/media.py:75",
+      "mounted": true,
+      "mount": "media.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/media/jobs/${jobId}/cancel",
+          "source": "src/services/api/mediaService.api.js:50"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/media/upload",
+      "declared_suffix": "/upload",
+      "handler": "upload_file",
+      "source": "backend/app/api/routers/media.py:91",
+      "mounted": true,
+      "mount": "media.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/media/upload",
+          "source": "src/pages/SwipeFilesPage.jsx:119"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/monitors",
+      "declared_suffix": "/",
+      "handler": "list_monitors",
+      "source": "backend/app/api/routers/monitors.py:42",
+      "mounted": true,
+      "mount": "monitors.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/monitors/",
+      "declared_suffix": "/",
+      "handler": "list_monitors",
+      "source": "backend/app/api/routers/monitors.py:42",
+      "mounted": true,
+      "mount": "monitors.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/monitors",
+      "declared_suffix": "/",
+      "handler": "create_monitor",
+      "source": "backend/app/api/routers/monitors.py:51",
+      "mounted": true,
+      "mount": "monitors.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/monitors/",
+          "source": "src/services/api/monitorService.api.js:5"
+        },
+        {
+          "method": "POST",
+          "path": "/monitors/",
+          "source": "src/services/api/monitorService.api.js:9"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/monitors/",
+      "declared_suffix": "/",
+      "handler": "create_monitor",
+      "source": "backend/app/api/routers/monitors.py:51",
+      "mounted": true,
+      "mount": "monitors.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/monitors/",
+          "source": "src/services/api/monitorService.api.js:5"
+        },
+        {
+          "method": "POST",
+          "path": "/monitors/",
+          "source": "src/services/api/monitorService.api.js:9"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/monitors/events",
+      "declared_suffix": "/events",
+      "handler": "list_events",
+      "source": "backend/app/api/routers/monitors.py:70",
+      "mounted": true,
+      "mount": "monitors.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/monitors/events",
+          "source": "src/services/api/monitorService.api.js:38"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/monitors/{monitor_id}",
+      "declared_suffix": "/{monitor_id}",
+      "handler": "update_monitor",
+      "source": "backend/app/api/routers/monitors.py:82",
+      "mounted": true,
+      "mount": "monitors.router",
+      "frontend_refs": [
+        {
+          "method": "PATCH",
+          "path": "/monitors/${monitorId}",
+          "source": "src/services/api/monitorService.api.js:16"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/monitors/{monitor_id}",
+      "declared_suffix": "/{monitor_id}",
+      "handler": "delete_monitor",
+      "source": "backend/app/api/routers/monitors.py:94",
+      "mounted": true,
+      "mount": "monitors.router",
+      "frontend_refs": [
+        {
+          "method": "DELETE",
+          "path": "/monitors/${monitorId}",
+          "source": "src/services/api/monitorService.api.js:23"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/monitors/{monitor_id}/run",
+      "declared_suffix": "/{monitor_id}/run",
+      "handler": "run_monitor_now",
+      "source": "backend/app/api/routers/monitors.py:103",
+      "mounted": true,
+      "mount": "monitors.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/monitors/${monitorId}/run",
+          "source": "src/services/api/monitorService.api.js:29"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/monitors/tick",
+      "declared_suffix": "/tick",
+      "handler": "tick",
+      "source": "backend/app/api/routers/monitors.py:112",
+      "mounted": true,
+      "mount": "monitors.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "declared_suffix": "/",
+      "handler": "get_notifications",
+      "source": "backend/app/api/routers/notifications.py:12",
+      "mounted": true,
+      "mount": "notifications.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/",
+      "declared_suffix": "/",
+      "handler": "get_notifications",
+      "source": "backend/app/api/routers/notifications.py:12",
+      "mounted": true,
+      "mount": "notifications.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/{notification_id}/read",
+      "declared_suffix": "/{notification_id}/read",
+      "handler": "mark_notification_read",
+      "source": "backend/app/api/routers/notifications.py:19",
+      "mounted": true,
+      "mount": "notifications.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/notifications/${notificationId}/read",
+          "source": "src/services/api/notificationService.api.js:9"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/read-all",
+      "declared_suffix": "/read-all",
+      "handler": "mark_all_notifications_read",
+      "source": "backend/app/api/routers/notifications.py:27",
+      "mounted": true,
+      "mount": "notifications.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/notifications/read-all",
+          "source": "src/services/api/notificationService.api.js:15"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/playbooks",
+      "declared_suffix": "/",
+      "handler": "compile_playbook",
+      "source": "backend/app/api/routers/playbooks.py:23",
+      "mounted": true,
+      "mount": "playbooks.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/playbooks",
+          "source": "src/services/api/playbookService.api.js:10"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/playbooks",
+      "declared_suffix": "/",
+      "handler": "list_playbooks",
+      "source": "backend/app/api/routers/playbooks.py:50",
+      "mounted": true,
+      "mount": "playbooks.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/playbooks",
+          "source": "src/services/api/playbookService.api.js:17"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/playbooks/public/{public_id}",
+      "declared_suffix": "/public/{public_id}",
+      "handler": "get_public_playbook",
+      "source": "backend/app/api/routers/playbooks.py:57",
+      "mounted": true,
+      "mount": "playbooks.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/playbooks/public/${publicId}",
+          "source": "src/services/api/playbookService.api.js:21"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/workspaces/providers",
+      "declared_suffix": "/workspaces/providers",
+      "handler": "get_workspace_providers",
+      "source": "backend/app/api/routers/providers.py:39",
+      "mounted": true,
+      "mount": "providers.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/workspaces/providers",
+          "source": "src/pages/ApiKeysPage.jsx:59"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/provider-credentials/google-gemini",
+      "declared_suffix": "/workspaces/provider-credentials/google-gemini",
+      "handler": "save_gemini_credential",
+      "source": "backend/app/api/routers/providers.py:75",
+      "mounted": true,
+      "mount": "providers.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/workspaces/provider-credentials/google-gemini",
+          "source": "src/pages/ApiKeysPage.jsx:104"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/provider-credentials/google-gemini/test",
+      "declared_suffix": "/workspaces/provider-credentials/google-gemini/test",
+      "handler": "test_gemini_credential",
+      "source": "backend/app/api/routers/providers.py:151",
+      "mounted": true,
+      "mount": "providers.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/workspaces/provider-credentials/google-gemini/test",
+          "source": "src/pages/ApiKeysPage.jsx:134"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/workspaces/provider-credentials/google-gemini",
+      "declared_suffix": "/workspaces/provider-credentials/google-gemini",
+      "handler": "delete_gemini_credential",
+      "source": "backend/app/api/routers/providers.py:199",
+      "mounted": true,
+      "mount": "providers.router",
+      "frontend_refs": [
+        {
+          "method": "DELETE",
+          "path": "/workspaces/provider-credentials/google-gemini",
+          "source": "src/pages/ApiKeysPage.jsx:161"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/workspaces/provider-mode",
+      "declared_suffix": "/workspaces/provider-mode",
+      "handler": "set_workspace_provider_mode",
+      "source": "backend/app/api/routers/providers.py:223",
+      "mounted": true,
+      "mount": "providers.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/workspaces/provider-mode",
+          "source": "src/pages/ApiKeysPage.jsx:184"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/jobs",
+      "declared_suffix": "/jobs",
+      "handler": "create_scout_job",
+      "source": "backend/app/api/routers/scout.py:70",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/scout/jobs",
+          "source": "src/services/api/scoutService.api.js:7"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scout/jobs",
+      "declared_suffix": "/jobs",
+      "handler": "create_scout_job",
+      "source": "backend/app/api/routers/scout.py:70",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/jobs/{job_id}",
+      "declared_suffix": "/jobs/{job_id}",
+      "handler": "get_scout_job",
+      "source": "backend/app/api/routers/scout.py:188",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/jobs/${jobId}",
+          "source": "src/services/api/scoutService.api.js:20"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/jobs/{job_id}",
+      "declared_suffix": "/jobs/{job_id}",
+      "handler": "get_scout_job",
+      "source": "backend/app/api/routers/scout.py:188",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/jobs/{job_id}/leads",
+      "declared_suffix": "/jobs/{job_id}/leads",
+      "handler": "get_scout_leads",
+      "source": "backend/app/api/routers/scout.py:220",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/jobs/${jobId}/leads",
+          "source": "src/services/api/scoutService.api.js:24"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/jobs/{job_id}/leads",
+      "declared_suffix": "/jobs/{job_id}/leads",
+      "handler": "get_scout_leads",
+      "source": "backend/app/api/routers/scout.py:220",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/org-jobs",
+      "declared_suffix": "/org-jobs",
+      "handler": "get_org_scout_jobs",
+      "source": "backend/app/api/routers/scout.py:268",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/org-jobs",
+          "source": "src/services/api/scoutService.api.js:28"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/org-jobs",
+      "declared_suffix": "/org-jobs",
+      "handler": "get_org_scout_jobs",
+      "source": "backend/app/api/routers/scout.py:268",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/latest-job",
+      "declared_suffix": "/latest-job",
+      "handler": "get_latest_scout_job",
+      "source": "backend/app/api/routers/scout.py:296",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/latest-job",
+          "source": "src/services/api/scoutService.api.js:32"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/latest-job",
+      "declared_suffix": "/latest-job",
+      "handler": "get_latest_scout_job",
+      "source": "backend/app/api/routers/scout.py:296",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/export",
+      "declared_suffix": "/export",
+      "handler": "export_scout_leads_csv",
+      "source": "backend/app/api/routers/scout.py:354",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/export",
+      "declared_suffix": "/export",
+      "handler": "export_scout_leads_csv",
+      "source": "backend/app/api/routers/scout.py:354",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/maps/jobs",
+      "declared_suffix": "/maps/jobs",
+      "handler": "create_maps_job",
+      "source": "backend/app/api/routers/scout.py:419",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/scout/maps/jobs",
+          "source": "src/services/api/mapsScoutService.api.js:7"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scout/maps/jobs",
+      "declared_suffix": "/maps/jobs",
+      "handler": "create_maps_job",
+      "source": "backend/app/api/routers/scout.py:419",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/maps/jobs/{job_id}",
+      "declared_suffix": "/maps/jobs/{job_id}",
+      "handler": "get_maps_job",
+      "source": "backend/app/api/routers/scout.py:530",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/maps/jobs/${jobId}",
+          "source": "src/services/api/mapsScoutService.api.js:20"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/maps/jobs/{job_id}",
+      "declared_suffix": "/maps/jobs/{job_id}",
+      "handler": "get_maps_job",
+      "source": "backend/app/api/routers/scout.py:530",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/maps/jobs/{job_id}/leads",
+      "declared_suffix": "/maps/jobs/{job_id}/leads",
+      "handler": "get_maps_leads",
+      "source": "backend/app/api/routers/scout.py:567",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/maps/jobs/${jobId}/leads",
+          "source": "src/services/api/mapsScoutService.api.js:24"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/maps/jobs/{job_id}/leads",
+      "declared_suffix": "/maps/jobs/{job_id}/leads",
+      "handler": "get_maps_leads",
+      "source": "backend/app/api/routers/scout.py:567",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/maps/org-jobs",
+      "declared_suffix": "/maps/org-jobs",
+      "handler": "get_org_maps_jobs",
+      "source": "backend/app/api/routers/scout.py:615",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/maps/org-jobs",
+          "source": "src/services/api/mapsScoutService.api.js:28"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/maps/org-jobs",
+      "declared_suffix": "/maps/org-jobs",
+      "handler": "get_org_maps_jobs",
+      "source": "backend/app/api/routers/scout.py:615",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/maps/latest-job",
+      "declared_suffix": "/maps/latest-job",
+      "handler": "get_latest_maps_job",
+      "source": "backend/app/api/routers/scout.py:644",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/scout/maps/latest-job",
+          "source": "src/services/api/mapsScoutService.api.js:32"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/maps/latest-job",
+      "declared_suffix": "/maps/latest-job",
+      "handler": "get_latest_maps_job",
+      "source": "backend/app/api/routers/scout.py:644",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/maps/export",
+      "declared_suffix": "/maps/export",
+      "handler": "export_maps_leads_csv",
+      "source": "backend/app/api/routers/scout.py:704",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/maps/export",
+      "declared_suffix": "/maps/export",
+      "handler": "export_maps_leads_csv",
+      "source": "backend/app/api/routers/scout.py:704",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/scout/settings",
+      "declared_suffix": "/settings",
+      "handler": "get_scout_settings",
+      "source": "backend/app/api/routers/scout.py:760",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scout/settings",
+      "declared_suffix": "/settings",
+      "handler": "get_scout_settings",
+      "source": "backend/app/api/routers/scout.py:760",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/scout/settings",
+      "declared_suffix": "/settings",
+      "handler": "update_scout_settings",
+      "source": "backend/app/api/routers/scout.py:786",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/scout/settings",
+          "source": "src/services/api/scoutService.api.js:63"
+        },
+        {
+          "method": "POST",
+          "path": "/scout/settings",
+          "source": "src/services/api/scoutService.api.js:67"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scout/settings",
+      "declared_suffix": "/settings",
+      "handler": "update_scout_settings",
+      "source": "backend/app/api/routers/scout.py:786",
+      "mounted": true,
+      "mount": "scout.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/simulation/segments",
+      "declared_suffix": "/segments",
+      "handler": "list_audience_segments",
+      "source": "backend/app/api/routers/simulation.py:14",
+      "mounted": true,
+      "mount": "simulation.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/simulation/creatives/{creative_id}/simulate",
+      "declared_suffix": "/creatives/{creative_id}/simulate",
+      "handler": "simulate_creative",
+      "source": "backend/app/api/routers/simulation.py:24",
+      "mounted": true,
+      "mount": "simulation.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/simulation/creatives/${creativeId}/simulate",
+          "source": "src/services/api/simulationService.api.js:16"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/tickets",
+      "declared_suffix": "/tickets",
+      "handler": "create_ticket",
+      "source": "backend/app/api/routers/support.py:23",
+      "mounted": true,
+      "mount": "support.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/support/tickets",
+          "source": "src/services/api/supportService.api.js:9"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/tickets",
+      "declared_suffix": "/tickets",
+      "handler": "list_tickets",
+      "source": "backend/app/api/routers/support.py:46",
+      "mounted": true,
+      "mount": "support.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/support/tickets",
+          "source": "src/services/api/supportService.api.js:16"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/tickets/{ticket_id}",
+      "declared_suffix": "/tickets/{ticket_id}",
+      "handler": "get_ticket",
+      "source": "backend/app/api/routers/support.py:53",
+      "mounted": true,
+      "mount": "support.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/tickets/{ticket_id}/reply",
+      "declared_suffix": "/tickets/{ticket_id}/reply",
+      "handler": "reply_ticket",
+      "source": "backend/app/api/routers/support.py:61",
+      "mounted": true,
+      "mount": "support.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/support/tickets/${ticketId}/reply",
+          "source": "src/services/api/supportService.api.js:24"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/updates",
+      "declared_suffix": "/",
+      "handler": "list_published_updates",
+      "source": "backend/app/api/routers/updates.py:31",
+      "mounted": true,
+      "mount": "updates.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/updates",
+          "source": "src/services/api/updatesService.api.js:8"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/updates/banner",
+      "declared_suffix": "/banner",
+      "handler": "get_active_banner",
+      "source": "backend/app/api/routers/updates.py:54",
+      "mounted": true,
+      "mount": "updates.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/updates/banner",
+          "source": "src/services/api/updatesService.api.js:15"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/updates/admin/all",
+      "declared_suffix": "/admin/all",
+      "handler": "admin_list_updates",
+      "source": "backend/app/api/routers/updates.py:84",
+      "mounted": true,
+      "mount": "updates.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/updates/admin/all",
+          "source": "src/services/api/updatesService.api.js:22"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "POST",
+      "path": "/api/updates/admin",
+      "declared_suffix": "/admin",
+      "handler": "admin_create_update",
+      "source": "backend/app/api/routers/updates.py:97",
+      "mounted": true,
+      "mount": "updates.router",
+      "frontend_refs": [
+        {
+          "method": "POST",
+          "path": "/updates/admin",
+          "source": "src/services/api/updatesService.api.js:29"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/updates/admin/{update_id}",
+      "declared_suffix": "/admin/{update_id}",
+      "handler": "admin_get_update",
+      "source": "backend/app/api/routers/updates.py:122",
+      "mounted": true,
+      "mount": "updates.router",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/updates/admin/all",
+          "source": "src/services/api/updatesService.api.js:22"
+        },
+        {
+          "method": "GET",
+          "path": "/updates/admin/${id}",
+          "source": "src/services/api/updatesService.api.js:39"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/updates/admin/{update_id}",
+      "declared_suffix": "/admin/{update_id}",
+      "handler": "admin_update_update",
+      "source": "backend/app/api/routers/updates.py:140",
+      "mounted": true,
+      "mount": "updates.router",
+      "frontend_refs": [
+        {
+          "method": "PATCH",
+          "path": "/updates/admin/${id}",
+          "source": "src/services/api/updatesService.api.js:46"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/updates/admin/{update_id}",
+      "declared_suffix": "/admin/{update_id}",
+      "handler": "admin_update_update",
+      "source": "backend/app/api/routers/updates.py:140",
+      "mounted": true,
+      "mount": "updates.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "POST",
+      "path": "/api/updates/admin/{update_id}",
+      "declared_suffix": "/admin/{update_id}",
+      "handler": "admin_update_update",
+      "source": "backend/app/api/routers/updates.py:140",
+      "mounted": true,
+      "mount": "updates.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/updates/admin/{update_id}",
+      "declared_suffix": "/admin/{update_id}",
+      "handler": "admin_delete_update",
+      "source": "backend/app/api/routers/updates.py:171",
+      "mounted": true,
+      "mount": "updates.router",
+      "frontend_refs": [
+        {
+          "method": "DELETE",
+          "path": "/updates/admin/${id}",
+          "source": "src/services/api/updatesService.api.js:56"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/uploads/{filename}",
+      "declared_suffix": "/{filename}",
+      "handler": "get_upload",
+      "source": "backend/app/api/routers/uploads.py:89",
+      "mounted": true,
+      "mount": "uploads.router",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "declared_suffix": "/",
+      "handler": "root",
+      "source": "backend/app/main.py:128",
+      "mounted": true,
+      "mount": "app root",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api",
+      "declared_suffix": "/api",
+      "handler": "root",
+      "source": "backend/app/main.py:128",
+      "mounted": true,
+      "mount": "app root",
+      "frontend_refs": [],
+      "frontend_status": "not statically matched by frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "declared_suffix": "/health",
+      "handler": "root",
+      "source": "backend/app/main.py:128",
+      "mounted": true,
+      "mount": "app root",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "source": "src/services/http.js:67"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "declared_suffix": "/api/health",
+      "handler": "root",
+      "source": "backend/app/main.py:128",
+      "mounted": true,
+      "mount": "app root",
+      "frontend_refs": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "source": "src/services/http.js:67"
+        }
+      ],
+      "frontend_status": "used by frontend (literal path/method match)"
+    }
+  ],
+  "frontend_targets_missing_in_backend": [
+    {
+      "method": "POST",
+      "path": "/account/usage/today",
+      "source": "src/services/api/accountService.api.js:22"
+    },
+    {
+      "method": "POST",
+      "path": "/account/access",
+      "source": "src/services/api/accountService.api.js:36"
+    },
+    {
+      "method": "POST",
+      "path": "/account/team",
+      "source": "src/services/api/accountService.api.js:71"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organizations",
+      "source": "src/services/api/adminService.api.js:55"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users",
+      "source": "src/services/api/adminService.api.js:90"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/support/tickets",
+      "source": "src/services/api/adminService.api.js:140"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/access-requests",
+      "source": "src/services/api/adminService.api.js:151"
+    },
+    {
+      "method": "POST",
+      "path": "/creatives/${creativeId}/insights",
+      "source": "src/services/api/analysisService.api.js:12"
+    },
+    {
+      "method": "POST",
+      "path": "/insights",
+      "source": "src/services/api/analysisService.api.js:23"
+    },
+    {
+      "method": "POST",
+      "path": "/creatives/saved",
+      "source": "src/services/api/creativeService.api.js:24"
+    },
+    {
+      "method": "POST",
+      "path": "/patterns",
+      "source": "src/services/api/creativeService.api.js:65"
+    },
+    {
+      "method": "POST",
+      "path": "/scout/leadgen/jobs/${jobId}/leads/${leadId}",
+      "source": "src/services/api/leadgen.js:26"
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/",
+      "source": "src/services/api/notificationService.api.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/simulation/segments",
+      "source": "src/services/api/simulationService.api.js:12"
+    },
+    {
+      "method": "POST",
+      "path": "/support/tickets/${ticketId}",
+      "source": "src/services/api/supportService.api.js:20"
+    }
+  ],
+  "frontend_request_literals": [
+    {
+      "method": "GET",
+      "path": "/workspaces/providers",
+      "source": "src/pages/ApiKeysPage.jsx:59"
+    },
+    {
+      "method": "POST",
+      "path": "/workspaces/provider-credentials/google-gemini",
+      "source": "src/pages/ApiKeysPage.jsx:104"
+    },
+    {
+      "method": "POST",
+      "path": "/workspaces/provider-credentials/google-gemini/test",
+      "source": "src/pages/ApiKeysPage.jsx:134"
+    },
+    {
+      "method": "DELETE",
+      "path": "/workspaces/provider-credentials/google-gemini",
+      "source": "src/pages/ApiKeysPage.jsx:161"
+    },
+    {
+      "method": "POST",
+      "path": "/workspaces/provider-mode",
+      "source": "src/pages/ApiKeysPage.jsx:184"
+    },
+    {
+      "method": "POST",
+      "path": "/media/upload",
+      "source": "src/pages/SwipeFilesPage.jsx:119"
+    },
+    {
+      "method": "PATCH",
+      "path": "/account/profile",
+      "source": "src/services/api/accountService.api.js:5"
+    },
+    {
+      "method": "PATCH",
+      "path": "/account/profile",
+      "source": "src/services/api/accountService.api.js:9"
+    },
+    {
+      "method": "POST",
+      "path": "/account/usage/today",
+      "source": "src/services/api/accountService.api.js:22"
+    },
+    {
+      "method": "POST",
+      "path": "/account/onboarding-complete",
+      "source": "src/services/api/accountService.api.js:26"
+    },
+    {
+      "method": "GET",
+      "path": "/account/billing",
+      "source": "src/services/api/accountService.api.js:32"
+    },
+    {
+      "method": "POST",
+      "path": "/account/access",
+      "source": "src/services/api/accountService.api.js:36"
+    },
+    {
+      "method": "POST",
+      "path": "/account/access-requests",
+      "source": "src/services/api/accountService.api.js:40"
+    },
+    {
+      "method": "POST",
+      "path": "/account/workspace",
+      "source": "src/services/api/accountService.api.js:47"
+    },
+    {
+      "method": "POST",
+      "path": "/account/api-keys",
+      "source": "src/services/api/accountService.api.js:54"
+    },
+    {
+      "method": "POST",
+      "path": "/account/api-keys",
+      "source": "src/services/api/accountService.api.js:58"
+    },
+    {
+      "method": "DELETE",
+      "path": "/account/api-keys/${keyId}",
+      "source": "src/services/api/accountService.api.js:65"
+    },
+    {
+      "method": "POST",
+      "path": "/account/team",
+      "source": "src/services/api/accountService.api.js:71"
+    },
+    {
+      "method": "POST",
+      "path": "/account/team/invites",
+      "source": "src/services/api/accountService.api.js:75"
+    },
+    {
+      "method": "DELETE",
+      "path": "/account/team/invites/${inviteId}",
+      "source": "src/services/api/accountService.api.js:82"
+    },
+    {
+      "method": "DELETE",
+      "path": "/account/team/members/${memberId}",
+      "source": "src/services/api/accountService.api.js:88"
+    },
+    {
+      "method": "POST",
+      "path": "/account/team/invites/accept",
+      "source": "src/services/api/accountService.api.js:94"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/overview/stats",
+      "source": "src/services/api/adminService.api.js:10"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/jobs",
+      "source": "src/services/api/adminService.api.js:14"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/system/health",
+      "source": "src/services/api/adminService.api.js:25"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/plans",
+      "source": "src/services/api/adminService.api.js:30"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/plans",
+      "source": "src/services/api/adminService.api.js:34"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/plans/${planId}",
+      "source": "src/services/api/adminService.api.js:41"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/plans/${planId}",
+      "source": "src/services/api/adminService.api.js:48"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organizations",
+      "source": "src/services/api/adminService.api.js:55"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organizations/${orgId}/grant-credits",
+      "source": "src/services/api/adminService.api.js:59"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organizations/${orgId}/switch-plan",
+      "source": "src/services/api/adminService.api.js:66"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organizations/${orgId}/feature-flags",
+      "source": "src/services/api/adminService.api.js:73"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/usage",
+      "source": "src/services/api/adminService.api.js:81"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/usage/logs",
+      "source": "src/services/api/adminService.api.js:85"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users",
+      "source": "src/services/api/adminService.api.js:90"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users/${userId}/status",
+      "source": "src/services/api/adminService.api.js:94"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users/${userId}/ban",
+      "source": "src/services/api/adminService.api.js:101"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users/${userId}/role",
+      "source": "src/services/api/adminService.api.js:108"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users/${userId}/plan",
+      "source": "src/services/api/adminService.api.js:115"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/users/${userId}/impersonate",
+      "source": "src/services/api/adminService.api.js:122"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/broadcast",
+      "source": "src/services/api/adminService.api.js:129"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/support/tickets",
+      "source": "src/services/api/adminService.api.js:140"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/support/tickets/${ticketId}/reply",
+      "source": "src/services/api/adminService.api.js:144"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/access-requests",
+      "source": "src/services/api/adminService.api.js:151"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/access-requests/${requestId}/approve",
+      "source": "src/services/api/adminService.api.js:155"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/access-requests/${requestId}/reject",
+      "source": "src/services/api/adminService.api.js:162"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organizations/${orgId}/access-grant",
+      "source": "src/services/api/adminService.api.js:169"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/organizations/${orgId}/access-revoke",
+      "source": "src/services/api/adminService.api.js:176"
+    },
+    {
+      "method": "PATCH",
+      "path": "/admin/support/tickets/${ticketId}/status",
+      "source": "src/services/api/adminService.api.js:183"
+    },
+    {
+      "method": "POST",
+      "path": "/creatives/${creativeId}/insights",
+      "source": "src/services/api/analysisService.api.js:12"
+    },
+    {
+      "method": "POST",
+      "path": "/creatives/${creativeId}/generate-insights",
+      "source": "src/services/api/analysisService.api.js:16"
+    },
+    {
+      "method": "POST",
+      "path": "/insights",
+      "source": "src/services/api/analysisService.api.js:23"
+    },
+    {
+      "method": "POST",
+      "path": "/patterns/generate",
+      "source": "src/services/api/analysisService.api.js:27"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/session",
+      "source": "src/services/api/authService.api.js:118"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/sign-in",
+      "source": "src/services/api/authService.api.js:155"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/sign-up",
+      "source": "src/services/api/authService.api.js:182"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/sign-out",
+      "source": "src/services/api/authService.api.js:217"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/forgot-password",
+      "source": "src/services/api/authService.api.js:234"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/reset-password",
+      "source": "src/services/api/authService.api.js:248"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/session/onboarding/complete",
+      "source": "src/services/api/authService.api.js:279"
+    },
+    {
+      "method": "GET",
+      "path": "/creatives",
+      "source": "src/services/api/creativeService.api.js:16"
+    },
+    {
+      "method": "GET",
+      "path": "/creatives/${id}",
+      "source": "src/services/api/creativeService.api.js:20"
+    },
+    {
+      "method": "POST",
+      "path": "/creatives/saved",
+      "source": "src/services/api/creativeService.api.js:24"
+    },
+    {
+      "method": "POST",
+      "path": "/creatives/${creativeId}/save",
+      "source": "src/services/api/creativeService.api.js:28"
+    },
+    {
+      "method": "POST",
+      "path": "/creatives/custom",
+      "source": "src/services/api/creativeService.api.js:48"
+    },
+    {
+      "method": "DELETE",
+      "path": "/creatives/${creativeId}/save",
+      "source": "src/services/api/creativeService.api.js:55"
+    },
+    {
+      "method": "GET",
+      "path": "/brands",
+      "source": "src/services/api/creativeService.api.js:61"
+    },
+    {
+      "method": "POST",
+      "path": "/patterns",
+      "source": "src/services/api/creativeService.api.js:65"
+    },
+    {
+      "method": "POST",
+      "path": "/creatives/translate-copy",
+      "source": "src/services/api/creativeService.api.js:69"
+    },
+    {
+      "method": "GET",
+      "path": "/dashboard/metrics",
+      "source": "src/services/api/dashboardService.api.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/discovery/jobs",
+      "source": "src/services/api/discoverService.api.js:20"
+    },
+    {
+      "method": "GET",
+      "path": "/discovery/jobs/${jobId}",
+      "source": "src/services/api/discoverService.api.js:28"
+    },
+    {
+      "method": "GET",
+      "path": "/discovery/jobs/${jobId}/results",
+      "source": "src/services/api/discoverService.api.js:32"
+    },
+    {
+      "method": "GET",
+      "path": "/discovery/jobs",
+      "source": "src/services/api/discoverService.api.js:39"
+    },
+    {
+      "method": "POST",
+      "path": "/scout/leadgen/jobs",
+      "source": "src/services/api/leadgen.js:13"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/leadgen/jobs/${jobId}",
+      "source": "src/services/api/leadgen.js:18"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/leadgen/jobs/${jobId}/leads",
+      "source": "src/services/api/leadgen.js:22"
+    },
+    {
+      "method": "POST",
+      "path": "/scout/leadgen/jobs/${jobId}/leads/${leadId}",
+      "source": "src/services/api/leadgen.js:26"
+    },
+    {
+      "method": "POST",
+      "path": "/scout/leadgen/jobs/${jobId}/pause",
+      "source": "src/services/api/leadgen.js:30"
+    },
+    {
+      "method": "POST",
+      "path": "/scout/leadgen/jobs/${jobId}/resume",
+      "source": "src/services/api/leadgen.js:34"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/leadgen/recipes",
+      "source": "src/services/api/leadgen.js:38"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/leadgen/worker/health",
+      "source": "src/services/api/leadgen.js:42"
+    },
+    {
+      "method": "POST",
+      "path": "/scout/maps/jobs",
+      "source": "src/services/api/mapsScoutService.api.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/maps/jobs/${jobId}",
+      "source": "src/services/api/mapsScoutService.api.js:20"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/maps/jobs/${jobId}/leads",
+      "source": "src/services/api/mapsScoutService.api.js:24"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/maps/org-jobs",
+      "source": "src/services/api/mapsScoutService.api.js:28"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/maps/latest-job",
+      "source": "src/services/api/mapsScoutService.api.js:32"
+    },
+    {
+      "method": "POST",
+      "path": "/media/jobs",
+      "source": "src/services/api/mediaService.api.js:5"
+    },
+    {
+      "method": "GET",
+      "path": "/media/jobs/${jobId}",
+      "source": "src/services/api/mediaService.api.js:17"
+    },
+    {
+      "method": "GET",
+      "path": "/media/jobs/${jobId}",
+      "source": "src/services/api/mediaService.api.js:29"
+    },
+    {
+      "method": "POST",
+      "path": "/media/jobs/${jobId}/cancel",
+      "source": "src/services/api/mediaService.api.js:50"
+    },
+    {
+      "method": "POST",
+      "path": "/monitors/",
+      "source": "src/services/api/monitorService.api.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/monitors/",
+      "source": "src/services/api/monitorService.api.js:9"
+    },
+    {
+      "method": "PATCH",
+      "path": "/monitors/${monitorId}",
+      "source": "src/services/api/monitorService.api.js:16"
+    },
+    {
+      "method": "DELETE",
+      "path": "/monitors/${monitorId}",
+      "source": "src/services/api/monitorService.api.js:23"
+    },
+    {
+      "method": "POST",
+      "path": "/monitors/${monitorId}/run",
+      "source": "src/services/api/monitorService.api.js:29"
+    },
+    {
+      "method": "GET",
+      "path": "/monitors/events",
+      "source": "src/services/api/monitorService.api.js:38"
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/",
+      "source": "src/services/api/notificationService.api.js:5"
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/${notificationId}/read",
+      "source": "src/services/api/notificationService.api.js:9"
+    },
+    {
+      "method": "POST",
+      "path": "/notifications/read-all",
+      "source": "src/services/api/notificationService.api.js:15"
+    },
+    {
+      "method": "POST",
+      "path": "/playbooks",
+      "source": "src/services/api/playbookService.api.js:10"
+    },
+    {
+      "method": "GET",
+      "path": "/playbooks",
+      "source": "src/services/api/playbookService.api.js:17"
+    },
+    {
+      "method": "GET",
+      "path": "/playbooks/public/${publicId}",
+      "source": "src/services/api/playbookService.api.js:21"
+    },
+    {
+      "method": "POST",
+      "path": "/scout/jobs",
+      "source": "src/services/api/scoutService.api.js:7"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/jobs/${jobId}",
+      "source": "src/services/api/scoutService.api.js:20"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/jobs/${jobId}/leads",
+      "source": "src/services/api/scoutService.api.js:24"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/org-jobs",
+      "source": "src/services/api/scoutService.api.js:28"
+    },
+    {
+      "method": "GET",
+      "path": "/scout/latest-job",
+      "source": "src/services/api/scoutService.api.js:32"
+    },
+    {
+      "method": "POST",
+      "path": "/scout/settings",
+      "source": "src/services/api/scoutService.api.js:63"
+    },
+    {
+      "method": "POST",
+      "path": "/scout/settings",
+      "source": "src/services/api/scoutService.api.js:67"
+    },
+    {
+      "method": "POST",
+      "path": "/simulation/segments",
+      "source": "src/services/api/simulationService.api.js:12"
+    },
+    {
+      "method": "POST",
+      "path": "/simulation/creatives/${creativeId}/simulate",
+      "source": "src/services/api/simulationService.api.js:16"
+    },
+    {
+      "method": "POST",
+      "path": "/support/tickets",
+      "source": "src/services/api/supportService.api.js:9"
+    },
+    {
+      "method": "GET",
+      "path": "/support/tickets",
+      "source": "src/services/api/supportService.api.js:16"
+    },
+    {
+      "method": "POST",
+      "path": "/support/tickets/${ticketId}",
+      "source": "src/services/api/supportService.api.js:20"
+    },
+    {
+      "method": "POST",
+      "path": "/support/tickets/${ticketId}/reply",
+      "source": "src/services/api/supportService.api.js:24"
+    },
+    {
+      "method": "GET",
+      "path": "/updates",
+      "source": "src/services/api/updatesService.api.js:8"
+    },
+    {
+      "method": "GET",
+      "path": "/updates/banner",
+      "source": "src/services/api/updatesService.api.js:15"
+    },
+    {
+      "method": "GET",
+      "path": "/updates/admin/all",
+      "source": "src/services/api/updatesService.api.js:22"
+    },
+    {
+      "method": "POST",
+      "path": "/updates/admin",
+      "source": "src/services/api/updatesService.api.js:29"
+    },
+    {
+      "method": "GET",
+      "path": "/updates/admin/${id}",
+      "source": "src/services/api/updatesService.api.js:39"
+    },
+    {
+      "method": "PATCH",
+      "path": "/updates/admin/${id}",
+      "source": "src/services/api/updatesService.api.js:46"
+    },
+    {
+      "method": "DELETE",
+      "path": "/updates/admin/${id}",
+      "source": "src/services/api/updatesService.api.js:56"
+    },
+    {
+      "method": "GET",
+      "path": "/health",
+      "source": "src/services/http.js:67"
+    }
+  ],
+  "orm_tables": [
+    {
+      "table": "access_requests",
+      "model": "AccessRequest",
+      "source": "backend/app/models/access_grant.py:17",
+      "purpose_ar": "طلبات الوصول/الانضمام",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "organization_access_grants",
+      "model": "OrganizationAccessGrant",
+      "source": "backend/app/models/access_grant.py:32",
+      "purpose_ar": "منح الوصول الممنوحة يدويًا للـorganization",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "ai_insights",
+      "model": "AIInsight",
+      "source": "backend/app/models/ai_insight.py:9",
+      "purpose_ar": "نتائج/ملخصات AI مرتبطة بالـcreative",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "api_keys",
+      "model": "ApiKey",
+      "source": "backend/app/models/api_key.py:8",
+      "purpose_ar": "مفاتيح API للمستخدم/الـworkspace",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "external_api_usage",
+      "model": "ExternalApiUsage",
+      "source": "backend/app/models/api_usage.py:9",
+      "purpose_ar": "تسجيل استهلاك المزودين الخارجيين",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "app_updates",
+      "model": "AppUpdate",
+      "source": "backend/app/models/app_update.py:7",
+      "purpose_ar": "إعلانات وتحديثات التطبيق",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "creatives",
+      "model": "Creative",
+      "source": "backend/app/models/creative.py:10",
+      "purpose_ar": "الإعلانات/creative records",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "creative_scores",
+      "model": "CreativeScore",
+      "source": "backend/app/models/creative_score.py:8",
+      "purpose_ar": "درجات تقييم creative",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "operation_idempotency",
+      "model": "OperationIdempotency",
+      "source": "backend/app/models/credit_ledger.py:17",
+      "purpose_ar": "منع تكرار العمليات المالية/الـjobs",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "credit_reservations",
+      "model": "CreditReservation",
+      "source": "backend/app/models/credit_ledger.py:39",
+      "purpose_ar": "حجز credits قبل التنفيذ",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "credit_ledger",
+      "model": "CreditLedgerEntry",
+      "source": "backend/app/models/credit_ledger.py:58",
+      "purpose_ar": "دفتر حركة credits",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "leadgen_jobs",
+      "model": "LeadGenJob",
+      "source": "backend/app/models/leadgen.py:21",
+      "purpose_ar": "مهام جمع الـleads",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "leadgen_leads",
+      "model": "LeadGenLead",
+      "source": "backend/app/models/leadgen.py:68",
+      "purpose_ar": "سجلات الـleads الناتجة",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "leadgen_worker_heartbeat",
+      "model": "LeadGenWorkerHeartbeat",
+      "source": "backend/app/models/leadgen.py:105",
+      "purpose_ar": "نبض worker lead-generation",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "media_jobs",
+      "model": "MediaGenerationJob",
+      "source": "backend/app/models/media_job.py:12",
+      "purpose_ar": "مهام توليد الوسائط",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "monitors",
+      "model": "Monitor",
+      "source": "backend/app/models/monitor.py:12",
+      "purpose_ar": "اشتراكات مراقبة البحث المجدول",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "monitor_runs",
+      "model": "MonitorRun",
+      "source": "backend/app/models/monitor.py:49",
+      "purpose_ar": "تنفيذات monitor",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "monitor_creatives",
+      "model": "MonitorCreative",
+      "source": "backend/app/models/monitor.py:76",
+      "purpose_ar": "creative snapshots المرتبطة بالمراقبة",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "monitor_events",
+      "model": "MonitorEvent",
+      "source": "backend/app/models/monitor.py:115",
+      "purpose_ar": "أحداث/تنبيهات monitor",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "notifications",
+      "model": "Notification",
+      "source": "backend/app/models/notification.py:8",
+      "purpose_ar": "إشعارات المستخدم",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "organizations",
+      "model": "Organization",
+      "source": "backend/app/models/organization.py:9",
+      "purpose_ar": "مساحات العمل/tenants",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "organization_members",
+      "model": "OrganizationMember",
+      "source": "backend/app/models/organization_member.py:8",
+      "purpose_ar": "عضوية المستخدمين في الـorganization",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "organization_invites",
+      "model": "OrganizationInvite",
+      "source": "backend/app/models/organization_member.py:17",
+      "purpose_ar": "دعوات الفريق",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "patterns",
+      "model": "Pattern",
+      "source": "backend/app/models/pattern.py:8",
+      "purpose_ar": "أنماط/إشارات مستخرجة من creatives",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "pattern_quarantine",
+      "model": "PatternQuarantine",
+      "source": "backend/app/models/pattern_quarantine.py:17",
+      "purpose_ar": "عزل/مراجعة patterns",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "plans",
+      "model": "Plan",
+      "source": "backend/app/models/plan.py:8",
+      "purpose_ar": "خطط الوصول/الميزات/الـcredits",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "playbooks",
+      "model": "Playbook",
+      "source": "backend/app/models/playbook.py:13",
+      "purpose_ar": "مخرجات playbook",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "saved_creatives",
+      "model": "SavedCreative",
+      "source": "backend/app/models/saved_creative.py:8",
+      "purpose_ar": "العناصر المحفوظة/Swipe files",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "scout_jobs",
+      "model": "ScoutJob",
+      "source": "backend/app/models/scout.py:11",
+      "purpose_ar": "مهام Scout الأساسية",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "scout_leads",
+      "model": "ScoutLead",
+      "source": "backend/app/models/scout.py:43",
+      "purpose_ar": "نتائج Scout leads",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "scout_maps_jobs",
+      "model": "ScoutMapsJob",
+      "source": "backend/app/models/scout.py:69",
+      "purpose_ar": "مهام Scout Maps",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "scout_maps_leads",
+      "model": "ScoutMapsLead",
+      "source": "backend/app/models/scout.py:103",
+      "purpose_ar": "نتائج خرائط Scout",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "scrape_jobs",
+      "model": "ScrapeJob",
+      "source": "backend/app/models/scrape_job.py:11",
+      "purpose_ar": "سجلات scraping",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "simulation_reports",
+      "model": "SimulationReport",
+      "source": "backend/app/models/simulation_report.py:12",
+      "purpose_ar": "نتائج simulation",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "support_tickets",
+      "model": "SupportTicket",
+      "source": "backend/app/models/support_ticket.py:10",
+      "purpose_ar": "تذاكر الدعم",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "support_ticket_replies",
+      "model": "SupportTicketReply",
+      "source": "backend/app/models/support_ticket.py:25",
+      "purpose_ar": "ردود تذاكر الدعم",
+      "removal_risk": "متوسط إلى عالٍ: feature data/relations؛ لا row counts أو اعتماد production متاح في هذا التدقيق"
+    },
+    {
+      "table": "usage_logs",
+      "model": "UsageLog",
+      "source": "backend/app/models/usage_log.py:8",
+      "purpose_ar": "سجل usage والعمليات",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "users",
+      "model": "User",
+      "source": "backend/app/models/user.py:8",
+      "purpose_ar": "حسابات المستخدمين",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "webhook_events",
+      "model": "WebhookEvent",
+      "source": "backend/app/models/webhook_event.py:12",
+      "purpose_ar": "معرّفات/حالة معالجة webhooks",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "work_items",
+      "model": "WorkItem",
+      "source": "backend/app/models/work_item.py:15",
+      "purpose_ar": "outbox/مهام العمل ذات leases",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    },
+    {
+      "table": "workspace_provider_credentials",
+      "model": "WorkspaceProviderCredential",
+      "source": "backend/app/models/workspace_credential.py:12",
+      "purpose_ar": "credentials مزودين مشفرة للـworkspace",
+      "removal_risk": "عالٍ جدًا: auth/tenant/access/financial integrity; لا يُحذف بلا مراجعة FK/RLS والبيانات"
+    }
+  ]
+}
