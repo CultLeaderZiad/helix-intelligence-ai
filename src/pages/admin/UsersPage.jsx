@@ -1,25 +1,19 @@
 import React, { useState, useEffect } from "react"
-import { adminService } from "@/services"
-import { clearCachedUser, setAccessToken } from "@/services/sessionStore"
+import { adminService, authService } from "@/services"
 import { 
   Users, 
-  UserCheck, 
-  ShieldAlert, 
-  ExternalLink, 
   Search, 
   RefreshCw, 
   CheckCircle2, 
   Key,
-  Ban,
-  Shield,
-  Activity,
   X,
   CreditCard
 } from "lucide-react"
-import { Link } from "react-router-dom"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
+import { useLanguage } from "@/context/LanguageContext"
 
 export function UsersPage() {
+  const { t } = useLanguage()
   const [users, setUsers] = useState([])
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
@@ -123,15 +117,12 @@ export function UsersPage() {
     try {
       const res = await adminService.impersonateUser(impersonateTargetUser.id)
       if (res?.access_token) {
-        setAccessToken(res.access_token)
-        clearCachedUser()
-        showToast(`Impersonating ${impersonateTargetUser.email}... Redirecting to Discovery.`)
-        setTimeout(() => {
-          window.location.href = "/discover"
-        }, 1200)
+        authService.switchToImpersonatedSession(res.access_token)
+        showToast(t("impersonationProgress").replace("{email}", impersonateTargetUser.email))
+        window.location.replace("/discover")
       }
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to impersonate user")
+      setError(t("impersonationFailed"))
     } finally {
       setImpersonatingId(null)
       setImpersonateTargetUser(null)
@@ -409,9 +400,10 @@ export function UsersPage() {
       {/* Impersonation Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!impersonateTargetUser}
-        title="Confirm User Impersonation"
-        description={`You are about to sign into Helix Intelligence as ${impersonateTargetUser?.email}. You will have full access to their workspace, data, and settings. Proceed with caution.`}
-        confirmText="Impersonate User"
+        title={t("impersonationTitle")}
+        description={t("impersonationDescription").replace("{email}", impersonateTargetUser?.email ?? "")}
+        confirmText={t("impersonationConfirm")}
+        cancelText={t("cancel")}
         variant="warning"
         isBusy={impersonatingId === impersonateTargetUser?.id}
         onConfirm={confirmImpersonate}
