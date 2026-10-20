@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 
 class SearchParams(BaseModel):
     query: Optional[str] = None
@@ -30,6 +30,7 @@ class Job(BaseModel):
     elapsed_ms: int
     created_at: str
     completed_at: Optional[str] = None
+    deadline_at: Optional[str] = None
     error: Optional[str] = None
     # 'service_restart' when the process died mid-run, 'error' when the
     # pipeline itself failed. Lets the UI say which happened instead of
