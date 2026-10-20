@@ -14,6 +14,7 @@ from app.core.observability import log_event
 from app.schemas.discover import SearchParams, Job
 
 logger = logging.getLogger(__name__)
+_active_discovery_tasks = {}
 
 
 def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] = None) -> bool:
@@ -116,6 +117,7 @@ def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] =
 
 from app.schemas.common import Paginated
 from app.models.scrape_job import ScrapeJob
+from app.models.work_item import WorkItem
 from app.models.organization import Organization
 from app.models.user import User
 from app.core.config import settings
@@ -139,6 +141,7 @@ def _job_response(job: ScrapeJob) -> Job:
         elapsed_ms=int(job.elapsed_ms or 0),
         created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
         completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
+        deadline_at=job.deadline_at.isoformat() if job.deadline_at else None,
         error=job.error_msg,
         failure_kind=job.failure_kind,
         entity_profile=getattr(job, "entity_profile", None),
