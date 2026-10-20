@@ -20,11 +20,20 @@ function safeLazy(importFn) {
     try {
       return await importFn()
     } catch (err) {
-      console.warn("Stale chunk detected. Refreshing application...", err)
-      const lastReload = Number(sessionStorage.getItem("chunk_reload_lock") || 0)
+      console.warn("A lazy-loaded module failed to load.")
+      let lastReload
+      try {
+        lastReload = Number(window.sessionStorage.getItem("chunk_reload_lock") || 0)
+      } catch {
+        throw err
+      }
       const now = Date.now()
       if (now - lastReload > 8000) {
-        sessionStorage.setItem("chunk_reload_lock", String(now))
+        try {
+          window.sessionStorage.setItem("chunk_reload_lock", String(now))
+        } catch {
+          throw err
+        }
         window.location.reload()
         return new Promise(() => {})
       }
