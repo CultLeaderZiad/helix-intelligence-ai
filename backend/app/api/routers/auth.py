@@ -1,41 +1,39 @@
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 import datetime
 
-from app.db.session import async_session_maker
+from app.core.observability import log_event
 from app.schemas.auth import UserCreate, UserLogin, SessionResponse, PasswordResetRequest, PasswordResetConfirm
 from app.services import auth_service, billing_service
 from app.core.deps import _bind_request_tenant, get_db, get_current_user, oauth2_scheme
 from app.models.user import User
-from app.models.organization import Organization
 from app.models.plan import Plan
 from app.core.config import settings
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 async def build_session_response(db: AsyncSession, user: User, access_token: str = None) -> SessionResponse:
-    import logging
-    logger = logging.getLogger(__name__)
-
     org = None
     try:
         org = await billing_service.get_or_create_default_org(db, user)
     except Exception as org_err:
-        logger.warning(f"Default org retrieval failed for user {user.id}: {org_err}")
+        log_event(logger, "session_org_lookup_failed", error=org_err, actor_id=user.id)
 
     plan = None
     if org and org.plan_id:
         try:
             plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
-        except Exception:
-            pass
+        except Exception as exc:
+            log_event(logger, "session_plan_lookup_failed", error=exc, actor_id=user.id, tenant_id=org.id)
     if not plan:
         try:
             plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
-        except Exception:
-            pass
+        except Exception as exc:
+            log_event(logger, "session_default_plan_lookup_failed", error=exc, actor_id=user.id)
 
     effective_flags = dict(plan.feature_flags or {}) if plan and plan.feature_flags else {}
     if org and org.custom_feature_flags:
@@ -70,7 +68,7 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
             if daily_limit:
                 daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
     except Exception as reset_err:
-        logger.warning(f"Daily reset check error for user {user.id}: {reset_err}")
+        log_event(logger, "session_daily_reset_failed", error=reset_err, actor_id=user.id, tenant_id=getattr(org, "id", None))
 
     trial_summary = {}
     try:
@@ -78,7 +76,7 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
             from app.services.billing_service import get_trial_usage_summary
             trial_summary = await get_trial_usage_summary(db, user, org)
     except Exception as trial_err:
-        logger.warning(f"Trial usage summary error for user {user.id}: {trial_err}")
+        log_event(logger, "session_trial_summary_failed", error=trial_err, actor_id=user.id, tenant_id=getattr(org, "id", None))
 
     # Administrator Full Privilege Override
     credit_balance = round(float(getattr(org, "credit_balance", 25.0) or 0.0), 2) if org else 25.0
@@ -111,7 +109,7 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         try:
             access_status = (await billing_service.access_status_for_org(db, org.id))["status"]
         except Exception as access_err:
-            logger.warning("Access status failed for user %s: %s", user.id, access_err)
+            log_event(logger, "session_access_status_failed", error=access_err, actor_id=user.id, tenant_id=org.id)
             access_status = "pending"
     if access_status != "approved":
         effective_flags = {key: False for key in effective_flags}
@@ -149,8 +147,6 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
 
 @router.post("/sign-up", response_model=SessionResponse)
 async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
-    import logging
-    logger = logging.getLogger(__name__)
     try:
         user = await auth_service.register_user(db, user_in)
         from app.core.security import create_access_token
@@ -162,12 +158,12 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
             from app.services import lifecycle_email_service
             asyncio.create_task(lifecycle_email_service.send_welcome_email(user.email, user.full_name or ""))
         except Exception as mail_err:
-            logger.warning(f"Welcome email scheduling failed for {user.email}: {mail_err}")
+            log_event(logger, "welcome_email_scheduling_failed", error=mail_err, actor_id=user.id)
         return await build_session_response(db, user, access_token=token)
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Sign-up failed for {user_in.email}: {e}")
+        log_event(logger, "signup_failed", error=e)
         err_msg = str(e).lower()
         if "unique" in err_msg or "integrity" in err_msg or "already exists" in err_msg:
             raise HTTPException(
@@ -181,8 +177,6 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/sign-in", response_model=SessionResponse)
 async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
-    import logging
-    logger = logging.getLogger(__name__)
     try:
         token = await auth_service.authenticate_user(db, user_in)
         from app.models.user import User as UserModel
@@ -195,7 +189,7 @@ async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Sign-in failed for {user_in.email}: {e}")
+        log_event(logger, "signin_failed", error=e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Sign-in temporarily unavailable. Please try again shortly.",
@@ -208,18 +202,24 @@ async def signout(
     token: Optional[str] = Depends(oauth2_scheme)
 ):
     """Revoke active user sessions and sign out."""
-    import logging
+    actor_id = None
     if token:
         try:
             from app.core.security import verify_neon_token
             payload = await verify_neon_token(token)
             if payload and payload.get("sub"):
+                actor_id = payload["sub"]
                 res = await db.execute(select(User).where(User.id == payload["sub"]))
                 user = res.scalar_one_or_none()
                 if user:
                     await auth_service.revoke_user_sessions(db, user)
-        except Exception:
-            logging.getLogger(__name__).exception("Session revocation failed during sign-out")
+                    log_event(logger, "sessions_revoked", actor_id=user.id, level=logging.INFO)
+        except Exception as exc:
+            log_event(logger, "session_revocation_failed", error=exc, actor_id=actor_id)
+            raise HTTPException(status_code=503, detail={
+                "code": "session_revocation_unavailable",
+                "message": "Server-side sign-out could not be confirmed. Please retry.",
+            }) from None
     return {"message": "Successfully signed out"}
 
 @router.post("/forgot-password")
@@ -227,21 +227,19 @@ async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(
     """Start a password reset. The public response is identical whether or
     not the account exists (no account enumeration). The reset link is sent via
     transactional email when email is configured, and never logged in plain text."""
-    import logging
-    logger = logging.getLogger(__name__)
     try:
         user_and_token = await auth_service.request_password_reset(db, req.email)
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Password reset request failed for {req.email}: {e}")
+        log_event(logger, "password_reset_request_failed", error=e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Password reset request failed")
 
     if user_and_token:
         user, raw_token = user_and_token
         reset_url = f"{settings.PUBLIC_APP_BASE_URL}/reset-password?token={raw_token}"
         # F17: Never log plain reset token or URL
-        logger.info("Password reset token generated for user %s", user.email)
+        log_event(logger, "password_reset_requested", actor_id=user.id, level=logging.INFO)
         
         from app.services.email_service import send_email, email_enabled
         if email_enabled():
@@ -260,7 +258,7 @@ async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(
             try:
                 await send_email(to=user.email, subject=subject, html=html_body)
             except Exception as mail_err:
-                logger.error("Failed to deliver reset email to %s: %s", user.email, mail_err)
+                log_event(logger, "password_reset_delivery_failed", error=mail_err, actor_id=user.id)
 
         return {"ok": True}
     return {"ok": True}
@@ -269,16 +267,15 @@ async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(
 async def reset_password(req: PasswordResetConfirm, db: AsyncSession = Depends(get_db)):
     """Redeem a reset token and set a new password. Returns a fresh session
     so the frontend can move straight into the app."""
-    import logging
-    logger = logging.getLogger(__name__)
     try:
         user = await auth_service.reset_password(db, req.token, req.new_password)
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Password reset failed: {e}")
+        log_event(logger, "password_reset_failed", error=e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Password reset failed")
 
+    log_event(logger, "password_reset_completed", actor_id=user.id, level=logging.INFO)
     await _bind_request_tenant(db, user)
     from app.core.security import create_access_token
     token_ver = (user.signup_metadata or {}).get("token_version", 1)
@@ -293,11 +290,11 @@ async def get_session(current_user: User = Depends(get_current_user), db: AsyncS
 async def complete_onboarding(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     current_user.has_completed_onboarding = True
     await db.commit()
+    log_event(logger, "onboarding_completed", actor_id=current_user.id, level=logging.INFO)
     return {"message": "Onboarding marked as complete"}
 
 from fastapi import Request
 import hmac
-import logging
 
 @router.post("/webhook")
 async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)):
@@ -323,7 +320,7 @@ async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)
         return await process_auth_webhook(db, payload)
     except HTTPException:
         raise
-    except Exception:
+    except Exception as exc:
         await db.rollback()
-        logging.getLogger(__name__).exception("Auth webhook processing failed")
+        log_event(logger, "auth_webhook_processing_failed", error=exc)
         raise HTTPException(status_code=500, detail="Webhook processing failed")

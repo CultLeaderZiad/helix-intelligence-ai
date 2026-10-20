@@ -1,4 +1,6 @@
 import json
+import logging
+from app.core.observability import log_event
 from typing import List, Dict, Any
 from abc import ABC, abstractmethod
 from fastapi import HTTPException
@@ -14,11 +16,13 @@ from app.services.ai.prompts import (
     simulation_messages,
 )
 from app.services.ai.structured import (
-    InvalidModelOutput,
     parse_insight,
     parse_patterns,
     parse_simulation,
 )
+
+logger = logging.getLogger(__name__)
+
 
 class AIProvider(ABC):
     @abstractmethod
@@ -43,18 +47,20 @@ class AIProvider(ABC):
                 creative_id=creative.id,
                 model_version=f"{model_name}:{PROMPT_INSIGHT}",
             )
-        except HTTPException:
-            raise
-        except (InvalidModelOutput, Exception) as exc:
+        except Exception as exc:
+            log_event(logger, "ai_insight_failed", error=exc)
             raise HTTPException(
                 status_code=503,
-                detail=f"AI insight generation provider failed: {exc}",
-            )
+                # Preserve the existing string-detail contract; expose the stable
+                # machine code separately without including provider messages.
+                detail="AI insight generation is temporarily unavailable.",
+                headers={"X-Error-Code": "analysis_unavailable"},
+            ) from None
         
     async def generate_patterns(self, creatives: List[Creative]) -> List[Pattern]:
         """Extract patterns across multiple creatives"""
-        result_text = await self._call_api(pattern_messages(creatives))
         try:
+            result_text = await self._call_api(pattern_messages(creatives))
             data = _load_json(result_text)
             model_name = getattr(self, "model", None) or "unknown"
             return parse_patterns(
@@ -62,8 +68,12 @@ class AIProvider(ABC):
                 allowed_ids=[c.id for c in creatives],
                 model_version=f"{model_name}:{PROMPT_PATTERNS}",
             )
-        except InvalidModelOutput as exc:
-            raise Exception(f"Failed to parse AI response: {exc}\nResponse: {result_text}")
+        except Exception as exc:
+            log_event(logger, "ai_patterns_invalid_output", error=exc)
+            raise HTTPException(status_code=503, detail={
+                "code": "analysis_unavailable",
+                "message": "AI pattern generation returned an invalid response.",
+            }) from None
 
     async def simulate_audience_reactions(
         self, creative: Creative, segments: List[PersonaSegment]
@@ -75,11 +85,18 @@ class AIProvider(ABC):
         reviewer might catch late. Provider failures raise (no fabricated
         fallback), matching generate_insight's honesty contract.
         """
-        result_text = await self._call_api(simulation_messages(creative, segments))
-        data = _load_json(result_text)
-        parsed = parse_simulation(data, segments)
-        parsed["model_version"] = f"{getattr(self, 'model', None) or 'unknown'}:{PROMPT_SIMULATION}"
-        return parsed
+        try:
+            result_text = await self._call_api(simulation_messages(creative, segments))
+            data = _load_json(result_text)
+            parsed = parse_simulation(data, segments)
+            parsed["model_version"] = f"{getattr(self, 'model', None) or 'unknown'}:{PROMPT_SIMULATION}"
+            return parsed
+        except Exception as exc:
+            log_event(logger, "ai_simulation_failed", error=exc)
+            raise HTTPException(status_code=503, detail={
+                "code": "analysis_unavailable",
+                "message": "Audience simulation is temporarily unavailable.",
+            }) from None
 
 
 def _load_json(result_text: str):

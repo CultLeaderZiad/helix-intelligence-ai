@@ -10,6 +10,8 @@ class Settings(BaseSettings):
 
     # SECURITY — must be set via env var; no hardcoded fallback
     SECRET_KEY: str = os.getenv("SECRET_KEY", "")
+    # Optional diagnostics-only credential; never accept the JWT signing key here.
+    HEALTH_DIAGNOSTIC_KEY: str = os.getenv("HEALTH_DIAGNOSTIC_KEY", "")
     # Versioned Fernet key for BYOK credentials. Never reuse SECRET_KEY.
     CREDENTIAL_ENCRYPTION_KEY: str = os.getenv("CREDENTIAL_ENCRYPTION_KEY", "")
     CREDENTIAL_ENCRYPTION_KEY_PREVIOUS: str = os.getenv("CREDENTIAL_ENCRYPTION_KEY_PREVIOUS", "")
@@ -23,10 +25,8 @@ class Settings(BaseSettings):
     JWT_ISSUER: str = os.getenv("JWT_ISSUER", "helix")
     JWT_AUDIENCE: str = os.getenv("JWT_AUDIENCE", "helix-api")
 
-    # Password reset delivery. The app has no mail provider bundled, so the
-    # reset link is logged server-side on every request. Set to true to also
-    # return it in the API response (dev/staging convenience only — anyone
-    # who can call the endpoint could reset any account).
+    # Password reset delivery uses the existing email service. Reset tokens
+    # and links must never be logged. A response token is local-dev only.
     # DEFAULTS TO FALSE: must be explicitly opted into. Wire real email
     # delivery (Resend) instead of enabling this in any shared environment.
     AUTH_DEV_RESET_RETURN: bool = os.getenv("AUTH_DEV_RESET_RETURN", "False").lower() in ("true", "1", "yes")

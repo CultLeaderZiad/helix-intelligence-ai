@@ -1,12 +1,15 @@
-import os
+import importlib
+import logging
+import uuid
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings, cors_origins
 from app.db.session import engine
+from app.core.observability import log_event, request_id_context
 from app.middleware.rate_limit import RateLimitMiddleware
-import app.models
+importlib.import_module("app.models")  # register ORM tables before startup validation
 
 from app.api.routers import (
     auth,
@@ -59,11 +62,27 @@ app.add_middleware(RateLimitMiddleware)
 
 # Enterprise Security Headers Middleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
+
+logger = logging.getLogger(__name__)
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
-    response: Response = await call_next(request)
+    request_id = uuid.uuid4().hex
+    request.state.request_id = request_id
+    context_token = request_id_context.set(request_id)
+    try:
+        response: Response = await call_next(request)
+    except Exception as exc:
+        log_event(logger, "request_failed", error=exc, level=logging.ERROR)
+        response = JSONResponse(status_code=500, content={"detail": {
+            "code": "internal_error",
+            "message": "The request could not be completed. Please retry.",
+            "request_id": request_id,
+        }})
+    finally:
+        request_id_context.reset(context_token)
+    response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"

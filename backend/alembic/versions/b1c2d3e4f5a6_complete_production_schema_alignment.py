@@ -12,7 +12,6 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = 'b1c2d3e4f5a6'
@@ -27,15 +26,19 @@ def get_schema_cache(conn):
     existing_cols = {}
     existing_indexes = {}
     for t in existing_tables:
-        try:
-            existing_cols[t] = set(c['name'] for c in insp.get_columns(t))
-        except Exception:
-            existing_cols[t] = set()
-        try:
-            existing_indexes[t] = set(idx['name'] for idx in insp.get_indexes(t))
-        except Exception:
-            existing_indexes[t] = set()
+        # Reflection failure is not evidence that a column/index is absent.
+        # Let Alembic roll back instead of issuing conflicting DDL.
+        existing_cols[t] = {c['name'] for c in insp.get_columns(t)}
+        existing_indexes[t] = {idx['name'] for idx in insp.get_indexes(t)}
     return existing_tables, existing_cols, existing_indexes
+
+
+def table_exists(conn, table: str) -> bool:
+    return sa.inspect(conn).has_table(table)
+
+
+def column_exists(conn, table: str, column: str) -> bool:
+    return column in _column_names(conn, table)
 
 
 def _column_names(conn, table: str) -> set[str]:
@@ -380,30 +383,36 @@ def upgrade() -> None:
     # ---------------------------------------------------------
     # 2. Reconcile Nullability from previous migrations (F77)
     # ---------------------------------------------------------
+    # Recover only from timestamps already recorded for the same job. Never
+    # claim that unknown historical work was created at migration time.
     if column_exists(conn, 'leadgen_jobs', 'created_at'):
-        try:
-            op.alter_column('leadgen_jobs', 'created_at', nullable=False, existing_type=sa.DateTime(timezone=True))
-        except Exception:
-            pass
-
+        conn.execute(sa.text('''
+            UPDATE leadgen_jobs SET created_at = COALESCE(started_at, completed_at, heartbeat_at)
+            WHERE created_at IS NULL
+        '''))
     if column_exists(conn, 'leadgen_leads', 'created_at'):
-        try:
-            op.alter_column('leadgen_leads', 'created_at', nullable=False, existing_type=sa.DateTime(timezone=True))
-        except Exception:
-            pass
+        conn.execute(sa.text('''
+            UPDATE leadgen_leads AS lead SET created_at = job.created_at
+            FROM leadgen_jobs AS job
+            WHERE lead.job_id = job.id AND lead.created_at IS NULL
+        '''))
 
-    if column_exists(conn, 'leadgen_worker_heartbeat', 'updated_at'):
-        try:
-            op.alter_column('leadgen_worker_heartbeat', 'updated_at', nullable=False, existing_type=sa.DateTime(timezone=True))
-        except Exception:
-            pass
+    for table, column in (
+        ('leadgen_jobs', 'created_at'),
+        ('leadgen_leads', 'created_at'),
+        ('leadgen_worker_heartbeat', 'updated_at'),
+    ):
+        if column_exists(conn, table, column):
+            # Unknown historical timestamps cannot honestly be invented. Dirty
+            # rows abort the whole revision; operators must repair from evidence.
+            if conn.execute(sa.text(f'SELECT 1 FROM {table} WHERE {column} IS NULL LIMIT 1')).first():
+                raise RuntimeError(f'{table}.{column} contains NULL; repair from source evidence before retrying')
+            op.alter_column(table, column, nullable=False, existing_type=sa.DateTime(timezone=True))
 
-    # Reconcile server defaults on existing tables
+    # Reconcile server defaults on existing tables. PostgreSQL DDL failures must
+    # escape: catching one leaves the transaction aborted, not safely repaired.
     if column_exists(conn, 'scrape_jobs', 'created_at'):
-        try:
-            op.alter_column('scrape_jobs', 'created_at', server_default=sa.func.now())
-        except Exception:
-            pass
+        op.alter_column('scrape_jobs', 'created_at', server_default=sa.func.now())
 
     for col, default in [
         ('format', 'video'),
@@ -412,22 +421,13 @@ def upgrade() -> None:
         ('data_source', 'meta_official'),
     ]:
         if column_exists(conn, 'creatives', col):
-            try:
-                op.alter_column('creatives', col, server_default=default)
-            except Exception:
-                pass
+            op.alter_column('creatives', col, server_default=default)
 
     if column_exists(conn, 'creatives', 'is_estimated'):
-        try:
-            op.alter_column('creatives', 'is_estimated', server_default=sa.true())
-        except Exception:
-            pass
+        op.alter_column('creatives', 'is_estimated', server_default=sa.true())
 
     if column_exists(conn, 'organizations', 'custom_feature_flags'):
-        try:
-            op.alter_column('organizations', 'custom_feature_flags', server_default='{}')
-        except Exception:
-            pass
+        op.alter_column('organizations', 'custom_feature_flags', server_default='{}')
 
     # ---------------------------------------------------------
     # 3. 14 Missing Tables
@@ -756,64 +756,39 @@ def upgrade() -> None:
     # 4. Supporting Indexes (F63) & Dedup Guard Index
     # ---------------------------------------------------------
     # 4.1 Dedup Guard Unique Index on scrape_jobs
-    try:
-        op.execute(sa.text("""
-            CREATE UNIQUE INDEX IF NOT EXISTS uq_scrape_jobs_active_query
-            ON scrape_jobs (org_id, lower(query))
-            WHERE status IN ('queued', 'running')
-        """))
-    except Exception:
-        pass
+    op.execute(sa.text("""
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_scrape_jobs_active_query
+        ON scrape_jobs (org_id, lower(query))
+        WHERE status IN ('queued', 'running')
+    """))
 
     # 4.2 Supporting query performance indexes (F63)
-    if not index_exists(conn, 'scrape_jobs', 'ix_scrape_jobs_org_status_created'):
-        try:
-            op.create_index('ix_scrape_jobs_org_status_created', 'scrape_jobs', ['org_id', 'status', 'created_at'])
-        except Exception:
-            pass
+    for table, name, columns in (
+        ('scrape_jobs', 'ix_scrape_jobs_org_status_created', ['org_id', 'status', 'created_at']),
+        ('creatives', 'ix_creatives_job_id', ['job_id']),
+        ('creatives', 'ix_creatives_brand_id', ['brand_id']),
+        ('creatives', 'ix_creatives_brand_name', ['brand_name']),
+        ('leadgen_leads', 'ix_leadgen_leads_job_id', ['job_id']),
+    ):
+        if table_exists(conn, table) and not index_exists(conn, table, name):
+            op.create_index(name, table, columns)
 
-    if not index_exists(conn, 'creatives', 'ix_creatives_job_id'):
-        try:
-            op.create_index('ix_creatives_job_id', 'creatives', ['job_id'])
-        except Exception:
-            pass
-
-    if not index_exists(conn, 'creatives', 'ix_creatives_brand_id'):
-        try:
-            op.create_index('ix_creatives_brand_id', 'creatives', ['brand_id'])
-        except Exception:
-            pass
-
-    if not index_exists(conn, 'creatives', 'ix_creatives_brand_name'):
-        try:
-            op.create_index('ix_creatives_brand_name', 'creatives', ['brand_name'])
-        except Exception:
-            pass
-
-    if table_exists(conn, 'leadgen_leads') and not index_exists(conn, 'leadgen_leads', 'ix_leadgen_leads_job_id'):
-        try:
-            op.create_index('ix_leadgen_leads_job_id', 'leadgen_leads', ['job_id'])
-        except Exception:
-            pass
-
-    try:
-        op.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_users_lower_email ON users (lower(email))"))
-    except Exception:
-        pass
+    op.execute(sa.text("CREATE INDEX IF NOT EXISTS ix_users_lower_email ON users (lower(email))"))
 
 
 def downgrade() -> None:
     conn = op.get_bind()
 
-    try:
-        op.execute(sa.text("DROP INDEX IF EXISTS ix_users_lower_email"))
-        op.drop_index('ix_leadgen_leads_job_id', table_name='leadgen_leads')
-        op.drop_index('ix_creatives_brand_id', table_name='creatives')
-        op.drop_index('ix_creatives_job_id', table_name='creatives')
-        op.drop_index('ix_scrape_jobs_org_status_created', table_name='scrape_jobs')
-        op.drop_index('uq_scrape_jobs_active_query', table_name='scrape_jobs')
-    except Exception:
-        pass
+    for name in (
+        'ix_users_lower_email',
+        'ix_leadgen_leads_job_id',
+        'ix_creatives_brand_name',
+        'ix_creatives_brand_id',
+        'ix_creatives_job_id',
+        'ix_scrape_jobs_org_status_created',
+        'uq_scrape_jobs_active_query',
+    ):
+        op.execute(sa.text(f'DROP INDEX IF EXISTS {name}'))
 
     # Drop tables in reverse FK order
     for tbl in [

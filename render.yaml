@@ -4,7 +4,11 @@ services:
     env: python
     rootDir: backend
     buildCommand: "pip install -r requirements.txt"
-    preDeployCommand: "alembic upgrade head"
+    # Operator-controlled release gate: approve only after the backup/restore and
+    # disposable migration checks in docs/production-readiness/remediation-status.md.
+    # MIGRATION_DATABASE_URL is a dedicated migration credential, never the app's
+    # restricted DATABASE_URL. Clear approval after the release; do not auto-enable.
+    preDeployCommand: 'test "$HELIX_RELEASE_MIGRATIONS_APPROVED" = "yes" && test -n "$MIGRATION_DATABASE_URL" && TEST_DATABASE_URL="$MIGRATION_DATABASE_URL" python -m alembic upgrade head && TEST_DATABASE_URL="$MIGRATION_DATABASE_URL" python -m alembic check'
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     # ────────────────────────────────────────────────────────
     # Required environment variables (set via Render Dashboard → Environment)

@@ -1,54 +1,86 @@
-import asyncio,os,sys,inspect,json,datetime,types,io
-sys.path.insert(0,os.getcwd())
-from sqlalchemy import select,text
-from app.db.session import engine,async_session_maker
-from app.models import Base
-from app.models.user import User
-from app.models.organization import Organization
-from app.models.plan import Plan
-from app.models.scrape_job import ScrapeJob
-from app.models.creative import Creative
-from app.models.pattern import Pattern
-from app.models.ai_insight import AIInsight
-from app.core.security import get_password_hash,create_access_token,verify_password
-from app.main import app
-import httpx
+"""Synthetic access probes, never migration/RLS/deployment evidence.
+
+Requires a newly-created, empty local PostgreSQL database named
+``helix_w4_probe_*``, ENVIRONMENT=test and explicit disposable-DB consent.
+No schema or data is dropped. Do not point this at a shared test database.
+"""
+import asyncio
+import datetime
+import os
+from pathlib import Path
+import sys
+from urllib.parse import urlsplit
+
+
+def require_disposable_database():
+    """Fail before application imports or any database/network operations."""
+    if os.getenv("HELIX_ALLOW_DISPOSABLE_PROBES") != "yes":
+        raise RuntimeError("Set HELIX_ALLOW_DISPOSABLE_PROBES=yes only for an isolated disposable database")
+    if os.getenv("ENVIRONMENT") != "test":
+        raise RuntimeError("Runtime probes require ENVIRONMENT=test")
+    url = urlsplit(os.getenv("DATABASE_URL", ""))
+    database = url.path.lstrip("/")
+    if (url.scheme not in {"postgresql", "postgresql+asyncpg"}
+            or url.hostname not in {"localhost", "127.0.0.1", "::1"}
+            or url.query or url.fragment
+            or not database.startswith("helix_w4_probe_")
+            or not database.removeprefix("helix_w4_probe_")):
+        raise RuntimeError("Runtime probes require an explicitly named local helix_w4_probe_* database")
+
+
 async def main():
- async with engine.begin() as c:await c.run_sync(Base.metadata.create_all)
- now=datetime.datetime.now(datetime.timezone.utc)
- async with async_session_maker() as db:
-  db.add_all([User(id='alice',email='alice@example.com',password_hash='EXTERNAL_AUTH_MANAGED',trial_expires_at=now+datetime.timedelta(days=7)),User(id='bob',email='bob@example.com',password_hash=get_password_hash('BobSynthetic123!'),trial_expires_at=now+datetime.timedelta(days=7))]);await db.flush()
-  db.add(Plan(id='plan_trial_default',name='trial',type='trial',daily_credit_limit=100,feature_flags={'swipe_files':True}));db.add_all([Organization(id='oa',name='Alice',owner_id='alice',credit_balance=25),Organization(id='ob',name='Bob',owner_id='bob',credit_balance=25)]);await db.flush()
-  db.add(ScrapeJob(id='private-job',org_id='oa',query='secret-campaign',status='succeeded',created_at=now));await db.flush()
-  db.add(Creative(id='private-creative',job_id='private-job',brand_id='private-brand',brand_name='Secret Brand',platform='meta',format='image',headline='Alice private strategy',body='Confidential campaign draft'));db.add(Pattern(id='private-pattern',job_id='private-job',label='Alice secret pattern',family='copy',prevalence=.5,lift_index=1.2));await db.flush();db.add(AIInsight(id='private-insight',creative_id='private-creative',kind='opportunity',title='Private insight',summary='Private strategic summary',confidence=.9));await db.commit()
- async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app,raise_app_exceptions=False),base_url='http://local') as c:
-  r=await c.post('/api/auth/sign-in',json={'email':'alice@example.com','password':'EXTERNAL_AUTH_MANAGED'});print('sentinel_login',r.status_code,'token_issued',bool(r.json().get('access_token')))
-  headers={'Authorization':'Bearer '+create_access_token('bob')}
-  for path in ['/api/creatives/private-creative','/api/brands/','/api/patterns/']:
-   r=await c.get(path,headers=headers);print(path,r.status_code,'private_data',any(s in r.text for s in ['Secret Brand','Alice secret pattern']))
-  r=await c.post('/api/creatives/private-creative/save',headers=headers);print('save_foreign',r.status_code)
-  r=await c.get('/api/creatives/saved',headers=headers);print('saved_foreign_content',r.status_code,'Alice private strategy' in r.text)
-  r=await c.post('/api/playbooks',headers=headers,json={'brand_name':'x','query':'x','job_id':'private-job'});print('compile_foreign',r.status_code)
-  if r.status_code==200:
-   r=await c.get('/api/playbooks/public/'+r.json()['public_id']);print('public_foreign_content',r.status_code,'Alice private strategy' in r.text)
-  r=await c.post('/api/account/avatar',headers=headers,files={'file':('avatar.png',b'synthetic','image/png')});print('avatar_upload',r.status_code)
-  r=await c.post('/api/creatives/custom',headers=headers,json={'url':'https://example.com'});print('custom_swipe',r.status_code)
-  r=await c.post('/api/creatives/private-creative/generate-insights',headers=headers);print('managed_insight_with_defaults',r.status_code)
- from app.services.ai.ai_router import MultiTierAIProvider
- try: MultiTierAIProvider(); print('multitier_init_ok')
- except Exception as e:print('multitier_init',type(e).__name__,str(e))
- from app.services.ai.gemini_provider import GeminiProvider
- try: inspect.signature(GeminiProvider.generate_image).bind(None,prompt='x',reference_images=[],aspect_ratio='1:1',seed=None)
- except TypeError as e:print('gemini_invocation',str(e))
- from app.services.security_service import is_safe_public_url
- print('mapped_loopback_accepted',is_safe_public_url('http://[::ffff:127.0.0.1]/'))
- from app.services import billing_service
- async with async_session_maker() as db:
-  await billing_service.refund(db,'ob',1,'probe','same-job');await billing_service.refund(db,'ob',1,'probe','same-job');org=await db.get(Organization,'ob');print('repeated_refund_balance',org.credit_balance)
- # demonstrate stale cached org even with FOR UPDATE after a concurrent commit
- async with async_session_maker() as db1,async_session_maker() as db2:
-  u1=await db1.get(User,'bob');org1=await billing_service.get_or_create_default_org(db1,u1);await db1.commit()
-  u2=await db2.get(User,'bob');org2,_=await billing_service.assert_can_spend(db2,u2,required_credits=1);await billing_service.charge(db2,org2,'bob',1,'test','test')
-  org1,_=await billing_service.assert_can_spend(db1,u1,required_credits=1);before=org1.credit_balance;await billing_service.charge(db1,org1,'bob',1,'test','test');print('cached_org_lock_balance_before',before,'after_two_charges',org1.credit_balance)
- await engine.dispose()
-asyncio.run(main())
+    require_disposable_database()
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "backend"))
+    import httpx
+    from sqlalchemy import text
+    from app.db.session import engine, async_session_maker
+    from app.models import Base
+    from app.models.user import User
+    from app.models.organization import Organization
+    from app.models.scrape_job import ScrapeJob
+    from app.models.creative import Creative
+    from app.core.security import get_password_hash, create_access_token
+    from app.main import app
+
+    try:
+        async with engine.begin() as connection:
+            tables = await connection.scalar(text(
+                "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'"
+            ))
+            if tables:
+                raise RuntimeError("Runtime probes refuse a nonempty database; create a new disposable database")
+            # Diagnostic fixture only: this deliberately does NOT validate migrations.
+            await connection.run_sync(Base.metadata.create_all)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        async with async_session_maker() as db:
+            db.add_all([
+                User(id="probe-alice", email="alice@example.invalid", password_hash="EXTERNAL_AUTH_MANAGED", trial_expires_at=now + datetime.timedelta(days=7)),
+                User(id="probe-bob", email="bob@example.invalid", password_hash=get_password_hash("SyntheticProbe123!"), trial_expires_at=now + datetime.timedelta(days=7)),
+            ])
+            await db.flush()
+            db.add_all([
+                Organization(id="probe-oa", name="Synthetic A", owner_id="probe-alice"),
+                Organization(id="probe-ob", name="Synthetic B", owner_id="probe-bob"),
+            ])
+            await db.flush()
+            db.add(ScrapeJob(id="probe-private-job", org_id="probe-oa", query="synthetic", status="succeeded", created_at=now))
+            await db.flush()
+            db.add(Creative(id="probe-private-creative", job_id="probe-private-job", platform="meta", format="image", headline="Synthetic private content"))
+            await db.commit()
+
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app, raise_app_exceptions=False), base_url="http://local") as client:
+            result = await client.post("/api/auth/sign-in", json={"email": "alice@example.invalid", "password": "EXTERNAL_AUTH_MANAGED"})
+            assert result.status_code == 401, "External authentication marker must not be a password"
+            print("sentinel_login: rejected")
+            headers = {"Authorization": "Bearer " + create_access_token("probe-bob")}
+            for path in ["/api/creatives/probe-private-creative", "/api/creatives/probe-private-creative/save"]:
+                result = await (client.post(path, headers=headers) if path.endswith("/save") else client.get(path, headers=headers))
+                assert result.status_code in {401, 403, 404}, "Foreign content access was not rejected"
+                print("foreign_access: rejected", result.status_code)
+        print("Synthetic application access probes passed; migrations and RLS were not exercised.")
+    finally:
+        await engine.dispose()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

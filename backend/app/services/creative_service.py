@@ -14,6 +14,7 @@ from app.schemas.analysis import Pattern as PatternSchema
 from app.models.pattern import Pattern
 from fastapi import HTTPException
 import logging
+from app.core.observability import log_event
 
 logger = logging.getLogger(__name__)
 
@@ -380,10 +381,7 @@ async def generate_patterns_for_recent_creatives(
         if reservation is not None:
             from app.services.billing_service import release_reservation
             await release_reservation(db, reservation.id, "pattern_provider_failed")
-        logger.error(
-            "AI pattern extraction failed (job=%s user=%s): %s",
-            job_id, user.id, e,
-        )
+        log_event(logger, "ai_pattern_extraction_failed", error=e, job_id=job_id, actor_id=user.id, tenant_id=org.id)
         try:
             await AIRouter.log_failure(
                 db,
@@ -391,10 +389,10 @@ async def generate_patterns_for_recent_creatives(
                 provider_name=getattr(provider, "model", "unknown"),
                 operation="pattern_synthesis",
                 org_id=org.id,
-                error=str(e),
+                error="pattern_provider_failed",
             )
-        except Exception:
-            logger.exception("Failed to record pattern failure log")
+        except Exception as exc:
+            log_event(logger, "ai_pattern_failure_record_failed", error=exc, job_id=job_id, actor_id=user.id, tenant_id=org.id)
         raise HTTPException(
             status_code=503,
             detail={
@@ -458,19 +456,21 @@ async def save_creative(
     db.add(new_saved)
     await db.commit()
     await db.refresh(new_saved)
+    log_event(logger, "creative_saved", actor_id=user.id, tenant_id=org.id, level=logging.INFO)
     return {"success": True, "message": "Creative saved to swipe file (0 credits used)", "saved_id": new_saved.id}
 
 async def unsave_creative(db: AsyncSession, user: "User", creative_id: str) -> dict:
     from app.models.saved_creative import SavedCreative
     from sqlalchemy import delete
 
-    result = await db.execute(
+    await db.execute(
         delete(SavedCreative).where(
             SavedCreative.user_id == user.id,
             SavedCreative.creative_id == creative_id
         )
     )
     await db.commit()
+    log_event(logger, "creative_unsaved", actor_id=user.id, level=logging.INFO)
     return {"success": True, "message": "Creative removed from swipe file"}
 
 async def list_saved_creatives(
@@ -634,6 +634,7 @@ async def create_custom_swipe_reference(db: AsyncSession, user: "User", data: di
     db.add(saved)
 
     await db.commit()
+    log_event(logger, "creative_reference_created", actor_id=user.id, tenant_id=org.id, level=logging.INFO)
     return {"success": True, "message": "Reference added to swipe files", "creative_id": new_id}
 
 
@@ -688,7 +689,7 @@ async def translate_ad_copy(
     from app.core.credentials import env_secret
     from app.services.ai.call_policy import complete_chat
     from app.services.ai.prompts import PROMPT_TRANSLATION, translation_messages
-    from app.services.ai.structured import InvalidModelOutput, parse_translation
+    from app.services.ai.structured import parse_translation
     import json
 
     api_key = env_secret("GROQ_API_KEY", fallback=_settings.GROQ_API_KEY)
@@ -710,11 +711,11 @@ async def translate_ad_copy(
             response_format={"type": "json_object"},
         )
         parsed = parse_translation(json.loads(result.text), target_lang=target_lang)
-    except (InvalidModelOutput, Exception) as exc:
+    except Exception as exc:
         if reservation is not None:
             from app.services.billing_service import release_reservation
             await release_reservation(db, reservation.id, "translation_unavailable")
-        logger.warning("Copy translation failed: %s", exc)
+        log_event(logger, "copy_translation_failed", error=exc, actor_id=getattr(user, "id", None), tenant_id=getattr(org, "id", None))
         return _translation_unavailable(target_lang, "Translation is temporarily unavailable. No credits were charged.")
 
     parsed["model"] = result.model

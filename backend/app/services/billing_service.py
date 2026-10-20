@@ -2,6 +2,7 @@ import datetime
 import hashlib
 import json
 import logging
+from app.core.observability import log_event
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -798,7 +799,7 @@ async def refund(
             )
         )).scalars().first()
         if existing_refund:
-            logger.warning(f"Job {job_id} already has a refund recorded ({existing_refund.id}). Skipping duplicate refund.")
+            log_event(logger, "duplicate_refund_ignored", job_id=job_id, tenant_id=org_id)
             return False
         reservation = (
             await db.execute(
@@ -1079,6 +1080,7 @@ async def release_reservation(db: AsyncSession, reservation_id: str, reason: str
             select(CreditReservation)
             .where(CreditReservation.id == reservation_id)
             .with_for_update()
+            .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none()
     if org is None or reservation is None or reservation.status == "refunded":
@@ -1421,7 +1423,8 @@ async def assert_can_generate_image(
             )
             if hasattr(res, "scalar"):
                 in_flight_count = res.scalar() or 0
-    except Exception:
+    except Exception as exc:
+        log_event(logger, "media_quota_read_failed", error=exc, tenant_id=org.id, actor_id=user.id)
         in_flight_count = 0
 
     # 1. Video limit on trial (video requires a paid plan)
