@@ -6,11 +6,11 @@ import { APP_HOME } from "@/app/ProtectedRoute"
 import { AuthLayout } from "@/features/auth/AuthLayout"
 import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
-import { validateSignIn } from "@/features/auth/validation"
+import { formatAuthFieldError, validateSignIn } from "@/features/auth/validation"
 import { Input, PasswordInput } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
-import { ServiceError } from "@/services"
 import { DATA_SOURCE } from "@/services/config"
+import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * Sign in. Owns its own UI intent (field values, validation, submit state)
@@ -19,7 +19,8 @@ import { DATA_SOURCE } from "@/services/config"
  * that sent them here (via `location.state.from`) or APP_HOME.
  */
 export function SignInPage() {
-  const { signIn, isAuthenticated, isResolving } = useAuth()
+  const { signIn, isAuthenticated } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
   const redirectTo = location.state?.from?.pathname ?? APP_HOME
@@ -46,12 +47,14 @@ export function SignInPage() {
   /* Already signed in? Never show the form — go where they were headed. */
   if (isAuthenticated) return <Navigate to={redirectTo} replace />
 
+  /** @param {"email" | "password"} key @param {string} value */
   function update(key, value) {
     setValues((s) => ({ ...s, [key]: value }))
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }))
     if (authError) setAuthError(null)
   }
 
+  /** @param {import("react").FormEvent<HTMLFormElement>} [event] */
   async function onSubmit(event) {
     if (event?.preventDefault) event.preventDefault()
     if (submitting) return
@@ -77,9 +80,7 @@ export function SignInPage() {
       setAuthError({
         status: isCold ? "server waking" : "auth failed",
         tone: isCold ? "warning" : "danger",
-        message: isCold
-          ? "The backend is waking up from sleep. Click retry below to complete sign in."
-          : (err instanceof ServiceError ? err.message : (err?.message || "Sign in failed. Please try again.")),
+        message: isCold ? t("authBackendWaking", "The service is starting. Retry to complete sign in.") : t("authSignInFailed", "Sign in failed. Check your details and try again."),
         isColdStart: isCold,
       })
       setSubmitting(false)
@@ -89,17 +90,17 @@ export function SignInPage() {
 
   return (
     <AuthLayout
-      eyebrow="Access"
-      title="Sign in to Helix"
-      description="Enter your credentials to reach the intelligence loops."
+      eyebrow={t("authAccess", "Access")}
+      title={t("authSignInTitle", "Sign in to Helix")}
+      description={t("authSignInDescription", "Enter your credentials to reach the intelligence workspace.")}
       footer={
         <>
-          No account?{" "}
+          {t("authNoAccount", "No account?")} {" "}
           <Link
             to="/sign-up"
             className="text-accent transition-colors hover:text-accent-dim"
           >
-            Create one
+            {t("authCreateAccount", "Create one")}
           </Link>
         </>
       }
@@ -115,9 +116,9 @@ export function SignInPage() {
                   type="button"
                   size="xs"
                   variant="outline"
-                  onClick={onSubmit}
+                  onClick={() => void onSubmit()}
                 >
-                  Retry
+                  {t("authRetry", "Retry")}
                 </Button>
               ) : null
             }
@@ -126,14 +127,14 @@ export function SignInPage() {
           </FormBanner>
         ) : null}
 
-        <AuthField id="email" label="Email" error={errors.email}>
+        <AuthField id="email" label={t("authEmail", "Email")} error={formatAuthFieldError(errors.email, t)}>
           <Input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
             autoFocus
-            placeholder="you@company.com"
+            placeholder={t("authEmailPlaceholder", "you@company.com")}
             value={values.email}
             disabled={submitting}
             aria-invalid={Boolean(errors.email)}
@@ -144,14 +145,14 @@ export function SignInPage() {
 
         <AuthField
           id="password"
-          label="Password"
-          error={errors.password}
+          label={t("authPassword", "Password")}
+          error={formatAuthFieldError(errors.password, t)}
           action={
             <Link
               to="/forgot-password"
               className="font-mono text-[10px] uppercase leading-none tracking-[0.08em] text-text-muted transition-colors hover:text-accent"
             >
-              forgot?
+              {t("authForgotShort", "Forgot?")}
             </Link>
           }
         >
@@ -159,7 +160,7 @@ export function SignInPage() {
             id="password"
             name="password"
             autoComplete="current-password"
-            placeholder="••••••••"
+            placeholder={t("authPasswordPlaceholder", "••••••••")}
             value={values.password}
             disabled={submitting}
             aria-invalid={Boolean(errors.password)}
@@ -178,11 +179,11 @@ export function SignInPage() {
           {submitting ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              {isSlow ? "Waking server (connecting)…" : "Signing in…"}
+              {isSlow ? t("authWakingServer", "Connecting to the server…") : t("authSigningIn", "Signing in…")}
             </>
           ) : (
             <>
-              Sign in
+              {t("authSignInButton", "Sign in")}
               <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </>
           )}
@@ -194,15 +195,15 @@ export function SignInPage() {
       {DATA_SOURCE !== "api" && (
         <details className="mt-4 border-t border-border pt-3">
           <summary className="label-mono cursor-pointer select-none list-none text-text-faint transition-colors hover:text-text-muted">
-            demo credentials
+            {t("authDemoCredentials", "Demo credentials")}
           </summary>
           <dl className="mt-2 flex flex-col gap-1.5 font-mono text-[11px] text-text-muted">
             <div className="flex items-center justify-between gap-3">
-              <dt className="text-text-faint">admin</dt>
+              <dt className="text-text-faint">{t("authAdmin", "Admin")}</dt>
               <dd className="tnum">admin@helix.io · helix-admin</dd>
             </div>
             <div className="flex items-center justify-between gap-3">
-              <dt className="text-text-faint">customer</dt>
+              <dt className="text-text-faint">{t("authCustomer", "Customer")}</dt>
               <dd className="tnum">analyst@helix.io · helix-analyst</dd>
             </div>
           </dl>
