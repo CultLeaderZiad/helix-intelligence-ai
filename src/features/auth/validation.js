@@ -37,6 +37,14 @@ export function validateEmailOnly({ email }) {
   return errors
 }
 
+export function formatAuthFieldError(error, t = (_key, fallback) => fallback) {
+  if (error === "required") return t("authFieldRequired", "Required")
+  if (error === "invalid email") return t("authInvalidEmailShort", "Invalid email")
+  if (error === "min 8 chars") return t("authPasswordMinShort", "8+ characters")
+  if (error === "already registered") return t("authEmailAlreadyRegistered", "Already registered")
+  return error
+}
+
 /**
  * Strength score 0..4 from length + character-class variety. Deliberately
  * simple and transparent — it drives feedback, it is not a security gate.
