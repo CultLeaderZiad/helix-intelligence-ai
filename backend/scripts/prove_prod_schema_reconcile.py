@@ -16,15 +16,35 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 
 PROD_STAMP = "c4d92e1f7a8b"
 BEFORE_TENANCY = "d5e8c0a1b2f3"
 RLS_DENY_REVISION = "f3d9a7c2b1e4"
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DRIFT_DB = os.environ.get("PROVE_DRIFT_DB", "helix_w2_prodlike")
 EMPTY_DB = os.environ.get("PROVE_EMPTY_DB", "helix_w2_emptyproof")
 FAIL_DB = os.environ.get("PROVE_FAIL_DB", "helix_w2_rolefail")
 LATER_FAIL_DB = os.environ.get("PROVE_LATER_FAIL_DB", "helix_w2_laterfail")
+
+
+def _script_directory() -> ScriptDirectory:
+    return ScriptDirectory.from_config(Config(os.path.join(BACKEND_DIR, "alembic.ini")))
+
+
+def _contains_revision(revision: str, ancestor: str) -> bool:
+    script = _script_directory()
+    current = script.get_revision(revision)
+    while current is not None:
+        if current.revision == ancestor:
+            return True
+        down_revision = current.down_revision
+        if isinstance(down_revision, tuple):
+            return any(_contains_revision(parent, ancestor) for parent in down_revision)
+        current = script.get_revision(down_revision) if down_revision else None
+    return False
 
 
 def _admin_dsn() -> str:
@@ -296,17 +316,28 @@ def _assert_preserved(database: str) -> None:
 
 
 def _cycle(database: str, label: str) -> None:
+    script = _script_directory()
+    heads = script.get_heads()
+    if len(heads) != 1:
+        raise SystemExit(f"expected one Alembic head, found {heads}")
+    head = heads[0]
+    head_revision = script.get_revision(head)
     _must(_alembic("upgrade", "head", database=database), f"{label} upgrade head")
-    if _version(database) != RLS_DENY_REVISION:
-        raise SystemExit(f"{label} did not reach the RLS deny-by-default revision")
-    _assert_rls_policy_state(database, deny_by_default=True)
+    if _version(database) != head:
+        raise SystemExit(f"{label} did not reach Alembic head {head}")
+    _assert_rls_policy_state(database, deny_by_default=_contains_revision(head, RLS_DENY_REVISION))
     _must(_alembic("check", database=database), f"{label} alembic check")
     _must(_alembic("downgrade", "-1", database=database), f"{label} downgrade -1")
-    if _version(database) != "e8c3b5d7a2f4":
-        raise SystemExit(f"{label} downgrade -1 did not return to e8c3b5d7a2f4")
-    _assert_rls_policy_state(database, deny_by_default=False)
+    previous = head_revision.down_revision
+    if isinstance(previous, tuple) or not previous:
+        raise SystemExit(f"{label} cannot prove a single-revision downgrade from {head}")
+    if _version(database) != previous:
+        raise SystemExit(f"{label} downgrade -1 did not return to {previous}")
+    _assert_rls_policy_state(database, deny_by_default=_contains_revision(previous, RLS_DENY_REVISION))
     _must(_alembic("upgrade", "head", database=database), f"{label} upgrade head again")
-    _assert_rls_policy_state(database, deny_by_default=True)
+    if _version(database) != head:
+        raise SystemExit(f"{label} retry upgrade did not reach Alembic head {head}")
+    _assert_rls_policy_state(database, deny_by_default=_contains_revision(head, RLS_DENY_REVISION))
     _must(_alembic("check", database=database), f"{label} alembic check again")
 
 
