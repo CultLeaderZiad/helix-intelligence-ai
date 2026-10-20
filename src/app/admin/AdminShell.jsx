@@ -1,10 +1,12 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useLocation } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import { AdminSidebar } from "./AdminSidebar"
 import { StatusBar } from "@/app/StatusBar"
 import { Button } from "@/components/ui/Button"
 import { UpdatesBanner } from "@/components/UpdatesBanner"
+import { useDialogFocus } from "@/hooks/useDialogFocus"
+import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * Operations console chrome — the structural twin of AppShell, with its
@@ -16,7 +18,10 @@ import { UpdatesBanner } from "@/components/UpdatesBanner"
  * get the full viewport width on small screens.
  */
 export function AdminShell({ children }) {
+  const { t } = useLanguage()
+  const drawerRef = useRef(null)
   const [navOpen, setNavOpen] = useState(false)
+  useDialogFocus(drawerRef, navOpen, () => setNavOpen(false))
   const location = useLocation()
 
   // Auto-close mobile drawer on route change
@@ -62,7 +67,7 @@ export function AdminShell({ children }) {
               <div
                 className="flex-1 overflow-y-auto"
                 onClick={(e) => {
-                  if (e.target.closest('a')) setNavOpen(false)
+                  if (e.target instanceof Element && e.target.closest('a')) setNavOpen(false)
                 }}
               >
                 <AdminSidebar className="w-full border-r-0" />
