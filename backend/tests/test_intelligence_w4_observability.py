@@ -20,6 +20,7 @@ async def test_readiness_does_not_disclose_database_exception(monkeypatch, caplo
     response = Response()
     result = await health.readiness(response)
     assert response.status_code == 503
+    assert result["providers"] == "not_checked"
     assert "CANARY_SECRET" not in str(result)
     assert "CANARY_SECRET" not in caplog.text
     assert result["code"] == "database_unavailable"
@@ -144,6 +145,7 @@ async def test_health_diagnostics_do_not_accept_signing_key(monkeypatch):
     monkeypatch.setattr(health, "async_session_maker", lambda: (_ for _ in ()).throw(RuntimeError("CANARY_PASSWORD")))
     for credential in (health.settings.SECRET_KEY, "non-ascii-λ"):
         result = await health.health_check(Response(), x_admin_secret=credential)
+        assert result["providers"] == "not_checked"
         assert "env_vars" not in result
         assert "db_detail" not in result
     result = await health.health_check(Response(), x_admin_secret="synthetic-diagnostic-only")
