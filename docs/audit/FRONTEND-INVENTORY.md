@@ -5,9 +5,9 @@
 ## حدود المراجعة وحالة اللقطات
 
 - ده inventory للكود مع browser captures التقطها الـ parent على التطبيق المحلي، بجلسة Admin على حساب اختبار محلي وقاعدة بيانات disposable فاضية. مسارات Public/Auth اتصورت وإحنا signed out؛ مسارات Workspace/Admin بجلسة Admin. مافيش بيانات fake اتضافت.
-- الـ manifest فيه **68 concrete route** وكل واحدة متصورة EN وAR، يعني **136 route/locale screenshot موجودة**. إجمالي السجل **356 capture records** (204 route records فيها تكرارات، و152 سجل تفاعل). كل العمليات متعلمة `ok: true`، وده معناه إن capture نجح بس؛ مش ضمان لنجاح API أو hydration أو provider.
-- فيه **8 سجلات تفاعل لـ Create مافيهاش PNG**: Graphic Layout، Ad Concept Short، Explainer، وUGC Clip باللغتين. ما ربطتش لها صورة غير موجودة؛ موجودة كـ manifest-only في JSON.
-- بيانات التقاط المتصفح في [`evidence/browser-captures.jsonl`](evidence/browser-captures.jsonl)، والـ route schema الكامل في [`evidence/frontend-routes.json`](evidence/frontend-routes.json). روابط الصور تحت `screens/` متطابقة مع أسماء الملفات في الـ manifest.
+- الـ manifest فيه **68 concrete route** وكل واحدة متصورة EN وAR، يعني **136 route/locale screenshot موجودة**. إجمالي مجموعة الصور الفعلية **240 screenshot فريدة**: 136 route/locale pairs، والباقي حالات modes/tabs/pending. الـ raw log فيه محاولات selector فاشلة، فمش بنحسبه كـ screenshot inventory ولا كدليل نجاح. الـ parent هيولّد `BROWSER-INVENTORY.md` و`screens/README` من أحدث الصور الفعلية.
+- محاولات Create غير الصالحة Graphic Layout، Ad Concept Short، Explainer، وUGC Clip اتحذفت صورها واتشالت من route-state evidence والروابط؛ لا تعتبرها حالات مصورة.
+- بيانات التقاط المتصفح في [`evidence/browser-captures.jsonl`](evidence/browser-captures.jsonl)، والـ route schema الكامل في [`evidence/frontend-routes.json`](evidence/frontend-routes.json). روابط route EN/AR تشير إلى صورها؛ parent هيولّد `BROWSER-INVENTORY.md` و`screens/README` لقائمة أحدث 240 صورة فريدة. الـ raw JSONL يحتفظ بمحاولات selector فاشلة ولا يُعامل كقائمة screenshots ناجحة.
 
 ## جرد كل المسارات واللقطات
 
@@ -98,8 +98,10 @@
 
 ## ملاحظات browser مهمّة
 
-- `/api-keys` كرابط مباشر رجّع backend `{"detail":"Not Found"}` في EN وAR (اللقطات `api-keys-en.png` و`api-keys-ar.png`). في إعداد Vite المحلي، proxy البادئة `/api` بتلتقط المسار ده. فيه capture منفصل لـ SPA navigation جوه React في JSON؛ افحص direct URL والتنقل الداخلي كمسارين منفصلين، وما تعتبرش الـ 404 دليل إن component نفسه بيرندر كده.
-- حسب ملاحظة الـ parent، `/admin` و`/dashboard` ظهروا لسه loading بعد حوالي ثانية. الـ manifest فيه captures منفصلة باسم `tab-settled` للغتين، لكن مافيش دليل sustained كفاية على صحة الخدمة؛ ما نوصفش المسارين `broken` من الملاحظة دي لوحدها.
+- مصدر الصور المعتمد هو مجموعة الـ 240 screenshot الفريدة الحالية، مش عدد أسطر `browser-captures.jsonl`. الـ raw log يحتفظ بمحاولات selectors الفاشلة للتشخيص فقط. حالات Create invalid mode (Graphic Layout/Ad Concept Short/Explainer/UGC Clip) صورها اتحذفت ومش متربطة هنا.
+
+- `/api-keys` direct URL أظهر backend `{"detail":"Not Found"}`، وفيه SPA navigation مختلفة. تفسير الفرق والسبب الجذري لسه pending؛ ما ننسبش السبب للـ Vite proxy قبل تأكيده.
+- حسب لقطات `/admin` و`/dashboard` أظهرت loading أولاً ثم توجد لقطات settled لاحقة؛ لا تثبت الصور وحدها استمرار العطل أو سببه الجذري، والتحقيق في السبب لسه pending.
 - الـ DB فاضية وdisposable؛ لذلك empty lists أو بيانات غير ظاهرة مش دليل إن endpoint فاشل. كل اللقطات تثبت شكل الحالة اللي اتصورت فقط، مش نجاح provider أو استمرارية البيانات.
 
 ## Source-only supplement: maturity والـ navigation
@@ -126,4 +128,4 @@
 
 - اللي اتراجع هو app source snapshot `eab70cc`؛ docs branch HEAD `af5cdf9` متسجل منفصل. ما اتعدّلتش ملفات التطبيق، وما اتصلناش بـ production أو provider credentials أو production DB.
 - لسه غير متحقق: هل `/admin` و`/dashboard` يخلصوا بعد انتظار أطول؛ نجاح APIs/providers على بيانات حقيقية؛ persistence وtenant isolation؛ behavior بتاع `/api-keys` خارج Vite المحلي؛ واختبارات accessibility التفاعلية الكاملة.
-- أولوية متابعة واحدة: إصلاح deep-link handling من غير كسر `/api/*` proxy، وبعدها إعادة فحص `/api-keys` direct URL وSPA navigation كل واحد لوحده.
+- السبب الجذري الحالي لأي مشكلة في `/api-keys` أو loading لسه pending؛ ما نعلنش إصلاح أو سبب قبل استكمال تحقق الـ parent.
