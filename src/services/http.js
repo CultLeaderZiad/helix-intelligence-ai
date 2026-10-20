@@ -117,13 +117,12 @@ export async function request(path, options = {}) {
   }
 }
 
-async function requestAttempt(path, options, retryCount = 0) {
+async function requestAttempt(path, options, retryCount = 0, sessionToken = getAccessToken()) {
   const { method = "GET", params, body, signal, headers: extraHeaders } = options
   if (signal.aborted) throw abortError(signal)
   const url = `${API_BASE_URL}${path}${buildQuery(params)}`
 
-  const token = getAccessToken()
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+  const authHeader = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}
 
   const upperMethod = (method || "GET").toUpperCase()
   const isIdempotentMethod = upperMethod === "GET" || upperMethod === "HEAD" || upperMethod === "OPTIONS"
@@ -158,7 +157,7 @@ async function requestAttempt(path, options, retryCount = 0) {
     if (isSafeToRetry && retryCount < 6) {
       const delay = Math.min(3500, 1000 * Math.pow(1.3, retryCount))
       await retryDelay(delay, signal)
-      return requestAttempt(path, options, retryCount + 1)
+      return requestAttempt(path, options, retryCount + 1, sessionToken)
     }
 
     throw new ServiceError(
@@ -176,7 +175,7 @@ async function requestAttempt(path, options, retryCount = 0) {
   if (isSafeToRetry && [502, 503, 504].includes(res.status) && !isJsonError && retryCount < 8) {
     const delay = Math.min(4000, 1200 * Math.pow(1.3, retryCount))
     await retryDelay(delay, signal)
-    return requestAttempt(path, options, retryCount + 1)
+    return requestAttempt(path, options, retryCount + 1, sessionToken)
   }
 
   if (!res.ok) {
@@ -214,7 +213,7 @@ async function requestAttempt(path, options, retryCount = 0) {
     // Only dispatch unauthorized event for non-auth endpoints!
     // Never trigger sign-out while the user is actively on sign-in, sign-up, or session checks!
     const isAuthRoute = path.startsWith("/auth/") || path === "/auth"
-    if (res.status === 401 && !isAuthRoute) {
+    if (res.status === 401 && !isAuthRoute && getAccessToken() === sessionToken) {
       window.dispatchEvent(new CustomEvent("helix:unauthorized"))
     }
 
@@ -257,6 +256,10 @@ export async function uploadFile(path, formData, options = {}) {
       const payload = await res.json()
       detail = payload?.detail ?? payload?.message ?? detail
     } catch {}
+    const isAuthRoute = path.startsWith("/auth/") || path === "/auth"
+    if (res.status === 401 && !isAuthRoute && getAccessToken() === token) {
+      window.dispatchEvent(new CustomEvent("helix:unauthorized"))
+    }
     throw new ServiceError(typeof detail === "string" ? detail : "Upload failed", { status: res.status })
   }
 
