@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 import uuid
 import sqlalchemy as sa
 from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Float, JSON, Index, func
-from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 def generate_uuid():
@@ -19,6 +18,7 @@ class ScrapeJob(Base):
     status = Column(String, default="queued") # 'queued' | 'running' | 'succeeded' | 'failed'
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+    deadline_at = Column(DateTime(timezone=True), nullable=True)
     record_count = Column(Integer, default=0)
     
     # extra fields for frontend contract matching
@@ -45,6 +45,7 @@ class ScrapeJob(Base):
     entity_profile = Column(JSON, nullable=True)
 
     __table_args__ = (
+        Index("ix_scrape_jobs_active_deadline", "deadline_at", postgresql_where=sa.text("status IN ('queued', 'running') AND deadline_at IS NOT NULL")),
         Index("ix_scrape_jobs_org_status_created", "org_id", "status", "created_at"),
         Index("uq_scrape_jobs_active_identity", "org_id", "cache_identity", unique=True,
               postgresql_where=sa.text("status IN ('queued', 'running') AND cache_identity IS NOT NULL")),
