@@ -1,401 +1,67 @@
 import { useState } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { LogOut, Bookmark, CreditCard, Users, Key, Shield, HelpCircle, UserCheck, MessageSquare, Settings, Bell, Activity, BookOpen } from "lucide-react"
+import { LogOut, Shield, HelpCircle, Settings, Bell, BookOpen, KeyRound, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
+import { authService } from "@/services"
 import { NAV_SECTIONS } from "./navigation"
-import { KeyHint } from "@/components/ui/KeyHint"
 import { NotificationBell } from "@/components/NotificationBell"
+import { ONBOARDING_TOUR_RESTART_EVENT } from "@/i18n/w5Onboarding"
 
-export function Sidebar({ onOpenCommand, className }) {
+export function Sidebar({ className = "", onOpenCommand = null }) {
   const { user, signOut, updateUser } = useAuth()
   const { t } = useLanguage()
-  const [signingOut, setSigningOut] = useState(false)
   const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
+  const [tourError, setTourError] = useState(false)
+  const links = [
+    ...NAV_SECTIONS.map((section) => ({ ...section, text: t(section.key, section.label) })),
+    { path: "/access", text: t("accessUsage"), icon: KeyRound },
+    { path: "/docs", text: t("docsNavigation"), icon: BookOpen },
+    { path: "/support", text: t("supportNavigation"), icon: MessageSquare },
+    { path: "/settings", text: t("settingsNavigation"), icon: Settings },
+    { path: "/notifications", text: t("updatesNavigation"), icon: Bell },
+    ...(user?.role === "admin" ? [{ path: "/admin", text: t("adminConsoleLabel"), icon: Shield }] : []),
+  ]
 
-  function handleRestartTour() {
-    updateUser({ has_completed_onboarding: false })
-    navigate("/discover")
-  }
-
-  async function handleSignOut() {
-    setSigningOut(true)
+  async function restartTour() {
+    setTourError(false)
+    setBusy(true)
     try {
-      await signOut()
-    } finally {
-      setSigningOut(false)
-    }
+      await authService.restartOnboarding()
+      updateUser({ has_completed_onboarding: false })
+      if (window.location.pathname === "/discover") {
+        window.dispatchEvent(new CustomEvent(ONBOARDING_TOUR_RESTART_EVENT, { detail: { persisted: true } }))
+      } else navigate("/discover?tour=restart")
+    } catch { setTourError(true) }
+    finally { setBusy(false) }
   }
-
-  const flags = user?.feature_flags || {}
-  const showSwipeFiles = flags.swipe_files === true
-  const showTeam = flags.team_accounts === true
-  const showApiKeys = flags.public_api === true
 
   return (
-    <nav
-      className={cn(
-        "flex w-[210px] shrink-0 flex-col border-r border-border bg-surface select-none",
-        className,
-      )}
-      aria-label="Primary"
-    >
-      <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
-        <div className="flex items-center gap-2">
-          <img
-            src="/brand/helix-mark.svg"
-            alt="Helix"
-            className="h-4 w-4 shrink-0 rounded-[3px] object-contain"
-          />
-          <span className="truncate text-[13px] font-bold tracking-tight text-text font-mono">
-            {t("brandName", "Helix Intelligence")}
-          </span>
-        </div>
+    <nav className={cn("flex w-[210px] shrink-0 flex-col border-e border-border bg-surface select-none", className)} aria-label={t("primaryNavigation")}>
+      <NavLink to="/discover" className="flex h-12 items-center gap-2 border-b border-border px-3 font-semibold">
+        <img src="/brand/helix-mark.svg" alt="" className="h-5 w-5" />Helix Intelligence
+      </NavLink>
+      <div className="flex-1 space-y-1 overflow-y-auto p-2">
+        <p className="label-mono px-2 py-2 text-text-faint">{t("workspaceNavigation")}</p>
+        {onOpenCommand && <button type="button" onClick={onOpenCommand} className="w-full px-2 py-2 text-start text-sm text-text-muted hover:text-text">{t("searchAction")}</button>}
+        {links.map(({ path, text, icon: Icon }) => (
+          <NavLink key={path} to={path} id={path === "/discover" ? "tour-discover-nav" : undefined}
+            className={({ isActive }) => cn("flex items-center gap-2 rounded-sm px-2 py-2 text-sm", isActive ? "bg-surface-3 font-semibold text-text" : "text-text-muted hover:bg-surface-2 hover:text-text")}>
+            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" /><span>{text}</span>
+          </NavLink>
+        ))}
       </div>
-
-      <div className="flex flex-1 flex-col gap-0.5 overflow-y-auto p-2">
-        <p className="label-mono px-1.5 pb-1.5 pt-1 text-text-faint">{t("loops", "LOOPS")}</p>
-        {NAV_SECTIONS.map((section) => {
-          const label = t(section.key, section.label)
-          return (
-            <NavLink
-              key={section.key}
-              to={section.path}
-              id={section.path === "/discover" ? "tour-discover-nav" : undefined}
-              className={({ isActive }) =>
-                cn(
-                  "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-                  isActive
-                    ? "bg-surface-3 text-text font-semibold shadow-xs"
-                    : "text-text-muted hover:bg-surface-2 hover:text-text",
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <section.icon
-                    className={cn(
-                      "h-4 w-4 shrink-0",
-                      isActive ? "text-accent" : "text-text-faint",
-                    )}
-                    aria-hidden="true"
-                  />
-                  <span className="flex-1 truncate">{label}</span>
-                </>
-              )}
-            </NavLink>
-          )
-        })}
-
-        <p className="label-mono px-1.5 pb-1.5 pt-4 text-text-faint">{t("workspace", "WORKSPACE")}</p>
-
-        {showSwipeFiles && (
-          <NavLink
-            to="/swipe-files"
-            className={({ isActive }) =>
-              cn(
-                "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-                isActive
-                  ? "bg-surface-3 text-text font-semibold shadow-xs"
-                  : "text-text-muted hover:bg-surface-2 hover:text-text",
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Bookmark
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    isActive ? "text-accent" : "text-text-faint",
-                  )}
-                />
-                <span className="flex-1 truncate">{t("swipeFiles", "Swipe Files")}</span>
-              </>
-            )}
-          </NavLink>
-        )}
-
-        <NavLink
-          to="/dashboard"
-          className={({ isActive }) =>
-            cn(
-              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-              isActive
-                ? "bg-surface-3 text-text font-semibold shadow-xs"
-                : "text-text-muted hover:bg-surface-2 hover:text-text",
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <Activity
-                className={cn(
-                  "h-4 w-4 shrink-0",
-                  isActive ? "text-accent" : "text-text-faint",
-                )}
-              />
-              <span className="flex-1 truncate">{t("dashboard", "Dashboard")}</span>
-            </>
-          )}
-        </NavLink>
-
-        <NavLink
-          to="/guide"
-          className={({ isActive }) =>
-            cn(
-              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-              isActive
-                ? "bg-surface-3 text-text font-semibold shadow-xs"
-                : "text-text-muted hover:bg-surface-2 hover:text-text",
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <HelpCircle
-                className={cn(
-                  "h-4 w-4 shrink-0",
-                  isActive ? "text-accent" : "text-text-faint",
-                )}
-              />
-              <span className="flex-1 truncate">{t("guide", "App Guide & Loops")}</span>
-            </>
-          )}
-        </NavLink>
-
-        <NavLink
-          to="/docs"
-          className={({ isActive }) =>
-            cn(
-              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-              isActive
-                ? "bg-surface-3 text-text font-semibold shadow-xs"
-                : "text-text-muted hover:bg-surface-2 hover:text-text",
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <BookOpen
-                className={cn(
-                  "h-4 w-4 shrink-0",
-                  isActive ? "text-accent" : "text-text-faint",
-                )}
-              />
-              <span className="flex-1 truncate">{t("docs", "Docs & API Reference")}</span>
-            </>
-          )}
-        </NavLink>
-
-        <NavLink
-          to="/billing"
-          className={({ isActive }) =>
-            cn(
-              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-              isActive
-                ? "bg-surface-3 text-text font-semibold shadow-xs"
-                : "text-text-muted hover:bg-surface-2 hover:text-text",
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <CreditCard
-                className={cn(
-                  "h-4 w-4 shrink-0",
-                  isActive ? "text-accent" : "text-text-faint",
-                )}
-              />
-              <span className="flex-1 truncate">{t("billing", "Billing & Meter")}</span>
-            </>
-          )}
-        </NavLink>
-
-        <NavLink
-          to="/support"
-          className={({ isActive }) =>
-            cn(
-              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-              isActive
-                ? "bg-surface-3 text-text font-semibold shadow-xs"
-                : "text-text-muted hover:bg-surface-2 hover:text-text",
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <MessageSquare
-                className={cn(
-                  "h-4 w-4 shrink-0",
-                  isActive ? "text-accent" : "text-text-faint",
-                )}
-              />
-              <span className="flex-1 truncate">{t("support", "Support & Feedback")}</span>
-            </>
-          )}
-        </NavLink>
-
-        <NavLink
-          to="/settings"
-          className={({ isActive }) =>
-            cn(
-              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-              isActive
-                ? "bg-surface-3 text-text font-semibold shadow-xs"
-                : "text-text-muted hover:bg-surface-2 hover:text-text",
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <Settings
-                className={cn(
-                  "h-4 w-4 shrink-0",
-                  isActive ? "text-accent" : "text-text-faint",
-                )}
-              />
-              <span className="flex-1 truncate">{t("settings", "Profile & Settings")}</span>
-            </>
-          )}
-        </NavLink>
-
-        <NavLink
-          to="/notifications"
-          className={({ isActive }) =>
-            cn(
-              "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-              isActive
-                ? "bg-surface-3 text-text font-semibold shadow-xs"
-                : "text-text-muted hover:bg-surface-2 hover:text-text",
-            )
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <Bell
-                className={cn(
-                  "h-4 w-4 shrink-0",
-                  isActive ? "text-accent" : "text-text-faint",
-                )}
-              />
-              <span className="flex-1 truncate">{t("messages", "Messages & Updates")}</span>
-            </>
-          )}
-        </NavLink>
-
-        {showTeam && (
-          <NavLink
-            to="/team"
-            className={({ isActive }) =>
-              cn(
-                "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-                isActive
-                  ? "bg-surface-3 text-text font-semibold shadow-xs"
-                  : "text-text-muted hover:bg-surface-2 hover:text-text",
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Users
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    isActive ? "text-accent" : "text-text-faint",
-                  )}
-                />
-                <span className="flex-1 truncate">{t("team", "Team Members")}</span>
-              </>
-            )}
-          </NavLink>
-        )}
-
-        {showApiKeys && (
-          <NavLink
-            to="/api-keys"
-            className={({ isActive }) =>
-              cn(
-                "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
-                isActive
-                  ? "bg-surface-3 text-text font-semibold shadow-xs"
-                  : "text-text-muted hover:bg-surface-2 hover:text-text",
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Key
-                  className={cn(
-                    "h-4 w-4 shrink-0",
-                    isActive ? "text-accent" : "text-text-faint",
-                  )}
-                />
-                <span className="flex-1 truncate">{t("apiKeys", "API Keys")}</span>
-              </>
-            )}
-          </NavLink>
-        )}
-
-        {user?.role === "admin" && (
-          <NavLink
-            to="/admin"
-            className={({ isActive }) =>
-              cn(
-                "group flex items-center gap-2 rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors mt-2 border-t border-border/50 pt-2",
-                isActive
-                  ? "bg-amber-500/10 text-amber-300 font-bold"
-                  : "text-amber-400/80 hover:bg-surface-2 hover:text-amber-300",
-              )
-            }
-          >
-            <Shield className="h-4 w-4 shrink-0 text-amber-400" />
-            <span className="flex-1 truncate">{t("adminConsole", "Admin Center")}</span>
-          </NavLink>
-        )}
-      </div>
-
-      <div className="flex shrink-0 flex-col gap-2 border-t border-border p-2">
-        <div className="flex items-center gap-2 px-1.5">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-text">{user?.name || user?.email}</p>
-            <div className="flex items-center gap-1.5">
-              <span className="truncate font-mono text-[10px] uppercase tracking-[0.08em] text-text-faint">
-                {user?.role}
-              </span>
-              {user?.credit_balance !== undefined && (
-                <span className="text-[10px] font-mono text-accent font-bold">
-                  · {Number(user.credit_balance || 0).toFixed(1)}cr
-                </span>
-              )}
-            </div>
-          </div>
-
-          <NotificationBell />
-
-          <button
-            type="button"
-            onClick={handleRestartTour}
-            className="rounded-sm p-1.5 text-text-faint transition-colors hover:bg-surface-2 hover:text-text"
-            aria-label="Help & Tour"
-            title="Help & Tour"
-          >
-            <HelpCircle className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="rounded-sm p-1.5 text-text-faint transition-colors hover:bg-surface-2 hover:text-text disabled:cursor-wait disabled:opacity-50"
-            aria-label={signingOut ? "Signing out" : "Sign out"}
-            title="Sign out"
-          >
-            <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
+      <div className="space-y-2 border-t border-border p-3">
+        <p className="truncate text-xs text-text-muted">{user?.name || user?.email}</p>
+        {tourError && <p role="alert" className="text-xs text-danger">{t("tourRestartFailed")}</p>}
+        <div className="flex items-center gap-3">
+          <NotificationBell className="" />
+          <button type="button" onClick={restartTour} disabled={busy} aria-label={t("helpTour")} title={t("helpTour")} className="text-text-muted hover:text-text disabled:opacity-50"><HelpCircle className="h-4 w-4" /></button>
+          <button type="button" onClick={signOut} aria-label={t("logout")} title={t("logout")} className="text-text-muted hover:text-text"><LogOut className="h-4 w-4" /></button>
         </div>
       </div>
     </nav>
   )
 }
-
-export default Sidebar
