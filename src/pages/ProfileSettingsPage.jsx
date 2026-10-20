@@ -1,12 +1,18 @@
 import React, { useState, useEffect, useRef } from "react"
-import { User, Mail, Lock, Camera, CheckCircle2, AlertCircle, Save, Shield, Eye, EyeOff } from "lucide-react"
-import { accountService } from "../services"
+import { User, Mail, Lock, Camera, CheckCircle2, AlertCircle, Save, Shield, Eye, EyeOff, RotateCcw } from "lucide-react"
+import { accountService, authService } from "../services"
 import { useAuth } from "../context/AuthContext"
+import { useLanguage } from "../context/LanguageContext"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
+import { getW5OnboardingText, ONBOARDING_TOUR_RESTART_EVENT } from "../i18n/w5Onboarding"
 
 export function ProfileSettingsPage() {
   const { user, refreshSession } = useAuth()
+  const { lang, t } = useLanguage()
   const fileInputRef = useRef(null)
+  const [isRestartingTour, setIsRestartingTour] = useState(false)
+
+  const onboardingText = (key) => t(key, getW5OnboardingText(lang, key))
 
   const [profile, setProfile] = useState({
     full_name: "",
@@ -106,6 +112,26 @@ export function ProfileSettingsPage() {
       setErrorMessage(typeof detail === "string" ? detail : "Failed to update profile.")
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleRestartTour = async () => {
+    setErrorMessage("")
+    setSuccessMessage("")
+    setIsRestartingTour(true)
+    try {
+      await authService.restartOnboarding()
+      if (refreshSession) await refreshSession()
+      window.dispatchEvent(
+        new CustomEvent(ONBOARDING_TOUR_RESTART_EVENT, {
+          detail: { source: "settings", persisted: true },
+        }),
+      )
+      setSuccessMessage(onboardingText("w5_settings_tour_success"))
+    } catch (error) {
+      setErrorMessage(error?.message || onboardingText("w5_settings_tour_error"))
+    } finally {
+      setIsRestartingTour(false)
     }
   }
 
