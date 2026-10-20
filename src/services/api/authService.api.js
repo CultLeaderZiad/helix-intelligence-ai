@@ -1,6 +1,5 @@
 import { request, ServiceError } from "../http"
 import {
-  clearCachedUser,
   clearSession,
   getAccessToken,
   getCachedUser as readCachedUser,
@@ -35,8 +34,23 @@ function storeToken(token) {
 }
 
 export function clearAllTenantStorage() {
+  notifySessionClearing()
   clearSession()
-  clearCachedUser()
+}
+
+function notifySessionClearing() {
+  if (typeof window === "undefined") return
+  try {
+    window.dispatchEvent(new Event("helix:session-clearing"))
+  } catch {
+    // Session cleanup must still proceed if event dispatch is unavailable.
+  }
+}
+
+function storeSession(token, user) {
+  clearAllTenantStorage()
+  if (user) storeUser(user)
+  storeToken(token)
 }
 
 function clearToken() {
@@ -123,9 +137,8 @@ const authService = {
       })
     }
 
-    storeToken(session.access_token)
     const user = sessionToUser(session)
-    storeUser(user)
+    storeSession(session.access_token, user)
     return { user }
   },
 
@@ -158,9 +171,8 @@ const authService = {
       })
     }
 
-    storeToken(session.access_token)
     const user = sessionToUser(session, cleanName)
-    storeUser(user)
+    storeSession(session.access_token, user)
     return { user }
   },
 
@@ -168,6 +180,7 @@ const authService = {
    * Sign out — always clears local token and cached profile.
    */
   async signOut() {
+    notifySessionClearing()
     try {
       await request("/auth/sign-out", { method: "POST" })
     } catch {
@@ -206,8 +219,19 @@ const authService = {
         code: "no_token",
       })
     }
-    storeToken(session.access_token)
-    return { user: sessionToUser(session) }
+    const user = sessionToUser(session)
+    storeSession(session.access_token, user)
+    return { user }
+  },
+
+  switchToImpersonatedSession(token) {
+    if (!token) {
+      throw new ServiceError("Impersonation did not return an access token", {
+        code: "no_token",
+      })
+    }
+    clearAllTenantStorage()
+    storeToken(token)
   },
 
   /**
