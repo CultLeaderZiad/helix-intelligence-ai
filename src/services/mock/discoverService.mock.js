@@ -21,6 +21,11 @@ import { delay, maybeFail, makeId } from "./latency"
 const jobStore = new Map()
 
 const TOTAL_WEIGHT = DISCOVERY_STAGES.reduce((sum, s) => sum + s.weight, 0)
+const TERMINAL_JOB_STATUSES = new Set(["succeeded", "failed", "cancelled", "timed_out"])
+
+function isTerminalJobStatus(status) {
+  return TERMINAL_JOB_STATUSES.has(status)
+}
 
 /* ------------------------------------------------------------------ */
 /* Query engine — stands in for what SQL/Elastic will do server-side  */
@@ -83,7 +88,7 @@ const SORTERS = {
   composite_desc: (a, b) => (b.scores?.composite ?? -1) - (a.scores?.composite ?? -1),
   hook_desc: (a, b) => (b.scores?.hook ?? -1) - (a.scores?.hook ?? -1),
   days_active_desc: (a, b) => (b.days_active ?? 0) - (a.days_active ?? 0),
-  first_seen_desc: (a, b) => new Date(b.first_seen) - new Date(a.first_seen),
+  first_seen_desc: (a, b) => Date.parse(b.first_seen) - Date.parse(a.first_seen),
   impressions_desc: (a, b) =>
     (b.metrics?.impressions_est ?? 0) - (a.metrics?.impressions_est ?? 0),
 }
@@ -103,6 +108,8 @@ function runQuery({ query, filters, sort }) {
 function deriveJob(record) {
   const now = Date.now()
   const elapsed = now - record.started_at
+
+  if (record.terminal_job) return record.terminal_job
 
   if (record.forced_error) {
     return {
@@ -175,6 +182,10 @@ const discoverService = {
    * @param {import('../contracts').SearchParams} params
    * @returns {Promise<import('../contracts').Job>}
    */
+  /**
+   * @param {import('../contracts').SearchParams} [params]
+   * @param {{signal?: AbortSignal}} [options]
+   */
   async search(params = {}, { signal } = {}) {
     await delay(220, { signal })
     maybeFail("Could not reach discovery orchestrator")
@@ -220,6 +231,7 @@ const discoverService = {
    * @param {string} jobId
    * @returns {Promise<import('../contracts').Job>}
    */
+  /** @param {string} jobId @param {{signal?: AbortSignal}} [options] */
   async getJobStatus(jobId, { signal } = {}) {
     await delay(90, { signal })
     const record = jobStore.get(jobId)
@@ -232,10 +244,34 @@ const discoverService = {
     return deriveJob(record)
   },
 
+  /** @param {string} jobId */
+  async cancelJob(jobId) {
+    const record = jobStore.get(jobId)
+    if (!record) {
+      throw new ServiceError(`Job ${jobId} not found`, {
+        status: 404,
+        code: "job_not_found",
+      })
+    }
+
+    const current = deriveJob(record)
+    if (isTerminalJobStatus(current.status)) return current
+
+    record.terminal_job = {
+      ...current,
+      status: "cancelled",
+      stage_label: "Cancelled",
+      completed_at: new Date().toISOString(),
+      error: null,
+    }
+    return record.terminal_job
+  },
+
   /**
    * Fetch a page of a completed job's results.
    * @param {string} jobId
    * @param {{ page?: number, page_size?: number, sort?: string }} [opts]
+   * @param {{signal?: AbortSignal}} [options]
    * @returns {Promise<import('../contracts').Paginated>}
    */
   async getJobResults(jobId, opts = {}, { signal } = {}) {
@@ -293,7 +329,7 @@ const discoverService = {
     await delay(140)
     const live = [...jobStore.values()]
       .map(deriveJob)
-      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))
       .slice(0, 5)
       .map((j) => ({
         job_id: j.job_id,
