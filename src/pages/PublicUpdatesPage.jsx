@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { PublicHeader } from "@/app/PublicHeader"
 import { MarketingFooter } from "@/features/marketing/MarketingFooter"
 import { updatesService } from "@/services"
+import { useLanguage } from "@/context/LanguageContext"
+import { w5Support } from "@/i18n/w5Support"
 import {
   Clock,
   Tag,
@@ -9,8 +11,6 @@ import {
   ExternalLink,
   Sparkles,
   RefreshCw,
-  SlidersHorizontal,
-  ChevronRight,
   BookOpen,
   X
 } from "lucide-react"
@@ -19,17 +19,14 @@ import { cn } from "@/lib/utils"
 /**
  * Formats a date into a clean YYYY-MM-DD or standard display date.
  */
-function formatPublishDate(dateStr) {
-  if (!dateStr) return "Recently"
+function formatPublishDate(dateStr, lang, recently) {
+  if (!dateStr) return recently
   try {
     const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return String(dateStr)
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, "0")
-    const day = String(d.getDate()).padStart(2, "0")
-    return `${year}-${month}-${day}`
+    if (isNaN(d.getTime())) return recently
+    return d.toLocaleDateString(lang === "ar" ? "ar" : "en", { dateStyle: "medium" })
   } catch {
-    return String(dateStr)
+    return recently
   }
 }
 
@@ -41,7 +38,7 @@ function formatPublishDate(dateStr) {
  * - Headings starting with ### or emoji
  * - Bullet lists
  */
-function RichUpdateBody({ text, linkUrl }) {
+function RichUpdateBody({ text, linkUrl, documentationLabel }) {
   if (!text) return null
 
   // Split lines
@@ -166,7 +163,7 @@ function RichUpdateBody({ text, linkUrl }) {
             className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-elevated/70 border border-border hover:border-accent/50 text-xs font-mono text-accent transition-all group"
           >
             <BookOpen className="h-3.5 w-3.5 text-accent group-hover:scale-105 transition-transform" />
-            <span>Documentation & Quick Start</span>
+            <span>{documentationLabel}</span>
             <ExternalLink className="h-3 w-3 text-text-faint group-hover:text-accent ml-0.5" />
           </a>
         </div>
@@ -176,28 +173,35 @@ function RichUpdateBody({ text, linkUrl }) {
 }
 
 export function PublicUpdatesPage() {
+  const { lang, t } = useLanguage()
+  const words = w5Support[lang] || w5Support.en
+  const text = (key) => t(key, words[key] || w5Support.en[key] || key)
   const [updates, setUpdates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
+  const requestInFlight = useRef(false)
 
-  const fetchUpdates = async () => {
+  const fetchUpdates = useCallback(async () => {
+    if (requestInFlight.current) return
+    requestInFlight.current = true
     setLoading(true)
     setError(null)
     try {
       const data = await updatesService.getPublishedUpdates()
       setUpdates(Array.isArray(data) ? data : [])
     } catch (err) {
-      setError(err.message || "Failed to load platform updates")
+      setError(typeof err?.message === "string" && err.message ? err.message : text("updatesLoadFailed"))
     } finally {
+      requestInFlight.current = false
       setLoading(false)
     }
-  }
+  }, [lang, t])
 
   useEffect(() => {
-    fetchUpdates()
-  }, [])
+    void fetchUpdates()
+  }, [fetchUpdates])
 
   // Extract unique categories from updates
   const categories = useMemo(() => {
@@ -230,7 +234,7 @@ export function PublicUpdatesPage() {
   }, [updates, searchQuery, selectedCategory])
 
   return (
-    <div className="flex min-h-dvh flex-col bg-bg text-text selection:bg-accent selection:text-bg font-sans">
+    <div className="flex min-h-dvh flex-col bg-bg text-text selection:bg-accent selection:text-bg font-sans" dir={lang === "ar" ? "rtl" : "ltr"}>
       {/* Main App Public Header */}
       <PublicHeader />
 
@@ -239,14 +243,13 @@ export function PublicUpdatesPage() {
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-14">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-accent/30 bg-accent/10 text-accent text-xs font-mono mb-4">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>Changelog & System Releases</span>
+            <span>{text("changelogLabel")}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-text">
-            Platform Updates
+            {text("updatesTitle")}
           </h1>
           <p className="mt-3 text-sm sm:text-base text-text-muted leading-relaxed">
-            Follow the latest engine releases, ad intelligence scrapers, AI model additions,
-            and API features built for Helix Intelligence.
+            {text("updatesDescription")}
           </p>
         </div>
 
@@ -257,14 +260,18 @@ export function PublicUpdatesPage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-text-faint" />
             <input
               type="text"
+              aria-label={text("searchUpdates")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for updates... (Press enter to search)"
+              placeholder={text("searchUpdates")}
               className="w-full pl-10 pr-9 py-2 rounded-xl bg-bg/80 border border-border/80 text-xs sm:text-sm text-text placeholder:text-text-faint focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent transition-all font-sans"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
+                type="button"
+                aria-label={text("clearSearch")}
+                title={text("clearSearch")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-text-faint hover:text-text p-0.5"
                 title="Clear search"
               >
@@ -288,7 +295,7 @@ export function PublicUpdatesPage() {
                       : "bg-surface border-border text-text-muted hover:text-text hover:border-border-strong"
                   )}
                 >
-                  {cat}
+                  {cat === "All" ? text("allCategories") : cat}
                 </button>
               )
             })}
@@ -297,7 +304,8 @@ export function PublicUpdatesPage() {
 
         {/* Content Section */}
         {loading ? (
-          <div className="space-y-6">
+          <div role="status" aria-label={text("loadingUpdates")} className="space-y-6">
+            <span className="sr-only">{text("loadingUpdates")}</span>
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
@@ -321,16 +329,23 @@ export function PublicUpdatesPage() {
             <p className="text-sm text-red-400">{error}</p>
             <button
               onClick={fetchUpdates}
+              type="button"
+              disabled={loading}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface border border-border text-xs font-mono text-text hover:border-accent transition-colors"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              <span>Retry loading updates</span>
+              <span>{text("retryUpdates")}</span>
             </button>
+          </div>
+        ) : updates.length === 0 ? (
+          <div className="rounded-2xl border border-border/80 bg-surface/40 p-12 text-center space-y-3">
+            <p className="text-base font-semibold text-text">{text("noUpdatesTitle")}</p>
+            <p className="text-sm text-text-muted">{text("noUpdatesDescription")}</p>
           </div>
         ) : filteredUpdates.length === 0 ? (
           <div className="rounded-2xl border border-border/80 bg-surface/40 p-12 text-center space-y-3">
             <p className="text-sm text-text-muted">
-              No updates match your search criteria.
+              {text("noSearchResults")}
             </p>
             {(searchQuery || selectedCategory !== "All") && (
               <button
@@ -339,15 +354,15 @@ export function PublicUpdatesPage() {
                   setSelectedCategory("All")
                 }}
                 className="text-xs font-mono text-accent hover:underline inline-flex items-center gap-1"
-              >
-                Clear all filters
+                >
+                  {text("clearFilters")}
               </button>
             )}
           </div>
         ) : (
           <div className="space-y-8">
             {filteredUpdates.map((item) => {
-              const publishDate = formatPublishDate(item.starts_at || item.created_at)
+              const publishDate = formatPublishDate(item.starts_at || item.created_at, lang, text("recently"))
               const category = item.category || "General API"
 
               return (
@@ -376,7 +391,7 @@ export function PublicUpdatesPage() {
                   </h2>
 
                   {/* Body Content with Rich Formatting & Links */}
-                  <RichUpdateBody text={item.body} linkUrl={item.link_url} />
+                  <RichUpdateBody text={item.body} linkUrl={item.link_url} documentationLabel={text("documentation")} />
                 </article>
               )
             })}
