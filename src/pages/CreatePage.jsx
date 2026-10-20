@@ -12,12 +12,12 @@ import {
   Wand2,
   ChevronDown,
   ArrowRight,
-  Lock,
   RefreshCw,
   Settings2,
   Key,
   HelpCircle,
-  Bookmark
+  Bookmark,
+  MessageSquarePlus,
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { creativeService } from "@/services"
@@ -25,7 +25,6 @@ import { useMediaGenerate } from "@/hooks/useMediaGenerate"
 import { useSearchContext } from "@/context/SearchContext"
 import { useAuth } from "@/context/AuthContext"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
-import { MessageSquarePlus } from "lucide-react"
 import { AudienceSimulationPanel } from "@/features/create/AudienceSimulationPanel"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 
@@ -73,7 +72,7 @@ export function CreatePage() {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [showDraftsModal, setShowDraftsModal] = useState(false)
   
-  const { phase, job, result, error, isServiceRestart, submit, cancel, isBusy } = useMediaGenerate()
+  const { job, result, error, isServiceRestart, submit, isBusy } = useMediaGenerate()
 
   const isTrial = user?.plan_id?.startsWith("plan_trial") || user?.plan === "trial" || user?.role !== "admin"
   const isAdmin = user?.role === "admin"
@@ -227,19 +226,15 @@ export function CreatePage() {
     : null
 
   let displayUrl = null
-  let isVideo = false
   if (result) {
     if (result.type === "video" && result.video?.url) {
       displayUrl = result.video.url
-      isVideo = true
     } else if (result.type === "image" && result.image?.url) {
       displayUrl = result.image.url
     } else if (result.url) {
       displayUrl = result.url
-      isVideo = displayUrl.endsWith(".mp4") || displayUrl.includes("video")
     } else if (result.result_url) {
       displayUrl = result.result_url
-      isVideo = displayUrl.endsWith(".mp4")
     } else if (result.images && result.images.length > 0) {
       displayUrl = result.images[0].url
     }
