@@ -1,48 +1,29 @@
 import { useLocation } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
-import { APP_HOME } from "@/app/ProtectedRoute"
+import { useLanguage } from "@/context/LanguageContext"
 import PillNav from "@/components/ui/PillNav"
 import { LanguageSwitcher } from "@/components/LanguageSwitcher"
 import { UpdatesBanner } from "@/components/UpdatesBanner"
 
 export function PublicHeader() {
   const { isAuthenticated } = useAuth()
+  const { t } = useLanguage()
   const location = useLocation()
-
   const isHome = location.pathname === "/"
-  const navItems = [
-    { label: "Product", href: isHome ? "#product" : "/#product" },
-    { label: "Pricing", href: isHome ? "#pricing" : "/#pricing" },
-    { label: "Docs", href: "/docs" },
-    { label: "Updates", href: "/updates" },
-    ...(isAuthenticated
-      ? [{ label: "Console", href: APP_HOME, isPrimary: true }]
-      : [{ label: "Get started", href: "/sign-up", isPrimary: true }]
-    )
+  const items = [
+    { label: t("productNav"), href: isHome ? "#product" : "/#product" },
+    { label: t("accessNav"), href: isHome ? "#pricing" : "/#pricing" },
+    { label: t("docsNavigation"), href: "/docs" },
+    { label: t("updatesNavigation"), href: "/updates" },
+    { label: t(isAuthenticated ? "consoleNav" : "signInNav"), href: isAuthenticated ? "/discover" : "/sign-in", isPrimary: true },
   ]
-
   return (
     <>
       <UpdatesBanner />
-      <header className="sticky top-0 z-50 w-full flex items-center justify-center px-4 pointer-events-auto relative">
-      <PillNav
-        logo="/helix-logo.svg"
-        logoAlt="Helix"
-        items={navItems}
-        activeHref={location.pathname}
-        className="custom-nav"
-        ease="power2.easeOut"
-        baseColor="#0c0d0e"
-        pillColor="#181a1b"
-        hoverCircleColor="#ccff00"
-        hoveredPillTextColor="#000000"
-        pillTextColor="#ffffff"
-        initialLoadAnimation={true}
-      />
-      <div className="absolute right-6 hidden md:block">
+      <header className="relative z-40 flex items-center justify-between gap-3 border-b border-border bg-bg px-4 py-3 sm:px-6">
+        <PillNav logo="/brand/helix-mark.svg" logoAlt="Helix" items={items} activeHref={location.pathname} />
         <LanguageSwitcher />
-      </div>
-    </header>
+      </header>
     </>
   )
 }
