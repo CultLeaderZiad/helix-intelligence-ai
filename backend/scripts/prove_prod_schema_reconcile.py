@@ -16,11 +16,16 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from pathlib import Path
+
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 
 PROD_STAMP = "c4d92e1f7a8b"
 BEFORE_TENANCY = "d5e8c0a1b2f3"
-RLS_DENY_REVISION = "f3d9a7c2b1e4"
+ALEMBIC_CONFIG = Config(str(Path(__file__).resolve().parent.parent / "alembic.ini"))
+RLS_DENY_REVISION = ScriptDirectory.from_config(ALEMBIC_CONFIG).get_current_head()
 DRIFT_DB = os.environ.get("PROVE_DRIFT_DB", "helix_w2_prodlike")
 EMPTY_DB = os.environ.get("PROVE_EMPTY_DB", "helix_w2_emptyproof")
 FAIL_DB = os.environ.get("PROVE_FAIL_DB", "helix_w2_rolefail")
