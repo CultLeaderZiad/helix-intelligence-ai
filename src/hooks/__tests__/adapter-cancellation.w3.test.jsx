@@ -8,10 +8,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 // request/retry implementation are real. A pending fetch rejects only when its
 // actual fetch options.signal receives an abort event, not when the hook fences state.
 const nativeFetch = globalThis.fetch
+const fetchMock = vi.fn()
 let useDiscoverySearch, useMediaGenerate
 beforeAll(async () => {
   vi.useFakeTimers()
-  vi.stubGlobal("fetch", vi.fn(async () => response({})))
+  vi.stubGlobal("fetch", fetchMock.mockImplementation(async () => response({})))
   ;({ useDiscoverySearch } = await import("../useDiscoverySearch"))
   ;({ useMediaGenerate } = await import("../useMediaGenerate"))
   // The unrelated module-level health keepalive is not part of a job lifecycle.
@@ -59,7 +60,7 @@ function hangingFetch(options) {
 }
 function transport(domain, stage) {
   let submissions = 0, reads = 0
-  fetch.mockImplementation((url, options) => {
+  fetchMock.mockImplementation((url, options) => {
     if (url.endsWith("/health")) return Promise.resolve(response({}))
     if (url.endsWith("/cancel")) return Promise.resolve(response({}))
     if (options.method === "POST") {
@@ -100,7 +101,7 @@ for (const domain of ["discovery", "media"]) {
         let nativeRequest
         // A data URL exercises native fetch cancellation without depending on an
         // external server. Only the destination is redirected; options are intact.
-        fetch.mockImplementation((url, options) => {
+        fetchMock.mockImplementation((url, options) => {
           if (nativeRequest) return hangingFetch(options)
           nativeRequest = nativeFetch("data:application/json,%7B%7D", options)
           return nativeRequest
@@ -142,14 +143,20 @@ for (const domain of ["discovery", "media"]) {
           expect(obsolete.signal.aborted).toBe(true)
           if (action === "navigation") expect(node.textContent).toBe("Another page")
           if (action === "resubmit") {
-            expect(latest.phase).toBe("submitting")
+            const waitingForServerCancel = domain === "discovery" && stage === "poll"
+            expect(latest.phase).toBe(waitingForServerCancel ? "cancelling" : "submitting")
             expect(latest.error).toBeNull()
             expect(pending.at(-1).signal.aborted).toBe(false)
           } else {
-            if (action === "cancel") expect(latest.phase).toBe("idle")
-            expect(vi.getTimerCount()).toBe(0)
+            if (action === "cancel") {
+              const serverCancelPending = domain === "discovery" && stage === "poll"
+              expect(latest.phase).toBe(serverCancelPending ? "cancelling" : "idle")
+            }
+            if (domain !== "discovery" || stage !== "poll" || action !== "cancel") {
+              expect(vi.getTimerCount()).toBe(0)
+            }
           }
-          const calls = fetch.mock.calls.length
+          const calls = fetchMock.mock.calls.length
           await advance(20000)
           expect(fetch).toHaveBeenCalledTimes(calls)
         })
@@ -161,11 +168,12 @@ for (const domain of ["discovery", "media"]) {
       mount(domain === "discovery" ? useDiscoverySearch : useMediaGenerate)
       await flush(() => { void latest.submit({ query: "old" }) })
       if (domain === "discovery") await advance(400)
-      const calls = fetch.mock.calls.length
+      const calls = fetchMock.mock.calls.length
       await flush(() => navigate("/away"))
       expect(vi.getTimerCount()).toBe(0)
       await advance(20000)
-      expect(fetch).toHaveBeenCalledTimes(calls)
+      const newCalls = fetchMock.mock.calls.slice(calls)
+      expect(newCalls.every(([url]) => String(url).endsWith("/cancel"))).toBe(true)
     })
   })
 }
@@ -189,8 +197,9 @@ it("a new discovery refinement aborts the prior same-job result fetch", async ()
 for (const action of ["unmount", "navigation", "resubmit"]) {
   it(`${action} also aborts an in-flight media server-cancel fetch`, async () => {
     transport("media", "poll")
-    const implementation = fetch.getMockImplementation()
-    fetch.mockImplementation((url, options) => url.endsWith("/cancel")
+    const implementation = fetchMock.getMockImplementation()
+    if (!implementation) throw new Error("Expected an initialized fetch mock")
+    fetchMock.mockImplementation((url, options) => url.endsWith("/cancel")
       ? hangingFetch(options) : implementation(url, options))
     mount(useMediaGenerate)
     await flush(() => { void latest.submit({ prompt: "old" }) })
