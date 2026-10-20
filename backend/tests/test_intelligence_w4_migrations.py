@@ -17,6 +17,8 @@ import uuid
 
 import asyncpg
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy.engine import make_url
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -95,7 +97,11 @@ def test_alignment_downgrade_helpers_are_module_scoped():
 def test_fresh_chain_preserves_w3_identity_and_rls(disposable_database):
     url = disposable_database
     migrate(url)
-    assert sql(url, "SELECT version_num FROM alembic_version")[0][0] == W4
+    script = ScriptDirectory.from_config(Config(str(BACKEND / "alembic.ini")))
+    heads = script.get_heads()
+    assert len(heads) == 1
+    assert W4 in {revision.revision for revision in script.walk_revisions()}
+    assert sql(url, "SELECT version_num FROM alembic_version")[0][0] == heads[0]
     indexes = {row[0] for row in sql(url, "SELECT indexname FROM pg_indexes WHERE tablename='scrape_jobs'")}
     assert "uq_scrape_jobs_active_identity" in indexes
     assert "uq_scrape_jobs_active_query" not in indexes
