@@ -1,21 +1,23 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './PillNav.css';
+import { useLanguage } from '@/context/LanguageContext';
 
 export const PillNav = ({
   logo,
   logoAlt = 'Logo',
   items = [],
-  activeHref,
+  activeHref = '',
   className = '',
   baseColor = '#0c0d0e',
   pillColor = '#181a1b',
   hoverCircleColor = '#ccff00',
   hoveredPillTextColor = '#000000',
   pillTextColor = '#ffffff',
-  onMobileMenuClick,
+  onMobileMenuClick = null,
   initialLoadAnimation = true
 }) => {
+  const { t } = useLanguage();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuId = useId();
   const menuButtonRef = useRef(null);
@@ -37,6 +39,7 @@ export const PillNav = ({
   }, [isMobileMenuOpen]);
 
   const isExternalLink = (href) => /^(?:https?:|\/\/|mailto:|tel:|#)/.test(href || '');
+  /** @type {import('react').CSSProperties & Record<`--${string}`, string>} */
   const cssVars = {
     '--base': baseColor,
     '--pill-bg': pillColor,
@@ -47,32 +50,30 @@ export const PillNav = ({
 
   const renderLink = (item, mobile = false) => {
     const routerLink = item.href && !isExternalLink(item.href);
-    const Component = routerLink ? Link : 'a';
-    return (
-      <Component
-        {...(routerLink ? { to: item.href } : { href: item.href })}
-        className={mobile
-          ? `mobile-menu-link${activeHref === item.href ? ' is-active' : ''}${item.isPrimary ? ' is-primary' : ''}`
-          : `pill${activeHref === item.href ? ' is-active' : ''}${item.isPrimary ? ' pill-primary' : ''}`}
-        aria-label={item.ariaLabel || item.label}
-        aria-current={activeHref === item.href ? 'page' : undefined}
-        onClick={mobile ? () => setIsMobileMenuOpen(false) : undefined}
-      >
-        {mobile ? item.label : <>
-          <span className="hover-circle" aria-hidden="true" />
-          <span className="label-stack">
-            <span className="pill-label">{item.label}</span>
-            <span className="pill-label-hover" aria-hidden="true">{item.label}</span>
-          </span>
-        </>}
-      </Component>
+    const content = mobile ? item.label : <>
+      <span className="hover-circle" aria-hidden="true" />
+      <span className="label-stack">
+        <span className="pill-label">{item.label}</span>
+        <span className="pill-label-hover" aria-hidden="true">{item.label}</span>
+      </span>
+    </>;
+    const className = mobile
+      ? `mobile-menu-link${activeHref === item.href ? ' is-active' : ''}${item.isPrimary ? ' is-primary' : ''}`
+      : `pill${activeHref === item.href ? ' is-active' : ''}${item.isPrimary ? ' pill-primary' : ''}`;
+    const onClick = mobile ? () => setIsMobileMenuOpen(false) : undefined;
+    return routerLink ? (
+      <Link to={item.href} className={className} aria-label={item.ariaLabel || item.label}
+        aria-current={activeHref === item.href ? 'page' : undefined} onClick={onClick}>{content}</Link>
+    ) : (
+      <a href={item.href} className={className} aria-label={item.ariaLabel || item.label}
+        aria-current={activeHref === item.href ? 'page' : undefined} onClick={onClick}>{content}</a>
     );
   };
 
   return (
     <div className={`pill-nav-container pill-nav-native${initialLoadAnimation ? ' pill-nav-enter' : ''}`}>
-      <nav className={`pill-nav ${className}`} aria-label="Primary" style={cssVars}>
-        <Link className="pill-logo" to="/" aria-label="Helix Home">
+      <nav className={`pill-nav ${className}`} aria-label={t("primaryNavigation")} style={cssVars}>
+        <Link className="pill-logo" to="/" aria-label={t("homeLink")}>
           <img src={logo} alt={logoAlt} />
         </Link>
         <div className="pill-nav-items desktop-only">
