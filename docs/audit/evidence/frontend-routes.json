@@ -1,0 +1,122 @@
+{
+  "audit": {
+    "repository": "CultLeaderZiad/helix-intelligence-ai",
+    "branch": "audit/helix-full",
+    "head": "eab70cc",
+    "comparison": "5b45806",
+    "scope": "Static source audit only; no browser, backend, provider, production data, credentials, or shared Preview accessed.",
+    "statusLegend": {
+      "real": "Source/content and API or static implementation exist; live success is not implied.",
+      "partial": "Some UI/service path exists, but full capability, external provider, or live behavior is incomplete or unverified.",
+      "mock": "Mock adapter selected/configured; not evidence of provider output.",
+      "empty": "Expected not-found/empty state, not a product feature.",
+      "broken": "Use only when a reproducible failure is observed.",
+      "dead": "Use for code/path with no reachable UI entry point."
+    },
+    "browserVerification": "pending-parent-managed-preview",
+    "screenshots": {
+      "status": "pending-parent-capture",
+      "proposedNaming": "route-<slug>__<lang>.png; add __tab-<slug> for selected tab state",
+      "created": []
+    },
+    "routeEvidence": "src/App.jsx:181-256"
+  },
+  "routes": [
+    {"path":"/","audience":"public","purpose":"Marketing landing and product CTA","status":"partial","apiCalls":[],"keyComponents":["LandingPage"],"evidence":["src/App.jsx:181","README.md"]},
+    {"path":"/sign-in","audience":"public","purpose":"User sign-in","status":"partial","apiCalls":["POST /auth/sign-in","GET /auth/session"],"keyComponents":["SignInPage","authService"],"evidence":["src/App.jsx:183","src/services/api/authService.api.js"]},
+    {"path":"/sign-up","audience":"public","purpose":"Account registration","status":"partial","apiCalls":["POST /auth/sign-up"],"keyComponents":["SignUpPage","authService"],"evidence":["src/App.jsx:184","src/services/api/authService.api.js"]},
+    {"path":"/forgot-password","audience":"public","purpose":"Request password reset","status":"partial","apiCalls":["POST /auth/forgot-password"],"keyComponents":["ForgotPasswordPage","authService"],"evidence":["src/App.jsx:185","src/services/api/authService.api.js"]},
+    {"path":"/reset-password","audience":"public","purpose":"Complete reset using token","status":"partial","apiCalls":["POST /auth/reset-password"],"keyComponents":["ResetPasswordPage","authService"],"evidence":["src/App.jsx:186","src/services/api/authService.api.js"]},
+    {"path":"/playbook/:publicId","audience":"public","purpose":"Shared/public playbook","status":"partial","apiCalls":["GET /playbooks/public/{id}"],"keyComponents":["PublicPlaybookPage","playbookService"],"evidence":["src/App.jsx:187","src/services/api/playbookService.api.js"]},
+    {"path":"/updates","audience":"public","purpose":"Published product updates","status":"partial","apiCalls":["GET /updates"],"keyComponents":["PublicUpdatesPage","updatesService"],"evidence":["src/App.jsx:188","src/services/api/updatesService.api.js"]},
+    {"path":"/legal","audience":"public","purpose":"Legal index","status":"real","apiCalls":[],"keyComponents":["LegalPage"],"evidence":["src/App.jsx:189"]},
+    {"path":"/legal/:section","audience":"public","purpose":"Section-specific legal content","status":"partial","apiCalls":[],"keyComponents":["LegalPage"],"evidence":["src/App.jsx:190"]},
+    {"path":"/privacy","audience":"public","purpose":"Privacy alias using LegalPage","status":"real","apiCalls":[],"keyComponents":["LegalPage"],"evidence":["src/App.jsx:191"]},
+    {"path":"/terms","audience":"public","purpose":"Terms alias using LegalPage","status":"real","apiCalls":[],"keyComponents":["LegalPage"],"evidence":["src/App.jsx:192"]},
+    {"path":"/cookies","audience":"public","purpose":"Cookie information alias using LegalPage","status":"real","apiCalls":[],"keyComponents":["LegalPage"],"evidence":["src/App.jsx:193"]},
+    {"path":"/docs","audience":"public","purpose":"Documentation index","status":"real","apiCalls":[],"keyComponents":["DocsHomePage","DocsLayout","docsData registry"],"evidence":["src/App.jsx:196","src/features/docs/docsData.js"]},
+    {"path":"/docs/scout-cli","audience":"public","purpose":"Dedicated Scout CLI docs","status":"real","apiCalls":[],"keyComponents":["ScoutCliDocsPage"],"evidence":["src/App.jsx:197"]},
+    {"path":"/docs/:section","audience":"public","purpose":"First registered article in a docs section","status":"partial","apiCalls":[],"keyComponents":["DocsDetailPage","docsData registry"],"evidence":["src/App.jsx:198","src/features/docs/docsData.js"],"validSections":["user-guide","api-reference"]},
+    {"path":"/docs/:section/:slug","audience":"public","purpose":"Registered static Markdown article","status":"real","apiCalls":[],"keyComponents":["DocsDetailPage","MarkdownRenderer","docsData registry"],"evidence":["src/App.jsx:199","src/features/docs/docsData.js"],"concretePaths":["/docs/user-guide/quickstart-account-and-trial","/docs/user-guide/quickstart-first-search","/docs/user-guide/quickstart-reading-intelligence","/docs/user-guide/quickstart-remix-studio","/docs/user-guide/quickstart-credits-and-limits","/docs/user-guide/concept-how-discover-works","/docs/user-guide/concept-scoring-system","/docs/user-guide/concept-estimated-vs-real-data","/docs/user-guide/concept-competitor-monitors","/docs/user-guide/concept-audience-simulation","/docs/user-guide/lead-generation","/docs/user-guide/faq","/docs/api-reference/authentication","/docs/api-reference/credit-costs-and-limits","/docs/api-reference/endpoint-discover","/docs/api-reference/endpoint-creatives","/docs/api-reference/endpoint-media-generate","/docs/api-reference/endpoint-monitors"]},
+
+    {"path":"/admin","audience":"admin","purpose":"Operations overview","status":"real","apiCalls":["GET /admin/overview/stats"],"keyComponents":["OverviewPage","AdminShellLayout"],"evidence":["src/App.jsx:202-205","src/services/api/adminService.api.js"]},
+    {"path":"/admin/guide","audience":"admin","purpose":"Operating playbook","status":"real","apiCalls":[],"keyComponents":["GuidePage","AdminShellLayout"],"evidence":["src/App.jsx:206","src/app/admin/adminNavigation.js"]},
+    {"path":"/admin/organizations","audience":"admin","purpose":"Organization operations","status":"partial","apiCalls":["/admin/organizations and organization actions"],"keyComponents":["OrganizationsPage","adminService"],"evidence":["src/App.jsx:207","src/services/api/adminService.api.js"]},
+    {"path":"/admin/access-requests","audience":"admin","purpose":"Review, grant, or reject access requests","status":"partial","apiCalls":["/admin/access-requests"],"keyComponents":["AccessRequestsPage","adminService"],"evidence":["src/App.jsx:208","src/services/api/adminService.api.js"],"comparison":"Route is added relative to 5b45806."},
+    {"path":"/admin/subscriptions","audience":"admin","purpose":"Internal plans and subscription administration","status":"partial","apiCalls":["/admin/plans"],"keyComponents":["SubscriptionsPlansPage","adminService"],"evidence":["src/App.jsx:209","src/services/api/adminService.api.js"],"caveat":"No payment provider/checkout evidenced."},
+    {"path":"/admin/usage","audience":"admin","purpose":"Usage and metering","status":"partial","apiCalls":["/admin/usage","/admin/usage/logs"],"keyComponents":["UsagePage","adminService"],"evidence":["src/App.jsx:210","src/services/api/adminService.api.js"]},
+    {"path":"/admin/feature-flags","audience":"admin","purpose":"Feature flag controls","status":"partial","apiCalls":["/admin feature-flag actions"],"keyComponents":["FeatureFlagsPage","adminService"],"evidence":["src/App.jsx:211","src/services/api/adminService.api.js"]},
+    {"path":"/admin/users","audience":"admin","purpose":"User administration","status":"partial","apiCalls":["/admin/users and user actions"],"keyComponents":["UsersPage","adminService"],"evidence":["src/App.jsx:212","src/services/api/adminService.api.js"]},
+    {"path":"/admin/updates","audience":"admin","purpose":"Update/banners editor and preview","status":"partial","apiCalls":["/updates/admin","/updates/admin/all","/updates/banner","/updates/admin/{id}"],"keyComponents":["UpdatesPage","updatesService"],"evidence":["src/App.jsx:213","src/pages/admin/UpdatesPage.jsx:484-513","src/services/api/updatesService.api.js"]},
+    {"path":"/admin/support","audience":"admin","purpose":"Support ticket queue","status":"partial","apiCalls":["/admin/support/tickets"],"keyComponents":["SupportAdminPage","adminService"],"evidence":["src/App.jsx:214","src/services/api/adminService.api.js"]},
+    {"path":"/admin/data-sources","audience":"admin","purpose":"Provider/ingestion health","status":"partial","apiCalls":["GET /admin/system/health"],"keyComponents":["DataSourcesPage","adminService"],"evidence":["src/App.jsx:215","src/pages/admin/DataSourcesPage.jsx:106","src/services/api/adminService.api.js"],"caveat":"Unmatched provider status falls back to Operational & Available in failover stack; activeTab has no rendered control found."},
+    {"path":"/admin/scrape-jobs","audience":"admin","purpose":"Scrape job operations","status":"partial","apiCalls":["/admin/jobs"],"keyComponents":["ScrapeJobsPage","adminService"],"evidence":["src/App.jsx:216","src/services/api/adminService.api.js"]},
+    {"path":"/admin/health","audience":"admin","purpose":"System health","status":"partial","apiCalls":["GET /admin/system/health"],"keyComponents":["SystemHealthPage","adminService"],"evidence":["src/App.jsx:217","src/services/api/adminService.api.js"]},
+    {"path":"/admin/audit-log","audience":"admin","purpose":"Administrative audit events","status":"partial","apiCalls":["admin audit-log service method"],"keyComponents":["AuditLogPage","adminService"],"evidence":["src/App.jsx:218-224","src/services/api/adminService.api.js"]},
+
+    {"path":"/discover","audience":"user","purpose":"Competitive ad search and results","status":"partial","apiCalls":["POST /discovery/jobs","GET /discovery/jobs/{id}","GET /discovery/jobs/{id}/results"],"keyComponents":["DiscoverPage","useDiscoverySearch","discoverService"],"evidence":["src/App.jsx:231","src/pages/DiscoverPage.jsx","src/services/api/discoverService.api.js"],"caveat":"Audit brief reports production stuck at resolving sources; not reproduced."},
+    {"path":"/intelligence","audience":"user","purpose":"Insights, creative/pattern analysis, playbook","status":"partial","apiCalls":["/creatives","/patterns","/creatives/{id}/insights","/insights","/playbooks"],"keyComponents":["IntelligencePage","creativeService","analysisService","playbookService"],"evidence":["src/App.jsx:232","src/pages/IntelligencePage.jsx","src/services/api/creativeService.api.js","src/services/api/analysisService.api.js"]},
+    {"path":"/create","audience":"user","purpose":"Creative remix and media generation","status":"partial","apiCalls":["GET /creatives/{id}","POST /media/jobs","GET /media/jobs/{id}"],"keyComponents":["CreatePage","useMediaGenerate","mediaService","creativeService"],"evidence":["src/App.jsx:233","src/pages/CreatePage.jsx","src/services/api/mediaService.api.js"],"caveat":"README says planned; ARCHITECTURE says live. Provider/output not verified."},
+    {"path":"/monitors","audience":"user","purpose":"Competitor monitor management, runs and events","status":"real","apiCalls":["/monitors/","/monitors/{id}","/monitors/{id}/run","/monitors/events"],"keyComponents":["MonitorsPage","useMonitors","monitorService"],"evidence":["src/App.jsx:234","src/services/api/monitorService.api.js"],"caveat":"API-only service; live behavior not tested."},
+    {"path":"/scout","audience":"user","purpose":"Redirect to social Scout","status":"real","apiCalls":[],"keyComponents":["Navigate"],"evidence":["src/App.jsx:235"],"redirect":"/scout/social"},
+    {"path":"/scout/lead-generation","audience":"user","purpose":"Lead generation jobs and leads","status":"partial","apiCalls":["/scout/leadgen/jobs","/scout/leadgen/jobs/{id}","/scout/leadgen/jobs/{id}/leads","/scout/leadgen/recipes","/scout/leadgen/worker/health"],"keyComponents":["ScoutLeadGenerationPage","useLeadGenJob","leadgenService"],"evidence":["src/App.jsx:236","src/services/api/leadgen.js"],"caveat":"External worker/runtime not verified; no mock adapter."},
+    {"path":"/scout/:mode","audience":"user (admin-only queue tabs inside page)","purpose":"Social or Maps Scout; intended concrete routes /scout/social and /scout/maps","status":"partial","apiCalls":["/scout/jobs*","/scout/org-jobs","/scout/latest-job","/scout/settings","/scout/maps/jobs*","/scout/maps/org-jobs","/scout/maps/latest-job"],"keyComponents":["ScoutPage","scoutService","mapsScoutService"],"evidence":["src/App.jsx:237","src/pages/ScoutPage.jsx:30,59,259-284","src/services/api/scoutService.api.js","src/services/api/mapsScoutService.api.js"],"caveat":"Arbitrary mode strings do not have a dedicated route declaration."},
+    {"path":"/performance","audience":"user","purpose":"Creative performance, format and time filters","status":"partial","apiCalls":["/creatives","/monitors*"],"keyComponents":["PerformancePage","creativeService","monitorService"],"evidence":["src/App.jsx:238","src/pages/PerformancePage.jsx:137,434"],"caveat":"Path declaration is relative; product docs say planned while nav marks live."},
+    {"path":"/dashboard","audience":"user","purpose":"Workspace metrics and playbook compilation","status":"partial","apiCalls":["GET /dashboard/metrics","/playbooks"],"keyComponents":["DashboardPage","dashboardService","playbookService"],"evidence":["src/App.jsx:239","src/services/api/dashboardService.api.js"],"caveat":"Path declaration is relative."},
+    {"path":"/swipe-files","audience":"user","purpose":"Saved and custom creative swipe files","status":"partial","apiCalls":["/creatives/saved","/creatives/custom","media upload"],"keyComponents":["SwipeFilesPage","creativeService"],"evidence":["src/App.jsx:240","src/services/api/creativeService.api.js"]},
+    {"path":"/guide","audience":"user","purpose":"In-app guide","status":"real","apiCalls":[],"keyComponents":["GuidePage"],"evidence":["src/App.jsx:241"]},
+    {"path":"/billing","audience":"user","purpose":"Plan, usage, credits and access requests","status":"partial","apiCalls":["GET /account/billing","GET /account/usage/today","GET /account/access","/account/access-requests"],"keyComponents":["BillingPage","accountService"],"evidence":["src/App.jsx:242","src/services/api/accountService.api.js"],"caveat":"Manual access request/admin grant is evidenced; no checkout provider."},
+    {"path":"/api-keys","audience":"user","purpose":"Workspace API key management","status":"partial","apiCalls":["/account/api-keys","workspace provider request"],"keyComponents":["ApiKeysPage","accountService"],"evidence":["src/App.jsx:243","src/services/api/accountService.api.js"]},
+    {"path":"/team","audience":"user","purpose":"Team members and invitations","status":"partial","apiCalls":["/account/team","/account/team/invites","/account/team/members"],"keyComponents":["TeamPage","accountService"],"evidence":["src/App.jsx:244","src/services/api/accountService.api.js"]},
+    {"path":"/team/accept","audience":"invitee","purpose":"Accept team invitation","status":"partial","apiCalls":["account team invite acceptance"],"keyComponents":["TeamAcceptPage","accountService"],"evidence":["src/App.jsx:245","src/services/api/accountService.api.js"],"comparison":"Route added relative to 5b45806."},
+    {"path":"/settings","audience":"user","purpose":"Profile and avatar settings","status":"partial","apiCalls":["GET/PATCH /account/profile","POST /account/avatar"],"keyComponents":["ProfileSettingsPage","accountService"],"evidence":["src/App.jsx:246","src/services/api/accountService.api.js"]},
+    {"path":"/support","audience":"user","purpose":"Support ticket list, detail, reply","status":"partial","apiCalls":["/support/tickets","/support/tickets/{id}","/support/tickets/{id}/reply"],"keyComponents":["SupportPage","supportService"],"evidence":["src/App.jsx:247","src/services/api/supportService.api.js"],"caveat":"API-only service; live state not tested."},
+    {"path":"/notifications","audience":"user","purpose":"Notifications and published updates","status":"partial","apiCalls":["/notifications/","/notifications/{id}/read","/notifications/read-all","GET /updates"],"keyComponents":["NotificationsPage","notificationService","updatesService"],"evidence":["src/App.jsx:248","src/pages/NotificationsPage.jsx:170-181"]},
+    {"path":"*","audience":"authenticated fallback","purpose":"Not-found page after protected route group","status":"empty","apiCalls":[],"keyComponents":["NotFoundPage"],"evidence":["src/App.jsx:250-256"],"caveat":"Unknown public-path behavior is not established by this route declaration."}
+  ],
+  "tabsAndFilters": [
+    {"route":"/notifications","kind":"filter buttons","values":["All","Unread (count)","Announcements","Alerts"],"stateIds":["all","unread","announcement","alert"],"evidence":"src/pages/NotificationsPage.jsx:170-181","ariaTabSemantics":"not found in static scan"},
+    {"route":"/scout/social and /scout/maps","audience":"admin only","kind":"admin workspace/job tabs","values":["Active Workspace","Org Social Jobs (count)","Org Maps Jobs (count)"],"stateIds":["current","org_social","org_maps"],"evidence":"src/pages/ScoutPage.jsx:259-284"},
+    {"route":"/admin/updates","kind":"editor/preview switch","values":["Editor","Preview (Kie.ai Card Preview)"],"stateIds":["editor","preview"],"evidence":"src/pages/admin/UpdatesPage.jsx:484-513"},
+    {"route":"/performance","kind":"format and day filters (not tabs)","values":["All Formats","video","image","0 days","7 days","14 days","30 days"],"evidence":"src/pages/PerformancePage.jsx:137,434 and adjacent filter controls"},
+    {"route":"/admin/data-sources","kind":"no rendered tab located","values":[],"evidence":"src/pages/admin/DataSourcesPage.jsx:106","finding":"activeTab initializes to all but no setter/use was found"}
+  ],
+  "navigationFindings": [
+    {"finding":"Primary navigation marks six sections live although README says Discover is the only end-to-end loop; docs and Create status conflict.","evidence":["src/app/navigation.js","README.md","ARCHITECTURE.md"]},
+    {"finding":"No /messages route is declared; map Messages & Updates label to /notifications or remove it.","evidence":["src/App.jsx:181-256","src/app/Sidebar.jsx","src/app/CommandBar.jsx"]},
+    {"finding":"/guide, /admin/guide, /docs and playbook surfaces use overlapping labels/content purposes.","evidence":["src/App.jsx:187,196-199,206,241"]},
+    {"finding":"Legal aliases reuse LegalPage; billing UI is access/usage, not a payment checkout; hide trial/purchase claims until backed by a billing provider.","evidence":["src/App.jsx:189-193,242","src/pages/BillingPage.jsx","API_CONTRACTS.md"]},
+    {"finding":"Data-source fallback reports unmatched services as operational; must not be treated as provider verification.","evidence":["src/pages/admin/DataSourcesPage.jsx","src/services/api/adminService.api.js"]},
+    {"finding":"AdminPendingPage scaffold is not referenced by any route; it is an orphan component, not evidence that routed admin pages are placeholders.","evidence":["src/pages/admin/AdminPendingPage.jsx","src/App.jsx:202-217"]}
+  ],
+  "localizationEvidence": {
+    "provider":"src/context/LanguageContext.jsx",
+    "switcher":"src/components/LanguageSwitcher.jsx",
+    "findings":["EN/AR strings and global document lang/dir toggling exist.","Arabic literals are concentrated in language infrastructure/ErrorBoundary and limited Intelligence content; English literals remain in other pages.","Selective dir=auto exists but is not universal; mixed-script layouts/forms/errors require Preview verification."],
+    "examples":["src/pages/IntelligencePage.jsx","src/pages/CreatePage.jsx","src/pages/MonitorsPage.jsx","src/pages/PerformancePage.jsx","src/pages/SupportPage.jsx","src/pages/admin/AdminPendingPage.jsx"]
+  },
+  "apiFamilies": {
+    "auth":"/auth/*",
+    "account":"/account/*",
+    "admin":"/admin/*",
+    "discovery":["/discovery/jobs","/discovery/jobs/{id}","/discovery/jobs/{id}/results"],
+    "creativeAnalysis":["/creatives*","/patterns*","/insights*"],
+    "media":["/media/jobs","/media/jobs/{id}","/media/jobs/{id}/cancel"],
+    "scout":["/scout/*","/scout/maps/*","/scout/leadgen/*"],
+    "monitors":"/monitors*",
+    "dashboard":"/dashboard/metrics",
+    "notifications":"/notifications*",
+    "playbooks":"/playbooks*",
+    "support":"/support/tickets*",
+    "updates":"/updates*",
+    "serviceBoundary":"src/services/index.js; API modules in src/services/api/; optional mocks in src/services/mock/; transport in src/services/http.js",
+    "environment":"VITE_DATA_SOURCE defaults to api; production rejects mock source. This audit did not inspect runtime env values."
+  },
+  "unverified": [
+    "All visual appearance and interactions; no shared browser driven.",
+    "EN/AR screenshots for all route/tab states; pending parent-managed Preview capture.",
+    "Discover resolving-sources production report; not reproduced.",
+    "Any successful API response, external provider health, DB persistence, tenant isolation, email/invite delivery, or media generation.",
+    "Auth/admin role access, route behavior for unsupported dynamic values, and document RTL behavior across breakpoints."
+  ]
+}
