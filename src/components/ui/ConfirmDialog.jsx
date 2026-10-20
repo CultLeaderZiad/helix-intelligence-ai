@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useId, useRef } from "react"
 import { AlertTriangle, Trash2, ShieldAlert, Loader2 } from "lucide-react"
 import { Button } from "./Button"
 import { cn } from "@/lib/utils"
@@ -18,50 +18,78 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }) {
+  const titleId = useId()
+  const descriptionId = useId()
   const confirmBtnRef = useRef(null)
   const dialogRef = useRef(null)
   const previouslyFocusedRef = useRef(null)
+  const onConfirmRef = useRef(onConfirm)
+  const onCancelRef = useRef(onCancel)
+  const isBusyRef = useRef(isBusy)
+
+  useEffect(() => {
+    onConfirmRef.current = onConfirm
+    onCancelRef.current = onCancel
+    isBusyRef.current = isBusy
+  }, [onConfirm, onCancel, isBusy])
 
   useEffect(() => {
     if (!isOpen) return
     previouslyFocusedRef.current = document.activeElement
 
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && !isBusy) {
-        onCancel?.()
+      if (e.key === "Escape" && !isBusyRef.current) {
+        onCancelRef.current?.()
       } else if (e.key === "Tab") {
         if (!dialogRef.current) return
-        const focusableElements = dialogRef.current.querySelectorAll(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        const focusableElements = Array.from(dialogRef.current.querySelectorAll(
+          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
         )
-        if (!focusableElements.length) return
+        ).filter((element) => !element.hasAttribute("disabled"))
+        if (!focusableElements.length) {
+          e.preventDefault()
+          dialogRef.current.focus()
+          return
+        }
         const firstElement = focusableElements[0]
         const lastElement = focusableElements[focusableElements.length - 1]
+        const focusIsOutside = !dialogRef.current.contains(document.activeElement)
 
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            e.preventDefault()
-            lastElement.focus()
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            e.preventDefault()
-            firstElement.focus()
-          }
+        if (e.shiftKey && (focusIsOutside || document.activeElement === firstElement)) {
+          e.preventDefault()
+          lastElement.focus()
+        } else if (!e.shiftKey && (focusIsOutside || document.activeElement === lastElement)) {
+          e.preventDefault()
+          firstElement.focus()
         }
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown)
-    const timer = setTimeout(() => confirmBtnRef.current?.focus(), 50)
+    document.addEventListener("keydown", handleKeyDown)
+    const initialFocus = confirmBtnRef.current?.disabled
+      ? dialogRef.current
+      : confirmBtnRef.current
+    initialFocus?.focus()
     return () => {
-      window.removeEventListener("keydown", handleKeyDown)
-      clearTimeout(timer)
-      if (previouslyFocusedRef.current && typeof previouslyFocusedRef.current.focus === "function") {
+      document.removeEventListener("keydown", handleKeyDown)
+      if (previouslyFocusedRef.current?.isConnected) {
         previouslyFocusedRef.current.focus()
       }
+      previouslyFocusedRef.current = null
     }
-  }, [isOpen, isBusy, onCancel])
+  }, [isOpen])
+
+  useEffect(() => {
+    if (
+      isOpen &&
+      isBusy &&
+      dialogRef.current?.contains(document.activeElement) &&
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement.matches(":disabled")
+    ) {
+      dialogRef.current.focus()
+    }
+  }, [isOpen, isBusy])
 
   if (!isOpen) return null
 
@@ -72,14 +100,16 @@ export function ConfirmDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
+      aria-labelledby={titleId}
+      aria-describedby={description ? descriptionId : undefined}
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150 font-sans"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !isBusy) onCancel?.()
+        if (e.target === e.currentTarget && !isBusyRef.current) onCancelRef.current?.()
       }}
     >
       <div
         ref={dialogRef}
+        tabIndex={-1}
         className="w-full max-w-md rounded-xl border border-border bg-surface-2 p-5 shadow-2xl space-y-4"
       >
         <div className="flex items-start gap-3.5">
@@ -102,11 +132,11 @@ export function ConfirmDialog({
             )}
           </div>
           <div className="space-y-1 pt-0.5 flex-1">
-            <h2 id="confirm-dialog-title" className="text-sm font-semibold text-text">
+            <h2 id={titleId} className="text-sm font-semibold text-text">
               {title}
             </h2>
             {description && (
-              <div className="text-xs text-text-muted leading-relaxed">
+              <div id={descriptionId} className="text-xs text-text-muted leading-relaxed">
                 {description}
               </div>
             )}
@@ -118,7 +148,7 @@ export function ConfirmDialog({
             type="button"
             variant="outline"
             size="sm"
-            onClick={onCancel}
+            onClick={() => onCancelRef.current?.()}
             disabled={isBusy}
           >
             {cancelText}
@@ -128,7 +158,7 @@ export function ConfirmDialog({
             type="button"
             variant={isDanger ? "danger" : isWarning ? "default" : "primary"}
             size="sm"
-            onClick={onConfirm}
+            onClick={() => onConfirmRef.current?.()}
             disabled={isBusy}
             className={cn(
               isDanger && "!bg-rose-500/15 !border-rose-500/40 !text-rose-300 hover:!bg-rose-500/25 hover:!border-rose-500",
