@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.discover import SearchParams, Job
 from app.schemas.creative import Creative
@@ -25,6 +25,12 @@ async def get_job(job_id: str, db: AsyncSession = Depends(get_db), current_user:
     from app.core.tenancy import get_user_org_ids
     scope = await get_user_org_ids(db, current_user)
     return await discover_service.get_job_status(db, job_id, user_org_ids=scope)
+
+@router.post("/jobs/{job_id}/cancel", response_model=Job)
+async def cancel_job(job_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.core.tenancy import get_user_org_ids
+    scope = await get_user_org_ids(db, current_user)
+    return await discover_service.cancel_search(db, job_id, user_org_ids=scope)
 
 @router.get("/jobs/{job_id}/results", response_model=Paginated[Creative])
 async def get_job_results(
