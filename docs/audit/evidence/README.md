@@ -8,3 +8,5 @@
 - Screenshots تشمل local empty/error/blocked states، مش دليل إن provider integration شغّال. أي provider execution: **not verified**.
 - Fresh `alembic upgrade head` exit 0؛ `alembic check` exit 0؛ compileall exit 0؛ pyflakes exit 1 (127 diagnostics، المصدر من غير fixes).
 - HTTP timings دي local preview timings فقط، مش production latency ولا load test.
+
+- Evidence log trailing whitespace واتشالت blank lines في آخر الملفات للتوافق مع diff-check؛ مفيش diagnostic/test result اتفلتر أو اتغير.

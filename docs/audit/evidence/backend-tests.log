@@ -10,7 +10,7 @@ ______________ test_provider_http_exception_is_not_unbound_local _______________
         class Boom(AIProvider):
             async def _call_api(self, messages):
                 raise HTTPException(status_code=503, detail="provider down")
-    
+
         creative = CreativeSchema(
             id="creative-1",
             brand_id="brand",
@@ -44,13 +44,13 @@ ______ test_failure_after_tenancy_preserves_stamp_and_retry_reaches_head _______
             pytest.skip("migration failure regression requires TEST_DATABASE_URL for real PostgreSQL")
         if shutil.which("psql") is None:
             pytest.skip("migration failure regression requires the PostgreSQL psql client")
-    
+
         database = f"helix_migration_fail_{uuid.uuid4().hex[:12]}"
         try:
 >           proof.prove_failure_after_tenancy_is_retryable(database)
 
-tests/test_migration_failure.py:27: 
-_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_migration_failure.py:27:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 database = 'helix_migration_fail_882ef737a2cd'
 
