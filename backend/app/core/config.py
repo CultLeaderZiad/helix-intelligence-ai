@@ -188,6 +188,7 @@ class Settings(BaseSettings):
     HELIX_DISPATCH_INLINE: bool = os.getenv("HELIX_DISPATCH_INLINE", "false").lower() in ("true", "1", "yes")
     WORK_LEASE_S: int = int(os.getenv("WORK_LEASE_S", "120"))
     WORK_MAX_ATTEMPTS: int = int(os.getenv("WORK_MAX_ATTEMPTS", "3"))
+    DISCOVER_JOB_DEADLINE_S: int = int(os.getenv("DISCOVER_JOB_DEADLINE_S", "600"))
     AI_MAX_OUTPUT_TOKENS: int = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "1024"))
     AI_CALL_TIMEOUT_S: float = float(os.getenv("AI_CALL_TIMEOUT_S", "20"))
     AI_CALL_DEADLINE_S: float = float(os.getenv("AI_CALL_DEADLINE_S", "45"))
