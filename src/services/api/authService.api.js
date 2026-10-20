@@ -278,6 +278,11 @@ const authService = {
   completeOnboarding() {
     return request("/auth/session/onboarding/complete", { method: "POST" })
   },
+
+  /** Reset the server-side onboarding flag so the user can replay the tour. */
+  restartOnboarding() {
+    return request("/auth/session/onboarding/restart", { method: "POST" })
+  },
 }
 
 export default authService
