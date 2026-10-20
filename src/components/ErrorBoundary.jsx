@@ -1,5 +1,25 @@
 import React from "react"
 import { AlertTriangle, RefreshCw } from "lucide-react"
+import LanguageContext from "@/context/LanguageContext"
+
+const CHUNK_RELOAD_LOCK = "chunk_reload_lock"
+
+function isChunkLoadError(error) {
+  const message = String(error?.message || "")
+  return (
+    message.includes("dynamically imported module") ||
+    message.includes("Failed to fetch dynamically") ||
+    message.includes("Importing a module script failed")
+  )
+}
+
+function reloadLockTime() {
+  try {
+    return Number(window.sessionStorage.getItem(CHUNK_RELOAD_LOCK) || 0)
+  } catch {
+    return null
+  }
+}
 
 /**
  * One boundary component, three containment levels:
@@ -10,6 +30,8 @@ import { AlertTriangle, RefreshCw } from "lucide-react"
  *              down the page around it
  */
 export class ErrorBoundary extends React.Component {
+  static contextType = LanguageContext
+
   constructor(props) {
     super(props)
     this.state = { hasError: false, error: null }
@@ -20,30 +42,29 @@ export class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("Uncaught error caught by ErrorBoundary:", error, errorInfo)
-    const msg = String(error?.message || "")
-    if (
-      msg.includes("dynamically imported module") ||
-      msg.includes("Failed to fetch dynamically") ||
-      msg.includes("Importing a module script failed")
-    ) {
-      const lastReload = Number(sessionStorage.getItem("chunk_reload_lock") || 0)
+    console.error("A render error was caught by ErrorBoundary.")
+    if (isChunkLoadError(error)) {
+      const lastReload = reloadLockTime()
       const now = Date.now()
-      if (now - lastReload > 8000) {
-        sessionStorage.setItem("chunk_reload_lock", String(now))
-        console.warn("Stale chunk detected after deployment. Auto-reloading workspace...")
+      if (lastReload !== null && now - lastReload > 8000) {
+        try {
+          window.sessionStorage.setItem(CHUNK_RELOAD_LOCK, String(now))
+        } catch {
+          return
+        }
         window.location.reload()
       }
     }
+    void errorInfo
+  }
+
+  translate = (key, english, arabic) => {
+    const fallback = this.context?.lang === "ar" ? arabic : english
+    return this.context?.t?.(key, fallback) || fallback
   }
 
   handleReset = () => {
-    const msg = String(this.state.error?.message || "")
-    if (
-      msg.includes("dynamically imported module") ||
-      msg.includes("Failed to fetch") ||
-      msg.includes("Importing a module script failed")
-    ) {
+    if (isChunkLoadError(this.state.error)) {
       window.location.reload()
       return
     }
@@ -57,7 +78,6 @@ export class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       const variant = this.props.variant ?? "page"
-      const label = this.props.label ?? "this area"
 
       if (variant === "page") {
         return (
@@ -67,16 +87,23 @@ export class ErrorBoundary extends React.Component {
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Something went wrong</h2>
+                <h2 className="text-lg font-bold text-white">
+                  {this.translate("errorBoundary.pageTitle", "Something went wrong", "حدث خطأ ما")}
+                </h2>
                 <p className="text-xs text-slate-400 mt-1">
-                  {this.state.error?.message || "An unexpected error occurred while rendering this page."}
+                  {this.translate(
+                    "errorBoundary.pageDescription",
+                    "An unexpected error prevented this page from rendering.",
+                    "منع خطأ غير متوقع عرض هذه الصفحة."
+                  )}
                 </p>
               </div>
               <button
                 onClick={this.handleReload}
                 className="px-4 py-2.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-xs rounded-xl flex items-center justify-center gap-2 mx-auto transition"
               >
-                <RefreshCw className="w-4 h-4" /> Reload Workspace
+                <RefreshCw className="w-4 h-4" />
+                {this.translate("errorBoundary.reload", "Reload workspace", "إعادة تحميل مساحة العمل")}
               </button>
             </div>
           </div>
@@ -104,12 +131,15 @@ export class ErrorBoundary extends React.Component {
               <AlertTriangle className={isCompact ? "h-4 w-4" : "h-5 w-5"} />
             </div>
             <div>
-              <p className="text-sm font-semibold text-text">Something went wrong here</p>
-              <p className="mt-1 text-xs leading-relaxed text-text-muted">
-                {label} could not be rendered. The rest of the app is unaffected.
+              <p className="text-sm font-semibold text-text">
+                {this.translate("errorBoundary.areaTitle", "This area is unavailable", "هذه المنطقة غير متاحة")}
               </p>
-              <p className="mt-1 break-words font-mono text-[11px] text-text-faint">
-                {this.state.error?.message || "Unexpected render error"}
+              <p className="mt-1 text-xs leading-relaxed text-text-muted">
+                {this.translate(
+                  "errorBoundary.areaDescription",
+                  "This part of the app could not be displayed. The rest of the app is still available.",
+                  "تعذّر عرض هذا الجزء من التطبيق. لا تزال بقية التطبيق متاحة."
+                )}
               </p>
             </div>
             <div className="flex items-center justify-center gap-2">
@@ -117,7 +147,8 @@ export class ErrorBoundary extends React.Component {
                 onClick={this.handleReset}
                 className="flex items-center gap-1.5 rounded border border-border-strong bg-surface-2 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase text-text transition-colors hover:bg-surface-3"
               >
-                <RefreshCw className="h-3 w-3" /> Try again
+                <RefreshCw className="h-3 w-3" />
+                {this.translate("errorBoundary.retry", "Try again", "حاول مرة أخرى")}
               </button>
             </div>
           </div>
