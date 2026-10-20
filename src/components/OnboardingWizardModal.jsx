@@ -1,250 +1,267 @@
-import React, { useState } from "react"
-import { Sparkles, ArrowRight, CheckCircle2, Search, Compass, Target, Rocket, X } from "lucide-react"
-import { accountService } from "../services"
+import { useEffect, useRef, useState } from "react"
+import { ArrowRight, Check, X } from "lucide-react"
+import { useLanguage } from "../context/LanguageContext"
+import {
+  getW5OnboardingText,
+  ONBOARDING_TOUR_RESTART_EVENT,
+} from "../i18n/w5Onboarding"
 
-const INDUSTRY_RECOMMENDATIONS = {
-  "ecommerce": {
-    label: "E-commerce & DTC",
-    brands: ["Shopify", "Gymshark", "Glossier", "Allbirds", "Ridge Wallet", "Olaplex"],
-    keywords: ["Nike", "Lululemon", "Warby Parker", "Casper"]
-  },
-  "saas": {
-    label: "SaaS & Digital Apps",
-    brands: ["Duolingo", "Notion", "Canva", "Linear", "Figma", "Grammarly"],
-    keywords: ["Slack", "Airtable", "Monday.com", "Asana"]
-  },
-  "health": {
-    label: "Health & Wellness",
-    brands: ["Athletic Greens", "Hims", "Whoop", "Calm", "Headspace", "Oura"],
-    keywords: ["Ritual", "Liquid I.V.", "AG1", "Peloton"]
-  },
-  "fashion": {
-    label: "Fashion & Apparel",
-    brands: ["Nike", "Zara", "Shein", "Lululemon", "Alo Yoga", "Gymshark"],
-    keywords: ["Adidas", "Gymshark", "ASOS", "Uniqlo"]
-  },
-  "finance": {
-    label: "Fintech & Finance",
-    brands: ["Revolut", "Wise", "Robinhood", "Klarna", "Stripe", "Coinbase"],
-    keywords: ["Chime", "Monzo", "Square", "PayPal"]
-  },
-  "education": {
-    label: "Education & Coaching",
-    brands: ["MasterClass", "Coursera", "Babbel", "Udemy", "Skillshare", "Duolingo"],
-    keywords: ["Brilliant", "Codecademy", "Khan Academy", "edX"]
-  }
-}
-
-const GOALS = [
-  { id: "hooks", label: "Find Winning Hooks & Angles", icon: Sparkles, desc: "Extract high-converting creative patterns" },
-  { id: "generate", label: "Generate Media & Remixes Fast", icon: Rocket, desc: "Turn competitor ads into fresh UGC & studio visuals" },
-  { id: "track", label: "Monitor Competitor Ad Spend", icon: Target, desc: "Track ad longevity and active Meta campaigns" }
+const INDUSTRIES = [
+  ["ecommerce", "w5_wizard_industry_ecommerce"],
+  ["saas", "w5_wizard_industry_saas"],
+  ["health", "w5_wizard_industry_health"],
+  ["fashion", "w5_wizard_industry_fashion"],
+  ["finance", "w5_wizard_industry_finance"],
+  ["education", "w5_wizard_industry_education"],
 ]
 
-export function OnboardingWizardModal({ isOpen, onClose, onDismiss, onDashboard, onSearchSelect }) {
+function getFocusableElements(container) {
+  return Array.from(
+    container.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((element) => !element.hidden && element.getAttribute("aria-hidden") !== "true")
+}
+
+export function OnboardingWizardModal({
+  isOpen,
+  onClose,
+  onDismiss,
+  onSearchSelect = undefined,
+}) {
+  const { lang, isRtl, t } = useLanguage()
   const [step, setStep] = useState(1)
-  const [selectedIndustry, setSelectedIndustry] = useState("ecommerce")
-  const [competitorText, setCompetitorText] = useState("")
-  const [selectedGoal, setSelectedGoal] = useState("hooks")
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [selectedIndustry, setSelectedIndustry] = useState("")
+  const [searchQuery, setSearchQuery] = useState("")
+  const [restartingTour, setRestartingTour] = useState(
+    () => new URLSearchParams(window.location.search).get("tour") === "restart",
+  )
+  const previousIsOpenRef = useRef(isOpen)
+  const dialogRef = useRef(null)
+  const closeRef = useRef(null)
+  const onCloseRef = useRef(onClose)
+  const onDismissRef = useRef(onDismiss)
+  onCloseRef.current = onClose
+  onDismissRef.current = onDismiss
 
-  if (!isOpen) return null
+  const translate = (key) => t(key, getW5OnboardingText(lang, key))
 
-  const handleFinish = (searchQuery = null) => {
-    onClose(searchQuery)
-    if (searchQuery && onSearchSelect) {
-      onSearchSelect(searchQuery)
+  useEffect(() => {
+    const handleTourRestart = (event) => {
+      if (event.detail?.persisted === true) setRestartingTour(true)
     }
+    window.addEventListener(ONBOARDING_TOUR_RESTART_EVENT, handleTourRestart)
+    return () => window.removeEventListener(ONBOARDING_TOUR_RESTART_EVENT, handleTourRestart)
+  }, [])
+
+  useEffect(() => {
+    if (previousIsOpenRef.current && !isOpen) setRestartingTour(false)
+    previousIsOpenRef.current = isOpen
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen || restartingTour) return undefined
+
+    setStep(1)
+    setSelectedIndustry("")
+    setSearchQuery("")
+    const previousFocus = document.activeElement
+    const originalBodyOverflow = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    closeRef.current?.focus()
+
+    const dismiss = () => {
+      if (onDismissRef.current) onDismissRef.current()
+      else onCloseRef.current?.(null)
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        dismiss()
+        return
+      }
+      if (event.key !== "Tab" || !dialogRef.current) return
+
+      const focusable = getFocusableElements(dialogRef.current)
+      if (!focusable.length) {
+        event.preventDefault()
+        dialogRef.current.focus()
+        return
+      }
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+      document.body.style.overflow = originalBodyOverflow
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus()
+    }
+  }, [isOpen, restartingTour])
+
+  if (!isOpen || restartingTour) return null
+
+  const finish = () => {
+    const query = searchQuery.trim()
+    onClose?.(query || null)
+    if (query && onSearchSelect) onSearchSelect(query)
   }
 
-  const recommendations = INDUSTRY_RECOMMENDATIONS[selectedIndustry] || INDUSTRY_RECOMMENDATIONS["ecommerce"]
+  const continueToSearch = () => {
+    if (selectedIndustry) setStep(2)
+  }
+
+  const dismiss = () => {
+    if (onDismiss) onDismiss()
+    else onClose?.(null)
+  }
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Onboarding"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-bg/90 p-3 backdrop-blur-md sm:p-6"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) dismiss()
+      }}
     >
-      <div className="relative w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-        {/* Header Progress Bar */}
-        <div className="h-1.5 w-full bg-slate-800">
-          <div 
-            className="h-full bg-gradient-to-r from-teal-500 to-indigo-500 transition-all duration-300"
-            style={{ width: `${(step / 3) * 100}%` }}
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="onboarding-title"
+        aria-describedby="onboarding-description"
+        dir={isRtl ? "rtl" : "ltr"}
+        tabIndex={-1}
+        className="relative max-h-[min(90dvh,720px)] w-full max-w-xl overflow-y-auto rounded-sm border border-border bg-surface"
+      >
+        <div className="h-1.5 w-full bg-surface-3" aria-hidden="true">
+          <div
+            className="h-full bg-text-faint transition-all duration-300"
+            style={{ width: `${step * 50}%` }}
           />
         </div>
 
         <button
-          onClick={() => (onDismiss ? onDismiss() : handleFinish())}
-          aria-label="Dismiss onboarding"
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+          ref={closeRef}
+          type="button"
+          onClick={dismiss}
+          aria-label={translate("w5_wizard_close")}
+          className="absolute end-3 top-3 rounded-sm p-2 text-text-muted transition hover:bg-surface-3 hover:text-text sm:end-4 sm:top-4"
         >
-          <X className="w-5 h-5" />
+          <X className="h-5 w-5" aria-hidden="true" />
         </button>
 
-        {/* Content Area */}
-        <div className="p-8">
-          {step === 1 && (
-            <div className="space-y-6">
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-400 border border-teal-500/20">
-                  <Compass className="w-3.5 h-3.5" /> Step 1 of 3 • Zero Cost
-                </span>
-                <h2 className="text-2xl font-bold text-white mt-3">What industry or niche are you operating in?</h2>
-                <p className="text-sm text-slate-400 mt-1">We will tailor recommended competitor search queries for your workspace.</p>
-              </div>
+        <div className="space-y-6 p-5 sm:p-8">
+          <div className="pe-10">
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+              {translate(step === 1 ? "w5_wizard_step_industry" : "w5_wizard_step_search")} · {step}/2
+            </p>
+            <h2 id="onboarding-title" className="mt-2 text-xl font-bold text-text sm:text-2xl">
+              {translate("w5_wizard_title")}
+            </h2>
+            <p id="onboarding-description" className="mt-2 text-sm leading-6 text-text-muted">
+              {translate("w5_wizard_description")}
+            </p>
+          </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {Object.entries(INDUSTRY_RECOMMENDATIONS).map(([key, item]) => {
-                  const isSelected = selectedIndustry === key
+          {step === 1 ? (
+            <fieldset>
+              <legend className="mb-3 text-sm font-medium text-text">
+                {translate("w5_wizard_step_industry")}
+              </legend>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {INDUSTRIES.map(([id, key]) => {
+                  const selected = selectedIndustry === id
                   return (
                     <button
-                      key={key}
-                      onClick={() => setSelectedIndustry(key)}
-                      className={`p-3.5 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? "bg-teal-500/10 border-teal-500/50 text-white ring-1 ring-teal-500/40"
-                          : "bg-slate-800/40 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800/80"
+                      key={id}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => setSelectedIndustry(id)}
+                      className={`flex min-h-12 items-center justify-between gap-3 rounded-sm border px-4 py-3 text-start text-sm transition ${
+                        selected
+                          ? "border-border-strong bg-surface-3 text-text"
+                          : "border-border bg-bg text-text-muted hover:border-border-strong"
                       }`}
                     >
-                      <div className="font-semibold text-sm">{item.label}</div>
-                      <div className="text-xs text-slate-400 mt-1 truncate">{item.brands.slice(0, 2).join(", ")}</div>
+                      <span>{translate(key)}</span>
+                      {selected && <Check className="h-4 w-4 shrink-0 text-text-muted" aria-hidden="true" />}
                     </button>
                   )
                 })}
               </div>
-
-              <div className="flex justify-end pt-4 border-t border-slate-800">
-                <button
-                  onClick={() => setStep(2)}
-                  className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-teal-500 hover:bg-teal-400 text-slate-950 flex items-center gap-2 transition"
-                >
-                  Continue <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
+            </fieldset>
+          ) : (
+            <div className="space-y-3">
+              <label htmlFor="onboarding-brand" className="block text-sm font-medium text-text">
+                {translate("w5_wizard_brand_label")}
+              </label>
+              <input
+                id="onboarding-brand"
+                autoFocus
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") finish()
+                }}
+                placeholder={translate("w5_wizard_brand_placeholder")}
+                className="min-h-12 w-full rounded-sm border border-border bg-bg px-4 text-start text-text outline-none transition placeholder:text-text-faint focus:border-border-strong focus:ring-2 focus:ring-border-strong"
+              />
+              <p className="text-sm leading-6 text-text-muted">{translate("w5_wizard_search_help")}</p>
             </div>
           )}
 
-          {step === 2 && (
-            <div className="space-y-6">
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                  <Target className="w-3.5 h-3.5" /> Step 2 of 3
-                </span>
-                <h2 className="text-2xl font-bold text-white mt-3">What is your primary growth goal?</h2>
-                <p className="text-sm text-slate-400 mt-1">Select the main outcome you want to unlock with Helix.</p>
-              </div>
-
-              <div className="space-y-3">
-                {GOALS.map((goal) => {
-                  const Icon = goal.icon
-                  const isSelected = selectedGoal === goal.id
-                  return (
-                    <button
-                      key={goal.id}
-                      onClick={() => setSelectedGoal(goal.id)}
-                      className={`w-full p-4 rounded-xl border text-left flex items-start gap-4 transition-all ${
-                        isSelected
-                          ? "bg-indigo-500/10 border-indigo-500/50 text-white ring-1 ring-indigo-500/40"
-                          : "bg-slate-800/40 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800/80"
-                      }`}
-                    >
-                      <div className={`p-2.5 rounded-lg ${isSelected ? "bg-indigo-500 text-white" : "bg-slate-800 text-slate-400"}`}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-sm">{goal.label}</div>
-                        <div className="text-xs text-slate-400 mt-0.5">{goal.desc}</div>
-                      </div>
-                      {isSelected && <CheckCircle2 className="w-5 h-5 text-indigo-400" />}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="flex justify-between pt-4 border-t border-slate-800">
+          <div className="flex flex-col-reverse gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={dismiss}
+              className="min-h-11 rounded-sm px-3 text-sm font-medium text-text-muted transition hover:text-text"
+            >
+              {translate("w5_wizard_skip")}
+            </button>
+            <div className="flex gap-2">
+              {step === 2 && (
                 <button
+                  type="button"
                   onClick={() => setStep(1)}
-                  className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition"
+                  className="min-h-11 rounded-sm border border-border px-4 text-sm font-medium text-text transition hover:bg-surface-3"
                 >
-                  Back
+                  {translate("w5_wizard_back")}
                 </button>
+              )}
+              {step === 1 ? (
                 <button
-                  onClick={() => setStep(3)}
-                  className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-indigo-500 hover:bg-indigo-400 text-white flex items-center gap-2 transition"
+                  type="button"
+                  onClick={continueToSearch}
+                  disabled={!selectedIndustry}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-sm bg-accent px-4 text-sm font-semibold text-bg transition hover:bg-accent-dim disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Generate Recommendations <ArrowRight className="w-4 h-4" />
+                  {translate("w5_wizard_continue")}
+                  <ArrowRight className={`h-4 w-4 ${isRtl ? "rotate-180" : ""}`} aria-hidden="true" />
                 </button>
-              </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={finish}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-sm bg-accent px-4 text-sm font-semibold text-bg transition hover:bg-accent-dim"
+                >
+                  {translate("w5_wizard_open_discover")}
+                  <ArrowRight className={`h-4 w-4 ${isRtl ? "rotate-180" : ""}`} aria-hidden="true" />
+                </button>
+              )}
             </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-6">
-              <div>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Workspace Configured • Zero AI Cost
-                </span>
-                <h2 className="text-2xl font-bold text-white mt-3">Recommended Competitor Lookups</h2>
-                <p className="text-sm text-slate-400 mt-1">
-                  Click any verified brand to immediately launch a live competitive scrape, or explore your dashboard freely.
-                </p>
-              </div>
-
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Top Brands in {recommendations.label}</div>
-                <div className="flex flex-wrap gap-2">
-                  {recommendations.brands.map((brand) => (
-                    <button
-                      key={brand}
-                      onClick={() => handleFinish(brand)}
-                      className="px-4 py-2.5 rounded-xl bg-slate-800/80 hover:bg-teal-500/20 border border-slate-700 hover:border-teal-500/40 text-slate-200 hover:text-teal-300 font-medium text-sm flex items-center gap-2 transition group"
-                    >
-                      <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-teal-400" />
-                      {brand}
-                      <ArrowRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Target Creative Angles</div>
-                <div className="flex flex-wrap gap-2">
-                  {recommendations.keywords.map((kw) => (
-                    <button
-                      key={kw}
-                      onClick={() => handleFinish(kw)}
-                      className="px-3.5 py-2 rounded-lg bg-slate-800/40 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white text-xs transition"
-                    >
-                      "{kw}"
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center pt-4 border-t border-slate-800">
-                <button
-                  onClick={() => setStep(2)}
-                  className="px-4 py-2 rounded-xl text-sm text-slate-400 hover:text-white transition"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={() => (onDashboard ? onDashboard() : handleFinish())}
-                  disabled={isSubmitting}
-                  className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-slate-800 hover:bg-slate-700 text-white transition"
-                >
-                  Go to Dashboard
-                </button>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   )
 }
-
-export default OnboardingWizardModal
