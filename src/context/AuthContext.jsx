@@ -35,6 +35,7 @@ export const AUTH_STATUS = {
 }
 
 export function AuthProvider({ children }) {
+  const authMutationRef = useRef(0)
   const [user, setUser] = useState(() => {
     if (typeof window !== "undefined") {
       try {
@@ -71,6 +72,7 @@ export function AuthProvider({ children }) {
       .getSession()
       .then((session) => {
         if (!active) return
+        if (authService.getStoredToken() !== token) return
         if (session?.user) {
           setUser(session.user)
           setStatus(AUTH_STATUS.AUTHENTICATED)
@@ -87,6 +89,7 @@ export function AuthProvider({ children }) {
       })
       .catch(() => {
         if (!active) return
+        if (authService.getStoredToken() !== token) return
         // If token was wiped or no user in state, reach terminal unauthenticated state (F45)
         setUser((curr) => {
           if (!authService.getStoredToken() || !curr) {
@@ -102,11 +105,17 @@ export function AuthProvider({ children }) {
       setUser(null)
       setStatus(AUTH_STATUS.UNAUTHENTICATED)
     }
+    const handleSessionClearing = () => {
+      setUser(null)
+      setStatus(AUTH_STATUS.UNAUTHENTICATED)
+    }
     window.addEventListener("helix:unauthorized", handleUnauthorized)
+    window.addEventListener("helix:session-clearing", handleSessionClearing)
 
     return () => {
       active = false
       window.removeEventListener("helix:unauthorized", handleUnauthorized)
+      window.removeEventListener("helix:session-clearing", handleSessionClearing)
     }
   }, [])
 
@@ -116,21 +125,27 @@ export function AuthProvider({ children }) {
      failure so a page can render field/auth errors; they only own the
      durable outcome (who is signed in). */
   const signIn = useCallback(async (credentials) => {
+    const mutationId = ++authMutationRef.current
     const { user: nextUser } = await authService.signIn(credentials)
+    if (mutationId !== authMutationRef.current) return nextUser
     setUser(nextUser)
     setStatus(AUTH_STATUS.AUTHENTICATED)
     return nextUser
   }, [])
 
   const signUp = useCallback(async (params) => {
+    const mutationId = ++authMutationRef.current
     const { user: nextUser } = await authService.signUp(params)
+    if (mutationId !== authMutationRef.current) return nextUser
     setUser(nextUser)
     setStatus(AUTH_STATUS.AUTHENTICATED)
     return nextUser
   }, [])
 
   const signOut = useCallback(async () => {
+    const mutationId = ++authMutationRef.current
     await authService.signOut()
+    if (mutationId !== authMutationRef.current) return
     setUser(null)
     setStatus(AUTH_STATUS.UNAUTHENTICATED)
   }, [])
@@ -141,42 +156,44 @@ export function AuthProvider({ children }) {
   )
 
   const resetPassword = useCallback(async (params) => {
+    const mutationId = ++authMutationRef.current
     const { user: nextUser } = await authService.resetPassword(params)
+    if (mutationId !== authMutationRef.current) return nextUser
     setUser(nextUser)
     setStatus(AUTH_STATUS.AUTHENTICATED)
     return nextUser
   }, [])
 
-    const updateUser = useCallback((updater) => {
-      setUser((prev) => (typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }))
-    }, [])
+  const updateUser = useCallback((updater) => {
+    setUser((prev) => (typeof updater === "function" ? updater(prev) : { ...prev, ...updater }))
+  }, [])
 
-    const completeOnboarding = useCallback(async () => {
-      try {
-        await authService.completeOnboarding()
-        updateUser({ has_completed_onboarding: true })
-      } catch (err) {
-        console.error("Failed to complete onboarding:", err)
-      }
-    }, [updateUser])
+  const completeOnboarding = useCallback(async () => {
+    try {
+      await authService.completeOnboarding()
+      updateUser({ has_completed_onboarding: true })
+    } catch (err) {
+      console.error("Failed to complete onboarding:", err)
+    }
+  }, [updateUser])
 
-    const value = useMemo(
-      () => ({
-        user,
-        role: user?.role ?? null,
-        status,
-        isAuthenticated: status === AUTH_STATUS.AUTHENTICATED,
-        isResolving: status === AUTH_STATUS.LOADING,
-        signIn,
-        signUp,
-        signOut,
-        requestPasswordReset,
-        resetPassword,
-        updateUser,
-        completeOnboarding,
-      }),
-      [user, status, signIn, signUp, signOut, requestPasswordReset, resetPassword, updateUser, completeOnboarding],
-    )
+  const value = useMemo(
+    () => ({
+      user,
+      role: user?.role ?? null,
+      status,
+      isAuthenticated: status === AUTH_STATUS.AUTHENTICATED,
+      isResolving: status === AUTH_STATUS.LOADING,
+      signIn,
+      signUp,
+      signOut,
+      requestPasswordReset,
+      resetPassword,
+      updateUser,
+      completeOnboarding,
+    }),
+    [user, status, signIn, signUp, signOut, requestPasswordReset, resetPassword, updateUser, completeOnboarding],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
