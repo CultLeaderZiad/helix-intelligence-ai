@@ -141,7 +141,7 @@ export function EmptyState({
   )
 }
 
-export function ErrorState({ error, onRetry, className, description }) {
+export function ErrorState({ error, onRetry, className = "", description = undefined }) {
   const status = error?.code === "network_error" ? "connection error" : "request failed"
   const statusTone = "text-danger"
   const title = error?.message || "Unable to complete the request."
