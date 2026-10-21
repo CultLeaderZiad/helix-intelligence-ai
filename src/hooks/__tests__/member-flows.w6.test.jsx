@@ -32,7 +32,15 @@ beforeEach(() => {
   window.localStorage.clear()
   vi.mocked(accountService.getProfile).mockResolvedValue({ full_name: "Ada", email: "ada@example.test", role: "member" })
   vi.mocked(accountService.uploadAvatar).mockResolvedValue({ avatar_url: "https://example.test/avatar.png" })
-  vi.mocked(accountService.updateProfile).mockResolvedValue({ full_name: "Ada Lovelace", avatar_url: "https://example.test/avatar.png" })
+  vi.mocked(accountService.updateProfile).mockResolvedValue({
+    status: "ok",
+    user: {
+      full_name: "Ada Lovelace",
+      email: "ada.lovelace@example.test",
+      avatar_url: "https://example.test/avatar.png",
+      role: "organization_admin",
+    },
+  })
   vi.mocked(supportService.listTickets).mockResolvedValue([])
   vi.mocked(supportService.getTicket).mockResolvedValue({ id: "ticket-1", replies: [] })
   vi.mocked(supportService.replyTicket).mockResolvedValue({ id: "reply-1", message: "Thanks" })
@@ -93,6 +101,8 @@ describe("useProfileSettings", () => {
       new_password: "new-password-123",
     })
     expect(result.current.profile.full_name).toBe("Ada Lovelace")
+    expect(result.current.profile.email).toBe("ada.lovelace@example.test")
+    expect(result.current.profile.role).toBe("organization_admin")
     expect(result.current.isSaving).toBe(false)
   })
 
