@@ -24,7 +24,7 @@ function errorRateTone(rate) {
   return "text-text"
 }
 
-function Cell({ label, icon: Icon, children, className }) {
+function Cell({ label, icon: Icon, children, className = "" }) {
   return (
     <div
       className={cn(
