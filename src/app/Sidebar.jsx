@@ -9,7 +9,7 @@ import { NAV_SECTIONS } from "./navigation"
 import { NotificationBell } from "@/components/NotificationBell"
 import { ONBOARDING_TOUR_RESTART_EVENT } from "@/i18n/w5Onboarding"
 
-export function Sidebar({ className = "", onOpenCommand = null }) {
+export function Sidebar({ className = "", onOpenCommand = null, onNavigate = null }) {
   const { user, signOut, updateUser } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
@@ -31,6 +31,7 @@ export function Sidebar({ className = "", onOpenCommand = null }) {
     try {
       await authService.restartOnboarding()
       updateUser({ has_completed_onboarding: false })
+      onNavigate?.()
       if (window.location.pathname === "/discover") {
         window.dispatchEvent(new CustomEvent(ONBOARDING_TOUR_RESTART_EVENT, { detail: { persisted: true } }))
       } else navigate("/discover?tour=restart")
