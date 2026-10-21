@@ -4,8 +4,8 @@
     "commitHash": "7854e30"
   },
   "api-reference/credit-costs-and-limits.md": {
-    "lastUpdated": "2026-09-27",
-    "commitHash": "97f5234"
+    "lastUpdated": "2026-10-20",
+    "commitHash": "dca0694"
   },
   "api-reference/endpoint-creatives.md": {
     "lastUpdated": "2026-09-14",
@@ -28,12 +28,12 @@
     "commitHash": "fa81649"
   },
   "compliance/LEGAL_DOCS.md": {
-    "lastUpdated": "2026-10-01",
-    "commitHash": "local"
+    "lastUpdated": "2026-10-19",
+    "commitHash": "085ae50"
   },
   "production-readiness/remediation-status.md": {
-    "lastUpdated": "2026-10-07",
-    "commitHash": "local"
+    "lastUpdated": "2026-10-20",
+    "commitHash": "eab70cc"
   },
   "user-guide/concept-audience-simulation.md": {
     "lastUpdated": "2026-09-14",
@@ -56,20 +56,20 @@
     "commitHash": "7854e30"
   },
   "user-guide/faq.md": {
-    "lastUpdated": "2026-09-14",
-    "commitHash": "7854e30"
+    "lastUpdated": "2026-10-20",
+    "commitHash": "dca0694"
   },
   "user-guide/lead-generation.md": {
     "lastUpdated": "2026-09-24",
     "commitHash": "0714b08"
   },
   "user-guide/quickstart-account-and-trial.md": {
-    "lastUpdated": "2026-09-14",
-    "commitHash": "7854e30"
+    "lastUpdated": "2026-10-20",
+    "commitHash": "dca0694"
   },
   "user-guide/quickstart-credits-and-limits.md": {
-    "lastUpdated": "2026-09-27",
-    "commitHash": "97f5234"
+    "lastUpdated": "2026-10-20",
+    "commitHash": "dca0694"
   },
   "user-guide/quickstart-first-search.md": {
     "lastUpdated": "2026-09-14",
@@ -82,5 +82,21 @@
   "user-guide/quickstart-remix-studio.md": {
     "lastUpdated": "2026-09-27",
     "commitHash": "97f5234"
+  },
+  "w5/README.md": {
+    "lastUpdated": "2026-10-21",
+    "commitHash": "f7673e9"
+  },
+  "w5/screens/README.md": {
+    "lastUpdated": "2026-10-21",
+    "commitHash": "d1c710d"
+  },
+  "w6/README.md": {
+    "lastUpdated": "2026-10-21",
+    "commitHash": "5c4e403"
+  },
+  "w6/preview-setup.md": {
+    "lastUpdated": "2026-10-21",
+    "commitHash": "5c4e403"
   }
 }
