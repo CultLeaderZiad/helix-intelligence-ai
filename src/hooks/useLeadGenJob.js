@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { leadgenService } from "@/services"
 
 /**
- * useLeadGenJob - the ONLY caller of leadgenService (Page -> hook -> @/services).
+ * useLeadGenJob - the ONLY caller of leadgenService (Page -> hook -> service boundary).
  *
  * State machine:
  *   idle -> validating -> enqueueing -> polling(queued|running|paused) -> succeeded|failed
