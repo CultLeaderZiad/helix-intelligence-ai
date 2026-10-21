@@ -1,5 +1,5 @@
 import React from "react"
-import { Search, MapPin, Layers, Mail, Share2, ArrowRight, Loader2, Sparkles } from "lucide-react"
+import { Search, MapPin, Layers, Mail, Share2, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
 

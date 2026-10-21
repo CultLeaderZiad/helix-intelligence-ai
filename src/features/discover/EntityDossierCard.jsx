@@ -1,20 +1,14 @@
 import { useState } from "react"
 import {
   Sparkles,
-  ShieldAlert,
-  Tv,
   Flame,
   BookOpen,
   ChevronDown,
   ChevronUp,
   DollarSign,
-  Share2,
   FilterX,
-  Target,
   ExternalLink,
-  Users,
   Radio,
-  Video
 } from "lucide-react"
 import { useLanguage } from "@/context/LanguageContext"
 
@@ -183,7 +177,7 @@ export function getPlatformMeta(platformName = "", _entityName = "", _query = ""
 
 export function EntityDossierCard({ profile, query, isZeroResults = false }) {
   const [expanded, setExpanded] = useState(true)
-  const { t, isRtl } = useLanguage()
+  const { t } = useLanguage()
 
   if (!profile) return null
 
