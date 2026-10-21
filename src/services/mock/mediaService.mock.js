@@ -4,6 +4,9 @@ import { ServiceError } from "../http"
 const jobs = new Map()
 
 export const mediaService = {
+  /**
+   * @param {{ signal?: AbortSignal }} [options]
+   */
   generate: async (params, { signal } = {}) => {
     await delay(300, { signal })
     const jobId = crypto.randomUUID()
@@ -65,23 +68,35 @@ export const mediaService = {
     return job
   },
   
+  /**
+   * @param {string} jobId
+   * @param {{ signal?: AbortSignal }} [options]
+   */
   getJob: async (jobId, { signal } = {}) => {
     await delay(150, { signal })
     const job = jobs.get(jobId)
-    if (!job) throw new ServiceError("Job not found", 404)
+    if (!job) throw new ServiceError("Job not found", { status: 404 })
     return { ...job } // return a copy to prevent mutation bugs
   },
   
+  /**
+   * @param {string} jobId
+   * @param {{ signal?: AbortSignal }} [options]
+   */
   getJobResult: async (jobId, { signal } = {}) => {
     await delay(100, { signal })
     const job = jobs.get(jobId)
-    if (!job) throw new ServiceError("Job not found", 404)
+    if (!job) throw new ServiceError("Job not found", { status: 404 })
     if (job.status !== "succeeded") {
-      throw new ServiceError("Job is not completed yet", 400)
+      throw new ServiceError("Job is not completed yet", { status: 400 })
     }
     return job.result
   },
   
+  /**
+   * @param {string} jobId
+   * @param {{ signal?: AbortSignal }} [options]
+   */
   cancel: async (jobId, { signal } = {}) => {
     await delay(100, { signal })
     const job = jobs.get(jobId)

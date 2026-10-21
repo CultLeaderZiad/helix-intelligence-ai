@@ -64,7 +64,7 @@ export function RecentJobsTable({ jobs }) {
                 </span>
               </td>
               <td className="px-2 py-2">
-                <Tag tone={STATUS_TONE[job.status] ?? "default"}>{job.status}</Tag>
+                <Tag className="" tone={STATUS_TONE[job.status] ?? "default"}>{job.status}</Tag>
               </td>
               <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted">
                 {job.records ? formatInt(job.records) : "—"}
