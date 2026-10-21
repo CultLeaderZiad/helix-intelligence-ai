@@ -417,7 +417,7 @@ export function IntelligencePage() {
             </Button>
             <Button
               size="xs"
-              variant="secondary"
+              variant="default"
               onClick={handleCompilePlaybook}
               disabled={compilingPlaybook || creatives.length === 0}
               className="flex items-center gap-1.5"
