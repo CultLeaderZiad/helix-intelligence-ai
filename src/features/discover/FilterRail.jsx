@@ -62,17 +62,18 @@ export function FilterRail({ filters, onChange, onClear, dirty }) {
           spine, every group is Label + gap-1.5 + controls. */}
       <div className="flex flex-col gap-5 p-3">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="filter-country">Country</Label>
+          <Label htmlFor="filter-country" className="">Country</Label>
           <Select
             id="filter-country"
             value={filters.country ?? "ALL"}
             onChange={(e) => onChange({ ...filters, country: e.target.value })}
             options={COUNTRIES}
+            className=""
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label>Platform</Label>
+          <Label className="">Platform</Label>
           {/* Checkbox carries its own py-1, so the list itself is gap-0 —
               otherwise rows sit 14px apart while Select groups sit at 6px. */}
           <div className="flex flex-col">
@@ -82,13 +83,15 @@ export function FilterRail({ filters, onChange, onClear, dirty }) {
                 label={p.label}
                 checked={(filters.platforms ?? []).includes(p.value)}
                 onChange={() => toggleArray("platforms", p.value)}
+                count={undefined}
+                className=""
               />
             ))}
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label>Format</Label>
+          <Label className="">Format</Label>
           <div className="flex flex-col">
             {FORMATS.map((f) => (
               <Checkbox
@@ -96,13 +99,15 @@ export function FilterRail({ filters, onChange, onClear, dirty }) {
                 label={f.label}
                 checked={(filters.formats ?? []).includes(f.value)}
                 onChange={() => toggleArray("formats", f.value)}
+                count={undefined}
+                className=""
               />
             ))}
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label>Spend band</Label>
+          <Label className="">Spend band</Label>
           <div className="flex gap-1">
             {SPEND_BANDS.map((b) => {
               const active = (filters.spend_bands ?? []).includes(b.value)
@@ -130,17 +135,18 @@ export function FilterRail({ filters, onChange, onClear, dirty }) {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="filter-score">Composite score</Label>
+          <Label htmlFor="filter-score" className="">Composite score</Label>
           <Select
             id="filter-score"
             value={String(filters.min_score ?? 0)}
             onChange={(e) => onChange({ ...filters, min_score: Number(e.target.value) })}
             options={SCORE_OPTIONS}
+            className=""
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="filter-days">Longevity</Label>
+          <Label htmlFor="filter-days" className="">Longevity</Label>
           <Select
             id="filter-days"
             value={String(filters.min_days_active ?? 0)}
@@ -148,6 +154,7 @@ export function FilterRail({ filters, onChange, onClear, dirty }) {
               onChange({ ...filters, min_days_active: Number(e.target.value) })
             }
             options={DAYS_OPTIONS}
+            className=""
           />
         </div>
 
