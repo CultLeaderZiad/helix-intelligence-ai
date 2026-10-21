@@ -60,9 +60,9 @@ Raw bytes / gzip-9 bytes (gzip summed per emitted JS chunk; not a measured netwo
 
 | Measure | W5 baseline | W6 final application build |
 | --- | ---: | ---: |
-| Entry JS | 508,269 / 155,971 | **490,270 / 152,019** |
-| Initial Discover static graph | 598,370 / 186,214 | **583,116 / 184,115** |
-| All emitted JS | 1,372,079 / 414,975 | **1,289,299 / 401,234** |
+| Entry JS | 508,269 / 155,971 | **490,270 / 152,022** |
+| Initial Discover static graph | 598,370 / 186,214 | **583,116 / 184,107** |
+| All emitted JS | 1,372,079 / 414,975 | **1,289,299 / 401,145** |
 
 [Machine-readable measurement](evidence/bundles-final.json). The final build emits no >500 kB chunk warning. The entry remains substantial; this is a measured incremental split, not a claim of optimal performance.
 

@@ -2,16 +2,16 @@
   "entry": {
     "files": 1,
     "raw_bytes": 490270,
-    "gzip9_bytes": 152019
+    "gzip9_bytes": 152022
   },
   "initial_discover_graph": {
     "files": 31,
     "raw_bytes": 583116,
-    "gzip9_bytes": 184115
+    "gzip9_bytes": 184107
   },
   "all_emitted_js": {
     "files": 112,
     "raw_bytes": 1289299,
-    "gzip9_bytes": 401234
+    "gzip9_bytes": 401145
   }
 }

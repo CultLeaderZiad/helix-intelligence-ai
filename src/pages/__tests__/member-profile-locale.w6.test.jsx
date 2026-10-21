@@ -2,6 +2,7 @@ import React from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter } from "react-router-dom"
+import { w5Product } from "@/i18n/w5Product"
 
 const fixtures = vi.hoisted(() => ({
   lang: "en",
@@ -126,6 +127,8 @@ describe("member profile localization", () => {
   it("describes the API avatar upload limit in both languages", () => {
     expect(getMemberMessage("en", "photoUploadGuidance")).toContain("2 MB")
     expect(getMemberMessage("ar", "photoUploadGuidance")).toContain("2 ميغابايت")
+    expect(w5Product.en.photoUploadGuidance).toContain("2 MB")
+    expect(w5Product.ar.photoUploadGuidance).toContain("2 ميغابايت")
   })
 
   it("does not claim a password change or sign out when the server rejects the update", async () => {
