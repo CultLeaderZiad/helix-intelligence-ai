@@ -12,7 +12,6 @@ Tests cover:
 """
 from __future__ import annotations
 
-import asyncio
 import datetime
 from datetime import timezone
 import os
@@ -28,13 +27,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from app.core.config import settings
 from app.db.session import worker_session_maker, worker_engine
 from app.models.user import User
-from app.models.leadgen import LeadGenJob, LeadGenWorkerHeartbeat
-from app.models.scout import ScoutJob, ScoutMapsJob
-from app.models.media_job import MediaGenerationJob
+from app.models.leadgen import LeadGenWorkerHeartbeat
 from app.schemas.auth import UserCreate
 from app.services.security_service import is_ip_blocked, is_safe_public_url, safe_http_get
 from app.services.leadgen_pipeline import _is_private_host as pipe_is_private_host
-from app.services.job_reconciliation import _sweep_table, reconcile_once
+from app.services.job_reconciliation import reconcile_once
 from app.services.team_service import _format_utc_iso
 from app.services.auth_service import register_user
 from app.api.routers.updates import normalize_to_utc
@@ -134,9 +131,14 @@ async def test_f25_reconciliation_sweeper_handles_all_job_types():
     with patch("app.services.job_reconciliation._sweep_table") as mock_sweep, \
          patch("app.services.job_reconciliation._sweep_unrefunded_failed_jobs", return_value=[]), \
          patch("app.services.job_reconciliation.refund", new_callable=AsyncMock) as mock_refund, \
-         patch("app.services.job_reconciliation.worker_session_maker"), \
+         patch("app.services.job_reconciliation.worker_session_maker") as session_factory, \
          patch("app.services.job_reconciliation._sweep_monitor_runs", return_value=0), \
          patch("app.services.work_outbox.requeue_expired_leases", return_value=0):
+
+        session = session_factory.return_value.__aenter__.return_value
+        result = MagicMock()
+        result.mappings.return_value.all.return_value = []
+        session.execute = AsyncMock(return_value=result)
 
         # Mock rows returned for each table
         mock_sweep.side_effect = [
