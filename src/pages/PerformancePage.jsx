@@ -8,19 +8,16 @@ import { useLanguage } from "@/context/LanguageContext"
 import { useSearchContext } from "@/context/SearchContext"
 import { creativeService } from "@/services"
 import {
-  Activity,
-  TrendingUp,
-  Clock,
-  Flame,
-  Award,
-  Sparkles,
-  Bookmark,
-  Play,
-  Image as ImageIcon,
-  CheckCircle,
-  BarChart3,
-  Layers,
-  ArrowUpRight,
+  Activity
+  TrendingUp
+  Clock
+  Award
+  Sparkles
+  Bookmark
+  Play
+  Image as ImageIcon
+  BarChart3
+  Layers
   Eye
 } from "lucide-react"
 import { Tag } from "@/components/ui/Tag"

@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from "react"
 import { adminService } from "@/services"
-import { 
-  Gauge, 
-  DollarSign, 
-  Coins, 
-  Activity, 
-  Cpu, 
-  Globe, 
-  Sparkles, 
-  RefreshCw,
-  Search,
-  Filter,
-  User,
-  Building
+import {
+  Gauge
+  DollarSign
+  Coins
+  Activity
+  Cpu
+  Globe
+  Sparkles
+  RefreshCw
+  Search
+  Filter
 } from "lucide-react"
 
 export function UsagePage() {

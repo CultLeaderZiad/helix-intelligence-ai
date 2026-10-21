@@ -69,7 +69,7 @@ export function UsersTable({ users, onRefresh }) {
                 <td className="px-4 py-3 text-right">
                   <Button 
                     size="xs" 
-                    variant={isSuspended ? "primary" : "secondary"}
+                    variant={isSuspended ? "primary" : "default"}
                     disabled={updatingId === user.id}
                     onClick={() => handleToggleStatus(user)}
                   >
