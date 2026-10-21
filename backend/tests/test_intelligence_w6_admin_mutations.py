@@ -228,6 +228,33 @@ async def test_admin_grants_role_credit_and_user_status_persist_with_audit():
 
 
 @pytest.mark.asyncio
+async def test_admin_rows_report_workspace_access_status_and_valid_utc_dates():
+    suffix = _suffix()
+    async with worker_session_maker() as db:
+        admin, owner, admin_org, owner_org = await _seed_admin_and_owner(db, suffix)
+        unassigned = _user(suffix, "unassigned")
+        db.add(unassigned)
+        db.add(OrganizationAccessGrant(
+            org_id=owner_org.id,
+            plan_id=owner_org.plan_id,
+            feature_flags={"discover": True},
+            granted_by_user_id=admin.id,
+        ))
+        await db.commit()
+
+        organizations = {row.id: row for row in await admin_service.list_organizations(db)}
+        assert organizations[owner_org.id].access_status == "approved"
+        assert organizations[admin_org.id].access_status == "pending"
+
+        users = {row.id: row for row in await admin_service.list_users(db)}
+        assert users[owner.id].access_status == "approved"
+        assert users[unassigned.id].access_status is None
+        assert users[owner.id].created_at.endswith("Z")
+        assert "+00:00Z" not in users[owner.id].created_at
+        datetime.fromisoformat(users[owner.id].created_at.replace("Z", "+00:00"))
+
+
+@pytest.mark.asyncio
 async def test_access_decisions_are_atomic_and_revoke_is_audited():
     suffix = _suffix()
     async with worker_session_maker() as db:
