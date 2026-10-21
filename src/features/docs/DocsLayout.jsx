@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { 
   BookOpen, 
@@ -16,7 +16,9 @@ import {
   GitCommit
 } from 'lucide-react'
 import { DOCS_REGISTRY, getAdjacentDocs } from './docsData'
-import { slugify } from './MarkdownRenderer'
+import { getMarkdownHeadings } from './markdownHeadings'
+import { useDialogFocus } from '@/hooks/useDialogFocus'
+import { useIsBelowLg } from '@/hooks/useMediaQuery'
 import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { DocSearchModal } from './DocSearchModal'
 import { ScrollToTopButton } from '@/components/ui/ScrollToTopButton'
@@ -28,6 +30,10 @@ export function DocsLayout({ activeDoc, children }) {
   const { t, lang, isRtl } = useLanguage()
   const [searchModalOpen, setSearchModalOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const drawerRef = useRef(null)
+  const isBelowLg = useIsBelowLg()
+  const drawerOpen = mobileMenuOpen && isBelowLg
+  useDialogFocus(drawerRef, drawerOpen, () => setMobileMenuOpen(false))
   const [activeHeading, setActiveHeading] = useState('')
   const [scrollProgress, setScrollProgress] = useState(0)
 
@@ -68,16 +74,9 @@ export function DocsLayout({ activeDoc, children }) {
     setMobileMenuOpen(false)
   }, [location.pathname])
 
-  // Close mobile drawer on Escape key
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && mobileMenuOpen) {
-        setMobileMenuOpen(false)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [mobileMenuOpen])
+    if (!isBelowLg) setMobileMenuOpen(false)
+  }, [isBelowLg])
 
   // Determine current active section: 'user-guide' or 'api-reference'
   const activeSectionKey = useMemo(() => {
@@ -91,18 +90,7 @@ export function DocsLayout({ activeDoc, children }) {
   // Extract table of contents from activeDoc content
   const tableOfContents = useMemo(() => {
     if (!activeDoc?.content) return []
-    const lines = activeDoc.content.split('\n')
-    const headings = []
-    lines.forEach((line) => {
-      if (line.startsWith('## ')) {
-        const text = line.replace(/^##\s+/, '').trim()
-        headings.push({ level: 2, text, id: slugify(text) })
-      } else if (line.startsWith('### ')) {
-        const text = line.replace(/^###\s+/, '').trim()
-        headings.push({ level: 3, text, id: slugify(text) })
-      }
-    })
-    return headings
+    return getMarkdownHeadings(activeDoc.content).filter(heading => heading.level === 2 || heading.level === 3)
   }, [activeDoc?.content])
 
   // Track active heading on scroll
@@ -142,20 +130,22 @@ export function DocsLayout({ activeDoc, children }) {
       <SkipToContent targetId="main-content" />
 
       {/* 1. TOP HEADER (GitLab Docs Shell Inspired) */}
-      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md px-4 lg:px-6 h-14 flex items-center justify-between gap-4 relative">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-40 border-b border-border bg-surface/90 backdrop-blur-md px-4 lg:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4 relative">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="lg:hidden p-1.5 rounded-md hover:bg-surface-2 text-text-muted hover:text-text"
             aria-label={t('docsToggleNavigation', 'Toggle navigation')}
+            aria-expanded={drawerOpen}
+            aria-controls="docs-navigation"
           >
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
 
-          <Link to="/" className="flex items-center gap-2 group">
+          <Link to="/" className="flex min-w-0 items-center gap-2 group">
             <img src="/brand/helix-mark.svg" alt="Helix" className="h-5 w-5 rounded-[3px] object-contain" />
-            <span className="font-mono text-sm font-bold tracking-tight text-text group-hover:text-accent transition-colors">
+            <span className="truncate font-mono text-sm font-bold tracking-tight text-text group-hover:text-accent transition-colors">
               Helix <span className="text-text-muted font-normal">{t('docsBrand', 'Documentation')}</span>
             </span>
           </Link>
@@ -208,7 +198,7 @@ export function DocsLayout({ activeDoc, children }) {
         </div>
 
         {/* Action links */}
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {/* Mobile search icon button */}
           <button
             type="button"
@@ -223,9 +213,10 @@ export function DocsLayout({ activeDoc, children }) {
           <LanguageSwitcher />
           <Link
             to="/discover"
+            aria-label={t('docsOpenConsole', 'Open workspace')}
             className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-mono font-medium border border-border bg-surface-2 hover:bg-surface-3 text-text transition-colors"
           >
-            <span>{t('docsOpenConsole', 'Open workspace')}</span>
+            <span className="sr-only sm:not-sr-only">{t('docsOpenConsole', 'Open workspace')}</span>
             <ExternalLink className="h-3 w-3 text-text-faint" />
           </Link>
         </div>
@@ -246,8 +237,13 @@ export function DocsLayout({ activeDoc, children }) {
       <div className="flex-1 flex w-full max-w-[1520px] mx-auto">
         {/* LEFT NAVIGATION SIDEBAR */}
         <aside
-          className={`fixed inset-y-14 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-30 w-72 border-border bg-surface flex flex-col transition-transform duration-200 lg:static lg:w-64 lg:shrink-0 ${
-            mobileMenuOpen ? 'translate-x-0' : isRtl ? 'translate-x-full lg:translate-x-0' : '-translate-x-full lg:translate-x-0'
+          ref={drawerRef}
+          id="docs-navigation"
+          role={drawerOpen ? "dialog" : undefined}
+          aria-modal={drawerOpen ? true : undefined}
+          aria-label={t('docsToggleNavigation', 'Documentation navigation')}
+          className={`fixed inset-y-14 ${isRtl ? 'right-0 border-l' : 'left-0 border-r'} z-30 w-72 border-border bg-surface flex-col lg:static lg:w-64 lg:shrink-0 ${
+            drawerOpen ? 'flex' : 'hidden lg:flex'
           }`}
         >
           {/* Section audience switcher on mobile */}
@@ -350,7 +346,7 @@ export function DocsLayout({ activeDoc, children }) {
         </aside>
 
         {/* Mobile backdrop overlay */}
-        {mobileMenuOpen && (
+        {drawerOpen && (
           <div
             onClick={() => setMobileMenuOpen(false)}
             className="fixed inset-0 z-20 bg-black/60 backdrop-blur-xs lg:hidden"
