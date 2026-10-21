@@ -12,14 +12,22 @@ import React, {
 import gsap from 'gsap'
 import './CardSwap.css'
 
-export const Card = forwardRef(({ customClass, className, style, ...rest }, ref) => (
-  <div
-    ref={ref}
-    {...rest}
-    style={style}
-    className={`card-swap-item ${customClass ?? ''} ${className ?? ''}`.trim()}
-  />
-))
+/** @typedef {import('react').HTMLAttributes<HTMLDivElement> & { customClass?: string, ref?: import('react').Ref<HTMLDivElement> }} CardProps */
+
+export const Card = forwardRef(
+  /**
+   * @param {CardProps} props
+   * @param {import('react').ForwardedRef<HTMLDivElement>} ref
+   */
+  ({ customClass, className, style, ...rest }, ref) => (
+    <div
+      ref={ref}
+      {...rest}
+      style={style}
+      className={`card-swap-item ${customClass ?? ''} ${className ?? ''}`.trim()}
+    />
+  )
+)
 Card.displayName = 'Card'
 
 const makeSlot = (i, distX, distY, total) => {
@@ -116,7 +124,7 @@ export const CardSwap = ({
   }, [skewAmount, isMobile, isTablet])
 
   const childArr = useMemo(() => Children.toArray(children), [children])
-  const refs = useMemo(() => childArr.map(() => React.createRef()), [childArr.length])
+  const refs = useMemo(() => childArr.map(() => React.createRef<HTMLDivElement>()), [childArr.length])
 
   const order = useRef(Array.from({ length: childArr.length }, (_, i) => i))
   const tlRef = useRef(null)
@@ -331,7 +339,7 @@ export const CardSwap = ({
   }, [delay, pauseOnHover, swap, isInView])
 
   const rendered = childArr.map((child, i) =>
-    isValidElement(child)
+    isValidElement<CardProps>(child)
       ? cloneElement(child, {
           key: i,
           ref: refs[i],
