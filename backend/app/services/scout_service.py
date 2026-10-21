@@ -370,7 +370,7 @@ async def execute_scout_job(job_id: str):
                                 target_category=job.target_category,
                                 generate_outreach=job.generate_outreach
                             )
-                        except Exception as atlas_err:
+                        except Exception:
                             atlas_json = {
                                 "profile_analysis": {
                                     "primary_niche": job.target_category or "General",
