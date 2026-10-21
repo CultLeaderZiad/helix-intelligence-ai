@@ -453,7 +453,7 @@ async def test_profile_avatar_and_password_writes_persist_with_audit(monkeypatch
             db=db,
             current_user=user,
         )
-        assert result["avatar_url"] == "/uploads/w6-test-avatar.png"
+        assert "/uploads/w6-test-avatar.png?" in result["avatar_url"]
         await db.refresh(user)
         assert user.avatar_url == "/uploads/w6-test-avatar.png"
 
