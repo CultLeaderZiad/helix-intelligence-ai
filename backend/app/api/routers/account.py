@@ -50,13 +50,21 @@ class ProfileUpdateRequest(BaseModel):
                 raise ValueError('Password cannot exceed 128 characters')
         return v
 
+def _avatar_url(user: User) -> str:
+    metadata = user.signup_metadata or {}
+    return storage_service.resolve_stored_url(
+        user.avatar_url or "", user_id=user.id,
+        token_version=str(int(metadata.get("token_version", 1))),
+    ) or ""
+
+
 @router.get("/profile")
 async def get_profile(current_user: User = Depends(get_current_user)):
     return {
         "id": current_user.id,
         "email": current_user.email,
         "full_name": getattr(current_user, "full_name", "") or "",
-        "avatar_url": storage_service.resolve_stored_url(getattr(current_user, "avatar_url", "") or "") or "",
+        "avatar_url": _avatar_url(current_user),
         "role": current_user.role,
         "has_completed_onboarding": getattr(current_user, "has_completed_onboarding", False),
         "trial_expires_at": current_user.trial_expires_at.isoformat() if current_user.trial_expires_at else None,
@@ -69,12 +77,15 @@ async def update_profile(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    changed_fields = []
     if req.full_name is not None:
         current_user.full_name = req.full_name
+        changed_fields.append("full_name")
     if req.avatar_url is not None:
         if not _acceptable_avatar_reference(req.avatar_url.strip()):
             raise HTTPException(status_code=400, detail={"code": "avatar_rejected", "message": "Avatar URL must be an https URL or an uploaded file."})
         current_user.avatar_url = req.avatar_url.strip()
+        changed_fields.append("avatar_url")
     if req.new_password:
         if not req.current_password:
             raise HTTPException(status_code=400, detail="Current password is required to set a new password")
@@ -82,8 +93,12 @@ async def update_profile(
             raise HTTPException(status_code=400, detail="Current password does not match")
         current_user.password_hash = get_password_hash(req.new_password)
         from app.services import auth_service
-        await auth_service.revoke_user_sessions(db, current_user)
+        await auth_service.revoke_user_sessions(db, current_user, commit=False)
+        changed_fields.append("password")
 
+    if changed_fields:
+        from app.services.account_service import record_account_mutation
+        await record_account_mutation(db, current_user, "account_profile_updated", changed_fields)
     await db.commit()
     await db.refresh(current_user)
     return {
@@ -92,7 +107,7 @@ async def update_profile(
             "id": current_user.id,
             "email": current_user.email,
             "full_name": current_user.full_name,
-            "avatar_url": current_user.avatar_url,
+            "avatar_url": _avatar_url(current_user),
             "role": current_user.role
         }
     }
@@ -127,12 +142,14 @@ async def upload_avatar(
         encoded, mime, ext = prepare_avatar_image(bytes(buf))
     except AvatarRejected as exc:
         raise HTTPException(status_code=400, detail={"code": "avatar_rejected", "message": str(exc)}) from exc
+    from app.services.account_service import record_account_mutation
+    await record_account_mutation(db, current_user, "account_avatar_updated", ["avatar_url"])
     avatar_url = await storage_service.save_avatar(encoded, mime, ext, current_user.id)
     current_user.avatar_url = avatar_url
     await db.commit()
     await db.refresh(current_user)
 
-    return {"status": "ok", "avatar_url": avatar_url}
+    return {"status": "ok", "avatar_url": _avatar_url(current_user)}
 
 @router.get("/usage/today")
 async def get_today_real_usage(
