@@ -1,27 +1,11 @@
 {
-  "version": 1,
-  "ports": {
-    "preview": 3000,
-    "additional": {
-      "backend": {
-        "port": 8000,
-        "label": "FastAPI backend"
-      }
-    }
-  },
-  "scripts": {
-    "setup": {
-      "enabled": true,
-      "command": "pnpm install --frozen-lockfile && bash .hoplite/scripts/setup-local.sh"
-    },
-    "run": {
-      "enabled": true,
-      "command": "bash .hoplite/scripts/run-local.sh"
-    },
-    "archive": {
-      "enabled": true,
-      "command": null
-    }
-  },
-  "mcpServers": []
+	"version": 1,
+	"ports": {
+		"preview": 3000,
+		"backend": 8000
+	},
+	"scripts": {
+		"setup": "bash .hoplite/setup.sh",
+		"run": "bash .hoplite/run.sh"
+	}
 }
