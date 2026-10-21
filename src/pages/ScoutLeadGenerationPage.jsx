@@ -16,7 +16,7 @@ import { useAuth } from "@/context/AuthContext"
 
 /**
  * Scout · Lead Generation composition root (scrapling_engine).
- * Page -> useLeadGenJob -> @/services. Social/Atlas lives at /scout/social and
+ * Page -> useLeadGenJob -> services. Social/Atlas lives at /scout/social and
  * is untouched by this surface.
  */
 const DEFAULT_BRIEF = {
@@ -67,7 +67,6 @@ export function ScoutLeadGenerationPage() {
   }, [])
 
   const workerOnline = health?.worker === "online"
-  const offline = phase === LEADGEN_PHASE.WORKER_OFFLINE || (!workerOnline && !isBusy && !job)
   const running = phase === LEADGEN_PHASE.POLLING || phase === LEADGEN_PHASE.ENQUEUEING
 
   const handleRun = () => {

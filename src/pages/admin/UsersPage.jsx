@@ -7,7 +7,7 @@ import {
   CheckCircle2, 
   Key,
   X,
-  CreditCard
+  CreditCard,
 } from "lucide-react"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { useLanguage } from "@/context/LanguageContext"

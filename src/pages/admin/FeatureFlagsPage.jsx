@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react"
 import { adminService } from "@/services"
-import { Flag, Sliders, CheckCircle2, RefreshCw, ShieldCheck, Zap } from "lucide-react"
+import { Flag, RefreshCw, Zap } from "lucide-react"
 
 export function FeatureFlagsPage() {
   const [plans, setPlans] = useState([])
-  const [orgs, setOrgs] = useState([])
+  const [, setOrgs] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [, setError] = useState(null)
 
   const ALL_FEATURES = [
     { 
