@@ -2,14 +2,8 @@ import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, Copy, Info, AlertTriangle, AlertCircle, Lightbulb, ShieldAlert, ChevronDown } from 'lucide-react'
 
-// Helper to convert header text into anchor id
-export function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
+import { getMarkdownHeadings } from './markdownHeadings'
+export { slugify } from './markdownHeadings'
 
 function FaqAccordionItem({ question, id, defaultOpen = false, children }) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
@@ -261,6 +255,7 @@ export function MarkdownRenderer({ content, isFaq = false }) {
   )
 
   const lines = content.split('\n')
+  const headingIds = new Map(getMarkdownHeadings(content).map(heading => [heading.line, heading.id]))
   const elements = []
   let faqCount = 0
   let i = 0
@@ -271,6 +266,7 @@ export function MarkdownRenderer({ content, isFaq = false }) {
     // 0. Interactive FAQ Accordion items on FAQ pages
     if (isFaqDoc && line.startsWith('### ')) {
       const question = line.replace(/^###\s+/, '').trim()
+      const headingId = headingIds.get(i)
       i++
       const answerLines = []
       while (
@@ -292,7 +288,7 @@ export function MarkdownRenderer({ content, isFaq = false }) {
         <FaqAccordionItem
           key={`faq-${faqCount}`}
           question={question}
-          id={slugify(question)}
+          id={headingId}
           defaultOpen={faqCount === 1}
         >
           <MarkdownRenderer content={answerLines.join('\n')} isFaq={false} />
@@ -423,7 +419,7 @@ export function MarkdownRenderer({ content, isFaq = false }) {
       elements.push(
         <h1
           key={`h1-${i}`}
-          id={slugify(title)}
+          id={headingIds.get(i)}
           className="scroll-mt-20 text-2xl md:text-3xl font-bold tracking-tight text-text mb-4 mt-2"
         >
           {renderInline(title)}
@@ -438,7 +434,7 @@ export function MarkdownRenderer({ content, isFaq = false }) {
       elements.push(
         <h2
           key={`h2-${i}`}
-          id={slugify(title)}
+          id={headingIds.get(i)}
           className="scroll-mt-20 text-xl font-semibold tracking-tight text-text mt-8 mb-3 pb-1 border-b border-border/50"
         >
           {renderInline(title)}
@@ -453,7 +449,7 @@ export function MarkdownRenderer({ content, isFaq = false }) {
       elements.push(
         <h3
           key={`h3-${i}`}
-          id={slugify(title)}
+          id={headingIds.get(i)}
           className="scroll-mt-20 text-base font-semibold text-text mt-6 mb-2"
         >
           {renderInline(title)}
@@ -468,7 +464,7 @@ export function MarkdownRenderer({ content, isFaq = false }) {
       elements.push(
         <h4
           key={`h4-${i}`}
-          id={slugify(title)}
+          id={headingIds.get(i)}
           className="scroll-mt-20 text-sm font-semibold font-mono text-accent-dim uppercase tracking-wider mt-5 mb-2"
         >
           {renderInline(title)}
