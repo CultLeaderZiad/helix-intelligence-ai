@@ -134,9 +134,14 @@ async def test_f25_reconciliation_sweeper_handles_all_job_types():
     with patch("app.services.job_reconciliation._sweep_table") as mock_sweep, \
          patch("app.services.job_reconciliation._sweep_unrefunded_failed_jobs", return_value=[]), \
          patch("app.services.job_reconciliation.refund", new_callable=AsyncMock) as mock_refund, \
-         patch("app.services.job_reconciliation.worker_session_maker"), \
+         patch("app.services.job_reconciliation.worker_session_maker") as session_factory, \
          patch("app.services.job_reconciliation._sweep_monitor_runs", return_value=0), \
          patch("app.services.work_outbox.requeue_expired_leases", return_value=0):
+
+        session = session_factory.return_value.__aenter__.return_value
+        result = MagicMock()
+        result.mappings.return_value.all.return_value = []
+        session.execute = AsyncMock(return_value=result)
 
         # Mock rows returned for each table
         mock_sweep.side_effect = [
