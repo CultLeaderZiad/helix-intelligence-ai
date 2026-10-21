@@ -140,9 +140,9 @@ def _job_response(job: ScrapeJob) -> Job:
         stages_total=int(job.stages_total or 0),
         records_found=int(job.record_count or 0),
         elapsed_ms=int(job.elapsed_ms or 0),
-        created_at=job.created_at.isoformat() + "Z" if job.created_at else "",
-        completed_at=job.completed_at.isoformat() + "Z" if job.completed_at else None,
-        deadline_at=job.deadline_at.isoformat() if job.deadline_at else None,
+        created_at=_isoformat_utc(job.created_at) if job.created_at else "",
+        completed_at=_isoformat_utc(job.completed_at) if job.completed_at else None,
+        deadline_at=_isoformat_utc(job.deadline_at) if job.deadline_at else None,
         error=job.error_msg,
         failure_kind=job.failure_kind,
         entity_profile=getattr(job, "entity_profile", None),
@@ -180,6 +180,14 @@ def _utcnow() -> datetime.datetime:
     comparison the reconciliation sweep needs to make.
     """
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+def _isoformat_utc(value: datetime.datetime) -> str:
+    if value.utcoffset() is None:
+        value = value.replace(tzinfo=datetime.timezone.utc)
+    else:
+        value = value.astimezone(datetime.timezone.utc)
+    return value.isoformat().replace("+00:00", "Z")
 
 
 DISCOVER_TERMINAL_STATUSES = {"succeeded", "failed", "cancelled", "timed_out"}
@@ -541,7 +549,7 @@ async def trigger_search(
         stages_total=new_job.stages_total,
         records_found=new_job.record_count,
         elapsed_ms=new_job.elapsed_ms,
-        created_at=new_job.created_at.isoformat() + "Z" if new_job.created_at else "",
+        created_at=_isoformat_utc(new_job.created_at) if new_job.created_at else "",
         deadline_at=new_job.deadline_at.isoformat() if new_job.deadline_at else None,
     )
 
@@ -557,7 +565,7 @@ async def get_job_status(db: AsyncSession, job_id: str, user_org_ids: Optional[L
             stages_total=5,
             records_found=15,
             elapsed_ms=5000,
-            created_at=datetime.datetime.utcnow().isoformat() + "Z"
+            created_at=_isoformat_utc(_utcnow())
         )
     
     result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
@@ -602,8 +610,8 @@ async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_s
             stages_total=5,
             records_found=15,
             elapsed_ms=12000,
-            created_at=datetime.datetime.utcnow().isoformat() + "Z",
-            completed_at=datetime.datetime.utcnow().isoformat() + "Z"
+            created_at=_isoformat_utc(_utcnow()),
+            completed_at=_isoformat_utc(_utcnow())
         )
         return Paginated(
             items=[mock_job],
