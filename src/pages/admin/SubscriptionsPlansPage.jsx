@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from "react"
 import { adminService } from "@/services"
-import { 
-  CreditCard, 
-  PlusCircle, 
-  Check, 
-  X, 
-  Sparkles, 
-  RefreshCw, 
-  CheckCircle2, 
-  ShieldCheck,
+import {
+  CreditCard,
+  PlusCircle,
+  Check,
+  X,
+  RefreshCw,
+  CheckCircle2,
   Edit2,
-  Trash2
+  Trash2,
 } from "lucide-react"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 export function SubscriptionsPlansPage() {
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [, setError] = useState(null)
   const [toast, setToast] = useState(null)
 
   // Create plan modal
@@ -79,8 +77,8 @@ export function SubscriptionsPlansPage() {
       await adminService.createPlan({
         name,
         type: "custom",
-        credit_allowance: parseInt(creditAllowance, 10),
-        price_per_credit: parseFloat(pricePerCredit),
+        credit_allowance: creditAllowance,
+        price_per_credit: pricePerCredit,
         feature_flags: flags,
       })
       showToast(`Custom plan "${name}" created successfully!`)
@@ -115,10 +113,10 @@ export function SubscriptionsPlansPage() {
     try {
       await adminService.updatePlan(editingPlan.id, {
         name: editName,
-        credit_allowance: parseInt(editAllowance, 10),
-        price_monthly: parseFloat(editPriceMonthly),
-        daily_image_limit: parseInt(editDailyImages, 10),
-        daily_video_limit: parseInt(editDailyVideos, 10),
+        credit_allowance: editAllowance,
+        price_monthly: editPriceMonthly,
+        daily_image_limit: editDailyImages,
+        daily_video_limit: editDailyVideos,
         feature_flags: editFlags
       })
       showToast(`Plan "${editName}" updated successfully! Changes take effect immediately.`)
@@ -325,7 +323,7 @@ export function SubscriptionsPlansPage() {
                     type="number"
                     step="0.01"
                     value={editPriceMonthly}
-                    onChange={(e) => setEditPriceMonthly(e.target.value)}
+                    onChange={(e) => setEditPriceMonthly(Number(e.target.value))}
                     className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -334,7 +332,7 @@ export function SubscriptionsPlansPage() {
                   <input
                     type="number"
                     value={editAllowance}
-                    onChange={(e) => setEditAllowance(e.target.value)}
+                    onChange={(e) => setEditAllowance(Number(e.target.value))}
                     className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -346,7 +344,7 @@ export function SubscriptionsPlansPage() {
                   <input
                     type="number"
                     value={editDailyImages}
-                    onChange={(e) => setEditDailyImages(e.target.value)}
+                    onChange={(e) => setEditDailyImages(Number(e.target.value))}
                     className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -355,7 +353,7 @@ export function SubscriptionsPlansPage() {
                   <input
                     type="number"
                     value={editDailyVideos}
-                    onChange={(e) => setEditDailyVideos(e.target.value)}
+                    onChange={(e) => setEditDailyVideos(Number(e.target.value))}
                     className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -432,7 +430,7 @@ export function SubscriptionsPlansPage() {
                   <input
                     type="number"
                     value={creditAllowance}
-                    onChange={(e) => setCreditAllowance(e.target.value)}
+                    onChange={(e) => setCreditAllowance(Number(e.target.value))}
                     className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
                   />
                 </div>
@@ -442,7 +440,7 @@ export function SubscriptionsPlansPage() {
                     type="number"
                     step="0.001"
                     value={pricePerCredit}
-                    onChange={(e) => setPricePerCredit(e.target.value)}
+                    onChange={(e) => setPricePerCredit(Number(e.target.value))}
                     className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500"
                   />
                 </div>
