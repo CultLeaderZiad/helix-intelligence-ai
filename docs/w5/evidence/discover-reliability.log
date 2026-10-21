@@ -1,0 +1,12 @@
+COMMAND=python -m pytest -q tests/test_intelligence_w5_discovery_reliability.py (isolated loopback PostgreSQL 16 database)
+DB_PREFLIGHT=passed db=helix_w3_w5_verification revision=d1f9c4a7b263
+......                                                                   [100%]
+=============================== warnings summary ===============================
+app/db/base.py:3
+  <workspace>/backend/app/db/base.py:3: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+6 passed, 1 warning in 9.93s
+PYTEST_EXIT_CODE=0
+EXIT_CODE=0

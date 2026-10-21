@@ -1,0 +1,34 @@
+COMMAND=python -m pytest -q tests (fresh isolated helix_w3_w5_verification PostgreSQL 16 database; local admin test identity; W4/TEST disposable database opts enabled)
+DB_PREFLIGHT=passed db=helix_w3_w5_verification revision=d1f9c4a7b263 pg16=true owner=w5_verify_final
+........................................................................ [ 30%]
+........................................................................ [ 61%]
+........................................................................ [ 92%]
+..................                                                       [100%]<venv>/lib/python3.12/site-packages/_pytest/unraisableexception.py:33: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+  gc.collect()
+RuntimeWarning: Enable tracemalloc to get the object allocation traceback
+
+=============================== warnings summary ===============================
+app/db/base.py:3
+  <workspace>/backend/tests/../app/db/base.py:3: MovedIn20Warning: The ``declarative_base()`` function is now available as sqlalchemy.orm.declarative_base(). (deprecated since: 2.0) (Background on SQLAlchemy 2.0 at: https://sqlalche.me/e/b8d9)
+    Base = declarative_base()
+
+app/schemas/media.py:67
+  <workspace>/backend/tests/../app/schemas/media.py:67: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class MediaGenerationJobResponse(BaseModel):
+
+app/schemas/app_update.py:34
+  <workspace>/backend/tests/../app/schemas/app_update.py:34: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.13/migration/
+    class AppUpdateResponse(AppUpdateBase):
+
+tests/test_intelligence_w2_leftovers.py::test_adyntel_empty_200_stays_empty_and_library_does_not_count_a_failure
+  <workspace>/backend/tests/../app/services/scraping/adyntel_provider.py:107: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now = datetime.utcnow()
+
+tests/test_intelligence_w3_queries.py: 14 warnings
+  <workspace>/backend/tests/../app/services/creative_service.py:202: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    first_seen=datetime.datetime.utcnow().isoformat() + "Z"
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+234 passed, 18 warnings in 189.90s (0:03:09)
+PYTEST_EXIT_CODE=0
+EXIT_CODE=0
