@@ -83,7 +83,7 @@ const simulationService = {
 
   /**
    * @param {string} creativeId
-   * @param {{ segment_ids: string[] }} params
+   * @param {{ segment_ids?: string[] }} [params]
    */
   async simulate(creativeId, { segment_ids = [] } = {}) {
     await delay(900)
