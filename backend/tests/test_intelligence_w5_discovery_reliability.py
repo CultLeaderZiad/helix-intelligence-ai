@@ -88,17 +88,20 @@ async def test_cancel_mid_provider_call_stops_task_and_cannot_cross_tenants(job,
 
 @pytest.mark.asyncio
 async def test_server_deadline_aborts_hung_provider_and_finalizes_once(job, monkeypatch):
-    stopped = asyncio.Event()
+    started, stopped = asyncio.Event(), asyncio.Event()
     async with worker_session_maker() as db:
-        await db.execute(update(ScrapeJob).where(ScrapeJob.id == job["id"]).values(deadline_at=now() + dt.timedelta(seconds=.2)))
+        await db.execute(update(ScrapeJob).where(ScrapeJob.id == job["id"]).values(deadline_at=now() + dt.timedelta(seconds=5)))
         await db.commit()
     async def hung_provider(*args, **kwargs):
+        started.set()
         try:
             await asyncio.Event().wait()
         finally:
             stopped.set()
     monkeypatch.setattr(discover, "_run_discovery_pipeline", hung_provider)
-    await asyncio.wait_for(discover.run_discovery_pipeline(job["id"], "test"), 3)
+    task = asyncio.create_task(discover.run_discovery_pipeline(job["id"], "test"))
+    await asyncio.wait_for(started.wait(), 4)
+    await asyncio.wait_for(task, 6)
     assert stopped.is_set()
     result = await state(job)
     assert result.status == "timed_out" and result.failure_kind == "deadline"
