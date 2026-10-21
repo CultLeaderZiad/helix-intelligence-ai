@@ -1,0 +1,25 @@
+[
+  {
+    "group": "member",
+    "route": "/discover",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:53:20.119154+00:00",
+    "expected_path": "/discover",
+    "dialogs": 1,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/discover",
+    "title": "Discover · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": false
+  }
+]
