@@ -4,25 +4,13 @@ import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useLanguage } from "@/context/LanguageContext"
 import { Button } from "@/components/ui/Button"
 import {
-  Radar,
-  Network,
-  PenLine,
-  Activity,
-  Bookmark,
-  Shield,
-  CreditCard,
-  Sparkles,
-  Zap,
-  ArrowRight,
-  Layers,
-  Flame,
-  Clock,
-  CheckCircle2,
-  HelpCircle,
-  Code,
-  Sliders,
-  Database,
-  Cpu
+  Radar
+  Network
+  PenLine
+  Activity
+  Shield
+  Layers
+  CheckCircle2
 } from "lucide-react"
 
 const GUIDE_STEPS = [

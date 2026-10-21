@@ -6,18 +6,12 @@ import { Tag } from "@/components/ui/Tag"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { adminService } from "@/services"
 import { formatRelative } from "@/lib/format"
-import { 
-  ScrollText, 
-  Search, 
-  RefreshCw, 
-  Filter, 
-  ChevronLeft, 
-  ChevronRight,
-  Shield,
-  Activity,
-  User,
-  Clock,
-  Coins
+import {
+  ScrollText
+  RefreshCw
+  Filter
+  ChevronLeft
+  ChevronRight
 } from "lucide-react"
 
 export function AuditLogPage() {
@@ -161,7 +155,7 @@ export function AuditLogPage() {
           <Panel className="flex min-w-0 flex-col overflow-hidden border border-border">
             <PanelHeader>
               <PanelTitle>Event Log Stream</PanelTitle>
-              <Tag tone="default">{`Page ${page} · ${logs.length} entries`}</Tag>
+              <Tag className="" tone="default">{`Page ${page} · ${logs.length} entries`}</Tag>
             </PanelHeader>
 
             {loading ? (
@@ -171,7 +165,7 @@ export function AuditLogPage() {
                 ))}
               </div>
             ) : error ? (
-              <ErrorState error={error} onRetry={() => fetchLogs(page)} />
+              <ErrorState className="" description="Audit events could not be loaded. Retry to reload the page." error={error} onRetry={() => fetchLogs(page)} />
             ) : logs.length === 0 ? (
               <div className="py-16 text-center text-text-muted">
                 <ScrollText className="w-8 h-8 text-text-faint mx-auto mb-2 opacity-50" />

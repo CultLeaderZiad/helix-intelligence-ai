@@ -6,21 +6,10 @@ import { Tag } from "@/components/ui/Tag"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { adminService } from "@/services"
 import { formatRelative } from "@/lib/format"
-import { 
-  Database, 
-  Activity, 
-  RefreshCw, 
-  CheckCircle2, 
-  AlertTriangle, 
-  XCircle, 
-  Server, 
-  Cpu, 
-  Radio, 
-  ShieldCheck, 
-  Zap, 
-  Workflow, 
-  ExternalLink,
-  Layers
+import {
+  Database
+  RefreshCw
+  Workflow
 } from "lucide-react"
 
 const PROVIDERS_METADATA = [
@@ -103,7 +92,6 @@ export function DataSourcesPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState("all")
 
   const fetchHealth = async (silent = false) => {
     if (!silent) setLoading(true)
@@ -243,7 +231,7 @@ export function DataSourcesPage() {
                         <span className="font-mono text-[10px] uppercase text-text-faint block">{p.category}</span>
                         <h3 className="font-semibold text-text text-sm mt-0.5">{p.name}</h3>
                       </div>
-                      <Tag tone={getStatusTone(statusInfo.status)}>
+                      <Tag className="" tone={getStatusTone(statusInfo.status)}>
                         {statusInfo.status || "operational"}
                       </Tag>
                     </div>
@@ -284,7 +272,7 @@ export function DataSourcesPage() {
           <Panel className="flex min-w-0 flex-col overflow-hidden border border-border">
             <PanelHeader>
               <PanelTitle>Live Telemetry & Probe Log</PanelTitle>
-              <Tag tone="default">{`${services.length} services monitored`}</Tag>
+              <Tag className="" tone="default">{`${services.length} services monitored`}</Tag>
             </PanelHeader>
 
             {loading ? (
@@ -294,7 +282,7 @@ export function DataSourcesPage() {
                 ))}
               </div>
             ) : error ? (
-              <ErrorState error={error} onRetry={() => fetchHealth(false)} />
+              <ErrorState className="" description="Data source health could not be loaded. Retry to reload the latest status." error={error} onRetry={() => fetchHealth(false)} />
             ) : (
               <div className="min-w-0 overflow-auto">
                 <table className="w-full min-w-[650px] table-fixed border-collapse text-left text-xs">
@@ -314,7 +302,7 @@ export function DataSourcesPage() {
                           {s.name}
                         </td>
                         <td className="px-3 py-3">
-                          <Tag tone={getStatusTone(s.status)}>{s.status}</Tag>
+                          <Tag className="" tone={getStatusTone(s.status)}>{s.status}</Tag>
                         </td>
                         <td className="px-3 py-3 text-text-muted">
                           {s.detail}
