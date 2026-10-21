@@ -216,7 +216,7 @@ async def get_trial_status(
     )
     usage_count = await db.scalar(query) or 0
 
-    from app.services.billing_service import get_or_create_default_org, _ensure_daily_reset, _utc_midnight
+    from app.services.billing_service import get_or_create_default_org, _utc_midnight
     org = await get_or_create_default_org(db, current_user)
     from app.models.plan import Plan
     plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
