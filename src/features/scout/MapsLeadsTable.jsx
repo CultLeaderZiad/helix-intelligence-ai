@@ -1,5 +1,5 @@
 import React from "react"
-import { ExternalLink, Mail, Phone, MapPin, Star, Share2, Check, Copy } from "lucide-react"
+import { ExternalLink, Mail, Phone, MapPin, Star, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/LanguageContext"
 

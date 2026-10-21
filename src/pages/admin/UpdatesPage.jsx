@@ -16,11 +16,6 @@ import {
   Tag,
   Clock,
   BookOpen,
-  Calendar,
-  Bold,
-  List,
-  Heading,
-  Link as LinkIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Field"
@@ -541,6 +536,7 @@ export function UpdatesPage() {
                       </div>
                     </div>
                     <Input
+                      className=""
                       required
                       placeholder="e.g. 🚀 AI Image Generation Engine & Multi-Platform Profiles Live"
                       value={formData.title}
@@ -602,6 +598,7 @@ export function UpdatesPage() {
                       Docs or Referral Link (Optional)
                     </label>
                     <Input
+                      className=""
                       placeholder="e.g. /docs/api-reference/authentication or https://docs.helix.io"
                       value={formData.link_url}
                       onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}

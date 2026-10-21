@@ -1,3 +1,4 @@
+import { EXPERIMENTAL_FEATURES_ENABLED } from "@/lib/productFeatures"
 import { lazy, Suspense, useEffect } from "react"
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
 import { AppShell } from "@/app/AppShell"
@@ -50,6 +51,8 @@ const ResetPasswordPage = safeLazy(() => import("@/pages/auth/ResetPasswordPage"
 const DiscoverPage = safeLazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
 const IntelligencePage = safeLazy(() => import("@/pages/IntelligencePage").then(m => ({ default: m.IntelligencePage })))
 const PerformancePage = safeLazy(() => import("./pages/PerformancePage").then(m => ({ default: m.default || m.PerformancePage })))
+const optionalPage = (page) => EXPERIMENTAL_FEATURES_ENABLED ? page : <Navigate to="/discover" replace />
+
 const DashboardPage = safeLazy(() => import("./pages/DashboardPage").then(m => ({ default: m.default })))
 const CreatePage = safeLazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
 const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
@@ -202,18 +205,18 @@ export default function App() {
                   <Route element={<ProtectedRoute requireRole="admin" />}>
                     <Route element={<AdminShellLayout />}>
                       <Route path="/admin" element={<OverviewPage />} />
-                      <Route path="/admin/guide" element={<GuidePage />} />
+                      <Route path="/admin/guide" element={optionalPage(<GuidePage />)} />
                       <Route path="/admin/organizations" element={<OrganizationsPage />} />
                       <Route path="/admin/access-requests" element={<AccessRequestsPage />} />
-                      <Route path="/admin/subscriptions" element={<SubscriptionsPlansPage />} />
-                      <Route path="/admin/usage" element={<UsagePage />} />
-                      <Route path="/admin/feature-flags" element={<FeatureFlagsPage />} />
+                      <Route path="/admin/subscriptions" element={optionalPage(<SubscriptionsPlansPage />)} />
+                      <Route path="/admin/usage" element={optionalPage(<UsagePage />)} />
+                      <Route path="/admin/feature-flags" element={optionalPage(<FeatureFlagsPage />)} />
                       <Route path="/admin/users" element={<UsersPage />} />
                       <Route path="/admin/updates" element={<UpdatesPage />} />
                       <Route path="/admin/support" element={<SupportAdminPage />} />
-                      <Route path="/admin/data-sources" element={<DataSourcesPage />} />
-                      <Route path="/admin/scrape-jobs" element={<ScrapeJobsPage />} />
-                      <Route path="/admin/health" element={<SystemHealthPage />} />
+                      <Route path="/admin/data-sources" element={optionalPage(<DataSourcesPage />)} />
+                      <Route path="/admin/scrape-jobs" element={optionalPage(<ScrapeJobsPage />)} />
+                      <Route path="/admin/health" element={optionalPage(<SystemHealthPage />)} />
                       <Route path="/admin/audit-log" element={<AuditLogPage />} />
                       {ADMIN_NAV_ITEMS.filter((i) => !i.built).map((item) => (
                         <Route
@@ -229,20 +232,21 @@ export default function App() {
                   <Route element={<ProtectedRoute />}>
                     <Route element={<AuthenticatedShell />}>
                       <Route path="/discover" element={<DiscoverPage />} />
-                      <Route path="/intelligence" element={<IntelligencePage />} />
-                      <Route path="/create" element={<CreatePage />} />
-                      <Route path="/monitors" element={<MonitorsPage />} />
-                      <Route path="/scout" element={<Navigate to="/scout/social" replace />} />
-                      <Route path="/scout/lead-generation" element={<ScoutLeadGenerationPage />} />
-                      <Route path="/scout/:mode" element={<ScoutPage />} />
-                      <Route path="performance" element={<PerformancePage />} />
-                      <Route path="dashboard" element={<DashboardPage />} />
-                      <Route path="/swipe-files" element={<SwipeFilesPage />} />
-                      <Route path="/guide" element={<GuidePage />} />
-                      <Route path="/billing" element={<BillingPage />} />
-                      <Route path="/api-keys" element={<ApiKeysPage />} />
-                      <Route path="/team" element={<TeamPage />} />
-                      <Route path="/team/accept" element={<TeamAcceptPage />} />
+                      <Route path="/intelligence" element={optionalPage(<IntelligencePage />)} />
+                      <Route path="/create" element={optionalPage(<CreatePage />)} />
+                      <Route path="/monitors" element={optionalPage(<MonitorsPage />)} />
+                      <Route path="/scout" element={<Navigate to={EXPERIMENTAL_FEATURES_ENABLED ? "/scout/social" : "/discover"} replace />} />
+                      <Route path="/scout/lead-generation" element={optionalPage(<ScoutLeadGenerationPage />)} />
+                      <Route path="/scout/:mode" element={optionalPage(<ScoutPage />)} />
+                      <Route path="performance" element={optionalPage(<PerformancePage />)} />
+                      <Route path="dashboard" element={optionalPage(<DashboardPage />)} />
+                      <Route path="/swipe-files" element={optionalPage(<SwipeFilesPage />)} />
+                      <Route path="/guide" element={optionalPage(<GuidePage />)} />
+                      <Route path="/access" element={<BillingPage />} />
+                      <Route path="/billing" element={<Navigate to="/access" replace />} />
+                      <Route path="/api-keys" element={optionalPage(<ApiKeysPage />)} />
+                      <Route path="/team" element={optionalPage(<TeamPage />)} />
+                      <Route path="/team/accept" element={optionalPage(<TeamAcceptPage />)} />
                       <Route path="/settings" element={<ProfileSettingsPage />} />
                       <Route path="/support" element={<SupportPage />} />
                       <Route path="/notifications" element={<NotificationsPage />} />

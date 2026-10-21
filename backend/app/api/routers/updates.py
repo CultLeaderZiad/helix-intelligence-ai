@@ -2,9 +2,9 @@ import datetime
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_, desc
+from sqlalchemy import select, or_, desc
 
-from app.core.deps import get_db, get_current_user, get_current_admin, get_optional_user
+from app.core.deps import get_db, get_current_admin, get_optional_user
 from app.models.user import User
 from app.models.app_update import AppUpdate
 from app.schemas.app_update import (

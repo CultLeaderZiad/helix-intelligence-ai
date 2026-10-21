@@ -4,14 +4,11 @@ Integrates vendored kiryano/Scout OSS scrapers + LeadEnricher + Atlas Pipeline +
 Zero Apify. Zero Relevance AI runtime dependency. Never creates fabricated leads.
 """
 import os
-import re
-import asyncio
 import time
 import httpx
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional, Tuple
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from typing import Dict, Any, Optional
+from sqlalchemy import select
 
 from app.models.scout import ScoutJob, ScoutLead
 from app.models.organization import Organization
@@ -28,7 +25,7 @@ from vendor.helix_scout.scrapers.twitch import scrape_twitch_profile
 from vendor.helix_scout.scrapers.enrichment import LeadEnricher
 from vendor.helix_scout.scrapers.stealth import get_scout_proxy
 from app.services.atlas_pipeline import run_atlas_pipeline
-from app.services.scout_parse import parse_input_targets, parse_line
+from app.services.scout_parse import parse_input_targets
 from app.services.scrapegraph_lead_service import (
     extract_profile_with_scrapegraph,
     extract_business_with_scrapegraph,
@@ -370,7 +367,7 @@ async def execute_scout_job(job_id: str):
                                 target_category=job.target_category,
                                 generate_outreach=job.generate_outreach
                             )
-                        except Exception as atlas_err:
+                        except Exception:
                             atlas_json = {
                                 "profile_analysis": {
                                     "primary_niche": job.target_category or "General",

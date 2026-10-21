@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from "react"
 import { adminService } from "@/services"
-import { 
-  Building2, 
-  Coins, 
-  Layers, 
-  Sliders, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Search, 
+import {
+  Building2,
+  Coins,
+  Layers,
+  Sliders,
+  CheckCircle2,
+  Search,
   RefreshCw,
-  PlusCircle,
-  ShieldAlert
 } from "lucide-react"
 
 export function OrganizationsPage() {
@@ -18,7 +15,7 @@ export function OrganizationsPage() {
   const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [error, setError] = useState(null)
+  const [, setError] = useState(null)
   const [toast, setToast] = useState(null)
 
   // Modals state
@@ -67,7 +64,7 @@ export function OrganizationsPage() {
     if (!grantModalOrg) return
     setSubmittingGrant(true)
     try {
-      const res = await adminService.grantCredits(grantModalOrg.id, parseFloat(grantAmount), grantReason)
+      const res = await adminService.grantCredits(String(grantModalOrg.id), grantAmount, grantReason)
       showToast(res.message || `Granted ${grantAmount} credits successfully`)
       setGrantModalOrg(null)
       fetchAll()
@@ -186,13 +183,13 @@ export function OrganizationsPage() {
           <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
             {loading ? (
               <tr>
-                <td colSpan="6" className="py-8 text-center text-slate-500">
+                <td colSpan={6} className="py-8 text-center text-slate-500">
                   Loading organizations...
                 </td>
               </tr>
             ) : filteredOrgs.length === 0 ? (
               <tr>
-                <td colSpan="6" className="py-8 text-center text-slate-500">
+                <td colSpan={6} className="py-8 text-center text-slate-500">
                   No organizations found.
                 </td>
               </tr>
@@ -286,7 +283,7 @@ export function OrganizationsPage() {
                   step="1"
                   min="1"
                   value={grantAmount}
-                  onChange={(e) => setGrantAmount(e.target.value)}
+                  onChange={(e) => setGrantAmount(Number(e.target.value))}
                   className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-amber-400"
                   required
                 />

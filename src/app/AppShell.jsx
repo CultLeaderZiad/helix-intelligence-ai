@@ -1,12 +1,14 @@
-import { lazy, Suspense, useEffect, useState, useRef } from "react"
+import { lazy, Suspense, useEffect, useRef, useState } from "react"
 import { useLocation } from "react-router-dom"
 import { Menu, X, Search } from "lucide-react"
 import { Sidebar } from "./Sidebar"
 import { StatusBar } from "./StatusBar"
 import { Button } from "@/components/ui/Button"
-import { TrialBanner } from "@/components/ui/TrialBanner"
 import { UpdatesBanner } from "@/components/UpdatesBanner"
 import { ScrollToTopButton } from "@/components/ui/ScrollToTopButton"
+import { useRoutePosition } from "@/hooks/useRoutePosition"
+import { useDialogFocus } from "@/hooks/useDialogFocus"
+import { useLanguage } from "@/context/LanguageContext"
 import { FloatingSupportButton } from "@/components/ui/FloatingSupportButton"
 import { SkipToContent } from "@/components/ui/SkipToContent"
 
@@ -18,8 +20,11 @@ const CommandBar = lazy(() => import("./CommandBar").then(module => ({ default: 
  * full viewport width on small screens.
  */
 export function AppShell({ children }) {
+  const { t } = useLanguage()
+  const drawerRef = useRef(null)
   const [commandOpen, setCommandOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
+  useDialogFocus(drawerRef, navOpen, () => setNavOpen(false))
   const location = useLocation()
   const mainRef = useRef(null)
 
@@ -34,6 +39,8 @@ export function AppShell({ children }) {
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
+
+  useRoutePosition(mainRef)
 
   // Auto-close mobile drawer on route change
   useEffect(() => {
@@ -64,13 +71,13 @@ export function AppShell({ children }) {
 
         {/* Mobile Navigation Drawer with Backdrop Blur and Escape Handling */}
         {navOpen ? (
-          <div className="fixed inset-0 z-50 flex md:hidden" role="dialog" aria-modal="true" aria-label="Mobile Navigation">
+          <div ref={drawerRef} className="fixed inset-0 z-50 flex md:hidden" role="dialog" aria-modal="true" aria-label={t("primaryNavigation")}>
             <div
               className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity duration-200"
               onClick={() => setNavOpen(false)}
               aria-hidden="true"
             />
-            <div className="relative flex flex-col z-10 w-[240px] max-w-[85vw] h-full shadow-2xl bg-surface border-r border-border animate-in slide-in-from-left duration-200">
+            <div className="relative flex flex-col z-10 w-[240px] max-w-[85vw] h-full shadow-2xl bg-surface border-e border-border">
               <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-surface-2">
                 <div className="flex items-center gap-2">
                   <img
@@ -78,13 +85,13 @@ export function AppShell({ children }) {
                     alt="Helix"
                     className="h-4 w-4 shrink-0 rounded-[3px] object-contain"
                   />
-                  <span className="font-mono text-xs font-bold text-text">Helix Navigation</span>
+                  <span className="font-mono text-xs font-bold text-text">{t("primaryNavigation")}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setNavOpen(false)}
                   className="rounded p-1 text-text-muted hover:text-text hover:bg-surface-3 transition-colors cursor-pointer"
-                  aria-label="Close navigation"
+                  aria-label={t("closeMenu")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -93,10 +100,11 @@ export function AppShell({ children }) {
               <div
                 className="flex-1 overflow-y-auto"
                 onClick={(e) => {
-                  if (e.target.closest('a')) setNavOpen(false)
+                  if (e.target instanceof Element && e.target.closest('a')) setNavOpen(false)
                 }}
               >
                 <Sidebar
+                  onNavigate={() => setNavOpen(false)}
                   onOpenCommand={() => {
                     setCommandOpen(true)
                     setNavOpen(false)
@@ -116,7 +124,7 @@ export function AppShell({ children }) {
                 variant="ghost"
                 size="icon"
                 onClick={() => setNavOpen(true)}
-                aria-label="Open navigation"
+                aria-label={t("openMenu")}
                 className="h-8 w-8 text-text-muted hover:text-text"
               >
                 {navOpen ? (
@@ -136,16 +144,15 @@ export function AppShell({ children }) {
                 type="button"
                 onClick={() => setCommandOpen(true)}
                 className="flex items-center gap-1 px-2 py-1 rounded bg-surface-2 border border-border text-[11px] font-mono text-text-muted hover:text-text transition-colors cursor-pointer"
-                aria-label="Open search command palette"
+                aria-label={t("openSearch")}
               >
                 <Search className="h-3 w-3 text-text-faint" />
-                <span>Search</span>
+                <span>{t("searchAction")}</span>
               </button>
             </div>
           </div>
 
           <UpdatesBanner />
-          <TrialBanner />
 
           {children}
         </main>

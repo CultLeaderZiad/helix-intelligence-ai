@@ -8,7 +8,7 @@ const markdownFiles = import.meta.glob('/docs/**/*.md', { query: '?raw', eager: 
 
 function getRawContent(relativePath) {
   const resolved = markdownFiles[`/docs/${relativePath}`]
-  return typeof resolved === 'string' ? resolved : (resolved?.default || '')
+  return typeof resolved === 'string' ? resolved : (resolved && typeof resolved === 'object' && 'default' in resolved && typeof resolved.default === 'string' ? resolved.default : '')
 }
 
 export const DOCS_REGISTRY = [
@@ -25,8 +25,8 @@ export const DOCS_REGISTRY = [
         items: [
           {
             slug: 'quickstart-account-and-trial',
-            title: 'Account & 7-Day Trial',
-            description: 'Create an account and learn what is included in the 7-day trial.',
+            title: 'Account & Access',
+            description: 'Create an account and request administrator-approved access.',
             file: 'user-guide/quickstart-account-and-trial.md',
             readTime: '3 min',
           },
@@ -114,7 +114,7 @@ export const DOCS_REGISTRY = [
           {
             slug: 'faq',
             title: 'Frequently Asked Questions',
-            description: 'Honest answers to common questions, empty searches, and trial expiration.',
+            description: 'Honest answers to access, empty results, and job outcomes.',
             file: 'user-guide/faq.md',
             readTime: '5 min',
           },
@@ -143,8 +143,8 @@ export const DOCS_REGISTRY = [
           },
           {
             slug: 'credit-costs-and-limits',
-            title: 'Credit Costs & Rate Limits',
-            description: 'Official CREDIT_COSTS table synced with backend billing logic.',
+            title: 'Access and Usage Controls',
+            description: 'Server-enforced access grants, usage limits, and job outcomes.',
             file: 'api-reference/credit-costs-and-limits.md',
             readTime: '4 min',
           },

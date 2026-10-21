@@ -20,7 +20,7 @@ function SourceBadge({ source }) {
   )
 }
 
-function StatusBadge({ label, value, bad }) {
+function StatusBadge({ label, value, bad = false }) {
   return (
     <span className={cn("rounded border px-1.5 py-0.5 text-[10px] font-mono uppercase",
       bad ? "border-danger/40 text-danger" : "border-border text-text-muted")}>

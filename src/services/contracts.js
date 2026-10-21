@@ -19,6 +19,59 @@
  */
 
 /**
+ * @typedef {Object} AuthFeatureFlags
+ * @property {boolean} discover
+ * @property {boolean} intelligence
+ * @property {boolean} create
+ * @property {boolean} performance
+ * @property {boolean} swipe_files
+ * @property {boolean} team_accounts
+ * @property {boolean} public_api
+ * @property {boolean} scout
+ * @property {boolean} leadgen
+ * @property {boolean} monitors
+ */
+
+/**
+ * Authenticated user returned by the session and authentication services.
+ * @typedef {Object} AuthUser
+ * @property {string} id
+ * @property {string} name
+ * @property {string} email
+ * @property {string} role
+ * @property {number} credit_balance
+ * @property {number} trial_days_remaining
+ * @property {number} daily_credit_limit
+ * @property {number} daily_credits_used
+ * @property {number} daily_credits_remaining
+ * @property {string|null} daily_credits_resets_at_utc
+ * @property {string} plan_id
+ * @property {boolean} has_completed_onboarding
+ * @property {AuthFeatureFlags} feature_flags
+ * @property {'approved'|'pending'} access_status
+ * @property {boolean} is_platform_admin
+ */
+
+/**
+ * @typedef {Object} Credentials
+ * @property {string} [email]
+ * @property {string} [password]
+ */
+
+/**
+ * @typedef {Object} SignUpParams
+ * @property {string} [name]
+ * @property {string} [email]
+ * @property {string} [password]
+ * @property {string} [utm_source]
+ * @property {string} [utm_medium]
+ * @property {string} [utm_campaign]
+ * @property {string} [utm_term]
+ * @property {string} [utm_content]
+ * @property {string} [referrer]
+ */
+
+/**
  * @typedef {Object} Scores
  * @property {number|null} hook
  * @property {number|null} clarity
@@ -93,10 +146,10 @@
  *
  * @typedef {Object} Job
  * @property {string} job_id
- * @property {'queued'|'running'|'succeeded'|'failed'} status
+ * @property {'queued'|'running'|'cancelling'|'cancel_requested'|'succeeded'|'failed'|'cancelled'|'timed_out'} status
  * @property {number} progress            0..1
  * @property {string} stage               stage key, see DISCOVERY_STAGES
- * @property {string} stage_label
+ * @property {string} stage_label        latest server-reported progress label
  * @property {number} stage_index
  * @property {number} stages_total
  * @property {number} records_found
@@ -130,6 +183,7 @@
  * @property {number} [filters.min_score]
  * @property {number} [filters.min_days_active]
  * @property {string} [sort]
+ * @property {'en'|'ar'} [query_language]
  * @property {number} [page]
  * @property {number} [page_size]
  */

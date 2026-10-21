@@ -18,7 +18,7 @@ export function Skeleton({ className, ...props }) {
  * Rows fade toward the fold rather than pulsing in unison: the eye reads
  * one incoming set instead of ten independent blinks.
  */
-export function SkeletonRows({ rows = 8, className }) {
+export function SkeletonRows({ rows = 8, className = "" }) {
   return (
     <div className={cn("min-w-0 flex-1 overflow-hidden", className)} aria-hidden="true">
       {/* Header placeholder keeps the sticky column band present. */}
@@ -62,10 +62,10 @@ function StateFrame({
   title,
   description,
   action,
-  meta,
-  icon: Icon,
+  meta = null,
+  icon: Icon = null,
   size = "default",
-  className,
+  className = "",
 }) {
   const large = size === "lg"
   return (
@@ -125,7 +125,7 @@ export function EmptyState({
   action,
   icon,
   size = "default",
-  className,
+  className = "",
 }) {
   return (
     <StateFrame
@@ -141,7 +141,7 @@ export function EmptyState({
   )
 }
 
-export function ErrorState({ error, onRetry, className, description }) {
+export function ErrorState({ error, onRetry, className = "", description = undefined }) {
   const status = error?.code === "network_error" ? "connection error" : "request failed"
   const statusTone = "text-danger"
   const title = error?.message || "Unable to complete the request."

@@ -5,7 +5,7 @@ import { getAccessToken } from "../sessionStore"
 /**
  * Lead Generation service (engine: scrapling_engine).
  * Thin HTTP client for /api/v1/scout/leadgen — the ONLY caller should be
- * useLeadGenJob (Page → hook → @/services architecture rule).
+ * useLeadGenJob (Page → hook → service-boundary architecture rule).
  */
 export const leadgenApi = {
   /** Create + enqueue a job. Throws {code:'worker_offline'} when the worker is down. */

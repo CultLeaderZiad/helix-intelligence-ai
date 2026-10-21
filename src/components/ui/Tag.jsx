@@ -11,7 +11,7 @@ const TONES = {
 }
 
 /** Mono, uppercase, 10px. The taxonomy marker of this interface. */
-export function Tag({ tone = "default", className, children, ...props }) {
+export function Tag({ tone = "default", className = "", children, ...props }) {
   return (
     <span
       className={cn(

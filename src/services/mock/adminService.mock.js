@@ -1,4 +1,3 @@
-import { ServiceError } from "../http"
 import { delay, maybeFail } from "./latency"
 
 /**
@@ -103,6 +102,7 @@ const JOB_ROWS = [
 ]
 
 /** Monitored dependencies. `status` maps directly to a design token. */
+/** @type {import('../contracts').AdminServiceHealth[]} */
 const SERVICE_HEALTH = [
   {
     id: "svc_ad_source",
@@ -190,7 +190,7 @@ const adminService = {
     maybeFail("Job index temporarily unavailable")
 
     const items = [...JOB_ROWS].sort(
-      (a, b) => new Date(b.created_at) - new Date(a.created_at),
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     )
     return {
       items,
