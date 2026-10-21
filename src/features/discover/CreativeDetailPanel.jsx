@@ -244,9 +244,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
         </div>
       ) : null}
 
-      {error ? (
-        <ErrorState error={error} onRetry={refetch} className="" description={undefined} />
-      ) : null}
+      {error ? <ErrorState error={error} onRetry={refetch} /> : null}
 
       {data ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -266,7 +264,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                   <span className="truncate text-xs font-medium text-text">
                     {data.brand_name || data.brand?.name || "Unknown brand"}
                   </span>
-                  <Tag className="">{data.platform}</Tag>
+                  <Tag>{data.platform}</Tag>
                   {data.source_type === "organic_content_proxy" ? (
                     <span className="rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-amber-400" title="Organic Post/Reel Proxy Content">
                       Organic Proxy
@@ -300,9 +298,9 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
             {/* Active duration — position 4 in the hierarchy */}
             <div className="flex items-center gap-3 border-y border-border py-2">
-              <StatBlock label="Active" value={formatDays(data.days_active)} unit="" className="" />
-              <StatBlock label="First seen" value={formatDate(data.first_seen)} unit="" className="" />
-              <StatBlock label="Last seen" value={formatDate(data.last_seen)} unit="" className="" />
+              <StatBlock label="Active" value={formatDays(data.days_active)} />
+              <StatBlock label="First seen" value={formatDate(data.first_seen)} />
+              <StatBlock label="Last seen" value={formatDate(data.last_seen)} />
             </div>
 
             <InsightBlock creative={data} />
@@ -332,7 +330,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                   {value === null || value === undefined ? (
                     <span className="label-mono">{t("notScored")}</span>
                   ) : (
-                    <ScoreBar value={value} width="w-20" className="" />
+                    <ScoreBar value={value} width="w-20" />
                   )}
                 </div>
               ))}
@@ -351,14 +349,10 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                     ? t("unavailable")
                     : formatCompact(data.metrics.impressions_est)
                 }
-                unit=""
-                className=""
               />
               <StatBlock
                 label="Spend"
                 value={data.metrics?.spend_band ? formatSpendBand(data.metrics.spend_band) : t("unavailable")}
-                unit=""
-                className=""
               />
               <StatBlock
                 label="Engagement"
@@ -368,8 +362,6 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                     ? t("unavailable")
                     : formatPercent(data.metrics.engagement_rate)
                 }
-                unit=""
-                className=""
               />
               <StatBlock
                 label={t("ctrLabel")}
@@ -378,8 +370,6 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                     ? t("unavailable")
                     : formatPercent(data.metrics.ctr_est, 2)
                 }
-                unit=""
-                className=""
               />
             </div>
 
