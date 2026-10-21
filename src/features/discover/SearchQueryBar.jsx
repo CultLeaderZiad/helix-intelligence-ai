@@ -121,11 +121,11 @@ export function SearchQueryBar({
           variant="outline"
           size="md"
           onClick={onOpenDrafts}
-          title="Search history and saved drafts"
+          title={t("searchHistoryAndSavedDrafts", "Search history and saved drafts")}
           className="flex items-center gap-1.5"
         >
           <Bookmark className="h-3.5 w-3.5 text-accent" />
-          <span className="hidden sm:inline">Drafts & History</span>
+          <span className="hidden sm:inline">{t("draftsHistory", "Drafts & history")}</span>
         </Button>
       )}
 
