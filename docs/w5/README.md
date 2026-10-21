@@ -4,6 +4,16 @@ Draft PR #28: `fix/intelligence-W5` → `fix/intelligence-W4`. W4 PR #26 remains
 
 No merge, force-push, manual deployment, production database/account access, purchasable pricing, or billing feature was performed/added. Browser data is limited to synthetic local accounts and real local API job states; no fabricated provider results were displayed. This is **not production readiness**.
 
+## CI repair follow-up — 2026-10-21
+
+The original static-gate snapshot below is historical (`d1c710d`). Source commit `c0d4bb6` fixes all three failed gates without exclusions or suppressions: **typecheck 170 → 0, lint 118 → 0, pyflakes 124 → 0**. [CI run 39532000083](https://github.com/CultLeaderZiad/helix-intelligence-ai/actions/runs/39532000083) passed all eight jobs, including backend tests, frontend tests/build, and security checks.
+
+The repair corrects shared/consumer prop contracts, service/mock declarations and error shapes, browser test doubles, missing analytics globals and `punycode` declarations, unused imports and package re-exports. A regression test verifies missing mock media jobs preserve HTTP status 404. Gate configuration and coverage were not reduced.
+
+Fresh local results (all exit **0**): `pnpm typecheck`, `pnpm lint`, `python -m pyflakes backend/app`, `python -m compileall -q backend/app`, `pnpm test` (**5 Node + 148 Vitest tests**, 27 Vitest files), `pnpm build`, and `git diff --check`. The backend suite passed **234 tests** on an isolated local PostgreSQL 16 cluster after upgrade/check. Initial local verification hit the fixture's database-name guard and a missing fixture role; the correctly named disposable database and role passed without changing tests or RLS. Build chunk-size and backend deprecation warnings remain.
+
+Fresh managed-preview DOM checks confirmed the primary Save Draft action, successful save acknowledgement and incremented saved-draft count, with no browser errors. This does not establish provider success. The durable-worker P0 and non-gate limitations below are unchanged. Final head CI/review status is recorded in the PR handoff comment.
+
 ## A. Discover reliability
 
 - Tenant-validated cancellation, durable cancelled/timed-out terminal states, absolute job deadlines, bounded provider calls, heartbeat/lease renewal and reclaim, and generation/owner fencing of completion and result writes. The deadline migration includes the matching ORM index.
@@ -33,7 +43,7 @@ No merge, force-push, manual deployment, production database/account access, pur
 - The migration proof follows the actual Alembic head, and the provider-outage test expects a sanitized failure rather than leaked vendor text.
 - Final verification exposed two test-harness defects: a 200 ms deadline could elapse before the mock provider entered; the test now requires entry and cancellation within a bounded five-second deadline. The RLS worker-claim assertion now targets its own queued fixture instead of an unrelated row left by another test. The provider-stop, tenancy and RLS assertions remain intact.
 
-## Verification — final integrated source
+## Original verification — `d1c710d` (before CI repair)
 
 All database writes below used a separate disposable local PostgreSQL 16 database, not the preview/app database or production. The temporary verification database/login were removed afterward. An initial run against a restricted application role failed fixture inserts under RLS; it is **not** the final result and was not repaired by weakening application RLS.
 
@@ -71,7 +81,7 @@ Screenshots and before/after captions: [screens/README.md](screens/README.md). [
 
 **Observed remaining issues**
 
-1. Repository-wide typecheck, lint and pyflakes still fail at the counts above; changed source/app files are clean, but this is not a green repository gate.
+1. The original repository-wide static failures are resolved by the CI repair above; the historical diagnostic file is retained as the before snapshot.
 2. Existing administrative org/user pages still expose trial/plan template terminology and English body copy in AR. The Users table rendered `Invalid Date` for local fixture timestamps. These are not presented as fixed.
 3. Technical Markdown article bodies and some search-result titles remain English. Docs chrome/landing is localized and discloses this limit.
 4. Build chunk-size and backend deprecation/runtime warnings remain; no performance or warning-free claim is made.
