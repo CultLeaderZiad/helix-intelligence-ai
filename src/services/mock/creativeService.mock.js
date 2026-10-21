@@ -35,7 +35,7 @@ const creativeService = {
 
   /**
    * @param {string} id
-   * @returns {Promise<import('../contracts').Creative & { brand: any, patterns: any[] }>}
+   * @returns {Promise<import('../contracts').Creative & { brand: import('../contracts').Brand|null, patterns: import('../contracts').Pattern[] }>}
    */
   async getCreativeById(id) {
     await delay(200)
@@ -47,12 +47,13 @@ const creativeService = {
       })
     }
     // The detail endpoint hydrates relations; the list endpoint does not.
+    const creative = /** @type {import('../contracts').Creative} */ (found)
     return {
-      ...found,
-      brand: brandsById[found.brand_id] ?? null,
-      patterns: (found.pattern_ids ?? [])
+      ...creative,
+      brand: brandsById[creative.brand_id] ?? null,
+      patterns: (creative.pattern_ids ?? [])
         .map((pid) => patternsById[pid])
-        .filter(Boolean),
+        .filter((pattern) => pattern !== undefined),
     }
   },
 
