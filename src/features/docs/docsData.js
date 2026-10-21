@@ -3,8 +3,8 @@
  * Statically bundles all markdown documents from /docs with zero runtime CMS or database overhead.
  */
 
-// Eagerly load raw markdown strings from docs/ directory
-const markdownFiles = import.meta.glob('/docs/**/*.md', { query: '?raw', eager: true })
+// Only public articles belong in the browser bundle, not internal evidence reports.
+const markdownFiles = import.meta.glob(['/docs/user-guide/**/*.md', '/docs/api-reference/**/*.md'], { query: '?raw', eager: true })
 
 function getRawContent(relativePath) {
   const resolved = markdownFiles[`/docs/${relativePath}`]
