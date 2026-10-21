@@ -18,7 +18,6 @@ from app.services.scout_service import enrich_from_website
 from app.services.scrapegraph_lead_service import (
     extract_business_with_scrapegraph,
     get_scrapegraph_key,
-    extract_profile_with_scrapegraph,
     search_leads_with_scrapegraph,
 )
 
@@ -310,8 +309,8 @@ async def scrape_maps_places(
             ]
             for q in queries:
                 nom_url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(q)}&format=json&addressdetails=1&extratags=1&limit={limit}"
-                from app.services.safe_fetch import safe_request_async
-                nom_resp = await safe_request_async(
+                from app.services.safe_fetch import safe_request_async as safe_request_nominatim
+                nom_resp = await safe_request_nominatim(
                     "GET",
                     nom_url,
                     headers={"User-Agent": "HelixScoutLeadGen/2.0 (contact@helixintelligence.ai)"},
@@ -412,7 +411,7 @@ async def execute_maps_scout(job_id: str):
         job.stage_index = 1
         job.stages_total = 4
         job.logs = [
-            f"> engine: helix_maps_scout/v2 (ScrapeGraph AI + gosom kit) · ok",
+            "> engine: helix_maps_scout/v2 (ScrapeGraph AI + gosom kit) · ok",
             f"> scrapegraph_api: {'connected' if sg_key else 'direct_web'}",
             f"> keyword: '{job.keyword}' · target: '{job.city}' · depth: {job.depth}",
         ]

@@ -1,4 +1,3 @@
-import { useEffect } from "react"
 import { Navigate, Outlet, useLocation } from "react-router-dom"
 import { AUTH_STATUS, useAuth } from "@/context/AuthContext"
 
