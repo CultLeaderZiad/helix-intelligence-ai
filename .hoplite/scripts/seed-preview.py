@@ -27,11 +27,13 @@ async def main():
             user_id = f'w6-preview-{name}'
             user = await db.get(User, user_id)
             if user is None:
-                user = User(id=user_id, email=f'w6-{name}@example.test', full_name=f'W6 {name.title()}',
+                user = User(id=user_id, email=f'w6-{name}@example.com', full_name=f'W6 {name.title()}',
                             password_hash=get_password_hash(credentials['password']), role='admin' if name == 'admin' else 'customer',
                             is_platform_admin=name == 'admin', created_at=dt.datetime.now(dt.timezone.utc).replace(tzinfo=None))
                 db.add(user)
                 await db.flush()
+            if user.email.endswith('@example.test'):
+                user.email = f'w6-{name}@example.com'
             org_id = f'w6-preview-org-{name}'
             if await db.get(Organization, org_id) is None:
                 db.add(Organization(id=org_id, name=f'W6 {name.title()} Workspace', owner_id=user_id, plan='custom'))
