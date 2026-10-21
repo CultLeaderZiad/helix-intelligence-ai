@@ -1,0 +1,24 @@
+        id        |   role   | is_banned 
+------------------+----------+-----------
+ w6-preview-other | customer | f
+(1 row)
+
+          id           |        name         | credit_balance 
+-----------------------+---------------------+----------------
+ w6-preview-org-member | W6 Member Workspace |             30
+(1 row)
+
+        operation        |      user_id      |         org_id         
+-------------------------+-------------------+------------------------
+ account_avatar_updated  | w6-preview-member | w6-preview-org-member
+ account_profile_updated | w6-preview-member | w6-preview-org-member
+ admin_user_ban_updated  | w6-preview-admin  | w6-preview-org-other
+ admin_user_ban_updated  | w6-preview-admin  | w6-preview-org-other
+ admin_user_role_updated | w6-preview-admin  | w6-preview-org-other
+ grant_credits           | w6-preview-member | w6-preview-org-member
+ grant_credits           | w6-preview-member | w6-preview-org-member
+ access_revoked          | w6-preview-admin  | w6-preview-org-pending
+ access_granted          | w6-preview-admin  | w6-preview-org-pending
+ access_granted          | w6-preview-admin  | w6-preview-org-member
+(10 rows)
+
