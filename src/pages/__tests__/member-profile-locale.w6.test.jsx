@@ -123,6 +123,11 @@ describe("member profile localization", () => {
     }
   })
 
+  it("describes the API avatar upload limit in both languages", () => {
+    expect(getMemberMessage("en", "photoUploadGuidance")).toContain("2 MB")
+    expect(getMemberMessage("ar", "photoUploadGuidance")).toContain("2 ميغابايت")
+  })
+
   it("does not claim a password change or sign out when the server rejects the update", async () => {
     fixtures.profileState.saveProfile.mockRejectedValueOnce(new Error("server rejected update"))
     render(<ProfileSettingsPage />)
