@@ -22,7 +22,7 @@ from app.models.api_usage import ExternalApiUsage
 from app.models.notification import Notification
 from app.core.config import settings
 from app.core.security import create_access_token
-from app.services.billing_service import is_platform_admin
+from app.services.billing_service import access_status_for_org, is_platform_admin
 
 
 async def _primary_org_id(db: AsyncSession, user_id: str) -> Optional[str]:
@@ -69,6 +69,23 @@ async def record_admin_audit_event(
 def _limit_or_fallback(value, fallback):
     """None means the column was never set. Zero is a real limit."""
     return fallback if value is None else value
+
+
+def _iso_utc(value: Optional[datetime.datetime]) -> Optional[str]:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=datetime.timezone.utc)
+    else:
+        value = value.astimezone(datetime.timezone.utc)
+    return value.isoformat().replace("+00:00", "Z")
+
+
+async def _organization_access_status(db: AsyncSession, org_id: Optional[str]) -> Optional[str]:
+    if org_id is None:
+        return None
+    state = await access_status_for_org(db, org_id)
+    return state.get("status")
 
 
 GRANTABLE_FEATURES = frozenset({
