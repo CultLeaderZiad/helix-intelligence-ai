@@ -1,0 +1,16 @@
+[
+  {
+    "action": "profile name saved and reloaded",
+    "result": {
+      "body": true,
+      "name": "W6 Verified Member"
+    }
+  },
+  {
+    "action": "avatar uploaded and reloaded",
+    "result": {
+      "localAvatar": false,
+      "name": "W6 Verified Member"
+    }
+  }
+]
