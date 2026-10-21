@@ -1,6 +1,6 @@
 import React from "react"
 import { useLanguage } from "@/context/LanguageContext"
-import { Globe, Languages } from "lucide-react"
+import { Languages } from "lucide-react"
 
 export function LanguageSwitcher({ className = "" }) {
   const { lang, toggleLanguage } = useLanguage()

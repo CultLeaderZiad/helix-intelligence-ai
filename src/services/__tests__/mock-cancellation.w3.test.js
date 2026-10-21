@@ -6,7 +6,8 @@ import { delay } from "../mock/latency"
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers() })
 
-for (const [name, call] of [
+/** @type {Array<[string, (signal: AbortSignal) => Promise<unknown>]>} */
+const cancellableCalls = [
   ["discovery search", signal => discoverService.search({}, { signal })],
   ["discovery poll", signal => discoverService.getJobStatus("unused", { signal })],
   ["discovery results", signal => discoverService.getJobResults("unused", {}, { signal })],
@@ -14,7 +15,9 @@ for (const [name, call] of [
   ["media poll", signal => mediaService.getJob("unused", { signal })],
   ["media results", signal => mediaService.getJobResult("unused", { signal })],
   ["media cancellation", signal => mediaService.cancel("unused", { signal })],
-]) {
+]
+
+for (const [name, call] of cancellableCalls) {
   for (const preAborted of [true, false]) {
     it(`${name} rejects ${preAborted ? "before starting" : "during its wait"} with the abort reason and clears timers`, async () => {
       const controller = new AbortController()
