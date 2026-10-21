@@ -1,0 +1,5 @@
+{
+  "extends": "./jsconfig.json",
+  "include": ["src/features/**/*.js", "src/features/**/*.jsx"],
+  "exclude": ["src/features/admin/**", "node_modules", "dist"]
+}

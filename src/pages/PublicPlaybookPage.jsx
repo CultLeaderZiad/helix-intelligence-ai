@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
-import { Sparkles, Printer, Share2, ExternalLink, ShieldCheck, Compass, CheckCircle2, Layers } from "lucide-react"
+import { Sparkles, Printer, Share2, ShieldCheck, Compass, CheckCircle2, Layers } from "lucide-react"
 import { playbookService } from "../services"
 import { getAccessToken } from "@/services/sessionStore"
 import { ScrollToTopButton } from "@/components/ui/ScrollToTopButton"
