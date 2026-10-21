@@ -59,7 +59,7 @@ export function OrganizationsTable({ organizations, onRefresh }) {
                 </td>
                 <td className="px-4 py-3">{org.owner_email}</td>
                 <td className="px-4 py-3">
-                  <Tag tone={isTrial ? "warning" : "default"}>{org.plan_type}</Tag>
+                  <Tag className="" tone={isTrial ? "warning" : "default"}>{org.plan_type}</Tag>
                 </td>
                 <td className="px-4 py-3">
                   {org.trial_expires_at ? new Date(org.trial_expires_at).toLocaleDateString() : "N/A"}
@@ -70,7 +70,7 @@ export function OrganizationsTable({ organizations, onRefresh }) {
                 <td className="px-4 py-3 text-right">
                   <Button 
                     size="xs" 
-                    variant="secondary"
+                    variant="default"
                     disabled={grantingId === org.id}
                     onClick={() => handleGrantCredits(org.id)}
                   >
