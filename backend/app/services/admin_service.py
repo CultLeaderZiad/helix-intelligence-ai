@@ -1,4 +1,5 @@
 import datetime
+import math
 import uuid
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,47 @@ from app.models.notification import Notification
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.services.billing_service import is_platform_admin
+
+
+async def _primary_org_id(db: AsyncSession, user_id: str) -> Optional[str]:
+    result = await db.execute(
+        select(Organization.id)
+        .where(Organization.owner_id == user_id)
+        .order_by(Organization.id)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def record_admin_audit_event(
+    db: AsyncSession,
+    actor_id: str,
+    operation: str,
+    metadata: Dict[str, Any],
+    *,
+    org_id: Optional[str] = None,
+) -> None:
+    """Persist privileged actions in the existing tenant-scoped admin log."""
+    audit_org_id = org_id or await _primary_org_id(db, actor_id)
+    if audit_org_id is None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "admin_audit_context_missing",
+                "message": "This admin action cannot be saved without an audit workspace.",
+            },
+        )
+    db.add(UsageLog(
+        org_id=audit_org_id,
+        user_id=actor_id,
+        provider="admin",
+        operation=operation,
+        units=1.0,
+        cost_usd=0.0,
+        credits_deducted=0.0,
+        requests_used=0,
+        metadata_json=metadata,
+    ))
 
 
 def _limit_or_fallback(value, fallback):
@@ -391,6 +433,8 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
     return orgs
 
 async def grant_credits(db: AsyncSession, org_id: str, grant_in: GrantCreditsRequest, admin_id: str) -> Dict[str, Any]:
+    if not math.isfinite(grant_in.amount) or grant_in.amount <= 0:
+        raise HTTPException(status_code=422, detail="Credit grants must be a finite positive amount")
     org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
@@ -619,7 +663,42 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
         ))
     return users
 
-async def ban_user(db: AsyncSession, target_user_id: str, is_banned: bool) -> Dict[str, Any]:
+
+async def update_user_status(
+    db: AsyncSession,
+    target_user_id: str,
+    status: str,
+    actor_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    if status not in {"active", "suspended"}:
+        raise HTTPException(status_code=400, detail="Status must be active or suspended")
+    user = (await db.execute(select(User).where(User.id == target_user_id))).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_suspended = status == "suspended"
+    if status == "suspended":
+        from app.services import auth_service
+        await auth_service.revoke_user_sessions(db, user, commit=False)
+    if actor_id:
+        await record_admin_audit_event(
+            db,
+            actor_id,
+            "admin_user_status_updated",
+            {"target_user_id": user.id, "status": status},
+            org_id=await _primary_org_id(db, user.id),
+        )
+    await db.commit()
+    await db.refresh(user)
+    effective_status = "banned" if user.is_banned else ("suspended" if user.is_suspended else "active")
+    return {"success": True, "user_id": user.id, "status": effective_status}
+
+async def ban_user(
+    db: AsyncSession,
+    target_user_id: str,
+    is_banned: bool,
+    actor_id: Optional[str] = None,
+) -> Dict[str, Any]:
     user = (await db.execute(select(User).where(User.id == target_user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -627,10 +706,17 @@ async def ban_user(db: AsyncSession, target_user_id: str, is_banned: bool) -> Di
     user.is_banned = is_banned
     if is_banned:
         from app.services import auth_service
-        await auth_service.revoke_user_sessions(db, user)
-    else:
-        await db.commit()
-        await db.refresh(user)
+        await auth_service.revoke_user_sessions(db, user, commit=False)
+    if actor_id:
+        await record_admin_audit_event(
+            db,
+            actor_id,
+            "admin_user_ban_updated",
+            {"target_user_id": user.id, "is_banned": is_banned},
+            org_id=await _primary_org_id(db, user.id),
+        )
+    await db.commit()
+    await db.refresh(user)
     
     return {
         "success": True,
@@ -643,7 +729,8 @@ async def update_user_role(
     db: AsyncSession,
     target_user_id: str,
     role: str,
-    admin_permissions: Optional[Dict[str, Any]] = None
+    admin_permissions: Optional[Dict[str, Any]] = None,
+    actor_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     if role not in ["customer", "assistant-admin", "admin"]:
         raise HTTPException(status_code=400, detail="Invalid role. Choose customer, assistant-admin, or admin.")
@@ -655,7 +742,15 @@ async def update_user_role(
     user.role = role
     if admin_permissions is not None:
         user.admin_permissions = admin_permissions
-        
+
+    if actor_id:
+        await record_admin_audit_event(
+            db,
+            actor_id,
+            "admin_user_role_updated",
+            {"target_user_id": user.id, "role": role},
+            org_id=await _primary_org_id(db, user.id),
+        )
     await db.commit()
     await db.refresh(user)
 
@@ -892,6 +987,8 @@ async def grant_organization_access(
     feature_flags: Dict[str, Any],
     expires_at: Optional[datetime.datetime] = None,
     request_id: Optional[str] = None,
+    *,
+    _commit: bool = True,
 ) -> Dict[str, Any]:
     """Record who granted which flags. Does not delete workspace data."""
     from app.models.access_grant import OrganizationAccessGrant
@@ -945,7 +1042,10 @@ async def grant_organization_access(
             "request_id": request_id,
         },
     ))
-    await db.commit()
+    if _commit:
+        await db.commit()
+    else:
+        await db.flush()
     await db.refresh(grant)
     return {
         "id": grant.id,
@@ -975,14 +1075,21 @@ async def approve_access_request(
     if row is None or row.status != "pending":
         raise HTTPException(status_code=404, detail="Pending access request not found")
     granted = await grant_organization_access(
-        db, actor, row.org_id, plan_id, feature_flags, expires_at=expires_at, request_id=row.id,
+        db,
+        actor,
+        row.org_id,
+        plan_id,
+        feature_flags,
+        expires_at=expires_at,
+        request_id=row.id,
+        _commit=False,
     )
-    row = (await db.execute(select(AccessRequest).where(AccessRequest.id == request_id))).scalar_one()
     row.status = "approved"
     row.decided_by_user_id = actor.id
     row.decided_at = datetime.datetime.now(datetime.timezone.utc)
     row.decision_note = note
     await db.commit()
+    await db.refresh(row)
     payload = _request_payload(row)
     payload["grant"] = granted
     return payload
@@ -999,6 +1106,13 @@ async def reject_access_request(db: AsyncSession, actor: User, request_id: str, 
     row.decided_by_user_id = actor.id
     row.decided_at = datetime.datetime.now(datetime.timezone.utc)
     row.decision_note = note
+    await record_admin_audit_event(
+        db,
+        actor.id,
+        "access_request_rejected",
+        {"request_id": row.id, "org_id": row.org_id, "note": note},
+        org_id=row.org_id,
+    )
     await db.commit()
     return _request_payload(row)
 
