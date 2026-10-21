@@ -1,0 +1,8 @@
+        id        |   role   | is_banned 
+------------------+----------+-----------
+ w6-preview-other | customer | f
+(1 row)
+
+ERROR:  column "credits" does not exist
+LINE 1: ...users where id='w6-preview-other'; select id,name,credits fr...
+                                                             ^
