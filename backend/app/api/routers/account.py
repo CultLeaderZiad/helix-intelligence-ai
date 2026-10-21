@@ -50,13 +50,21 @@ class ProfileUpdateRequest(BaseModel):
                 raise ValueError('Password cannot exceed 128 characters')
         return v
 
+def _avatar_url(user: User) -> str:
+    metadata = user.signup_metadata or {}
+    return storage_service.resolve_stored_url(
+        user.avatar_url or "", user_id=user.id,
+        token_version=str(int(metadata.get("token_version", 1))),
+    ) or ""
+
+
 @router.get("/profile")
 async def get_profile(current_user: User = Depends(get_current_user)):
     return {
         "id": current_user.id,
         "email": current_user.email,
         "full_name": getattr(current_user, "full_name", "") or "",
-        "avatar_url": storage_service.resolve_stored_url(getattr(current_user, "avatar_url", "") or "") or "",
+        "avatar_url": _avatar_url(current_user),
         "role": current_user.role,
         "has_completed_onboarding": getattr(current_user, "has_completed_onboarding", False),
         "trial_expires_at": current_user.trial_expires_at.isoformat() if current_user.trial_expires_at else None,
@@ -99,7 +107,7 @@ async def update_profile(
             "id": current_user.id,
             "email": current_user.email,
             "full_name": current_user.full_name,
-            "avatar_url": current_user.avatar_url,
+            "avatar_url": _avatar_url(current_user),
             "role": current_user.role
         }
     }
@@ -141,7 +149,7 @@ async def upload_avatar(
     await db.commit()
     await db.refresh(current_user)
 
-    return {"status": "ok", "avatar_url": avatar_url}
+    return {"status": "ok", "avatar_url": _avatar_url(current_user)}
 
 @router.get("/usage/today")
 async def get_today_real_usage(
