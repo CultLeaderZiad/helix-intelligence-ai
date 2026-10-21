@@ -67,7 +67,6 @@ export function ScoutLeadGenerationPage() {
   }, [])
 
   const workerOnline = health?.worker === "online"
-  const offline = phase === LEADGEN_PHASE.WORKER_OFFLINE || (!workerOnline && !isBusy && !job)
   const running = phase === LEADGEN_PHASE.POLLING || phase === LEADGEN_PHASE.ENQUEUEING
 
   const handleRun = () => {

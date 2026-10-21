@@ -47,6 +47,7 @@ const users = new Map(SEED_USERS.map((u) => [u.email.toLowerCase(), u]))
 
 /** Strip the password before anything leaves the service boundary. */
 function publicUser(u) {
+  const accessStatus = u.role === "admin" ? "approved" : "pending"
   return {
     id: u.id, name: u.name, email: u.email, role: u.role,
     credit_balance: 25.0, trial_days_remaining: 7,
@@ -57,7 +58,7 @@ function publicUser(u) {
     feature_flags: u.role === "admin"
       ? { discover: true, intelligence: true, create: true, performance: true, swipe_files: true, team_accounts: true, public_api: true, scout: true, leadgen: true, monitors: true }
       : { discover: false, intelligence: false, create: false, performance: false, swipe_files: false, team_accounts: false, public_api: false, scout: false, leadgen: false, monitors: false },
-    access_status: u.role === "admin" ? "approved" : "pending",
+    access_status: accessStatus,
     is_platform_admin: u.role === "admin",
   }
 }
@@ -181,7 +182,7 @@ const authService = {
    * Always resolves ok, even for an unknown email: revealing whether an
    * address is registered is an account-enumeration leak. The UI shows
    * the same confirmation either way.
-   * @param {{ email: string }} params
+   * @param {{ email?: string }} [params]
    * @returns {Promise<{ ok: true, email: string }>}
    */
   async requestPasswordReset({ email } = {}) {
