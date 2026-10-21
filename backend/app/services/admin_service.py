@@ -2,7 +2,7 @@ import datetime
 import uuid
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text, desc, update
+from sqlalchemy import select, func, text
 from fastapi import HTTPException
 
 from app.schemas.admin import (
