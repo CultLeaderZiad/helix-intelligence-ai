@@ -1,148 +1,21 @@
-import React, { useCallback, useEffect, useRef, useState } from "react"
+import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { AlertTriangle, Bell, Check, CheckCheck, Info, Megaphone, RefreshCw } from "lucide-react"
-import { notificationService, updatesService } from "@/services"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { Button } from "@/components/ui/Button"
 import { useLanguage } from "@/context/LanguageContext"
 import { w5Support } from "@/i18n/w5Support"
+import { formatMemberDate } from "@/i18n/memberMessages"
+import { useNotifications } from "@/hooks/useNotifications"
 import { cn } from "@/lib/utils"
-
-function readUpdateReadState(id) {
-  try {
-    return window.localStorage.getItem(`helix_update_read_${id}`) === "true"
-  } catch {
-    return false
-  }
-}
-
-function writeUpdateReadState(id) {
-  try {
-    window.localStorage.setItem(`helix_update_read_${id}`, "true")
-    return true
-  } catch {
-    return false
-  }
-}
-
-function formatDate(raw, lang, recently) {
-  if (!raw) return recently
-  const date = new Date(raw)
-  return Number.isNaN(date.getTime())
-    ? recently
-    : date.toLocaleDateString(lang === "ar" ? "ar" : "en", { dateStyle: "medium" })
-}
 
 export function NotificationsPage() {
   const navigate = useNavigate()
   const { lang, t } = useLanguage()
   const words = w5Support[lang] || w5Support.en
   const text = (key) => t(key, words[key] || w5Support.en[key] || key)
-  const [notifications, setNotifications] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [actionError, setActionError] = useState(null)
+  const { notifications, loading, error, actionError, refresh, markAsRead, markAllRead } = useNotifications(text("updatePublished"))
   const [filterType, setFilterType] = useState("all")
-  const requestInFlight = useRef(false)
-  const markAllInFlight = useRef(false)
-  const notificationsRef = useRef(notifications)
-  notificationsRef.current = notifications
-
-  const fetchNotifications = useCallback(async () => {
-    if (requestInFlight.current) return false
-    requestInFlight.current = true
-    setLoading(true)
-    setError(null)
-    try {
-      const [personalResult, updatesResult] = await Promise.allSettled([
-        notificationService.getNotifications(),
-        updatesService.getPublishedUpdates(),
-      ])
-      const previous = notificationsRef.current
-      const personalItems = personalResult.status === "fulfilled"
-        ? (Array.isArray(personalResult.value?.items) ? personalResult.value.items : [])
-        : previous.filter((item) => !item.isUpdate)
-      const publishedUpdates = updatesResult.status === "fulfilled"
-        ? (Array.isArray(updatesResult.value) ? updatesResult.value : [])
-        : previous.filter((item) => item.isUpdate)
-      const updateItems = publishedUpdates.map((update) => ({
-        id: `update_${update.id}`,
-        originalUpdateId: update.id,
-        isUpdate: true,
-        type: "announcement",
-        level: update.level || "info",
-        category: update.category || "General",
-        title: update.title,
-        message: update.body || text("updatePublished"),
-        link: update.link_url || "/updates",
-        is_read: readUpdateReadState(update.id),
-        created_at: update.starts_at || update.created_at || null,
-      }))
-      const merged = [...updateItems, ...personalItems].sort((left, right) => {
-        return new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime()
-      })
-      setNotifications(merged)
-      const succeeded = personalResult.status === "fulfilled" && updatesResult.status === "fulfilled"
-      if (!succeeded) setError(text("notificationsLoadFailed"))
-      return succeeded
-    } catch {
-      setError(text("notificationsLoadFailed"))
-      return false
-    } finally {
-      requestInFlight.current = false
-      setLoading(false)
-    }
-  }, [lang, t])
-
-  useEffect(() => {
-    void fetchNotifications()
-  }, [fetchNotifications])
-
-  const handleMarkAsRead = async (notification) => {
-    setActionError(null)
-    if (notification.isUpdate) {
-      const saved = writeUpdateReadState(notification.originalUpdateId)
-      setNotifications((previous) => previous.map((item) => (
-        item.id === notification.id ? { ...item, is_read: true } : item
-      )))
-      if (!saved) setActionError(text("readStateNotSaved"))
-      return
-    }
-    try {
-      await notificationService.markAsRead(notification.id)
-      setNotifications((previous) => previous.map((item) => (
-        item.id === notification.id ? { ...item, is_read: true } : item
-      )))
-    } catch {
-      setActionError(text("markReadFailed"))
-    }
-  }
-
-  const handleMarkAllRead = async () => {
-    if (markAllInFlight.current) return
-    markAllInFlight.current = true
-    setActionError(null)
-    const unreadUpdates = notificationsRef.current.filter((item) => item.isUpdate && !item.is_read)
-    const storageFailed = unreadUpdates.some((item) => !writeUpdateReadState(item.originalUpdateId))
-    setNotifications((previous) => previous.map((item) => (
-      item.isUpdate ? { ...item, is_read: true } : item
-    )))
-    const unreadPersonal = notificationsRef.current.filter((item) => !item.isUpdate && !item.is_read)
-    let personalFailed = false
-    if (unreadPersonal.length) {
-      try {
-        await notificationService.markAllAsRead()
-        setNotifications((previous) => previous.map((item) => (
-          !item.isUpdate ? { ...item, is_read: true } : item
-        )))
-      } catch {
-        personalFailed = true
-      }
-    }
-    if (personalFailed) setActionError(text("markAllReadFailed"))
-    else if (storageFailed) setActionError(text("readStateNotSaved"))
-    markAllInFlight.current = false
-  }
 
   const filtered = notifications.filter((item) => {
     if (filterType === "unread") return !item.is_read
