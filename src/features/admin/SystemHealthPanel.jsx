@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils"
-import { formatRelative } from "@/lib/format"
+import { useLanguage } from "@/context/LanguageContext"
+import { adminMessage, adminStatusLabel, formatAdminRelative } from "@/i18n/adminMessages"
 
 /**
  * System-health panel: one row per monitored dependency, each with a
@@ -16,6 +17,10 @@ const DOT_TONE = {
 }
 
 export function SystemHealthPanel({ services }) {
+  const { lang } = useLanguage()
+  if (services.length === 0) {
+    return <p className="px-3 py-8 text-center text-text-faint">{adminMessage(lang, "No monitored services found.")}</p>
+  }
   return (
     <ul className="flex flex-col">
       {services.map((service, i) => (
@@ -44,9 +49,9 @@ export function SystemHealthPanel({ services }) {
                 ? "—"
                 : `${service.latency_ms}ms`}
             </span>
-            <span className="label-mono">{formatRelative(service.last_checked)}</span>
+            <span className="label-mono">{formatAdminRelative(service.last_checked, lang)}</span>
           </div>
-          <span className="sr-only">{`status: ${service.status}`}</span>
+          <span className="sr-only">{adminMessage(lang, "Status")}: {adminStatusLabel(lang, service.status)}</span>
         </li>
       ))}
     </ul>
