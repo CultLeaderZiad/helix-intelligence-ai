@@ -8,6 +8,21 @@ from app.models.user import User
 from app.models.organization import Organization
 from app.models.notification import Notification
 
+
+def _is_support_staff(user: User) -> bool:
+    if user.role == "admin":
+        return True
+    if user.role != "assistant-admin":
+        return False
+    permissions = getattr(user, "admin_permissions", None)
+    if not isinstance(permissions, dict) or permissions.get("support") is False:
+        return False
+    sections = permissions.get("sections")
+    return permissions.get("support") is True or (
+        isinstance(sections, (list, tuple)) and "support" in sections
+    )
+
+
 async def create_ticket(
     db: AsyncSession,
     user: User,
@@ -102,7 +117,7 @@ async def get_ticket_details(db: AsyncSession, ticket_id: str, current_user: Use
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    is_staff = current_user.role in ["admin", "assistant-admin"]
+    is_staff = _is_support_staff(current_user)
     if not is_staff and ticket.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to view this ticket")
 
@@ -162,7 +177,7 @@ async def add_reply(
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    is_staff = user.role in ["admin", "assistant-admin"]
+    is_staff = _is_support_staff(user)
     if not is_staff and ticket.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to reply to this ticket")
 
