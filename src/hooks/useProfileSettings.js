@@ -68,11 +68,12 @@ export function useProfileSettings() {
     setIsSaving(true)
     try {
       const result = await accountService.updateProfile(payload)
+      const returnedProfile = result?.user && typeof result.user === "object" ? result.user : result
       setProfile((previous) => ({
         ...previous,
-        ...(result && typeof result === "object" ? result : {}),
-        full_name: result?.full_name ?? payload.full_name,
-        avatar_url: result?.avatar_url ?? payload.avatar_url,
+        ...(returnedProfile && typeof returnedProfile === "object" ? returnedProfile : {}),
+        full_name: returnedProfile?.full_name ?? payload.full_name,
+        avatar_url: returnedProfile?.avatar_url ?? payload.avatar_url,
       }))
       return result
     } finally {
