@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react"
-import { MessageSquare, Shield, CheckCircle2, Clock, Bug, Sparkles, Send, Filter, RefreshCw, ChevronRight } from "lucide-react"
+import { MessageSquare, Shield, Bug, Sparkles, Send, RefreshCw } from "lucide-react"
 import { adminService, supportService } from "../../services"
 
 export function SupportAdminPage() {
