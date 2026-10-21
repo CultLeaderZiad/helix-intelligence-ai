@@ -9,6 +9,8 @@ import { SystemHealthPanel } from "@/features/admin/SystemHealthPanel"
 import { OrganizationsTable } from "@/features/admin/OrganizationsTable"
 import { UsersTable } from "@/features/admin/UsersTable"
 import { useAdminOverview } from "@/hooks/useAdminOverview"
+import { useLanguage } from "@/context/LanguageContext"
+import { adminMessage, adminStatusLabel } from "@/i18n/adminMessages"
 
 /**
  * ============================================================
@@ -21,22 +23,23 @@ import { useAdminOverview } from "@/hooks/useAdminOverview"
  * ============================================================
  */
 export function OverviewPage() {
+  const { lang, isRtl } = useLanguage()
   const { stats, jobs, health, organizations, users, loading, error, refetch } = useAdminOverview()
 
   return (
-    <div className="w-full flex-1 flex flex-col font-sans">
+    <div dir={isRtl ? "rtl" : "ltr"} className="w-full flex-1 flex flex-col font-sans">
       <BreadcrumbBar
-        trail={["Console", "Overview"]}
-        meta={loading ? "loading" : error ? "unavailable" : "live"}
+        trail={[adminMessage(lang, "Console"), adminMessage(lang, "Overview")]}
+        meta={adminMessage(lang, loading ? "Loading" : error ? "Unavailable" : "Live")}
         actions={
           <Button size="xs" variant="ghost" onClick={refetch} disabled={loading}>
-            Refresh
+            {adminMessage(lang, "Refresh")}
           </Button>
         }
       />
 
       {error ? (
-        <ErrorState className="" description="Admin overview metrics could not be loaded. Retry to reload them." error={error} onRetry={refetch} />
+        <ErrorState className="" description={adminMessage(lang, "Admin overview metrics could not be loaded. Retry to reload them.")} error={error} onRetry={refetch} />
       ) : (
         <div className="p-3 md:p-6 w-full">
           <div className="mx-auto flex max-w-7xl flex-col gap-4">
@@ -49,9 +52,9 @@ export function OverviewPage() {
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
               <Panel className="flex min-w-0 flex-col lg:col-span-2">
                 <PanelHeader>
-                  <PanelTitle>Recent scrape jobs</PanelTitle>
+                  <PanelTitle>{adminMessage(lang, "Recent scrape jobs")}</PanelTitle>
                   {!loading && jobs.length ? (
-                    <Tag className="">{`${jobs.length} shown`}</Tag>
+                    <Tag className="">{adminMessage(lang, "{count} shown", { count: jobs.length })}</Tag>
                   ) : null}
                 </PanelHeader>
                 {loading ? (
@@ -63,10 +66,10 @@ export function OverviewPage() {
 
               <Panel className="flex min-w-0 flex-col">
                 <PanelHeader>
-                  <PanelTitle>System health</PanelTitle>
+                  <PanelTitle>{adminMessage(lang, "System health")}</PanelTitle>
                   {!loading && health ? (
                     <Tag className="" tone={HEALTH_TAG_TONE[health.state] ?? "default"}>
-                      {health.state}
+                      {adminStatusLabel(lang, health.state)}
                     </Tag>
                   ) : null}
                 </PanelHeader>
@@ -80,9 +83,9 @@ export function OverviewPage() {
 
             <Panel className="flex min-w-0 flex-col">
               <PanelHeader>
-                <PanelTitle>Organizations</PanelTitle>
+                <PanelTitle>{adminMessage(lang, "Organizations")}</PanelTitle>
                 {!loading && organizations?.length ? (
-                  <Tag className="">{`${organizations.length} total`}</Tag>
+                  <Tag className="">{adminMessage(lang, "{count} total", { count: organizations.length })}</Tag>
                 ) : null}
               </PanelHeader>
               {loading ? (
@@ -94,9 +97,9 @@ export function OverviewPage() {
 
             <Panel className="flex min-w-0 flex-col">
               <PanelHeader>
-                <PanelTitle>Users</PanelTitle>
+                <PanelTitle>{adminMessage(lang, "Users")}</PanelTitle>
                 {!loading && users?.length ? (
-                  <Tag className="">{`${users.length} total`}</Tag>
+                  <Tag className="">{adminMessage(lang, "{count} total", { count: users.length })}</Tag>
                 ) : null}
               </PanelHeader>
               {loading ? (

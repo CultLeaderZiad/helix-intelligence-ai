@@ -1,6 +1,8 @@
 import { Building2, Loader2, ShieldCheck, AlertTriangle, CircleDollarSign, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatInt, formatPercent } from "@/lib/format"
+import { useLanguage } from "@/context/LanguageContext"
+import { adminMessage, adminStatusLabel } from "@/i18n/adminMessages"
 
 /**
  * Overview status strip. A dense, evenly-weighted row of measured
@@ -43,17 +45,18 @@ function Cell({ label, icon: Icon, children, className = "" }) {
 }
 
 export function OverviewStatStrip({ stats }) {
+  const { lang } = useLanguage()
   const health = HEALTH_PRESENTATION[stats.system_health] ?? HEALTH_PRESENTATION.down
 
   return (
     <div className="flex flex-col border border-border bg-surface rounded-sm sm:flex-row sm:flex-wrap">
-      <Cell label="Organizations" icon={Building2}>
+      <Cell label={adminMessage(lang, "Organizations")} icon={Building2}>
         <span className="tnum font-mono text-2xl leading-none text-text">
           {formatInt(stats.organizations)}
         </span>
       </Cell>
 
-      <Cell label="Active scrape jobs" icon={Loader2}>
+      <Cell label={adminMessage(lang, "Active scrape jobs")} icon={Loader2}>
         <span className="tnum flex items-baseline gap-2 font-mono text-2xl leading-none text-text">
           {formatInt(stats.active_scrape_jobs)}
           {stats.active_scrape_jobs > 0 ? (
@@ -62,26 +65,26 @@ export function OverviewStatStrip({ stats }) {
         </span>
       </Cell>
 
-      <Cell label="System health" icon={stats.system_health === "operational" ? ShieldCheck : AlertTriangle}>
+      <Cell label={adminMessage(lang, "System health")} icon={stats.system_health === "operational" ? ShieldCheck : AlertTriangle}>
         <span className={cn("flex items-center gap-2 text-2xl leading-none", health.tone)}>
           <span className={cn("h-2 w-2 shrink-0 rounded-full", health.dot)} aria-hidden="true" />
-          <span className="text-[15px] font-medium">{health.label}</span>
+          <span className="text-[15px] font-medium">{adminStatusLabel(lang, stats.system_health)}</span>
         </span>
       </Cell>
 
-      <Cell label={`API error rate · ${stats.window_label}`} icon={AlertTriangle}>
+      <Cell label={adminMessage(lang, "API error rate · {window}", { window: stats.window_label })} icon={AlertTriangle}>
         <span className={cn("tnum font-mono text-2xl leading-none", errorRateTone(stats.api_error_rate))}>
           {formatPercent(stats.api_error_rate, 2)}
         </span>
       </Cell>
 
-      <Cell label="API Calls (Today)" icon={Activity}>
+      <Cell label={adminMessage(lang, "API Calls (Today)")} icon={Activity}>
         <span className="tnum font-mono text-2xl leading-none text-text">
           {formatInt(stats.today_api_calls)}
         </span>
       </Cell>
 
-      <Cell label="Est. API Spend (Today)" icon={CircleDollarSign}>
+      <Cell label={adminMessage(lang, "Est. API Spend (Today)")} icon={CircleDollarSign}>
         <span className="tnum font-mono text-2xl leading-none text-text">
           ${Number(stats.today_api_spend || 0).toFixed(4)}
         </span>
