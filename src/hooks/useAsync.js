@@ -40,7 +40,6 @@ export function useAsync(fn, deps = [], { enabled = true } = {}) {
       if (!mounted.current || id !== callId.current) return
       setState({ data: null, error: err, loading: false })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
 
   useEffect(() => {
@@ -49,7 +48,6 @@ export function useAsync(fn, deps = [], { enabled = true } = {}) {
       return
     }
     run()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, enabled])
 
   return { ...state, refetch: run }

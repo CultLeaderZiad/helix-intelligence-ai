@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List, Union
+from typing import Dict, Any, Optional, List
 import httpx
 from app.core.config import settings
 from app.core.credentials import env_secret

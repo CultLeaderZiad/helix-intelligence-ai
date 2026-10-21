@@ -1,9 +1,9 @@
 import hashlib
 import secrets
 import datetime
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select
 from fastapi import HTTPException
 
 from app.models.api_key import ApiKey
