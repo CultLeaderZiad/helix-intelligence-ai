@@ -6,23 +6,18 @@ import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { API_BASE_URL } from "@/services/config"
 import { getAccessToken } from "@/services/sessionStore"
-import { 
-  Bookmark, 
-  Trash2, 
-  ExternalLink, 
-  RefreshCw, 
-  SearchX, 
-  FolderPlus, 
-  CheckCircle2, 
-  Tag, 
-  Film, 
+import {
+  Bookmark,
+  Trash2,
+  RefreshCw,
+  SearchX,
+  CheckCircle2,
+  Film,
   Image as ImageIcon,
   Plus,
   Link as LinkIcon,
   Sparkles,
   Download,
-  Play,
-  ArrowRight
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
@@ -31,12 +26,12 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 export function SwipeFilesPage() {
   const { user } = useAuth()
   const { latestSearch } = useSearchContext()
-  const { t, isRtl } = useLanguage()
+  const { t } = useLanguage()
 
   const [creatives, setCreatives] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [activeCollection, setActiveCollection] = useState("all")
+  const [, setError] = useState(null)
+  const [activeCollection] = useState("all")
   const [toast, setToast] = useState(null)
   const [deleteTargetCreative, setDeleteTargetCreative] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
