@@ -1,0 +1,26 @@
+[
+  {
+    "group": "public",
+    "route": "/",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T20:18:21.923116+00:00",
+    "expected_path": "/",
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Research advertising. Develop creative ideas.",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/",
+    "title": "Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "screenshot": "screens/home-en-1280.png",
+    "redirected": false,
+    "passed": true
+  }
+]
