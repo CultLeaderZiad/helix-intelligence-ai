@@ -2,7 +2,6 @@ import { EXPERIMENTAL_FEATURES_ENABLED } from "@/lib/productFeatures"
 import { lazy, Suspense, useEffect } from "react"
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
 import { AppShell } from "@/app/AppShell"
-import { AdminShell } from "@/app/admin/AdminShell"
 import { ProtectedRoute } from "@/app/ProtectedRoute"
 import { TelemetryProvider } from "@/app/TelemetryContext"
 import { NAV_SECTIONS } from "@/app/navigation"
@@ -10,7 +9,6 @@ import { ADMIN_NAV_ITEMS } from "@/app/admin/adminNavigation"
 import { AuthProvider } from "@/context/AuthContext"
 import { SearchProvider } from "@/context/SearchContext"
 import { LanguageProvider } from "@/context/LanguageContext"
-import { LandingPage } from "@/pages/LandingPage"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { trackPageview } from "@/lib/analytics"
 import { captureAttribution } from "@/lib/utm"
@@ -42,6 +40,9 @@ function safeLazy(importFn) {
     }
   })
 }
+
+const LandingPage = safeLazy(() => import("@/pages/LandingPage").then(m => ({ default: m.LandingPage })))
+const AdminShell = safeLazy(() => import("@/app/admin/AdminShell").then(m => ({ default: m.AdminShell })))
 
 // Lazy loaded pages with robust named export mapping
 const SignInPage = safeLazy(() => import("@/pages/auth/SignInPage").then(m => ({ default: m.SignInPage })))
