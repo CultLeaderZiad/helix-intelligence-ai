@@ -4,6 +4,9 @@ import test from "node:test"
 function memoryStore() {
   const values = new Map()
   return {
+    get length() { return values.size },
+    clear() { values.clear() },
+    key(index) { return [...values.keys()][index] ?? null },
     getItem(key) {
       return values.has(key) ? values.get(key) : null
     },
@@ -16,7 +19,7 @@ function memoryStore() {
   }
 }
 
-globalThis.window = globalThis
+Object.defineProperty(globalThis, "window", { value: globalThis, configurable: true })
 globalThis.localStorage = memoryStore()
 globalThis.sessionStorage = memoryStore()
 

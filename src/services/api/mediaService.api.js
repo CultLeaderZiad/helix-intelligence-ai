@@ -1,6 +1,10 @@
 import { request } from "../http"
 
+/** @typedef {{ signal?: AbortSignal }} RequestOptions */
+
 export const mediaService = {
+  /** @param {object} params
+   * @param {RequestOptions} [options] */
   generate: async (params, { signal } = {}) => {
     const res = await request("/media/jobs", {
       method: "POST",
@@ -13,6 +17,8 @@ export const mediaService = {
     }
   },
   
+  /** @param {string} jobId
+   * @param {RequestOptions} [options] */
   getJob: async (jobId, { signal } = {}) => {
     const job = await request(`/media/jobs/${jobId}`, { signal })
     // Normalize backend status 'completed' -> 'succeeded' for frontend consistency
@@ -25,11 +31,12 @@ export const mediaService = {
     }
   },
   
+  /** @param {string} jobId
+   * @param {RequestOptions} [options] */
   getJobResult: async (jobId, { signal } = {}) => {
     const job = await request(`/media/jobs/${jobId}`, { signal })
     if (job.status !== "succeeded" && job.status !== "completed") {
-      const error = new Error("Job is not completed yet")
-      error.status = 400
+      const error = Object.assign(new Error("Job is not completed yet"), { status: 400 })
       throw error
     }
     
@@ -46,6 +53,8 @@ export const mediaService = {
     }
   },
   
+  /** @param {string} jobId
+   * @param {RequestOptions} [options] */
   cancel: async (jobId, { signal } = {}) => {
     return request(`/media/jobs/${jobId}/cancel`, { method: "POST", signal })
   }
