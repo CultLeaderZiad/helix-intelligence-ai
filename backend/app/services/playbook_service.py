@@ -6,7 +6,6 @@ from fastapi import HTTPException
 
 from app.models.playbook import Playbook, generate_public_id
 from app.models.user import User
-from app.models.organization import Organization
 from app.models.creative import Creative
 from app.models.pattern import Pattern
 from app.models.ai_insight import AIInsight
