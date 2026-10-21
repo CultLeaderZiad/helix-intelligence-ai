@@ -1,0 +1,138 @@
+[
+  {
+    "group": "public",
+    "route": "/",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Research advertising. Develop creative ideas.",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/",
+    "title": "Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/updates/banner",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "screenshot": "screens/home-en-1280.png",
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "public",
+    "route": "/sign-in",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Sign in to Helix",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/sign-in",
+    "title": "Sign in · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/updates/banner",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "public",
+    "route": "/sign-up",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Create an account",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/sign-up",
+    "title": "Create account · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/updates/banner",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "public",
+    "route": "/forgot-password",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Reset your password",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/forgot-password",
+    "title": "Reset password · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/updates/banner",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "public",
+    "route": "/reset-password",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Choose a new password",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/reset-password",
+    "title": "Set a new password · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/updates/banner",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  }
+]
