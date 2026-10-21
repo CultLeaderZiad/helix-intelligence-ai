@@ -22,7 +22,7 @@ from app.models.api_usage import ExternalApiUsage
 from app.models.notification import Notification
 from app.core.config import settings
 from app.core.security import create_access_token
-from app.services.billing_service import is_platform_admin
+from app.services.billing_service import access_status_for_org, is_platform_admin
 
 
 async def _primary_org_id(db: AsyncSession, user_id: str) -> Optional[str]:
@@ -69,6 +69,23 @@ async def record_admin_audit_event(
 def _limit_or_fallback(value, fallback):
     """None means the column was never set. Zero is a real limit."""
     return fallback if value is None else value
+
+
+def _iso_utc(value: Optional[datetime.datetime]) -> Optional[str]:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=datetime.timezone.utc)
+    else:
+        value = value.astimezone(datetime.timezone.utc)
+    return value.isoformat().replace("+00:00", "Z")
+
+
+async def _organization_access_status(db: AsyncSession, org_id: Optional[str]) -> Optional[str]:
+    if org_id is None:
+        return None
+    state = await access_status_for_org(db, org_id)
+    return state.get("status")
 
 
 GRANTABLE_FEATURES = frozenset({
@@ -148,7 +165,7 @@ async def list_jobs(db: AsyncSession) -> list[AdminJobRow]:
             status=job.status,
             records=job.record_count or 0,
             duration_ms=job.elapsed_ms or 0,
-            created_at=job.created_at.isoformat() + "Z" if job.created_at else ""
+            created_at=_iso_utc(job.created_at) or ""
         ))
     return jobs
 
@@ -159,7 +176,7 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
     recorded traffic report "unknown" rather than "success"."""
     now = datetime.datetime.now(datetime.timezone.utc)
     window = now - datetime.timedelta(hours=24)
-    checked_at = now.isoformat() + "Z"
+    checked_at = _iso_utc(now) or ""
     services: List[AdminServiceHealth] = []
 
     def _row_status(success: int, failed: int) -> str:
@@ -291,7 +308,7 @@ async def list_plans(db: AsyncSession) -> List[PlanSchema]:
             price_per_credit=p.price_per_credit,
             feature_flags=p.feature_flags or {},
             created_by_admin_id=p.created_by_admin_id,
-            created_at=p.created_at.isoformat() + "Z" if p.created_at else None
+            created_at=_iso_utc(p.created_at)
         )
         for p in plans
     ]
@@ -326,7 +343,7 @@ async def create_plan(db: AsyncSession, plan_in: PlanCreate, admin_id: str) -> P
         price_per_credit=new_plan.price_per_credit,
         feature_flags=new_plan.feature_flags or {},
         created_by_admin_id=new_plan.created_by_admin_id,
-        created_at=new_plan.created_at.isoformat() + "Z" if new_plan.created_at else None
+        created_at=_iso_utc(new_plan.created_at)
     )
 
 async def update_plan(db: AsyncSession, plan_id: str, plan_update: PlanUpdate) -> PlanSchema:
@@ -368,7 +385,7 @@ async def update_plan(db: AsyncSession, plan_id: str, plan_update: PlanUpdate) -
         price_per_credit=plan.price_per_credit,
         feature_flags=plan.feature_flags or {},
         created_by_admin_id=plan.created_by_admin_id,
-        created_at=plan.created_at.isoformat() + "Z" if plan.created_at else None
+        created_at=_iso_utc(plan.created_at)
     )
 
 async def delete_plan(db: AsyncSession, plan_id: str) -> dict:
@@ -427,7 +444,8 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
             custom_feature_flags=_redact_flags(org.custom_feature_flags),
             effective_feature_flags=_redact_flags(effective_flags),
             status=org.status or "active",
-            trial_expires_at=owner.trial_expires_at.isoformat() + "Z" if owner and owner.trial_expires_at else None,
+            access_status=await _organization_access_status(db, org.id),
+            trial_expires_at=_iso_utc(owner.trial_expires_at) if owner else None,
             total_jobs=job_counts.get(org.id, 0)
         ))
     return orgs
@@ -557,7 +575,7 @@ async def get_usage_summary(db: AsyncSession) -> AdminUsageSummary:
             units=round(float(log.units), 2),
             cost_usd=round(float(log.cost_usd), 4),
             credits_deducted=round(float(log.credits_deducted), 2),
-            created_at=log.created_at.isoformat() + "Z" if log.created_at else ""
+            created_at=_iso_utc(log.created_at) or ""
         )
         for log, org, user in recent_res.all()
     ]
@@ -618,7 +636,7 @@ async def get_usage_logs_filtered(
             units=round(float(log.units), 2),
             cost_usd=round(float(log.cost_usd), 4),
             credits_deducted=round(float(log.credits_deducted), 2),
-            created_at=log.created_at.isoformat() + "Z" if log.created_at else ""
+            created_at=_iso_utc(log.created_at) or ""
         )
         for log, org, user in rows
     ]
@@ -654,9 +672,10 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
             organization_name=org.name if org else None,
             plan_id=org.plan_id if org else None,
             plan_name=plan.name if plan else None,
-            trial_started_at=user.trial_started_at.isoformat() + "Z" if user.trial_started_at else None,
-            trial_expires_at=user.trial_expires_at.isoformat() + "Z" if user.trial_expires_at else None,
-            created_at=user.created_at.isoformat() + "Z" if user.created_at else "",
+            access_status=await _organization_access_status(db, org.id if org else None),
+            trial_started_at=_iso_utc(user.trial_started_at),
+            trial_expires_at=_iso_utc(user.trial_expires_at),
+            created_at=_iso_utc(user.created_at) or "",
             is_suspended=bool(getattr(user, "is_suspended", False) or False),
             is_banned=bool(getattr(user, "is_banned", False) or False),
             status="banned" if bool(getattr(user, "is_banned", False) or False) else ("suspended" if bool(getattr(user, "is_suspended", False) or False) else "active")
