@@ -1,5 +1,5 @@
 import React from "react"
-import { Users, MapPin, CheckCircle2, ShieldCheck, Zap } from "lucide-react"
+import { Users, MapPin, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function ScoutModeTabs({
