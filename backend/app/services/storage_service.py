@@ -371,5 +371,6 @@ async def save_avatar(data: bytes, mime_type: str, extension: str, user_id: str)
         key = f"avatars/{filename}"
         await asyncio.to_thread(_r2_put, key, data, mime_type, disposition)
         return f"r2://{key}"
+    _store_local(filename, data)
     return issue_local_url(filename, user_id=user_id, ttl_seconds=12 * 60 * 60)
 
