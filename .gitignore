@@ -34,5 +34,9 @@ scratch/
 backend/scratch/
 *test_local*.py
 *check_local*.py
-*debug_local*.py
+*debug_local*.py
+
 .vercel
+
+# Disposable local preview database and generated credentials
+.hoplite/local/
