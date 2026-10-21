@@ -16,11 +16,6 @@ import {
   Tag,
   Clock,
   BookOpen,
-  Calendar,
-  Bold,
-  List,
-  Heading,
-  Link as LinkIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Field"

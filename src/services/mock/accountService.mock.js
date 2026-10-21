@@ -80,17 +80,21 @@ const accountService = {
     }
   },
 
-  async createAccessRequest() {
-    const error = new Error("Access requests require the API data source.")
-    error.status = 503
-    throw error
-  },
+async createAccessRequest() {
+  const error = Object.assign(
+    new Error("Access requests require the API data source."),
+    { status: 503 },
+  )
+  throw error
+},
 
-  async selectWorkspace() {
-    const error = new Error("Workspace selection requires the API data source.")
-    error.status = 503
-    throw error
-  },
+async selectWorkspace() {
+  const error = Object.assign(
+    new Error("Workspace selection requires the API data source."),
+    { status: 503 },
+  )
+  throw error
+},
 }
 
 export default accountService

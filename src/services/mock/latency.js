@@ -6,7 +6,9 @@ import { ServiceError } from "../http"
  * Building against instant, always-successful arrays produces a UI
  * that has never rendered a skeleton or an error state.
  */
-export function delay(ms, { signal } = {}) {
+/** @param {{ signal?: AbortSignal }} [options] */
+export function delay(ms, options = {}) {
+  const { signal } = options
   const [min, max] = MOCK_LATENCY_MS
   const wait = ms ?? min + Math.random() * (max - min)
   return new Promise((resolve, reject) => {
