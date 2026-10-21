@@ -1,0 +1,17 @@
+{
+  "entry": {
+    "files": 1,
+    "raw_bytes": 490270,
+    "gzip9_bytes": 152027
+  },
+  "initial_discover_graph": {
+    "files": 31,
+    "raw_bytes": 583116,
+    "gzip9_bytes": 184166
+  },
+  "all_emitted_js": {
+    "files": 112,
+    "raw_bytes": 1289299,
+    "gzip9_bytes": 401328
+  }
+}
