@@ -1,0 +1,23 @@
+W6 local verification, 2026-10-21 UTC
+
+Backend: disposable loopback PostgreSQL16 on127.0.0.1:55435, helix_test_db.
+python -m pytest -q tests -W error: 255 passed, zero skipped (323.99s).
+python -m compileall -q app: exit0.
+python -m pyflakes app: exit0.
+Separate migration DB: upgrade head, downgrade-1, upgrade head: exit0.
+alembic check: exit0, no new upgrade operations.
+Focused avatar storage/audit integration after storage repair: 7 passed, -W error.
+
+pnpm typecheck: exit0.
+pnpm lint (--max-warnings0): exit0.
+pnpm test: 5 Node tests +189 Vitest tests/35files passed.
+pnpm build --manifest: exit0, no >500kB chunk warning.
+Bundle raw/gzip9 figures are in bundles-final.json.
+git diff --check and staged diff check: exit0 after whitespace-only SQL-output cleanup.
+
+Browser: public120/120, admin28/28, member20/20 route smoke states passed.
+Widths1280x800 and390x844, EN/AR. Duplicate reads are recorded separately, not a route-pass condition.
+13 member states recorded repeated notification/update GETs; public/admin recorded none.
+Profile/avatar/password and tour/history evidence are in their JSON artifacts.
+Signed local avatar returned200 and rendered; same unsigned path returned404.
+No authorized non-production provider key: Part A stopped/unverified.
