@@ -199,7 +199,7 @@ async def list_brands(
             domain=f"{brand_id}.com",
             category="Other",
             ad_count=ad_count,
-            first_seen=datetime.datetime.utcnow().isoformat() + "Z"
+            first_seen=datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
         ))
         
     return Paginated(
