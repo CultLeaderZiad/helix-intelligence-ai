@@ -6,17 +6,12 @@ import { Tag } from "@/components/ui/Tag"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { adminService } from "@/services"
 import { formatRelative } from "@/lib/format"
-import { 
-  HeartPulse, 
-  RefreshCw, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Server, 
-  Database, 
-  Cpu, 
-  Globe,
-  Radio,
-  Clock
+import {
+  HeartPulse
+  RefreshCw
+  Database
+  Cpu
+  Globe
 } from "lucide-react"
 
 export function SystemHealthPage() {
@@ -73,7 +68,7 @@ export function SystemHealthPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Tag tone={healthData?.state === "operational" ? "success" : healthData?.state === "degraded" ? "warning" : "danger"}>
+              <Tag className="" tone={healthData?.state === "operational" ? "success" : healthData?.state === "degraded" ? "warning" : "danger"}>
                 Status: {healthData?.state || "operational"}
               </Tag>
             </div>
@@ -128,7 +123,7 @@ export function SystemHealthPage() {
           <Panel className="flex min-w-0 flex-col overflow-hidden border border-border">
             <PanelHeader>
               <PanelTitle>Active Health Diagnostic Results</PanelTitle>
-              <Tag tone="default">{`${services.length} services monitored`}</Tag>
+              <Tag className="" tone="default">{`${services.length} services monitored`}</Tag>
             </PanelHeader>
 
             {loading ? (
@@ -138,7 +133,7 @@ export function SystemHealthPage() {
                 ))}
               </div>
             ) : error ? (
-              <ErrorState error={error} onRetry={() => fetchHealth(false)} />
+              <ErrorState className="" description="System health details could not be loaded. Retry to refresh them." error={error} onRetry={() => fetchHealth(false)} />
             ) : (
               <div className="min-w-0 overflow-auto">
                 <table className="w-full min-w-[650px] table-fixed border-collapse text-left text-xs">
@@ -158,7 +153,7 @@ export function SystemHealthPage() {
                           {s.name}
                         </td>
                         <td className="px-3 py-3">
-                          <Tag tone={s.status === "success" ? "success" : s.status === "warning" ? "warning" : "danger"}>
+                          <Tag className="" tone={s.status === "success" ? "success" : s.status === "warning" ? "warning" : "danger"}>
                             {s.status}
                           </Tag>
                         </td>
