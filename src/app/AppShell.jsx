@@ -104,6 +104,7 @@ export function AppShell({ children }) {
                 }}
               >
                 <Sidebar
+                  onNavigate={() => setNavOpen(false)}
                   onOpenCommand={() => {
                     setCommandOpen(true)
                     setNavOpen(false)
