@@ -56,20 +56,20 @@ export function UsersTable({ users, onRefresh }) {
                   <div className="text-xs text-neutral-500 font-mono mt-0.5">{user.id.split('-')[0]}...</div>
                 </td>
                 <td className="px-4 py-3">
-                  <Tag tone={user.role === "admin" ? "brand" : "default"}>{user.role}</Tag>
+                  <Tag className="" tone={user.role === "admin" ? "brand" : "default"}>{user.role}</Tag>
                 </td>
                 <td className="px-4 py-3 text-neutral-300">
                   {user.organization_name || "None"}
                 </td>
                 <td className="px-4 py-3">
-                  <Tag tone={isSuspended ? "danger" : "success"}>
+                  <Tag className="" tone={isSuspended ? "danger" : "success"}>
                     {isSuspended ? "Suspended" : "Active"}
                   </Tag>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <Button 
                     size="xs" 
-                    variant={isSuspended ? "primary" : "secondary"}
+                    variant={isSuspended ? "primary" : "default"}
                     disabled={updatingId === user.id}
                     onClick={() => handleToggleStatus(user)}
                   >
