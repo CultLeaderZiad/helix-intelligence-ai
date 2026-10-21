@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, desc
 
-from app.core.deps import get_db, get_current_admin, get_optional_user
+from app.core.deps import get_db, get_current_full_admin, get_optional_user
 from app.models.user import User
 from app.models.app_update import AppUpdate
+from app.services.admin_service import record_admin_audit_event
 from app.schemas.app_update import (
     AppUpdateCreate,
     AppUpdateUpdate,
@@ -83,7 +84,7 @@ async def get_active_banner(
 @router.get("/admin/all", response_model=List[AppUpdateResponse])
 async def admin_list_updates(
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_full_admin),
 ):
     """
     Admin: List all updates (published, draft, banners, and scheduled).
@@ -97,7 +98,7 @@ async def admin_list_updates(
 async def admin_create_update(
     update_in: AppUpdateCreate,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_full_admin),
 ):
     """
     Admin: Create a new update or banner announcement.
@@ -113,6 +114,17 @@ async def admin_create_update(
         created_by=admin.id,
     )
     db.add(update)
+    await db.flush()
+    await record_admin_audit_event(
+        db,
+        admin.id,
+        "admin_update_created",
+        {
+            "update_id": update.id,
+            "is_published": update.is_published,
+            "show_as_banner": update.show_as_banner,
+        },
+    )
     await db.commit()
     await db.refresh(update)
     return update
@@ -122,7 +134,7 @@ async def admin_create_update(
 async def admin_get_update(
     update_id: str,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_full_admin),
 ):
     """
     Admin: Get specific update by ID.
@@ -141,7 +153,7 @@ async def admin_update_update(
     update_id: str,
     update_in: AppUpdateUpdate,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_full_admin),
 ):
     """
     Admin: Edit/toggle update (publish status, banner visibility, etc.).
@@ -162,6 +174,12 @@ async def admin_update_update(
             setattr(update, field, value)
 
     update.updated_at = datetime.datetime.now(datetime.timezone.utc)
+    await record_admin_audit_event(
+        db,
+        admin.id,
+        "admin_update_updated",
+        {"update_id": update.id, "fields": sorted(update_data)},
+    )
     await db.commit()
     await db.refresh(update)
     return update
@@ -171,7 +189,7 @@ async def admin_update_update(
 async def admin_delete_update(
     update_id: str,
     db: AsyncSession = Depends(get_db),
-    admin: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_full_admin),
 ):
     """
     Admin: Delete an update.
@@ -181,6 +199,12 @@ async def admin_delete_update(
     if not update:
         raise HTTPException(status_code=404, detail="Update not found")
 
+    await record_admin_audit_event(
+        db,
+        admin.id,
+        "admin_update_deleted",
+        {"update_id": update.id},
+    )
     await db.delete(update)
     await db.commit()
     return None
