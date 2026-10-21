@@ -20,6 +20,7 @@ export DATABASE_URL='postgresql+asyncpg://helix_w6_api@127.0.0.1:55434/helix_w6_
 export TEST_DATABASE_URL='postgresql+asyncpg://postgres@127.0.0.1:55434/helix_w6_preview'
 export ENVIRONMENT=development USE_MOCKS=false AUTH_DEV_RESET_RETURN=false
 export VITE_DATA_SOURCE=api VITE_API_BASE_URL=/api
+export PUBLIC_API_BASE_URL=/api
 export VITE_ENABLE_EXPERIMENTAL_FEATURES=false
 export BACKEND_CORS_ORIGINS='http://localhost:3000,http://127.0.0.1:3000'
 export HELIX_LOCAL_CREDENTIALS="$LOCAL/preview-credentials.json"
