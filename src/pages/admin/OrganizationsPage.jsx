@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from "react"
 import { adminService } from "@/services"
-import { 
-  Building2, 
-  Coins, 
-  Layers, 
-  Sliders, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Search, 
-  RefreshCw,
-  PlusCircle,
-  ShieldAlert
+import {
+  Building2
+  Coins
+  Layers
+  Sliders
+  CheckCircle2
+  Search
+  RefreshCw
 } from "lucide-react"
 
 export function OrganizationsPage() {
@@ -67,7 +64,7 @@ export function OrganizationsPage() {
     if (!grantModalOrg) return
     setSubmittingGrant(true)
     try {
-      const res = await adminService.grantCredits(grantModalOrg.id, parseFloat(grantAmount), grantReason)
+      const res = await adminService.grantCredits(String(grantModalOrg.id), grantAmount, grantReason)
       showToast(res.message || `Granted ${grantAmount} credits successfully`)
       setGrantModalOrg(null)
       fetchAll()
@@ -286,7 +283,7 @@ export function OrganizationsPage() {
                   step="1"
                   min="1"
                   value={grantAmount}
-                  onChange={(e) => setGrantAmount(e.target.value)}
+                  onChange={(e) => setGrantAmount(Number(e.target.value))}
                   className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-slate-100 text-sm focus:outline-none focus:border-amber-400"
                   required
                 />
