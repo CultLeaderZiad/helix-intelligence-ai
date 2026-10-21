@@ -3,19 +3,20 @@ import { adminService } from "@/services"
 import {
   Building2,
   Coins,
-  Layers,
   Sliders,
   CheckCircle2,
   Search,
   RefreshCw,
 } from "lucide-react"
+import { useLanguage } from "@/context/LanguageContext"
+import { adminAccessLabel, adminMessage, getAdminAccessStatus } from "@/i18n/adminMessages"
 
 export function OrganizationsPage() {
+  const { lang, isRtl } = useLanguage()
   const [orgs, setOrgs] = useState([])
-  const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
-  const [, setError] = useState(null)
+  const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
 
   // Modals state
@@ -23,11 +24,6 @@ export function OrganizationsPage() {
   const [grantAmount, setGrantAmount] = useState(50)
   const [grantReason, setGrantReason] = useState("Admin manual grant")
   const [submittingGrant, setSubmittingGrant] = useState(false)
-
-  const [switchModalOrg, setSwitchModalOrg] = useState(null)
-  const [selectedPlanId, setSelectedPlanId] = useState("")
-  const [resetCredits, setResetCredits] = useState(false)
-  const [submittingSwitch, setSubmittingSwitch] = useState(false)
 
   const [flagsModalOrg, setFlagsModalOrg] = useState(null)
   const [currentFlags, setCurrentFlags] = useState({})
@@ -37,14 +33,11 @@ export function OrganizationsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [orgsData, plansData] = await Promise.all([
-        adminService.listOrganizations(),
-        adminService.listPlans(),
-      ])
+      const orgsData = await adminService.listOrganizations()
       setOrgs(Array.isArray(orgsData) ? orgsData : [])
-      setPlans(Array.isArray(plansData) ? plansData : [])
     } catch (err) {
-      setError(err.message || "Failed to load organizations")
+      console.error("Failed to load organizations", err)
+      setError(adminMessage(lang, "Failed to load organizations."))
     } finally {
       setLoading(false)
     }
@@ -63,31 +56,17 @@ export function OrganizationsPage() {
     e.preventDefault()
     if (!grantModalOrg) return
     setSubmittingGrant(true)
+    setError(null)
     try {
-      const res = await adminService.grantCredits(String(grantModalOrg.id), grantAmount, grantReason)
-      showToast(res.message || `Granted ${grantAmount} credits successfully`)
+      await adminService.grantCredits(String(grantModalOrg.id), grantAmount, grantReason)
+      showToast(adminMessage(lang, "Credits granted successfully."))
       setGrantModalOrg(null)
       fetchAll()
     } catch (err) {
-      alert(err.message || "Failed to grant credits")
+      console.error("Failed to grant credits", err)
+      setError(adminMessage(lang, "Failed to grant credits."))
     } finally {
       setSubmittingGrant(false)
-    }
-  }
-
-  const handleSwitchPlan = async (e) => {
-    e.preventDefault()
-    if (!switchModalOrg || !selectedPlanId) return
-    setSubmittingSwitch(true)
-    try {
-      const res = await adminService.switchPlan(switchModalOrg.id, selectedPlanId, resetCredits)
-      showToast(res.message || "Plan updated successfully")
-      setSwitchModalOrg(null)
-      fetchAll()
-    } catch (err) {
-      alert(err.message || "Failed to switch plan")
-    } finally {
-      setSubmittingSwitch(false)
     }
   }
 
@@ -95,22 +74,23 @@ export function OrganizationsPage() {
     e.preventDefault()
     if (!flagsModalOrg) return
     setSubmittingFlags(true)
+    setError(null)
     try {
-      const res = await adminService.updateFeatureFlags(flagsModalOrg.id, currentFlags)
-      showToast(res.message || "Feature flags updated successfully")
+      await adminService.updateFeatureFlags(flagsModalOrg.id, currentFlags)
+      showToast(adminMessage(lang, "Feature flags updated successfully."))
       setFlagsModalOrg(null)
       fetchAll()
     } catch (err) {
-      alert(err.message || "Failed to update flags")
+      console.error("Failed to update feature flags", err)
+      setError(adminMessage(lang, "Failed to update feature flags."))
     } finally {
       setSubmittingFlags(false)
     }
   }
 
   const filteredOrgs = orgs.filter((o) =>
-    o.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    o.owner_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    o.plan_name.toLowerCase().includes(searchTerm.toLowerCase())
+    (o.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (o.owner_email || "").toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const ALL_FEATURES = [
@@ -124,16 +104,16 @@ export function OrganizationsPage() {
   ]
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-8 font-sans">
+    <div dir={isRtl ? "rtl" : "ltr"} className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-8 font-sans">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
             <Building2 className="w-7 h-7 text-indigo-400" />
-            Organizations & Quota Control
+            {adminMessage(lang, "Organizations & Access")}
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Manage organization plans, credit balances, quota limits, and custom feature flags.
+            {adminMessage(lang, "Manage admin-granted access, workspace credits, and feature access.")}
           </p>
         </div>
         <button
@@ -142,7 +122,7 @@ export function OrganizationsPage() {
           className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono rounded border border-slate-700 transition"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          {adminMessage(lang, "Refresh")}
         </button>
       </div>
 
@@ -154,12 +134,18 @@ export function OrganizationsPage() {
         </div>
       )}
 
+      {error && (
+        <div role="alert" className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-rose-300 text-sm">
+          {error}
+        </div>
+      )}
+
       {/* Filter */}
       <div className="flex items-center gap-3 bg-slate-900/60 p-3 rounded-lg border border-slate-800">
         <Search className="w-4 h-4 text-slate-500 ml-2" />
         <input
           type="text"
-          placeholder="Filter by organization name, owner email, or plan..."
+          placeholder={adminMessage(lang, "Filter by organization name or owner email...")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="bg-transparent text-slate-200 placeholder-slate-500 text-sm focus:outline-none w-full"
@@ -169,28 +155,27 @@ export function OrganizationsPage() {
       {/* Table */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-300 min-w-[760px]">
+          <table className="w-full text-start text-sm text-slate-300 min-w-[760px]">
             <thead className="bg-slate-950/60 text-slate-400 text-xs font-mono border-b border-slate-800 uppercase tracking-wider">
             <tr>
-              <th className="py-3.5 px-4">Organization / Owner</th>
-              <th className="py-3.5 px-4">Active Plan</th>
-              <th className="py-3.5 px-4">Credit Balance</th>
-              <th className="py-3.5 px-4">Credits Used</th>
-              <th className="py-3.5 px-4">Status</th>
-              <th className="py-3.5 px-4 text-right">Actions</th>
+              <th className="py-3.5 px-4">{adminMessage(lang, "Organization")} / {adminMessage(lang, "Owner")}</th>
+              <th className="py-3.5 px-4">{adminMessage(lang, "Access state")}</th>
+              <th className="py-3.5 px-4">{adminMessage(lang, "Credit Balance")}</th>
+              <th className="py-3.5 px-4">{adminMessage(lang, "Credits Used")}</th>
+              <th className="py-3.5 px-4 text-end">{adminMessage(lang, "Actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
             {loading ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-500">
-                  Loading organizations...
+                <td colSpan={5} className="py-8 text-center text-slate-500">
+                  {adminMessage(lang, "Loading organizations...")}
                 </td>
               </tr>
             ) : filteredOrgs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-8 text-center text-slate-500">
-                  No organizations found.
+                <td colSpan={5} className="py-8 text-center text-slate-500">
+                  {adminMessage(lang, "No organizations found.")}
                 </td>
               </tr>
             ) : (
@@ -202,7 +187,7 @@ export function OrganizationsPage() {
                   </td>
                   <td className="py-3.5 px-4">
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-xs">
-                      {org.plan_name}
+                      {adminAccessLabel(lang, getAdminAccessStatus(org))}
                     </span>
                   </td>
                   <td className="py-3.5 px-4">
@@ -215,17 +200,8 @@ export function OrganizationsPage() {
                     {Number(org.credits_used || 0).toFixed(1)} cr
                   </td>
                   <td className="py-3.5 px-4">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] ${
-                      org.status === "active"
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                        : org.status === "trial_expired"
-                        ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-                        : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                    }`}>
-                      {org.status}
-                    </span>
                   </td>
-                  <td className="py-3.5 px-4 text-right space-x-2">
+                  <td className="py-3.5 px-4 text-end space-x-2">
                     <button
                       onClick={() => {
                         setGrantModalOrg(org)
@@ -234,17 +210,7 @@ export function OrganizationsPage() {
                       }}
                       className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded transition text-xs"
                     >
-                      + Grant
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSwitchModalOrg(org)
-                        setSelectedPlanId(org.plan_id)
-                        setResetCredits(false)
-                      }}
-                      className="px-2.5 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded transition text-xs"
-                    >
-                      Plan
+                      {adminMessage(lang, "Grant")}
                     </button>
                     <button
                       onClick={() => {
@@ -253,7 +219,7 @@ export function OrganizationsPage() {
                       }}
                       className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded transition text-xs"
                     >
-                      Flags
+                      {adminMessage(lang, "Flags")}
                     </button>
                   </td>
                 </tr>
