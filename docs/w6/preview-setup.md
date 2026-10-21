@@ -10,3 +10,5 @@ The repository setup/run commands use installed PostgreSQL 16 binaries, Python p
 - Seed is idempotent, creates no creatives/AI/provider results, and does not overwrite users' later mutation checks.
 
 Part A is stopped without an authorized non-production provider key. This fixture-only launcher deliberately unsets provider/email/storage credentials, so it cannot serve as live-provider evidence. A later authorized provider-proof environment must explicitly configure its non-production key outside this launcher.
+
+Media signing is explicitly same-origin (`PUBLIC_API_BASE_URL=/api`); Vite forwards `/uploads` to the existing signed/authorized backend route. Local avatars are written before their reference is saved. Do not remove signature or owner checks to make a preview image load.
