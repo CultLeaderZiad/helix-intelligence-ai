@@ -132,7 +132,7 @@ async def update_user_status(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(get_current_full_admin)
 ):
-    return await admin_service.update_user_status(db, user_id, status_in.status)
+    return await admin_service.update_user_status(db, user_id, status_in.status, current_admin.id)
 
 @router.post("/users/{user_id}/ban")
 async def ban_user(
@@ -141,7 +141,7 @@ async def ban_user(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(get_current_full_admin)
 ):
-    return await admin_service.ban_user(db, user_id, ban_in.is_banned)
+    return await admin_service.ban_user(db, user_id, ban_in.is_banned, current_admin.id)
 
 @router.post("/users/{user_id}/role")
 async def update_user_role(
@@ -150,7 +150,9 @@ async def update_user_role(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(get_current_full_admin)
 ):
-    return await admin_service.update_user_role(db, user_id, role_in.role, role_in.admin_permissions)
+    return await admin_service.update_user_role(
+        db, user_id, role_in.role, role_in.admin_permissions, current_admin.id,
+    )
 
 @router.post("/users/{user_id}/plan")
 async def switch_user_plan(
@@ -203,7 +205,9 @@ async def list_admin_tickets(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(require_admin_permission("support"))
 ):
-    return await support_service.list_admin_tickets(db, status_filter=status, type_filter=type)
+    return await support_service.list_admin_tickets(
+        db, status_filter=status, type_filter=type, actor=current_admin
+    )
 
 class TicketReplyBody(BaseModel):
     message: str
@@ -227,7 +231,9 @@ async def update_admin_ticket_status(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(require_admin_permission("support"))
 ):
-    return await support_service.update_ticket_status(db, ticket_id, body.status)
+    return await support_service.update_ticket_status(
+        db, ticket_id, body.status, actor=current_admin
+    )
 
 
 class AccessDecisionBody(BaseModel):
