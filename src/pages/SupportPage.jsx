@@ -1,89 +1,52 @@
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { MessageSquare, Plus, CheckCircle2, Clock, AlertCircle, Send, User, Shield, Sparkles, Bug } from "lucide-react"
-import { supportService } from "../services"
 import { useLanguage } from "@/context/LanguageContext"
 import { SupportFeedbackModal } from "../components/SupportFeedbackModal"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { w5Support } from "@/i18n/w5Support"
+import { formatMemberDate } from "@/i18n/memberMessages"
+import { useSupport } from "@/hooks/useSupport"
 
 export function SupportPage() {
   const { lang, t } = useLanguage()
   const words = w5Support[lang] || w5Support.en
   const text = (key) => t(key, words[key] || w5Support.en[key] || key)
-  const [tickets, setTickets] = useState([])
-  const [selectedTicket, setSelectedTicket] = useState(null)
-  const [ticketDetails, setTicketDetails] = useState(null)
+  const {
+    tickets,
+    selectedTicket,
+    ticketDetails,
+    isLoading,
+    isLoadingDetails,
+    isSendingReply,
+    errorCode,
+    refreshTickets,
+    selectTicket,
+    sendReply,
+  } = useSupport()
   const [replyMessage, setReplyMessage] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSendingReply, setIsSendingReply] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [error, setError] = useState(null)
+  const [localError, setLocalError] = useState("")
   const [toast, setToast] = useState(null)
+  const errorMessage = localError || (errorCode ? text(errorCode) : "")
 
   const showToast = (msg) => {
     setToast(msg)
     setTimeout(() => setToast(null), 4000)
   }
 
-  const loadTickets = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const data = await supportService.listTickets()
-      const ticketList = Array.isArray(data) ? data : []
-      setTickets(ticketList)
-      if (ticketList.length > 0 && !selectedTicket) {
-        loadTicketDetails(ticketList[0].id)
-      }
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message
-      setError(typeof detail === "string" ? detail : text("loadTicketsFailed"))
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const loadTicketDetails = async (id) => {
-    setSelectedTicket(id)
-    setTicketDetails(null)
-    setError(null)
-    try {
-      const details = await supportService.getTicket(id)
-      setTicketDetails(details)
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message
-      setError(typeof detail === "string" ? detail : text("loadTicketsFailed"))
-    }
-  }
-
-  useEffect(() => {
-    loadTickets()
-  }, [])
-
   const handleSendReply = async (e) => {
     e.preventDefault()
     if (!replyMessage.trim()) {
-      setError(text("replyEmpty"))
+      setLocalError(text("replyEmpty"))
       return
     }
     if (!selectedTicket) return
 
-    setIsSendingReply(true)
-    setError(null)
-    try {
-      const newReply = await supportService.replyTicket(selectedTicket, replyMessage.trim())
-      setTicketDetails((prev) => ({
-        ...prev,
-        replies: [...(prev.replies || []), newReply]
-      }))
-      setReplyMessage("")
-      showToast(text("replySent"))
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message
-      setError(typeof detail === "string" ? detail : text("replyFailed"))
-    } finally {
-      setIsSendingReply(false)
-    }
+    setLocalError("")
+    const newReply = await sendReply(selectedTicket, replyMessage.trim())
+    if (!newReply) return
+    setReplyMessage("")
+    showToast(text("replySent"))
   }
 
   return (
@@ -113,10 +76,10 @@ export function SupportPage() {
         </div>
       )}
 
-      {error && (
+      {errorMessage && (
         <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-rose-400 text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          {error}
+          {errorMessage}
         </div>
       )}
 
@@ -149,7 +112,7 @@ export function SupportPage() {
                 return (
                   <button
                     key={t.id}
-                    onClick={() => loadTicketDetails(t.id)}
+                    onClick={() => { setLocalError(""); selectTicket(t.id) }}
                     className={`w-full p-3.5 rounded-xl border text-left transition-all ${
                       isSelected
                         ? "bg-slate-800/90 border-teal-500/50 shadow-md ring-1 ring-teal-500/20"
@@ -180,7 +143,7 @@ export function SupportPage() {
                     <div className="font-semibold text-sm text-slate-200 truncate">{t.subject}</div>
                     <div className="text-xs text-slate-400 line-clamp-1 mt-0.5">{t.message}</div>
                     <div className="text-[10px] text-slate-500 mt-2">
-                      {new Date(t.created_at).toLocaleString(lang === "ar" ? "ar" : "en", { dateStyle: "medium", timeStyle: "short" })}
+                      {formatMemberDate(t.created_at, lang, text("recently"), { dateStyle: "medium", timeStyle: "short" })}
                     </div>
                   </button>
                 )
@@ -191,7 +154,9 @@ export function SupportPage() {
 
         {/* Right Column: Thread View */}
         <div className="lg:col-span-7 bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden flex flex-col min-h-[520px]">
-          {ticketDetails ? (
+          {isLoadingDetails ? (
+            <div role="status" className="flex-1 flex items-center justify-center p-8 text-sm text-slate-500">{text("loadingTickets")}</div>
+          ) : ticketDetails ? (
             <>
               {/* Thread Header */}
               <div className="p-6 border-b border-slate-800 bg-slate-900/80">
@@ -226,7 +191,7 @@ export function SupportPage() {
                     <span className="font-semibold text-slate-300 flex items-center gap-1.5">
                       <User className="w-3.5 h-3.5 text-teal-400" /> {text("you")} ({text("originalRequest")})
                     </span>
-                    <span>{new Date(ticketDetails.created_at).toLocaleString()}</span>
+                    <span>{formatMemberDate(ticketDetails.created_at, lang, text("recently"), { dateStyle: "medium", timeStyle: "short" })}</span>
                   </div>
                   <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
                     {ticketDetails.message}
@@ -255,7 +220,7 @@ export function SupportPage() {
                           </>
                         )}
                       </span>
-                      <span className="text-slate-500">{new Date(reply.created_at).toLocaleString()}</span>
+                      <span className="text-slate-500">{formatMemberDate(reply.created_at, lang, text("recently"), { dateStyle: "medium", timeStyle: "short" })}</span>
                     </div>
                     <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
                       {reply.message}
@@ -296,7 +261,7 @@ export function SupportPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={(ticket) => {
-          loadTickets()
+          void refreshTickets()
           const id = ticket?.id ? `#${String(ticket.id).slice(0, 8)}` : ""
           showToast(id ? text("ticketCreated").replace("{id}", id) : text("ticketSubmitted"))
         }}
