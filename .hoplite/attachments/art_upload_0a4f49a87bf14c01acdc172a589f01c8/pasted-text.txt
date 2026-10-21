@@ -1,0 +1,79 @@
+Helix W5: Discover reliability, product narrowing, onboarding/tour and navigation fixes (Hoplite)
+Repo: CultLeaderZiad/helix-intelligence-ai. Create branch fix/intelligence-W5 from the latest fix/intelligence-W4. Open ONE draft PR with base fix/intelligence-W4.
+
+Rules
+Never push to or open a PR into main (it auto-deploys to production).
+No merge, force-push, deploy, or production DB/accounts.
+No fake data or UI, and no billing or pricing features: access is admin-granted only.
+Keep the page / hook / service contract, the design tokens, and the accent discipline from the repo docs.
+Before coding
+Read:
+
+README.md, ARCHITECTURE.md, DEVELOPMENT.md, API_CONTRACTS.md, and DESIGN_SYSTEM.md if present.
+The audit on branch audit/helix-full: docs/audit/HELIX-AUDIT.md, docs/audit/screens/README.md, docs/audit/evidence/COMMANDS.md.
+PR #26 (W4) and its comments.
+Use the audit as the source of truth for findings.
+
+A. Discover reliability (P0)
+Cancel and the UI timeout must cancel the server job, not just the screen. Add a cancel endpoint/state transition, make the worker stop the provider call, and record a terminal state.
+Give every job a deadline, a worker heartbeat with lease renewal, and reclaim of expired leases. Every provider call gets a timeout. Prove that no job runs twice after a lease expires (idempotent completion).
+Every job ends in exactly one terminal outcome: succeeded | failed(reason) | cancelled | timed_out. The UI shows it clearly in EN and AR with a retry action, and nothing gets stuck on "resolving sources".
+Progress labels must come from real server stage events, not a fixed animation. Health labels must not claim provider success without evidence.
+Reduce polling: back off, stop on a terminal state or a hidden tab, and drop duplicate requests.
+Tests for: cancel mid-run, provider timeout, worker crash then reclaim, deadline exceeded, and duplicate-delivery idempotency. Run them on a disposable Postgres.
+B. Narrow the product
+Remove the "Trial ended — select a plan" banner and all trial/plan gating copy. Pending users see an honest "access pending admin approval" state, and approved users get access. Hide or remove "Billing & Meter".
+Navigation shows only what is built. Discover stays primary. Loops and pages that are mock or unbuilt (per the audit) are hidden behind a feature flag, or shown as clearly labeled "coming soon" with no fake data. Remove dead and duplicated routes, and fix the unclear ones the audit lists.
+Legal: make the footer and promises match reality. Remove encryption or deletion claims that aren't proven, or implement them. Either move sensitive data out of localStorage or disclose it honestly.
+C. Onboarding and tour guide
+The onboarding modal ("Step 1 of 3 • Zero Cost" industry picker) and the product tour (driver.js) are buggy.
+
+Audit every step of onboarding and the tour in EN and AR (RTL), at desktop and mobile sizes. Fix:
+steps pointing at missing or hidden elements
+wrong positioning and RTL mirroring
+overlay and scroll lock leaking after close
+the tour reappearing after it's completed or dismissed (persist per user server-side, not only in localStorage)
+the modal re-opening on every navigation
+keyboard and focus traps, and Esc/close
+Remove the "Zero Cost" copy unless it's literally true. Tour steps may only reference features that are visible after part B.
+Add a way to restart the tour from Settings or Help.
+D. Navigation glitches and broken functions
+Click through every route and tab in the managed preview (EN and AR). Fix:
+flicker and layout shift on navigation
+stale state carried between pages
+double fetches
+broken back/forward
+direct-load 404s (e.g. /api-keys: fix the dev proxy and the Vercel SPA rewrites)
+lost scroll and focus
+loading skeletons that never resolve
+console errors
+List every button or function that doesn't work. For each one, either fix it or hide it with the reason. Nothing should look clickable and do nothing.
+Finish the remaining AR/RTL gaps the audit found (auth, docs, Create, admin), in scope only.
+E. Gates
+Fix the 2 failing backend tests. Reduce typecheck/lint/pyflakes errors in the files you touch: every touched file must be clean. Don't add blanket ignores.
+
+Verify
+Run each of these and record the exit code:
+
+python -m pytest -q tests
+python -m compileall -q app
+alembic upgrade head, then check, then downgrade -1, then upgrade (disposable Postgres)
+pnpm test
+pnpm build
+typecheck and lint counts, before and after
+Browser check in the managed preview, EN and AR:
+
+the full Discover flow, including cancel and timeout
+onboarding and the tour, start to finish, plus restart
+every visible route
+Attach before/after screenshots under docs/w5/screens/ and a short screen recording if you can.
+
+Report
+Post as a PR comment and as your final message:
+
+What changed, grouped by A–E
+What was verified (commands, exit codes, screenshots)
+What is still unverified
+Every remaining broken item
+The single P0 next step
+Never claim zero bugs or production ready.
