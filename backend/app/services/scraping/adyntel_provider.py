@@ -102,7 +102,7 @@ class AdyntelProvider(ScraperProvider):
 
     def _parse_adyntel_ads(self, items: List[dict], domain: str) -> List[RawCreative]:
         creatives = []
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         brand_name = domain.split(".")[0].title()
 
         for item in items:
@@ -146,7 +146,9 @@ class AdyntelProvider(ScraperProvider):
             if start_date:
                 try:
                     dt_start = datetime.fromisoformat(start_date.replace("Z", "+00:00").split("+")[0])
-                    days_active = max(1, (now.replace(tzinfo=None) - dt_start).days)
+                    if dt_start.tzinfo is None:
+                        dt_start = dt_start.replace(tzinfo=timezone.utc)
+                    days_active = max(1, (now - dt_start.astimezone(timezone.utc)).days)
                     days_known = True
                 except Exception:
                     days_known = False
