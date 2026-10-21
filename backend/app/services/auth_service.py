@@ -62,7 +62,7 @@ async def authenticate_user(db: AsyncSession, user_in: UserLogin) -> str:
     token_version = metadata.get("token_version", 1)
     return create_access_token(subject=user.id, role=user.role, token_version=token_version)
 
-async def revoke_user_sessions(db: AsyncSession, user: User) -> int:
+async def revoke_user_sessions(db: AsyncSession, user: User, *, commit: bool = True) -> int:
     """Increment the user's token version to immediately invalidate all existing sessions."""
     metadata = dict(user.signup_metadata or {})
     new_version = int(metadata.get("token_version", 1)) + 1
@@ -71,8 +71,9 @@ async def revoke_user_sessions(db: AsyncSession, user: User) -> int:
     metadata["token_version"] = new_version
     metadata["sessions_revoked_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     user.signup_metadata = metadata
-    await db.commit()
-    await db.refresh(user)
+    if commit:
+        await db.commit()
+        await db.refresh(user)
     return new_version
 
 async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
