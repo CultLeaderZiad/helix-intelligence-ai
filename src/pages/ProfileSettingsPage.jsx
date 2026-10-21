@@ -1,74 +1,60 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useRef } from "react"
 import { User, Lock, Camera, CheckCircle2, AlertCircle, Save, Shield, Eye, EyeOff, RotateCcw } from "lucide-react"
-import { accountService, authService } from "../services"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { useLanguage } from "../context/LanguageContext"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { getW5OnboardingText } from "../i18n/w5Onboarding"
+import { getMemberMessage, getMemberRoleLabel } from "@/i18n/memberMessages"
+import { useProfileSettings } from "@/hooks/useProfileSettings"
 
 export function ProfileSettingsPage() {
   const { refreshSession, updateUser } = useAuth()
   const navigate = useNavigate()
   const { lang, t } = useLanguage()
+  const {
+    profile,
+    setProfile,
+    isLoadingProfile,
+    loadError,
+    isSaving,
+    isUploadingAvatar,
+    uploadAvatar,
+    saveProfile,
+    restartOnboarding,
+  } = useProfileSettings()
   const fileInputRef = useRef(null)
   const [isRestartingTour, setIsRestartingTour] = useState(false)
 
+  const text = (key) => t(key, getMemberMessage(lang, key))
   const onboardingText = (key) => t(key, getW5OnboardingText(lang, key))
 
-  const [profile, setProfile] = useState({
-    full_name: "",
-    email: "",
-    avatar_url: "",
-    role: "customer"
-  })
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  
-  const [isSaving, setIsSaving] = useState(false)
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
 
-  const loadProfile = async () => {
-    try {
-      const data = await accountService.getProfile()
-      setProfile({
-        full_name: data.full_name || "",
-        email: data.email || "",
-        avatar_url: data.avatar_url || "",
-        role: data.role || "customer"
-      })
-    } catch (err) {
-      console.error("Failed to load profile:", err)
-    }
-  }
-
-  useEffect(() => {
-    loadProfile()
-  }, [])
-
   const handleAvatarChange = async (e) => {
-    const file = e.target.files?.[0]
+    const input = e.currentTarget
+    const file = input.files?.[0]
     if (!file) return
 
-    setIsUploadingAvatar(true)
     setErrorMessage("")
     setSuccessMessage("")
 
     try {
-      const res = await accountService.uploadAvatar(file)
-      setProfile((prev) => ({ ...prev, avatar_url: res.avatar_url }))
-      setSuccessMessage(t("profileAvatarUpdated"))
+      const res = await uploadAvatar(file)
+      if (!res?.avatar_url) throw new Error("avatar_url_missing")
+      setSuccessMessage(text("profileAvatarUpdated"))
       if (refreshSession) refreshSession()
-    } catch (err) {
-      setErrorMessage(err?.message || t("profileAvatarUploadFailed"))
+    } catch {
+      setErrorMessage(text("profileAvatarUploadFailed"))
     } finally {
-      setIsUploadingAvatar(false)
+      input.value = ""
     }
   }
 
@@ -79,41 +65,33 @@ export function ProfileSettingsPage() {
 
     if (newPassword) {
       if (!currentPassword) {
-        setErrorMessage(t("profileCurrentPasswordRequired"))
+        setErrorMessage(text("profileCurrentPasswordRequired"))
         return
       }
       if (newPassword.length < 8) {
-        setErrorMessage(t("profilePasswordTooShort"))
+        setErrorMessage(text("profilePasswordTooShort"))
         return
       }
       if (newPassword !== confirmPassword) {
-        setErrorMessage(t("profilePasswordMismatch"))
+        setErrorMessage(text("profilePasswordMismatch"))
         return
       }
     }
 
-    setIsSaving(true)
     try {
-      const payload = {
-        full_name: profile.full_name,
-        avatar_url: profile.avatar_url,
-      }
-      if (newPassword) {
-        payload.current_password = currentPassword
-        payload.new_password = newPassword
-      }
-
-      await accountService.updateProfile(payload)
-      setSuccessMessage(t("profileUpdated"))
+      await saveProfile({
+        fullName: profile.full_name,
+        avatarUrl: profile.avatar_url,
+        currentPassword,
+        newPassword,
+      })
+      setSuccessMessage(text("profileUpdated"))
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
       if (refreshSession) refreshSession()
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message || "Failed to update profile."
-      setErrorMessage(typeof detail === "string" ? detail : t("profileUpdateFailed"))
-    } finally {
-      setIsSaving(false)
+    } catch {
+      setErrorMessage(text("profileUpdateFailed"))
     }
   }
 
@@ -122,7 +100,7 @@ export function ProfileSettingsPage() {
     setSuccessMessage("")
     setIsRestartingTour(true)
     try {
-      await authService.restartOnboarding()
+      await restartOnboarding()
       if (refreshSession) await refreshSession()
       updateUser?.({ has_completed_onboarding: false })
       navigate("/discover?tour=restart")
@@ -134,16 +112,19 @@ export function ProfileSettingsPage() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 font-sans">
-      <BreadcrumbBar trail={["Helix", t("settingsNavigation", "Settings"), t("profileAccountBreadcrumb", "Account & profile")]} meta={null} actions={null} className="" />
+    <div className="flex flex-col flex-1 min-h-0 font-sans" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <BreadcrumbBar trail={["Helix", text("settingsNavigation"), text("profileAccountBreadcrumb")]} meta={null} actions={null} className="" />
       <div className="w-full max-w-4xl mx-auto p-4 md:p-8 space-y-8 font-sans">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">{t("profileSettingsTitle", "Account & profile settings")}</h1>
+        <h1 className="text-2xl font-bold text-white tracking-tight">{text("profileSettingsTitle")}</h1>
         <p className="text-sm text-slate-400 mt-1">
-          {t("profileSettingsDescription", "Manage your personal details, profile photo, and account security.")}
+          {text("profileSettingsDescription")}
         </p>
       </div>
+
+      {isLoadingProfile && <div role="status" className="text-sm text-slate-400">{text("loadingProfile")}</div>}
+      {loadError && <div role="alert" className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">{text("profileLoadFailed")}</div>}
 
       {/* Alerts */}
       {successMessage && (
@@ -184,7 +165,7 @@ export function ProfileSettingsPage() {
           <div className="relative group">
             <div className="w-24 h-24 rounded-2xl bg-slate-800 border-2 border-slate-700 overflow-hidden flex items-center justify-center">
               {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt={t("profilePhoto", "Profile photo")} className="w-full h-full object-cover" />
+                <img src={profile.avatar_url} alt={text("profilePhoto")} className="w-full h-full object-cover" />
               ) : (
                 <User className="w-10 h-10 text-slate-500" />
               )}
@@ -196,7 +177,7 @@ export function ProfileSettingsPage() {
               className="absolute inset-0 rounded-2xl bg-slate-950/70 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200 cursor-pointer"
             >
               <Camera className="w-6 h-6 mb-1" />
-              <span className="text-[10px] font-semibold">{t("changePhoto", "Change photo")}</span>
+              <span className="text-[10px] font-semibold">{text("changePhoto")}</span>
             </button>
             <input
               type="file"
@@ -208,9 +189,9 @@ export function ProfileSettingsPage() {
           </div>
 
           <div className="space-y-1 text-center sm:text-left">
-            <h3 className="font-semibold text-white text-base">{t("profilePhoto", "Profile photo")}</h3>
+            <h3 className="font-semibold text-white text-base">{text("profilePhoto")}</h3>
             <p className="text-xs text-slate-400">
-              {t("photoUploadGuidance", "Upload a PNG, JPG, or WebP image. Maximum size: 5 MB.")}
+              {text("photoUploadGuidance")}
             </p>
             <div className="pt-2">
               <button
@@ -219,7 +200,7 @@ export function ProfileSettingsPage() {
                 disabled={isUploadingAvatar}
                 className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
               >
-                {isUploadingAvatar ? t("uploadingPhoto", "Uploading…") : t("uploadPhoto", "Upload new photo")}
+                {isUploadingAvatar ? text("uploadingPhoto") : text("uploadPhoto")}
               </button>
             </div>
           </div>
@@ -228,36 +209,36 @@ export function ProfileSettingsPage() {
         {/* Profile Info Section */}
         <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-4">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
-            <User className="w-4 h-4 text-teal-400" /> {t("personalInformation", "Personal information")}
+            <User className="w-4 h-4 text-teal-400" /> {text("personalInformation")}
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">{t("fullName", "Full name")}</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">{text("fullName")}</label>
               <input
                 type="text"
                 value={profile.full_name}
                 onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
-                placeholder={t("fullNamePlaceholder", "e.g. John Doe")}
+                placeholder={text("fullNamePlaceholder")}
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-teal-500/60 transition"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">{t("emailAddress", "Email address")}</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">{text("emailAddress")}</label>
               <input
                 type="email"
                 disabled
                 value={profile.email}
                 className="w-full px-3.5 py-2.5 bg-slate-950/60 border border-slate-800/60 rounded-xl text-slate-400 text-sm cursor-not-allowed"
               />
-              <span className="text-[10px] text-slate-500 mt-1 block">{t("workspaceEmailDescription", "Account email linked to your workspace.")}</span>
+              <span className="text-[10px] text-slate-500 mt-1 block">{text("workspaceEmailDescription")}</span>
             </div>
           </div>
 
           <div className="pt-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800 text-xs text-slate-300">
-              <Shield className="w-3.5 h-3.5 text-teal-400" /> {t("roleLabel", "Role")}: <span className="font-semibold uppercase text-white">{profile.role}</span>
+              <Shield className="w-3.5 h-3.5 text-teal-400" /> {text("roleLabel")}: <span className="font-semibold text-white">{getMemberRoleLabel(lang, profile.role)}</span>
             </div>
           </div>
         </div>
@@ -265,12 +246,12 @@ export function ProfileSettingsPage() {
         {/* Security / Password Section */}
         <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-4">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
-            <Lock className="w-4 h-4 text-indigo-400" /> {t("changePassword", "Change password")}
+            <Lock className="w-4 h-4 text-indigo-400" /> {text("changePassword")}
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">{t("currentPassword", "Current password")}</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">{text("currentPassword")}</label>
               <div className="relative">
                 <input
                   type={showCurrentPassword ? "text" : "password"}
@@ -283,7 +264,7 @@ export function ProfileSettingsPage() {
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  aria-label={t(showCurrentPassword ? "hideCurrentPassword" : "showCurrentPassword")}
+                  aria-label={text(showCurrentPassword ? "hideCurrentPassword" : "showCurrentPassword")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-300 transition"
                 >
                   {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -292,7 +273,7 @@ export function ProfileSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">{t("newPassword", "New password")}</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">{text("newPassword")}</label>
               <div className="relative">
                 <input
                   type={showNewPassword ? "text" : "password"}
@@ -305,7 +286,7 @@ export function ProfileSettingsPage() {
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  aria-label={t(showNewPassword ? "hideNewPassword" : "showNewPassword")}
+                  aria-label={text(showNewPassword ? "hideNewPassword" : "showNewPassword")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-300 transition"
                 >
                   {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -314,7 +295,7 @@ export function ProfileSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">{t("confirmNewPassword", "Confirm new password")}</label>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">{text("confirmNewPassword")}</label>
               <div className="relative">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
@@ -327,7 +308,7 @@ export function ProfileSettingsPage() {
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  aria-label={t(showConfirmPassword ? "hideConfirmPassword" : "showConfirmPassword")}
+                  aria-label={text(showConfirmPassword ? "hideConfirmPassword" : "showConfirmPassword")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-slate-300 transition"
                 >
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -344,7 +325,7 @@ export function ProfileSettingsPage() {
             disabled={isSaving}
             className="px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-slate-950 font-semibold text-sm flex items-center gap-2 transition shadow-lg shadow-teal-500/10"
           >
-            <Save className="w-4 h-4" /> {isSaving ? t("savingChanges", "Saving changes…") : t("saveSettings", "Save settings")}
+            <Save className="w-4 h-4" /> {isSaving ? text("savingChanges") : text("saveSettings")}
           </button>
         </div>
       </form>
