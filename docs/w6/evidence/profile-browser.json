@@ -1,0 +1,32 @@
+[
+  {
+    "action": "profile and real local avatar persisted/reloaded after storage repair",
+    "result": {
+      "avatar": [
+        {
+          "loaded": true,
+          "sameOrigin": true
+        }
+      ],
+      "name": "W6 Verified Member"
+    }
+  },
+  {
+    "action": "password changed through UI; session cleared; new password reauthentication",
+    "result": {
+      "notice": false,
+      "path": "/sign-in",
+      "signedOut": true,
+      "newPasswordLoginPath": "/discover"
+    }
+  },
+  {
+    "action": "signed local avatar guard after repair",
+    "result": {
+      "sameOrigin": true,
+      "loaded": true,
+      "signedStatus": 200,
+      "unsignedStatus": 404
+    }
+  }
+]
