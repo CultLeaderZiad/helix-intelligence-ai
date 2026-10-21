@@ -8,7 +8,6 @@ from app.models.creative import Creative
 from app.models.creative_score import CreativeScore
 from app.models.scrape_job import ScrapeJob
 from app.models.monitor import Monitor, MonitorEvent
-from app.models.organization import Organization
 from app.models.user import User
 from app.services.ai.ai_router import MultiTierAIProvider
 from app.schemas.creative import Creative as CreativeSchema, Scores, CreativeMetrics

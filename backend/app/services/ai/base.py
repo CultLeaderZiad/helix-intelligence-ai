@@ -28,7 +28,6 @@ class AIProvider(ABC):
     @abstractmethod
     async def _call_api(self, messages: List[dict]) -> str:
         """Subclasses implement this to call their respective API"""
-        pass
 
     async def generate_insight(self, creative: Creative, context: str = "") -> Insight:
         """Generate an insight for a specific creative.
