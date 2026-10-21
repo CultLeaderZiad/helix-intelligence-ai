@@ -1,0 +1,23 @@
+# Synthetic preview mutation SQL (baseline, before W6 backend audit fixes)
+        id        |      role       | is_platform_admin 
+------------------+-----------------+-------------------
+ w6-preview-other | assistant-admin | f
+(1 row)
+
+             id             |  status  | decided_by_user_id 
+----------------------------+----------+--------------------
+ w6-preview-request-pending | approved | w6-preview-admin
+(1 row)
+
+         org_id         |                                                                                              feature_flags                                                                                               | revoked 
+------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+---------
+ w6-preview-org-pending | {"discover": true, "intelligence": false, "create": false, "performance": false, "swipe_files": false, "team_accounts": false, "public_api": false, "scout": false, "leadgen": false, "monitors": false} | t
+(1 row)
+
+   operation    |     user_id      |         org_id         
+----------------+------------------+------------------------
+ access_revoked | w6-preview-admin | w6-preview-org-pending
+ access_granted | w6-preview-admin | w6-preview-org-pending
+ access_granted | w6-preview-admin | w6-preview-org-member
+(3 rows)
+
