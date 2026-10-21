@@ -36,7 +36,7 @@ export function OverviewPage() {
       />
 
       {error ? (
-        <ErrorState error={error} onRetry={refetch} />
+        <ErrorState className="" description="Admin overview metrics could not be loaded. Retry to reload them." error={error} onRetry={refetch} />
       ) : (
         <div className="p-3 md:p-6 w-full">
           <div className="mx-auto flex max-w-7xl flex-col gap-4">
@@ -51,7 +51,7 @@ export function OverviewPage() {
                 <PanelHeader>
                   <PanelTitle>Recent scrape jobs</PanelTitle>
                   {!loading && jobs.length ? (
-                    <Tag>{`${jobs.length} shown`}</Tag>
+                    <Tag className="">{`${jobs.length} shown`}</Tag>
                   ) : null}
                 </PanelHeader>
                 {loading ? (
@@ -65,7 +65,7 @@ export function OverviewPage() {
                 <PanelHeader>
                   <PanelTitle>System health</PanelTitle>
                   {!loading && health ? (
-                    <Tag tone={HEALTH_TAG_TONE[health.state] ?? "default"}>
+                    <Tag className="" tone={HEALTH_TAG_TONE[health.state] ?? "default"}>
                       {health.state}
                     </Tag>
                   ) : null}
@@ -82,7 +82,7 @@ export function OverviewPage() {
               <PanelHeader>
                 <PanelTitle>Organizations</PanelTitle>
                 {!loading && organizations?.length ? (
-                  <Tag>{`${organizations.length} total`}</Tag>
+                  <Tag className="">{`${organizations.length} total`}</Tag>
                 ) : null}
               </PanelHeader>
               {loading ? (
@@ -96,7 +96,7 @@ export function OverviewPage() {
               <PanelHeader>
                 <PanelTitle>Users</PanelTitle>
                 {!loading && users?.length ? (
-                  <Tag>{`${users.length} total`}</Tag>
+                  <Tag className="">{`${users.length} total`}</Tag>
                 ) : null}
               </PanelHeader>
               {loading ? (
