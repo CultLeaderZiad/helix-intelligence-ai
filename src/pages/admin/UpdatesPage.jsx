@@ -20,6 +20,8 @@ import {
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Field"
 import { cn } from "@/lib/utils"
+import { useLanguage } from "@/context/LanguageContext"
+import { adminMessage, adminStatusLabel, formatAdminDate } from "@/i18n/adminMessages"
 
 const CATEGORIES = [
   "General API",
@@ -32,29 +34,19 @@ const CATEGORIES = [
 
 const QUICK_EMOJIS = ["🚀", "⚡", "🔔", "🛠️", "💡", "🛡️", "📊", "🎨", "🎵"]
 
-function formatPublishDate(dateStr) {
-  if (!dateStr) return "Recently"
-  try {
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return String(dateStr)
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, "0")
-    const day = String(d.getDate()).padStart(2, "0")
-    return `${year}-${month}-${day}`
-  } catch {
-    return String(dateStr)
-  }
+function formatPublishDate(dateStr, lang) {
+  return dateStr ? formatAdminDate(dateStr, lang) : adminMessage(lang, "Recently")
 }
 
 /**
  * Preview renderer for the Kie.ai style update card
  */
-function CardPreview({ item }) {
-  const publishDate = formatPublishDate(item.starts_at || new Date())
+function CardPreview({ item, lang }) {
+  const publishDate = formatPublishDate(item.starts_at || new Date(), lang)
   const category = item.category || "General API"
 
   return (
-    <div className="rounded-xl border border-border/80 bg-surface/90 p-5 shadow-lg space-y-3 text-left">
+    <div className="rounded-xl border border-border/80 bg-surface/90 p-5 shadow-lg space-y-3 text-start">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-xs font-mono text-text-muted">
           <Clock className="h-3.5 w-3.5 text-text-faint" />
@@ -62,23 +54,23 @@ function CardPreview({ item }) {
         </div>
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-mono text-[10px] uppercase">
           <Tag className="h-2.5 w-2.5" />
-          {category}
+          {adminMessage(lang, category)}
         </span>
       </div>
 
       <h3 className="text-base font-bold text-text">
-        {item.title || "Announcement Title"}
+        {item.title || adminMessage(lang, "Announcement Title")}
       </h3>
 
       <div className="text-xs text-text-muted leading-relaxed space-y-1 whitespace-pre-line font-sans">
-        {item.body || "Announcement description and release notes will be rendered here with formatted bullet points and links..."}
+        {item.body || adminMessage(lang, "Announcement description and release notes will be rendered here with formatted bullet points and links...")}
       </div>
 
       {item.link_url && (
         <div className="pt-2 border-t border-border/50">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-elevated border border-border text-[11px] font-mono text-accent">
             <BookOpen className="h-3 w-3" />
-            <span>Documentation Reference: {item.link_url}</span>
+            <span>{adminMessage(lang, "Documentation Reference: {url}", { url: item.link_url })}</span>
             <ExternalLink className="h-2.5 w-2.5 ml-1 text-text-faint" />
           </span>
         </div>
@@ -88,9 +80,11 @@ function CardPreview({ item }) {
 }
 
 export function UpdatesPage() {
+  const { lang, isRtl } = useLanguage()
   const [updates, setUpdates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [notice, setNotice] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -118,7 +112,8 @@ export function UpdatesPage() {
       const data = await updatesService.getAdminUpdates()
       setUpdates(Array.isArray(data) ? data : [])
     } catch (err) {
-      setError(err.message || "Failed to load updates")
+      console.error("Failed to load updates", err)
+      setError(adminMessage(lang, "Failed to load updates."))
     } finally {
       setLoading(false)
     }
@@ -210,6 +205,8 @@ export function UpdatesPage() {
     if (!formData.title.trim()) return
 
     setSubmitting(true)
+    setError(null)
+    setNotice(null)
     try {
       const payload = {
         ...formData,
@@ -222,9 +219,11 @@ export function UpdatesPage() {
         await updatesService.createAdminUpdate(payload)
       }
       setModalOpen(false)
+      setNotice(adminMessage(lang, "Update saved."))
       fetchUpdates()
     } catch (err) {
-      alert(err.message || "Failed to save update")
+      console.error("Failed to save update", err)
+      setError(adminMessage(lang, "Failed to save update."))
     } finally {
       setSubmitting(false)
     }
@@ -237,18 +236,24 @@ export function UpdatesPage() {
       setUpdates((prev) =>
         prev.map((u) => (u.id === item.id ? { ...u, [field]: !u[field] } : u))
       )
+      setNotice(adminMessage(lang, "Update status saved."))
     } catch (err) {
-      alert(`Failed to update ${field}: ${err.message}`)
+      console.error("Failed to update announcement", err)
+      setError(adminMessage(lang, "Failed to update {field}.", {
+        field: adminMessage(lang, field === "is_published" ? "publication status" : "banner status"),
+      }))
     }
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this update?")) return
+    if (!window.confirm(adminMessage(lang, "Are you sure you want to delete this update?"))) return
     try {
       await updatesService.deleteAdminUpdate(id)
       setUpdates((prev) => prev.filter((u) => u.id !== id))
+      setNotice(adminMessage(lang, "Update deleted."))
     } catch (err) {
-      alert(`Failed to delete update: ${err.message}`)
+      console.error("Failed to delete update", err)
+      setError(adminMessage(lang, "Failed to delete update."))
     }
   }
 
@@ -260,17 +265,17 @@ export function UpdatesPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 space-y-6 font-sans">
+    <div dir={isRtl ? "rtl" : "ltr"} className="w-full max-w-7xl mx-auto p-4 md:p-8 space-y-6 font-sans">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-text flex items-center gap-2">
               <Bell className="h-5 w-5 text-accent" />
-              Public Updates & Changelog Manager
+              {adminMessage(lang, "Public Updates & Changelog Manager")}
             </h1>
             <p className="text-[13px] text-text-muted mt-1">
-              Publish feature announcements, changelogs, and banners to the public Updates page and user notification bell.
+              {adminMessage(lang, "Publish feature announcements, changelogs, and banners to the public Updates page and user notification bell.")}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -280,7 +285,7 @@ export function UpdatesPage() {
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface text-xs font-mono text-text-muted hover:text-text hover:border-border-strong transition-colors"
             >
-              <span>View Public Page</span>
+              <span>{adminMessage(lang, "View Public Page")}</span>
               <ExternalLink className="h-3 w-3 text-accent" />
             </a>
             <Button
@@ -291,7 +296,7 @@ export function UpdatesPage() {
               className="gap-1.5"
             >
               <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
-              Refresh
+              {adminMessage(lang, "Refresh")}
             </Button>
             <Button
               size="sm"
@@ -299,7 +304,7 @@ export function UpdatesPage() {
               className="gap-1.5 bg-accent text-bg hover:bg-accent/90"
             >
               <Plus className="h-4 w-4" />
-              New Update
+              {adminMessage(lang, "New Update")}
             </Button>
           </div>
         </div>
@@ -309,15 +314,16 @@ export function UpdatesPage() {
             {error}
           </div>
         )}
+        {notice && <div role="status" className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-300">{notice}</div>}
 
         {/* Updates Table */}
         <div className="rounded-lg border border-border bg-surface overflow-hidden shadow-sm">
           <div className="border-b border-border px-4 py-3 bg-surface-elevated flex items-center justify-between">
             <span className="font-mono text-xs uppercase tracking-wider text-text-muted">
-              All Announcements ({updates.length})
+              {adminMessage(lang, "All Announcements ({count})", { count: updates.length })}
             </span>
             <span className="font-mono text-[11px] text-text-faint">
-              Published posts appear on /updates and the notification bell
+              {adminMessage(lang, "Published posts appear on /updates and the notification bell")}
             </span>
           </div>
 
@@ -325,27 +331,29 @@ export function UpdatesPage() {
             <table className="w-full text-left text-xs">
               <thead className="border-b border-border bg-surface text-text-muted font-mono uppercase">
                 <tr>
-                  <th className="px-4 py-3">Announcement</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Tone</th>
-                  <th className="px-4 py-3 text-center">Published</th>
-                  <th className="px-4 py-3 text-center">Banner Mode</th>
-                  <th className="px-4 py-3">Publish Date</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3">{adminMessage(lang, "Announcement")}</th>
+                  <th className="px-4 py-3">{adminMessage(lang, "Category")}</th>
+                  <th className="px-4 py-3">{adminMessage(lang, "Tone")}</th>
+                  <th className="px-4 py-3 text-center">{adminMessage(lang, "Published")}</th>
+                  <th className="px-4 py-3 text-center">{adminMessage(lang, "Banner Mode")}</th>
+                  <th className="px-4 py-3">{adminMessage(lang, "Publish Date")}</th>
+                  <th className="px-4 py-3 text-end">{adminMessage(lang, "Actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {updates.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-text-muted">
-                      {loading ? "Loading updates..." : "No updates found. Click 'New Update' above to create your first announcement."}
+                      {loading
+                        ? adminMessage(lang, "Loading updates...")
+                        : adminMessage(lang, "No updates found. Click 'New Update' above to create your first announcement.")}
                     </td>
                   </tr>
                 ) : (
                   updates.map((item) => {
                     const levelMeta = LEVEL_CONFIG[item.level] || LEVEL_CONFIG.info
                     const Icon = levelMeta.icon
-                    const publishDate = formatPublishDate(item.starts_at || item.created_at)
+                    const publishDate = formatPublishDate(item.starts_at || item.created_at, lang)
 
                     return (
                       <tr key={item.id} className="hover:bg-surface-elevated/50 transition-colors">
@@ -365,13 +373,13 @@ export function UpdatesPage() {
                               rel="noreferrer"
                               className="inline-flex items-center gap-1 text-[10px] font-mono text-accent hover:underline mt-1"
                             >
-                              Docs/Ref: {item.link_url} <ExternalLink className="h-2.5 w-2.5" />
+                              {adminMessage(lang, "Docs/Ref: {url}", { url: item.link_url })} <ExternalLink className="h-2.5 w-2.5" />
                             </a>
                           )}
                         </td>
                         <td className="px-4 py-3.5 font-mono text-[11px] text-text-muted">
                           <span className="px-2 py-0.5 rounded border border-border bg-surface-elevated text-cyan-400">
-                            {item.category || "General API"}
+                            {adminMessage(lang, item.category || "General API")}
                           </span>
                         </td>
                         <td className="px-4 py-3.5">
@@ -382,7 +390,7 @@ export function UpdatesPage() {
                             )}
                           >
                             <Icon className="h-3 w-3" />
-                            {item.level}
+                            {adminStatusLabel(lang, item.level)}
                           </span>
                         </td>
                         <td className="px-4 py-3.5 text-center">
@@ -393,7 +401,7 @@ export function UpdatesPage() {
                               "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out",
                               item.is_published ? "bg-accent" : "bg-border-strong"
                             )}
-                            title={item.is_published ? "Published (click to unpublish)" : "Draft (click to publish)"}
+                            title={adminMessage(lang, item.is_published ? "Published (click to unpublish)" : "Draft (click to publish)")}
                           >
                             <span
                               className={cn(
@@ -411,7 +419,7 @@ export function UpdatesPage() {
                               "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out",
                               item.show_as_banner ? "bg-accent" : "bg-border-strong"
                             )}
-                            title={item.show_as_banner ? "Active Banner (click to hide)" : "Banner Off"}
+                            title={adminMessage(lang, item.show_as_banner ? "Active Banner (click to hide)" : "Banner Off")}
                           >
                             <span
                               className={cn(
@@ -431,7 +439,7 @@ export function UpdatesPage() {
                               size="icon"
                               onClick={() => openEditModal(item)}
                               className="h-7 w-7 text-text-muted hover:text-text"
-                              title="Edit update"
+                              title={adminMessage(lang, "Edit update")}
                             >
                               <Edit2 className="h-3.5 w-3.5" />
                             </Button>
@@ -440,7 +448,7 @@ export function UpdatesPage() {
                               size="icon"
                               onClick={() => handleDelete(item.id)}
                               className="h-7 w-7 text-text-muted hover:text-red-400"
-                              title="Delete update"
+                              title={adminMessage(lang, "Delete update")}
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -462,14 +470,15 @@ export function UpdatesPage() {
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <div>
                   <h3 className="text-base font-semibold text-text">
-                    {editingId ? "Edit Update & Changelog" : "Post Platform Update"}
+                    {adminMessage(lang, editingId ? "Edit Update & Changelog" : "Post Platform Update")}
                   </h3>
                   <p className="text-xs text-text-muted mt-0.5">
-                    Configure headline, rich release notes, clickable doc links, and publish date.
+                    {adminMessage(lang, "Configure headline, rich release notes, clickable doc links, and publish date.")}
                   </p>
                 </div>
                 <button
                   onClick={() => setModalOpen(false)}
+                  aria-label={adminMessage(lang, "Close")}
                   className="text-text-muted hover:text-text p-1"
                 >
                   <X className="h-4 w-4" />
@@ -488,7 +497,7 @@ export function UpdatesPage() {
                       : "text-text-muted hover:text-text"
                   )}
                 >
-                  Editor
+                  {adminMessage(lang, "Editor")}
                 </button>
                 <button
                   type="button"
@@ -501,16 +510,16 @@ export function UpdatesPage() {
                   )}
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  Kie.ai Card Preview
+                  {adminMessage(lang, "Kie.ai Card Preview")}
                 </button>
               </div>
 
               {activeTab === "preview" ? (
                 <div className="space-y-4 py-2">
                   <div className="text-xs font-mono uppercase tracking-wider text-text-muted">
-                    Public Post Card Appearance:
+                    {adminMessage(lang, "Public Post Card Appearance:")}
                   </div>
-                  <CardPreview item={formData} />
+                  <CardPreview item={formData} lang={lang} />
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -518,17 +527,17 @@ export function UpdatesPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <label className="block text-xs font-mono uppercase tracking-wider text-text-muted">
-                        Post Title *
+                        {adminMessage(lang, "Post Title *")}
                       </label>
                       <div className="flex items-center gap-1">
-                        <span className="text-[10px] font-mono text-text-faint">Quick Emojis:</span>
+                        <span className="text-[10px] font-mono text-text-faint">{adminMessage(lang, "Quick Emojis:")}</span>
                         {QUICK_EMOJIS.map((emoji) => (
                           <button
                             key={emoji}
                             type="button"
                             onClick={() => handleAddEmoji(emoji)}
                             className="text-xs hover:scale-125 transition-transform px-0.5"
-                            title={`Add ${emoji}`}
+                            title={adminMessage(lang, "Add {emoji}", { emoji })}
                           >
                             {emoji}
                           </button>
@@ -538,7 +547,7 @@ export function UpdatesPage() {
                     <Input
                       className=""
                       required
-                      placeholder="e.g. 🚀 AI Image Generation Engine & Multi-Platform Profiles Live"
+                      placeholder={adminMessage(lang, "e.g. 🚀 AI Image Generation Engine & Multi-Platform Profiles Live")}
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     />
@@ -548,7 +557,7 @@ export function UpdatesPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-1">
-                        Category Tag
+                      {adminMessage(lang, "Category Tag")}
                       </label>
                       <select
                         className="w-full rounded-md border border-border bg-bg px-3 py-2 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent"
@@ -557,7 +566,7 @@ export function UpdatesPage() {
                       >
                         {CATEGORIES.map((cat) => (
                           <option key={cat} value={cat}>
-                            {cat}
+                            {adminMessage(lang, cat)}
                           </option>
                         ))}
                       </select>
@@ -565,23 +574,23 @@ export function UpdatesPage() {
 
                     <div>
                       <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-1">
-                        Tone / Level
+                        {adminMessage(lang, "Tone / Level")}
                       </label>
                       <select
                         className="w-full rounded-md border border-border bg-bg px-3 py-2 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent"
                         value={formData.level}
                         onChange={(e) => setFormData({ ...formData, level: e.target.value })}
                       >
-                        <option value="info">Info (Neutral)</option>
-                        <option value="success">Success (Lime)</option>
-                        <option value="warning">Warning (Amber)</option>
-                        <option value="critical">Critical (Red)</option>
+                        <option value="info">{adminMessage(lang, "Info (Neutral)")}</option>
+                        <option value="success">{adminMessage(lang, "Success (Lime)")}</option>
+                        <option value="warning">{adminMessage(lang, "Warning (Amber)")}</option>
+                        <option value="critical">{adminMessage(lang, "Critical (Red)")}</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-1">
-                        Date of Publish
+                        {adminMessage(lang, "Date of Publish")}
                       </label>
                       <input
                         type="date"
@@ -595,11 +604,11 @@ export function UpdatesPage() {
                   {/* Documentation / Action URL */}
                   <div>
                     <label className="block text-xs font-mono uppercase tracking-wider text-text-muted mb-1">
-                      Docs or Referral Link (Optional)
+                      {adminMessage(lang, "Docs or Referral Link (Optional)")}
                     </label>
                     <Input
                       className=""
-                      placeholder="e.g. /docs/api-reference/authentication or https://docs.helix.io"
+                      placeholder={adminMessage(lang, "e.g. /docs/api-reference/authentication or https://docs.helix.io")}
                       value={formData.link_url}
                       onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
                     />
@@ -609,40 +618,40 @@ export function UpdatesPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-xs font-mono uppercase tracking-wider text-text-muted">
-                        Body / Release Notes (Markdown & Clickable Links)
+                        {adminMessage(lang, "Body / Release Notes (Markdown & Clickable Links)")}
                       </label>
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => insertTextAtCursor("**", "**")}
                           className="px-2 py-0.5 rounded border border-border bg-surface text-[11px] font-mono text-text-muted hover:text-text"
-                          title="Bold"
+                          title={adminMessage(lang, "Bold")}
                         >
-                          Bold
+                          {adminMessage(lang, "Bold")}
                         </button>
                         <button
                           type="button"
                           onClick={() => insertTextAtCursor("• ")}
                           className="px-2 py-0.5 rounded border border-border bg-surface text-[11px] font-mono text-text-muted hover:text-text"
-                          title="Bullet point"
+                          title={adminMessage(lang, "Bullet point")}
                         >
-                          Bullet
+                          {adminMessage(lang, "Bullet")}
                         </button>
                         <button
                           type="button"
                           onClick={() => insertTextAtCursor("### ")}
                           className="px-2 py-0.5 rounded border border-border bg-surface text-[11px] font-mono text-text-muted hover:text-text"
-                          title="Heading"
+                          title={adminMessage(lang, "Heading")}
                         >
-                          Heading
+                          {adminMessage(lang, "Heading")}
                         </button>
                         <button
                           type="button"
                           onClick={() => insertTextAtCursor("[Documentation Link](https://helix.io/docs)")}
                           className="px-2 py-0.5 rounded border border-border bg-surface text-[11px] font-mono text-accent hover:underline"
-                          title="Insert Link"
+                          title={adminMessage(lang, "Insert Link")}
                         >
-                          + Link
+                          {adminMessage(lang, "+ Link")}
                         </button>
                       </div>
                     </div>
