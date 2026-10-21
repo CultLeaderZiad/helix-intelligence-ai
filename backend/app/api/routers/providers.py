@@ -8,10 +8,9 @@ from sqlalchemy import select, delete
 
 from app.core.deps import get_db, get_current_user
 from app.models.user import User
-from app.models.organization import Organization
 from app.models.workspace_credential import WorkspaceProviderCredential
 from app.services.billing_service import get_or_create_default_org
-from app.services.security_service import encrypt_secret, mask_api_key
+from app.services.security_service import encrypt_secret
 from app.services.ai.gemini_provider import GeminiProvider
 from app.core.config import settings
 
@@ -91,7 +90,7 @@ async def save_gemini_credential(
     # 1. Test key validity
     test_provider = GeminiProvider(api_key=raw_key)
     try:
-        test_res = await test_provider.test_connection()
+        await test_provider.test_connection()
     except Exception as e:
         import re
         clean_err = str(e).replace(raw_key, "[REDACTED]")

@@ -57,4 +57,3 @@ class ScraperProvider(ABC):
         Search the ad library with a given query (e.g. brand name or keyword).
         Returns a list of RawCreative objects.
         """
-        pass
