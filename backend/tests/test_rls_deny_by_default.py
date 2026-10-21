@@ -244,10 +244,11 @@ async def test_rls_deny_by_default_for_restricted_roles_and_worker_claims():
                 claimed = (
                     await conn.execute(
                         text(
-                            "SELECT id FROM work_items WHERE status = 'queued' "
+                            "SELECT id FROM work_items WHERE id = :item_id AND status = 'queued' "
                             "AND available_at <= now() AND cancel_requested IS NULL "
                             "ORDER BY created_at LIMIT 1 FOR UPDATE SKIP LOCKED"
-                        )
+                        ),
+                        {"item_id": item.id},
                     )
                 ).scalar_one()
                 assert claimed == item.id
