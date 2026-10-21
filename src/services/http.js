@@ -86,6 +86,7 @@ startBackendKeepAlive()
  * to gracefully absorb Render cold-start latency.
  */
 export const HTTP_REQUEST_TIMEOUT_MS = 60000
+const inFlightGetRequests = new Map()
 
 function abortError(signal) {
   return signal?.reason || new DOMException("Request aborted", "AbortError")
@@ -107,16 +108,87 @@ function retryDelay(ms, signal) {
   })
 }
 
+function normalizeTimeoutMs(options) {
+  const requestedTimeout = options.timeoutMs ?? HTTP_REQUEST_TIMEOUT_MS
+  return Number.isFinite(requestedTimeout) && requestedTimeout > 0
+    ? Math.min(requestedTimeout, HTTP_REQUEST_TIMEOUT_MS) : HTTP_REQUEST_TIMEOUT_MS
+}
+
+function getInFlightGetKey(url, timeoutMs, sessionToken, headers) {
+  const headerScope = Object.entries(headers || {})
+    .map(([name, value]) => [name, String(value)])
+    .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+  return JSON.stringify([sessionToken, url, timeoutMs, headerScope])
+}
+
+function startInFlightGet(key, path, options, sessionToken) {
+  const controller = new AbortController()
+  const entry = { key, controller, activeConsumers: 0, settled: false, promise: null }
+  entry.promise = requestAttempt(path, { ...options, signal: controller.signal }, 0, sessionToken).then(
+    value => {
+      entry.settled = true
+      if (inFlightGetRequests.get(key) === entry) inFlightGetRequests.delete(key)
+      return value
+    },
+    error => {
+      entry.settled = true
+      if (inFlightGetRequests.get(key) === entry) inFlightGetRequests.delete(key)
+      throw error
+    },
+  )
+  entry.promise.catch(() => {})
+  inFlightGetRequests.set(key, entry)
+  return entry
+}
+
+function waitForInFlightGet(entry, timeoutMs) {
+  entry.activeConsumers += 1
+  return new Promise((resolve, reject) => {
+    let finished = false
+    const timer = setTimeout(() => finish(false, new ServiceError("Request failed", { code: "request_timeout" })), timeoutMs)
+
+    function finish(succeeded, value) {
+      if (finished) return
+      finished = true
+      clearTimeout(timer)
+      entry.activeConsumers -= 1
+      if (entry.activeConsumers === 0 && !entry.settled) {
+        if (inFlightGetRequests.get(entry.key) === entry) inFlightGetRequests.delete(entry.key)
+        entry.controller.abort(new DOMException("Request aborted", "AbortError"))
+      }
+      if (succeeded) resolve(value)
+      else reject(value)
+    }
+
+    entry.promise.then(value => finish(true, value), error => finish(false, error))
+  })
+}
+
 /** One deadline covers fetches, response bodies and every retry delay. */
 export async function request(path, options = {}) {
+  const sessionToken = getAccessToken()
+  const timeoutMs = normalizeTimeoutMs(options)
+  const method = options.method || "GET"
+  if (method.toUpperCase() === "GET" && !options.signal && !options.body) {
+    const url = `${API_BASE_URL}${path}${buildQuery(options.params)}`
+    const key = getInFlightGetKey(url, timeoutMs, sessionToken, options.headers)
+    let entry = inFlightGetRequests.get(key)
+    if (!entry || entry.settled || entry.controller.signal.aborted) {
+      if (entry && inFlightGetRequests.get(key) === entry) inFlightGetRequests.delete(key)
+      entry = startInFlightGet(key, path, options, sessionToken)
+    }
+    return waitForInFlightGet(entry, timeoutMs)
+  }
+
+  return requestWithDeadline(path, options, timeoutMs, sessionToken)
+}
+
+async function requestWithDeadline(path, options, timeoutMs, sessionToken) {
   const controller = new AbortController()
   const callerSignal = options.signal
   const onAbort = () => controller.abort(abortError(callerSignal))
   if (callerSignal?.aborted) onAbort()
   else callerSignal?.addEventListener("abort", onAbort, { once: true })
-  const requestedTimeout = options.timeoutMs ?? HTTP_REQUEST_TIMEOUT_MS
-  const timeoutMs = Number.isFinite(requestedTimeout) && requestedTimeout > 0
-    ? Math.min(requestedTimeout, HTTP_REQUEST_TIMEOUT_MS) : HTTP_REQUEST_TIMEOUT_MS
   let timedOut = false
   const timer = setTimeout(() => {
     timedOut = true
