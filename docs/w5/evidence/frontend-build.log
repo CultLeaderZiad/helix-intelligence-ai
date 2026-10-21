@@ -1,0 +1,126 @@
+
+> helix-intelligence@0.1.0 build <workspace>
+> node scripts/generate_docs_git_meta.js && vite build
+
+Generated docs git metadata for 22 files -> <workspace>/src/features/docs/docsGitMeta.json
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 1992 modules transformed.
+rendering chunks...
+dist/index.html                                                     2.76 kB
+dist/assets/jetbrains-mono-vietnamese-wght-normal-Bt-aOZkq.woff2    7.50 kB
+dist/assets/jetbrains-mono-greek-wght-normal-Bw9x6K1M.woff2         9.00 kB
+dist/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2            10.25 kB
+dist/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2             11.23 kB
+dist/assets/jetbrains-mono-cyrillic-wght-normal-D73BlboJ.woff2     12.11 kB
+dist/assets/jetbrains-mono-latin-ext-wght-normal-DBQx-q_a.woff2    15.20 kB
+dist/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2              18.75 kB
+dist/assets/inter-greek-wght-normal-CkhJZR-_.woff2                 19.00 kB
+dist/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2          25.96 kB
+dist/assets/jetbrains-mono-latin-wght-normal-B9CIFXIH.woff2        40.40 kB
+dist/assets/inter-latin-wght-normal-Dx4kXJAl.woff2                 48.26 kB
+dist/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2             85.07 kB
+dist/assets/driver-CTZuBZOi.css                                     3.04 kB
+dist/assets/index-DPSRD3UT.css                                    131.75 kB
+dist/assets/chevron-down-LhFk4lAM.js                                0.13 kB
+dist/assets/chevron-right-BKNYx5EJ.js                               0.13 kB
+dist/assets/loader-circle-EAmClx2T.js                               0.15 kB
+dist/assets/plus-CLypRWIz.js                                        0.15 kB
+dist/assets/terminal-DmBhvTo6.js                                    0.16 kB
+dist/assets/clock-CcCwTwHl.js                                       0.17 kB
+dist/assets/trending-up-CB2wtEzi.js                                 0.18 kB
+dist/assets/circle-slash-BJSb6ouE.js                                0.19 kB
+dist/assets/play-BugiT2IT.js                                        0.19 kB
+dist/assets/user-DAElK2Q0.js                                        0.20 kB
+dist/assets/flame-yMqZAsIK.js                                       0.20 kB
+dist/assets/rotate-ccw-C_oM0i3T.js                                  0.20 kB
+dist/assets/lock-CYTwaCyK.js                                        0.21 kB
+dist/assets/circle-plus-GVVJIcn1.js                                 0.21 kB
+dist/assets/code-xml-WJfWDa7k.js                                    0.21 kB
+dist/assets/pause-CEUQSTuR.js                                       0.21 kB
+dist/assets/dollar-sign-BuqLLUuH.js                                 0.22 kB
+dist/assets/target-C2phbEn_.js                                      0.23 kB
+dist/assets/bookmark-Cv5Bb60E.js                                    0.23 kB
+dist/assets/download-X6S3e7UB.js                                    0.23 kB
+dist/assets/pen-oj3XAy03.js                                         0.24 kB
+dist/assets/globe-CjF7LN1c.js                                       0.24 kB
+dist/assets/funnel-BVZ8nYil.js                                      0.26 kB
+dist/assets/search-x-D8xrqvXG.js                                    0.26 kB
+dist/assets/zap-Bw14XbHf.js                                         0.26 kB
+dist/assets/key-CiOb-Vf7.js                                         0.27 kB
+dist/assets/image-D5TkfsQd.js                                       0.27 kB
+dist/assets/coins-BvafVGMM.js                                       0.29 kB
+dist/assets/lightbulb-DHsZWaip.js                                   0.29 kB
+dist/assets/tag-D17TrvUx.js                                         0.33 kB
+dist/assets/trash-2-DsNLwDeI.js                                     0.33 kB
+dist/assets/shield-alert-CaUqu1bo.js                                0.35 kB
+dist/assets/share-2-DhU0PFgl.js                                     0.36 kB
+dist/assets/radio-D2htapgW.js                                       0.38 kB
+dist/assets/KeyHint-DP7-Q4-W.js                                     0.40 kB
+dist/assets/eye-off-DBRCUo3w.js                                     0.43 kB
+dist/assets/useAsync-CAUlkWTL.js                                    0.60 kB
+dist/assets/PendingLoopPage-CNfkO43U.js                             0.61 kB
+dist/assets/Panel-BoFj8co8.js                                       0.63 kB
+dist/assets/AdminPendingPage-Cg72736c.js                            0.74 kB
+dist/assets/NotFoundPage-BvGVF6Vq.js                                0.97 kB
+dist/assets/useMonitors-pXAsLRBF.js                                 1.10 kB
+dist/assets/useJobLifecycle-8nF-yjW2.js                             1.16 kB
+dist/assets/BreadcrumbBar-BAZ8A-29.js                               1.34 kB
+dist/assets/PasswordStrength-DSZ_CTpV.js                            1.52 kB
+dist/assets/format-BQcWzIJX.js                                      1.56 kB
+dist/assets/ScoutLeadGenSubNav-D2HPUNBX.js                          1.74 kB
+dist/assets/InfoTip-Dco7vT-M.js                                     1.75 kB
+dist/assets/CommandBar-DnV88UzP.js                                  2.73 kB
+dist/assets/Field-DX0SwUGR.js                                       2.76 kB
+dist/assets/LegalPage-C-RstxLW.js                                   2.92 kB
+dist/assets/BillingPage-BAMVJBhO.js                                 2.93 kB
+dist/assets/States-DceSwZqt.js                                      2.97 kB
+dist/assets/ScoutCliDocsPage-Bljm_J4I.js                            3.24 kB
+dist/assets/ConfirmDialog-Cv6UN7lm.js                               3.43 kB
+dist/assets/ResetPasswordPage-DQNrKwAP.js                           3.50 kB
+dist/assets/validation-ByBHWnbB.js                                  3.67 kB
+dist/assets/SignInPage-6NWYIdip.js                                  4.36 kB
+dist/assets/FeatureFlagsPage-DHnTEPIO.js                            4.38 kB
+dist/assets/ForgotPasswordPage-DCNy-4i1.js                          4.69 kB
+dist/assets/AccessRequestsPage-DizStAov.js                          5.02 kB
+dist/assets/SystemHealthPage-BL6wAH5K.js                            5.79 kB
+dist/assets/SignUpPage-CwSYdumH.js                                  6.41 kB
+dist/assets/SavedDraftsModal-B5tJX0hw.js                            7.14 kB
+dist/assets/UsagePage-BiV5mTuo.js                                   7.85 kB
+dist/assets/SupportAdminPage-CjqsReir.js                            8.49 kB
+dist/assets/NotificationsPage-CbrlUx0D.js                           8.62 kB
+dist/assets/SupportPage-Dpk3tuHj.js                                 9.28 kB
+dist/assets/PublicUpdatesPage-DMtFhr4m.js                           9.28 kB
+dist/assets/DocsHomePage-BJI-1gwK.js                               10.18 kB
+dist/assets/AuditLogPage-xuZgyryw.js                               10.21 kB
+dist/assets/ScrapeJobsPage-BlbQIeKy.js                             10.30 kB
+dist/assets/DataSourcesPage-DjK2_L1f.js                            10.40 kB
+dist/assets/ProfileSettingsPage-CFKklhBI.js                        11.05 kB
+dist/assets/TeamPage-BuBpl4m1.js                                   11.26 kB
+dist/assets/UsersPage-Dg1l5thf.js                                  11.40 kB
+dist/assets/MonitorsPage-BtepATES.js                               11.77 kB
+dist/assets/GuidePage-DkZgTIH2.js                                  11.95 kB
+dist/assets/OrganizationsPage-3yo4gRde.js                          12.12 kB
+dist/assets/SwipeFilesPage-BTE_0nJm.js                             13.39 kB
+dist/assets/SubscriptionsPlansPage-dmfJfpEB.js                     13.46 kB
+dist/assets/OverviewPage-D70OhNwV.js                               13.65 kB
+dist/assets/PublicPlaybookPage-BQ1VUNqk.js                         14.74 kB
+dist/assets/ApiKeysPage-BfY33kqE.js                                15.94 kB
+dist/assets/PerformancePage-YaFbk5Vd.js                            17.76 kB
+dist/assets/UpdatesPage-CEOrgKnc.js                                17.92 kB
+dist/assets/DashboardPage-DqwYnu4R.js                              21.23 kB
+dist/assets/driver.js-Dj4CfABu.js                                  25.41 kB
+dist/assets/DocsDetailPage-CqIk5nVO.js                             26.88 kB
+dist/assets/CreatePage-XidjhNvu.js                                 31.71 kB
+dist/assets/IntelligencePage-XVLy73gT.js                           35.59 kB
+dist/assets/ScoutLeadGenerationPage-DDR8gm9C.js                    41.58 kB
+dist/assets/DiscoverPage-HE8ozFZf.js                               67.13 kB
+dist/assets/ScoutPage-CTT1wXs8.js                                  71.18 kB
+dist/assets/DocSearchModal-BW5AkSSG.js                            179.13 kB
+dist/assets/index-BpsuQ4Al.js                                     508.15 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 25.59s

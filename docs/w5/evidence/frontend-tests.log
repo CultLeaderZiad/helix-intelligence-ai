@@ -1,0 +1,73 @@
+
+> helix-intelligence@0.1.0 test <workspace>
+> node --test src/services/__tests__/sessionStore.w0.test.js src/pages/__tests__/team-accept-w1.test.mjs && vitest run --config vitest.config.js
+
+✔ team accept route is registered and the invite link matches it (7.278926ms)
+✔ invite email uses the send_email contract and the accept path (0.210821ms)
+✔ setAccessToken writes one localStorage key and clears sessionStorage (0.890364ms)
+✔ getAccessToken migrates a sessionStorage token once (0.16363ms)
+✔ clearSession removes both stores (0.270211ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1212.346034
+
+ RUN  v5.0.5 <workspace>
+
+ ✓ src/hooks/__tests__/adapter-cancellation.w3.test.jsx (36 tests) 1748ms
+   ✓ media: component through real API adapter to fetch (16)
+     ✓ cancel aborts a pending submit fetch, not merely its state update 691ms
+ ✓ src/pages/docs/__tests__/docs-copy.w5.test.jsx (6 tests) 1283ms
+   ✓ shows honest localized docs landing copy in en 740ms
+ ✓ src/components/__tests__/OnboardingWizardModal.w5.test.jsx (7 tests) 968ms
+   ✓ onboarding wizard (7)
+     ✓ shows only honest setup choices and supports a user-entered search 790ms
+ ✓ src/features/auth/__tests__/auth-locale.w5.test.jsx (2 tests) 172ms
+ ✓ src/pages/__tests__/profile-onboarding.w5.test.jsx (1 test) 694ms
+   ✓ profile tour restart (1)
+     ✓ resets server and auth state before navigating to the tour 692ms
+ ✓ src/components/ui/__tests__/ConfirmDialog.w4.test.jsx (4 tests) 848ms
+   ✓ ConfirmDialog focus lifecycle (4)
+     ✓ keeps focus while callbacks change and invokes the latest handlers 790ms
+ ✓ src/components/ui/__tests__/PillNav.w3.test.jsx (2 tests) 184ms
+ ✓ src/pages/__tests__/workspace-access.w5.test.jsx (2 tests) 798ms
+   ✓ W5 access, not purchase (2)
+     ✓ explains manual approval without trial, prices or checkout 692ms
+ ✓ src/hooks/__tests__/dialog-focus.w5.test.jsx (1 test) 205ms
+ ✓ src/hooks/__tests__/discovery-reliability.w5.test.jsx (6 tests) 45ms
+ ✓ src/components/__tests__/ErrorBoundary.w4.test.jsx (1 test) 821ms
+   ✓ ErrorBoundary (1)
+     ✓ uses the active locale and does not expose the thrown error 820ms
+ ✓ src/app/__tests__/OnboardingTour.w3.test.jsx (7 tests) 402ms
+ ✓ src/context/__tests__/auth-context.w4.test.jsx (2 tests) 880ms
+   ✓ W4 session resolution in StrictMode (2)
+     ✓ settles an empty session without nested state updates 869ms
+ ✓ src/app/__tests__/product-features.w5.test.js (2 tests) 597ms
+   ✓ W5 product boundaries (2)
+     ✓ shows only Discover by default and hides billing administration 595ms
+ ✓ src/hooks/__tests__/request-lifecycle.w3.test.jsx (21 tests) 137ms
+ ✓ src/features/discover/__tests__/JobProgress.w5.test.jsx (2 tests) 53ms
+ ✓ src/features/marketing/__tests__/marketing-w4.test.jsx (3 tests) 29ms
+ ✓ src/context/__tests__/search-session.w4.test.jsx (3 tests) 48ms
+ ✓ src/services/__tests__/http.w3.test.js (9 tests) 22ms
+ ✓ src/services/__tests__/mock-cancellation.w3.test.js (16 tests) 56ms
+ ✓ src/services/__tests__/http-session.w4.test.js (2 tests) 9ms
+ ✓ src/services/__tests__/auth-session.w4.test.js (5 tests) 8ms
+ ✓ src/services/__tests__/http-validation.w4.test.js (2 tests) 5ms
+ ✓ src/app/__tests__/routing-w5.test.js (2 tests) 45ms
+ ✓ src/services/api/__tests__/discover-cancel.w5.test.js (1 test) 4ms
+ ✓ src/services/__tests__/onboarding-auth.w5.test.js (1 test) 4ms
+
+ Test Files  26 passed (26)
+      Tests  146 passed (146)
+   Start at  00:26:57
+   Duration  166.26s (environment 79%, import 10%, tests 7%, transform 3%, worker 1%)
+
+Environment  jsdom was created 26 times · 113.01s total, 79% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+
