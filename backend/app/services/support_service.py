@@ -1,8 +1,7 @@
-import datetime
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, update, func
-from fastapi import HTTPException, status
+from sqlalchemy import select, desc, func
+from fastapi import HTTPException
 
 from app.models.support_ticket import SupportTicket, SupportTicketReply
 from app.models.user import User
