@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { Link, useParams, useNavigate } from "react-router-dom"
-import { Settings, Download, Terminal, RefreshCw, Crosshair, AlertCircle, ArrowRight } from "lucide-react"
+import { Settings, Download, Terminal, Crosshair, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { PlatformPicker } from "@/features/scout/PlatformPicker"
 import { HandleInput } from "@/features/scout/HandleInput"

@@ -6,21 +6,10 @@ import { Tag } from "@/components/ui/Tag"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { adminService } from "@/services"
 import { formatRelative } from "@/lib/format"
-import { 
-  Database, 
-  Activity, 
-  RefreshCw, 
-  CheckCircle2, 
-  AlertTriangle, 
-  XCircle, 
-  Server, 
-  Cpu, 
-  Radio, 
-  ShieldCheck, 
-  Zap, 
-  Workflow, 
-  ExternalLink,
-  Layers
+import {
+  Database
+  RefreshCw
+  Workflow
 } from "lucide-react"
 
 const PROVIDERS_METADATA = [
