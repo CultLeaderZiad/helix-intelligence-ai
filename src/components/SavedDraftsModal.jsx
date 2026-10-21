@@ -1,7 +1,6 @@
 import { useState } from "react"
-import { Bookmark, Clock, Trash2, ArrowRight, Plus, X, Search, Sparkles, Check } from "lucide-react"
+import { Bookmark, Clock, Trash2, ArrowRight, Plus, X, Check } from "lucide-react"
 import { Button } from "@/components/ui/Button"
-import { Panel } from "@/components/ui/Panel"
 import { useSearchContext } from "@/context/SearchContext"
 
 export function SavedDraftsModal({ isOpen, onClose, onSelectSearch, onSelectDraft, currentQuery = "" }) {
@@ -244,7 +243,7 @@ export function SavedDraftsModal({ isOpen, onClose, onSelectSearch, onSelectDraf
                 <Button size="sm" variant="outline" type="button" onClick={() => setActiveTab("drafts")}>
                   Cancel
                 </Button>
-                <Button size="sm" variant="accent" type="submit" className="flex items-center gap-1.5 font-bold">
+                <Button size="sm" variant="primary" type="submit" className="flex items-center gap-1.5 font-bold">
                   {savedSuccess ? <Check className="h-3.5 w-3.5" /> : <Bookmark className="h-3.5 w-3.5" />}
                   {savedSuccess ? "Saved!" : "Save Draft"}
                 </Button>
