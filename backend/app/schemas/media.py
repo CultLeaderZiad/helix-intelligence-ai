@@ -1,4 +1,4 @@
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Optional, Dict, Any
 from datetime import datetime
 
@@ -79,8 +79,7 @@ class MediaGenerationJobResponse(BaseModel):
     # See Job.failure_kind in schemas/discover.py.
     failure_kind: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @model_validator(mode="before")
     @classmethod
