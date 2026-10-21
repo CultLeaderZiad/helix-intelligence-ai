@@ -9,7 +9,7 @@ import { getMemberMessage, getMemberRoleLabel } from "@/i18n/memberMessages"
 import { useProfileSettings } from "@/hooks/useProfileSettings"
 
 export function ProfileSettingsPage() {
-  const { refreshSession, updateUser } = useAuth()
+  const { user, signOut, refreshSession, updateUser } = useAuth()
   const navigate = useNavigate()
   const { lang, t } = useLanguage()
   const {
@@ -28,6 +28,7 @@ export function ProfileSettingsPage() {
 
   const text = (key) => t(key, getMemberMessage(lang, key))
   const onboardingText = (key) => t(key, getW5OnboardingText(lang, key))
+  const canMutateAccount = Boolean(user?.organization_id)
 
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -42,6 +43,10 @@ export function ProfileSettingsPage() {
     const input = e.currentTarget
     const file = input.files?.[0]
     if (!file) return
+    if (!canMutateAccount) {
+      setErrorMessage(text("profileWorkspaceAssignmentRequired"))
+      return
+    }
 
     setErrorMessage("")
     setSuccessMessage("")
@@ -63,6 +68,11 @@ export function ProfileSettingsPage() {
     setErrorMessage("")
     setSuccessMessage("")
 
+    if (!canMutateAccount) {
+      setErrorMessage(text("profileWorkspaceAssignmentRequired"))
+      return
+    }
+
     if (newPassword) {
       if (!currentPassword) {
         setErrorMessage(text("profileCurrentPasswordRequired"))
@@ -79,16 +89,25 @@ export function ProfileSettingsPage() {
     }
 
     try {
+      const passwordChanged = Boolean(newPassword)
       await saveProfile({
         fullName: profile.full_name,
         avatarUrl: profile.avatar_url,
         currentPassword,
         newPassword,
       })
-      setSuccessMessage(text("profileUpdated"))
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
+      if (passwordChanged) {
+        await signOut()
+        navigate("/sign-in", {
+          replace: true,
+          state: { email: profile.email, passwordChanged: true },
+        })
+        return
+      }
+      setSuccessMessage(text("profileUpdated"))
       if (refreshSession) refreshSession()
     } catch {
       setErrorMessage(text("profileUpdateFailed"))
@@ -125,6 +144,7 @@ export function ProfileSettingsPage() {
 
       {isLoadingProfile && <div role="status" className="text-sm text-slate-400">{text("loadingProfile")}</div>}
       {loadError && <div role="alert" className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm">{text("profileLoadFailed")}</div>}
+      {!canMutateAccount && <div role="status" className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-slate-300 text-sm">{text("profileWorkspaceAssignmentRequired")}</div>}
 
       {/* Alerts */}
       {successMessage && (
@@ -170,7 +190,7 @@ export function ProfileSettingsPage() {
                 <User className="w-10 h-10 text-slate-500" />
               )}
             </div>
-            <button
+            {canMutateAccount && <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploadingAvatar || isLoadingProfile || loadError}
@@ -178,23 +198,23 @@ export function ProfileSettingsPage() {
             >
               <Camera className="w-6 h-6 mb-1" />
               <span className="text-[10px] font-semibold">{text("changePhoto")}</span>
-            </button>
-            <input
+            </button>}
+            {canMutateAccount && <input
               type="file"
               ref={fileInputRef}
               onChange={handleAvatarChange}
               accept="image/*"
               disabled={isUploadingAvatar || isLoadingProfile || loadError}
               className="hidden"
-            />
+            />}
           </div>
 
           <div className="space-y-1 text-center sm:text-left">
             <h3 className="font-semibold text-white text-base">{text("profilePhoto")}</h3>
-            <p className="text-xs text-slate-400">
+            {canMutateAccount && <p className="text-xs text-slate-400">
               {text("photoUploadGuidance")}
-            </p>
-            <div className="pt-2">
+            </p>}
+            {canMutateAccount && <div className="pt-2">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -203,7 +223,7 @@ export function ProfileSettingsPage() {
               >
                 {isUploadingAvatar ? text("uploadingPhoto") : text("uploadPhoto")}
               </button>
-            </div>
+            </div>}
           </div>
         </div>
 
@@ -220,6 +240,7 @@ export function ProfileSettingsPage() {
                 id="profile-full-name"
                 type="text"
                 value={profile.full_name}
+                disabled={!canMutateAccount}
                 onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
                 placeholder={text("fullNamePlaceholder")}
                 className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-teal-500/60 transition"
@@ -246,16 +267,17 @@ export function ProfileSettingsPage() {
         </div>
 
         {/* Security / Password Section */}
-        <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-4">
+        {canMutateAccount && <div className="p-6 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-4">
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
             <Lock className="w-4 h-4 text-indigo-400" /> {text("changePassword")}
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">{text("currentPassword")}</label>
+              <label htmlFor="profile-current-password" className="block text-xs font-medium text-slate-300 mb-1.5">{text("currentPassword")}</label>
               <div className="relative">
                 <input
+                  id="profile-current-password"
                   type={showCurrentPassword ? "text" : "password"}
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
@@ -275,9 +297,10 @@ export function ProfileSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">{text("newPassword")}</label>
+              <label htmlFor="profile-new-password" className="block text-xs font-medium text-slate-300 mb-1.5">{text("newPassword")}</label>
               <div className="relative">
                 <input
+                  id="profile-new-password"
                   type={showNewPassword ? "text" : "password"}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -297,9 +320,10 @@ export function ProfileSettingsPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1.5">{text("confirmNewPassword")}</label>
+              <label htmlFor="profile-confirm-password" className="block text-xs font-medium text-slate-300 mb-1.5">{text("confirmNewPassword")}</label>
               <div className="relative">
                 <input
+                  id="profile-confirm-password"
                   type={showConfirmPassword ? "text" : "password"}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -318,10 +342,10 @@ export function ProfileSettingsPage() {
               </div>
             </div>
           </div>
-        </div>
+        </div>}
 
         {/* Save Actions */}
-        <div className="flex justify-end pt-2">
+        {canMutateAccount && <div className="flex justify-end pt-2">
           <button
             type="submit"
             disabled={isSaving || isLoadingProfile || loadError}
@@ -329,7 +353,7 @@ export function ProfileSettingsPage() {
           >
             <Save className="w-4 h-4" /> {isSaving ? text("savingChanges") : text("saveSettings")}
           </button>
-        </div>
+        </div>}
       </form>
       </div>
     </div>
