@@ -3,15 +3,12 @@ import { Link, useSearchParams } from "react-router-dom"
 import { accountService } from "@/services"
 import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
-import { 
-  Users, 
-  UserPlus, 
-  Mail, 
-  Trash2, 
-  RefreshCw, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Copy,
+import {
+  Users,
+  UserPlus,
+  Trash2,
+  RefreshCw,
+  CheckCircle2,
   AlertCircle,
 } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
@@ -190,7 +187,7 @@ export function TeamPage() {
             <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan="4" className="py-8 text-center text-slate-500">
+                  <td colSpan={4} className="py-8 text-center text-slate-500">
                     Loading team...
                   </td>
                 </tr>
