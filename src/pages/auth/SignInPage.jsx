@@ -11,6 +11,7 @@ import { Input, PasswordInput } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
 import { DATA_SOURCE } from "@/services/config"
 import { useLanguage } from "@/context/LanguageContext"
+import { getMemberMessage } from "@/i18n/memberMessages"
 
 /**
  * Sign in. Owns its own UI intent (field values, validation, submit state)
@@ -20,7 +21,7 @@ import { useLanguage } from "@/context/LanguageContext"
  */
 export function SignInPage() {
   const { signIn, isAuthenticated } = useAuth()
-  const { t } = useLanguage()
+  const { lang, t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
   const redirectTo = location.state?.from?.pathname ?? APP_HOME
@@ -106,6 +107,10 @@ export function SignInPage() {
       }
     >
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+        {location.state?.passwordChanged ? (
+          <FormBanner tone="success">{getMemberMessage(lang, "profilePasswordChanged")}</FormBanner>
+        ) : null}
+
         {authError ? (
           <FormBanner
             status={authError.status}
