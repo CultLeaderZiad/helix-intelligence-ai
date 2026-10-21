@@ -224,7 +224,6 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
             size="sm" 
             className="text-xs text-text hover:text-accent"
             onClick={() => {
-              const url = new URL(window.location.href)
               window.location.href = `/create?sourceId=${creativeId}`
             }}
           >

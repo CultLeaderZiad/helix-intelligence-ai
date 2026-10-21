@@ -109,7 +109,7 @@ function CodeBlock({ code, language }) {
   )
 }
 
-function Callout({ type, title, children }) {
+function Callout({ type, title = null, children }) {
   const configs = {
     NOTE: {
       border: 'border-blue-500/40 bg-blue-500/5 text-blue-300',

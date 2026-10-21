@@ -39,8 +39,6 @@ export function ScoutJobProgress({ job, leadsCount }) {
           {/* Logs lines */}
           <div className="space-y-1 pt-1 text-[11px] leading-relaxed text-text-muted font-mono">
             {(job.logs && job.logs.length > 0 ? job.logs.slice(-4) : ["> worker started"]).map((log, idx) => {
-              const isVerified = log.includes("verified")
-              const isOk = log.includes("ok")
               return (
                 <div key={idx} className="truncate">
                   {log.split(" · ").map((part, pIdx) => {
