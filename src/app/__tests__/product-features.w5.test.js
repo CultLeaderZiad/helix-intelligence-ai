@@ -12,6 +12,7 @@ describe("W5 product boundaries", () => {
     const paths = ADMIN_NAV_GROUPS.flatMap((group) => group.items.map((item) => item.path))
     expect(paths).not.toContain("/admin/subscriptions")
     expect(paths).not.toContain("/admin/usage")
+    expect(paths).not.toContain("/admin/health")
     expect(paths).toContain("/admin/access-requests")
   })
 
