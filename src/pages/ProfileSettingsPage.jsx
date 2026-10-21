@@ -1,74 +1,60 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useRef } from "react"
 import { User, Lock, Camera, CheckCircle2, AlertCircle, Save, Shield, Eye, EyeOff, RotateCcw } from "lucide-react"
-import { accountService, authService } from "../services"
 import { useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { useLanguage } from "../context/LanguageContext"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { getW5OnboardingText } from "../i18n/w5Onboarding"
+import { getMemberMessage, getMemberRoleLabel } from "@/i18n/memberMessages"
+import { useProfileSettings } from "@/hooks/useProfileSettings"
 
 export function ProfileSettingsPage() {
   const { refreshSession, updateUser } = useAuth()
   const navigate = useNavigate()
   const { lang, t } = useLanguage()
+  const {
+    profile,
+    setProfile,
+    isLoadingProfile,
+    loadError,
+    isSaving,
+    isUploadingAvatar,
+    uploadAvatar,
+    saveProfile,
+    restartOnboarding,
+  } = useProfileSettings()
   const fileInputRef = useRef(null)
   const [isRestartingTour, setIsRestartingTour] = useState(false)
 
+  const text = (key) => t(key, getMemberMessage(lang, key))
   const onboardingText = (key) => t(key, getW5OnboardingText(lang, key))
 
-  const [profile, setProfile] = useState({
-    full_name: "",
-    email: "",
-    avatar_url: "",
-    role: "customer"
-  })
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  
-  const [isSaving, setIsSaving] = useState(false)
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [successMessage, setSuccessMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
 
-  const loadProfile = async () => {
-    try {
-      const data = await accountService.getProfile()
-      setProfile({
-        full_name: data.full_name || "",
-        email: data.email || "",
-        avatar_url: data.avatar_url || "",
-        role: data.role || "customer"
-      })
-    } catch (err) {
-      console.error("Failed to load profile:", err)
-    }
-  }
-
-  useEffect(() => {
-    loadProfile()
-  }, [])
-
   const handleAvatarChange = async (e) => {
-    const file = e.target.files?.[0]
+    const input = e.currentTarget
+    const file = input.files?.[0]
     if (!file) return
 
-    setIsUploadingAvatar(true)
     setErrorMessage("")
     setSuccessMessage("")
 
     try {
-      const res = await accountService.uploadAvatar(file)
-      setProfile((prev) => ({ ...prev, avatar_url: res.avatar_url }))
-      setSuccessMessage(t("profileAvatarUpdated"))
+      const res = await uploadAvatar(file)
+      if (!res?.avatar_url) throw new Error("avatar_url_missing")
+      setSuccessMessage(text("profileAvatarUpdated"))
       if (refreshSession) refreshSession()
-    } catch (err) {
-      setErrorMessage(err?.message || t("profileAvatarUploadFailed"))
+    } catch {
+      setErrorMessage(text("profileAvatarUploadFailed"))
     } finally {
-      setIsUploadingAvatar(false)
+      input.value = ""
     }
   }
 
@@ -79,41 +65,33 @@ export function ProfileSettingsPage() {
 
     if (newPassword) {
       if (!currentPassword) {
-        setErrorMessage(t("profileCurrentPasswordRequired"))
+        setErrorMessage(text("profileCurrentPasswordRequired"))
         return
       }
       if (newPassword.length < 8) {
-        setErrorMessage(t("profilePasswordTooShort"))
+        setErrorMessage(text("profilePasswordTooShort"))
         return
       }
       if (newPassword !== confirmPassword) {
-        setErrorMessage(t("profilePasswordMismatch"))
+        setErrorMessage(text("profilePasswordMismatch"))
         return
       }
     }
 
-    setIsSaving(true)
     try {
-      const payload = {
-        full_name: profile.full_name,
-        avatar_url: profile.avatar_url,
-      }
-      if (newPassword) {
-        payload.current_password = currentPassword
-        payload.new_password = newPassword
-      }
-
-      await accountService.updateProfile(payload)
-      setSuccessMessage(t("profileUpdated"))
+      await saveProfile({
+        fullName: profile.full_name,
+        avatarUrl: profile.avatar_url,
+        currentPassword,
+        newPassword,
+      })
+      setSuccessMessage(text("profileUpdated"))
       setCurrentPassword("")
       setNewPassword("")
       setConfirmPassword("")
       if (refreshSession) refreshSession()
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message || "Failed to update profile."
-      setErrorMessage(typeof detail === "string" ? detail : t("profileUpdateFailed"))
-    } finally {
-      setIsSaving(false)
+    } catch {
+      setErrorMessage(text("profileUpdateFailed"))
     }
   }
 
@@ -122,7 +100,7 @@ export function ProfileSettingsPage() {
     setSuccessMessage("")
     setIsRestartingTour(true)
     try {
-      await authService.restartOnboarding()
+      await restartOnboarding()
       if (refreshSession) await refreshSession()
       updateUser?.({ has_completed_onboarding: false })
       navigate("/discover?tour=restart")
