@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Building2, Phone, Mail, Globe, MapPin, Star, Share2, Copy, Check, ExternalLink, ArrowRight } from "lucide-react"
+import { Phone, Mail, Globe, MapPin, Star, Share2, Copy, Check, ExternalLink, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/context/LanguageContext"
