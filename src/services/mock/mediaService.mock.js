@@ -4,7 +4,11 @@ import { ServiceError } from "../http"
 const jobs = new Map()
 
 export const mediaService = {
-  generate: async (params, { signal } = {}) => {
+  /**
+   * @param {{ signal?: AbortSignal }} [options]
+   */
+  generate: async (params, options = {}) => {
+    const { signal } = options
     await delay(300, { signal })
     const jobId = crypto.randomUUID()
     const now = new Date().toISOString()
@@ -65,24 +69,39 @@ export const mediaService = {
     return job
   },
   
-  getJob: async (jobId, { signal } = {}) => {
+  /**
+   * @param {string} jobId
+   * @param {{ signal?: AbortSignal }} [options]
+   */
+  getJob: async (jobId, options = {}) => {
+    const { signal } = options
     await delay(150, { signal })
     const job = jobs.get(jobId)
-    if (!job) throw new ServiceError("Job not found", 404)
+    if (!job) throw new ServiceError("Job not found", { status: 404 })
     return { ...job } // return a copy to prevent mutation bugs
   },
   
-  getJobResult: async (jobId, { signal } = {}) => {
+  /**
+   * @param {string} jobId
+   * @param {{ signal?: AbortSignal }} [options]
+   */
+  getJobResult: async (jobId, options = {}) => {
+    const { signal } = options
     await delay(100, { signal })
     const job = jobs.get(jobId)
-    if (!job) throw new ServiceError("Job not found", 404)
+    if (!job) throw new ServiceError("Job not found", { status: 404 })
     if (job.status !== "succeeded") {
-      throw new ServiceError("Job is not completed yet", 400)
+      throw new ServiceError("Job is not completed yet", { status: 400 })
     }
     return job.result
   },
   
-  cancel: async (jobId, { signal } = {}) => {
+  /**
+   * @param {string} jobId
+   * @param {{ signal?: AbortSignal }} [options]
+   */
+  cancel: async (jobId, options = {}) => {
+    const { signal } = options
     await delay(100, { signal })
     const job = jobs.get(jobId)
     if (job && (job.status === "queued" || job.status === "running")) {
