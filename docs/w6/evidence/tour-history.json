@@ -1,0 +1,52 @@
+[
+  {
+    "action": "settings restart starts one EN desktop tour without questionnaire",
+    "result": {
+      "direction": "ltr",
+      "language": "en",
+      "overflow": false,
+      "overlays": 1,
+      "path": "/discover",
+      "title": "Discover",
+      "tour": 1,
+      "wizard": false
+    }
+  },
+  {
+    "action": "tour skip/close persists across refresh",
+    "result": {
+      "direction": "ltr",
+      "language": "en",
+      "overflow": false,
+      "overlays": 0,
+      "path": "/discover",
+      "tour": 0,
+      "wizard": false
+    }
+  },
+  {
+    "action": "sidebar restart starts one tour",
+    "result": {
+      "direction": "ltr",
+      "language": "en",
+      "overflow": false,
+      "overlays": 1,
+      "path": "/discover",
+      "title": "Discover",
+      "tour": 1,
+      "wizard": false
+    }
+  },
+  {
+    "action": "tour finished; no replay after reload",
+    "result": {
+      "direction": "ltr",
+      "language": "en",
+      "overflow": false,
+      "overlays": 0,
+      "path": "/discover",
+      "tour": 0,
+      "wizard": false
+    }
+  }
+]
