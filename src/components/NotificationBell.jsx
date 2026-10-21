@@ -1,269 +1,300 @@
-import React, { useState, useEffect, useRef } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { Bell, Check, Clock, ExternalLink, Info, AlertTriangle, Sparkles, CheckCheck, Megaphone } from "lucide-react"
+import { AlertTriangle, Bell, CheckCheck, Info, Megaphone, Sparkles } from "lucide-react"
 import { notificationService, updatesService } from "@/services"
+import { useLanguage } from "@/context/LanguageContext"
+import { w5Support } from "@/i18n/w5Support"
 import { cn } from "@/lib/utils"
 
-function formatNotificationDate(raw) {
-  if (!raw) return "Recently"
+const POLL_INTERVAL_MS = 20_000
+const MAX_BACKOFF_MS = 120_000
+
+function readUpdateReadState(id) {
   try {
-    let s = String(raw).trim()
-    if (!s) return "Recently"
-    if (s.includes(" ") && !s.includes("T")) {
-      s = s.replace(" ", "T")
-    }
-    if (!s.endsWith("Z") && !s.includes("+") && !s.includes("-", 10)) {
-      s += "Z"
-    }
-    const d = new Date(s)
-    if (isNaN(d.getTime())) {
-      const d2 = new Date(raw)
-      if (!isNaN(d2.getTime())) {
-        return d2.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-      }
-      return "Recently"
-    }
-    return d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    return window.localStorage.getItem(`helix_update_read_${id}`) === "true"
   } catch {
-    return "Recently"
+    return false
   }
+}
+
+function writeUpdateReadState(id) {
+  try {
+    window.localStorage.setItem(`helix_update_read_${id}`, "true")
+    return true
+  } catch {
+    return false
+  }
+}
+
+function isDocumentHidden() { return document.visibilityState === "hidden" }
+
+function formatNotificationDate(raw, lang, recently) {
+  if (!raw) return recently
+  const date = new Date(raw)
+  return Number.isNaN(date.getTime())
+    ? recently
+    : date.toLocaleString(lang === "ar" ? "ar" : "en", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
 }
 
 export function NotificationBell({ className }) {
   const navigate = useNavigate()
+  const { lang, t } = useLanguage()
+  const words = w5Support[lang] || w5Support.en
+  const text = (key) => t(key, words[key] || w5Support.en[key] || key)
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
-  const [unreadCount, setUnreadCount] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [actionError, setActionError] = useState(null)
   const menuRef = useRef(null)
+  const notificationsRef = useRef(notifications)
+  const requestInFlight = useRef(false)
+  const readRequests = useRef(new Set())
+  const markAllInFlight = useRef(false)
+  const activeRef = useRef(false)
+  notificationsRef.current = notifications
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
+    if (requestInFlight.current) return false
+    requestInFlight.current = true
+    if (activeRef.current && notificationsRef.current.length === 0) setLoading(true)
+    setError(null)
     try {
-      const [res, publishedUpdates] = await Promise.all([
-        notificationService.getNotifications().catch(() => ({ items: [], unread_count: 0 })),
-        updatesService.getPublishedUpdates().catch(() => [])
+      const [personalResult, updatesResult] = await Promise.allSettled([
+        notificationService.getNotifications(),
+        updatesService.getPublishedUpdates(),
       ])
-
-      const updateItems = (Array.isArray(publishedUpdates) ? publishedUpdates : []).map((u) => {
-        const isRead = localStorage.getItem(`helix_update_read_${u.id}`) === "true"
-        return {
-          id: `update_${u.id}`,
-          originalUpdateId: u.id,
-          isUpdate: true,
-          type: u.level || "system",
-          category: u.category || "General API",
-          title: u.title,
-          message: u.body || "System update published.",
-          link: u.link_url || "/updates",
-          is_read: isRead,
-          created_at: u.starts_at || u.created_at || new Date().toISOString(),
-        }
-      })
-
-      const personalItems = res?.items || []
-      const merged = [...updateItems, ...personalItems].sort((a, b) => {
-        const da = new Date(a.created_at || 0).getTime()
-        const db = new Date(b.created_at || 0).getTime()
-        return db - da
-      })
-
-      const totalUnread = merged.filter((item) => !item.is_read).length
+      if (!activeRef.current) return false
+      const previous = notificationsRef.current
+      const personalItems = personalResult.status === "fulfilled"
+        ? (Array.isArray(personalResult.value?.items) ? personalResult.value.items : [])
+        : previous.filter((item) => !item.isUpdate)
+      const publishedUpdates = updatesResult.status === "fulfilled"
+        ? (Array.isArray(updatesResult.value) ? updatesResult.value : [])
+        : previous.filter((item) => item.isUpdate)
+      const updateItems = publishedUpdates.map((update) => ({
+        id: `update_${update.id}`,
+        originalUpdateId: update.id,
+        isUpdate: true,
+        type: update.level || "system",
+        category: update.category || "General",
+        title: update.title,
+        message: update.body || text("updatePublished"),
+        link: update.link_url || "/updates",
+        is_read: readUpdateReadState(update.id),
+        created_at: update.starts_at || update.created_at || null,
+      }))
+      const merged = [...updateItems, ...personalItems].sort((left, right) => (
+        new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime()
+      ))
       setNotifications(merged)
-      setUnreadCount(totalUnread)
-    } catch (err) {
-      console.error("Failed to load notifications", err)
+      if (personalResult.status !== "fulfilled" || updatesResult.status !== "fulfilled") {
+        setError(text("notificationsLoadFailed"))
+        return false
+      }
+      return true
+    } catch {
+      if (activeRef.current) setError(text("notificationsLoadFailed"))
+      return false
+    } finally {
+      requestInFlight.current = false
+      if (activeRef.current) setLoading(false)
     }
-  }
+  }, [lang, t])
+
+  const fetchRef = useRef(fetchNotifications)
+  fetchRef.current = fetchNotifications
 
   useEffect(() => {
-    fetchNotifications()
-    const interval = setInterval(fetchNotifications, 20000) // Poll every 20s
-    return () => clearInterval(interval)
+    let stopped = false
+    let timer = null
+    let failures = 0
+    activeRef.current = true
+
+    const schedule = (delay) => {
+      if (stopped || isDocumentHidden()) return
+      clearTimeout(timer)
+      timer = setTimeout(poll, delay)
+    }
+
+    const poll = async () => {
+      if (stopped || isDocumentHidden()) return
+      if (requestInFlight.current) {
+        schedule(1000)
+        return
+      }
+      const succeeded = await fetchRef.current()
+      if (stopped || isDocumentHidden()) return
+      failures = succeeded ? 0 : failures + 1
+      const delay = succeeded
+        ? POLL_INTERVAL_MS
+        : Math.min(POLL_INTERVAL_MS * (2 ** failures), MAX_BACKOFF_MS)
+      schedule(delay)
+    }
+
+    const onVisibilityChange = () => {
+      clearTimeout(timer)
+      timer = null
+      if (document.visibilityState === "visible") void poll()
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    void poll()
+    return () => {
+      stopped = true
+      activeRef.current = false
+      clearTimeout(timer)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
   }, [])
 
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setOpen(false)
-      }
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setOpen(false)
     }
     document.addEventListener("mousedown", handleClickOutside)
     return () => document.removeEventListener("mousedown", handleClickOutside)
   }, [])
 
-  const handleMarkAsRead = async (id, e) => {
-    if (e) e.stopPropagation()
-    const target = notifications.find((n) => n.id === id)
-    if (target?.isUpdate) {
-      localStorage.setItem(`helix_update_read_${target.originalUpdateId}`, "true")
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-      )
-      setUnreadCount((c) => Math.max(0, c - 1))
+  const handleMarkAsRead = async (notification) => {
+    if (!notification || notification.is_read || readRequests.current.has(notification.id)) return
+    setActionError(null)
+    if (notification.isUpdate) {
+      const saved = writeUpdateReadState(notification.originalUpdateId)
+      setNotifications((previous) => previous.map((item) => (
+        item.id === notification.id ? { ...item, is_read: true } : item
+      )))
+      if (!saved) setActionError(text("readStateNotSaved"))
       return
     }
+    readRequests.current.add(notification.id)
     try {
-      await notificationService.markAsRead(id)
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-      )
-      setUnreadCount((c) => Math.max(0, c - 1))
-    } catch (err) {
-      console.error(err)
+      await notificationService.markAsRead(notification.id)
+      setNotifications((previous) => previous.map((item) => (
+        item.id === notification.id ? { ...item, is_read: true } : item
+      )))
+    } catch {
+      setActionError(text("markReadFailed"))
+    } finally {
+      readRequests.current.delete(notification.id)
     }
   }
 
   const handleMarkAllRead = async () => {
-    try {
-      notifications.forEach((n) => {
-        if (n.isUpdate) {
-          localStorage.setItem(`helix_update_read_${n.originalUpdateId}`, "true")
-        }
-      })
-      await notificationService.markAllAsRead().catch(() => {})
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
-      setUnreadCount(0)
-    } catch (err) {
-      console.error(err)
+    if (markAllInFlight.current) return
+    markAllInFlight.current = true
+    setActionError(null)
+    const unreadUpdates = notificationsRef.current.filter((item) => item.isUpdate && !item.is_read)
+    const storageFailed = unreadUpdates.some((item) => !writeUpdateReadState(item.originalUpdateId))
+    setNotifications((previous) => previous.map((item) => (
+      item.isUpdate ? { ...item, is_read: true } : item
+    )))
+    const unreadPersonal = notificationsRef.current.filter((item) => !item.isUpdate && !item.is_read)
+    let personalFailed = false
+    if (unreadPersonal.length) {
+      try {
+        await notificationService.markAllAsRead()
+        setNotifications((previous) => previous.map((item) => (
+          !item.isUpdate ? { ...item, is_read: true } : item
+        )))
+      } catch {
+        personalFailed = true
+      }
     }
+    if (personalFailed) setActionError(text("markAllReadFailed"))
+    else if (storageFailed) setActionError(text("readStateNotSaved"))
+    markAllInFlight.current = false
   }
 
-  const openNotification = (n) => {
-    if (!n.link) return
+  const openNotification = (notification) => {
+    if (!notification.link) return
     setOpen(false)
-    if (!n.is_read) {
-      handleMarkAsRead(n.id)
-    }
-    if (n.link.startsWith("http")) {
-      window.open(n.link, "_blank", "noopener,noreferrer")
-    } else {
-      navigate(n.link)
-    }
+    if (!notification.is_read) void handleMarkAsRead(notification)
+    if (/^https?:\/\//.test(notification.link)) window.open(notification.link, "_blank", "noopener,noreferrer")
+    else navigate(notification.link)
   }
 
   const getTypeIcon = (type) => {
-    switch (type) {
-      case "alert":
-      case "warning":
-      case "critical":
-        return <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-      case "creative_found":
-        return <Sparkles className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
-      case "system":
-        return <Megaphone className="h-3.5 w-3.5 text-accent shrink-0" />
-      default:
-        return <Info className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
-    }
+    if (["alert", "warning", "critical"].includes(type)) return <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" aria-hidden="true" />
+    if (type === "creative_found") return <Sparkles className="h-3.5 w-3.5 text-indigo-400 shrink-0" aria-hidden="true" />
+    if (type === "system") return <Megaphone className="h-3.5 w-3.5 text-accent shrink-0" aria-hidden="true" />
+    return <Info className="h-3.5 w-3.5 text-cyan-400 shrink-0" aria-hidden="true" />
   }
 
+  const unreadCount = notifications.filter((item) => !item.is_read).length
+
   return (
-    <div className={cn("relative", className)} ref={menuRef}>
+    <div className="relative" ref={menuRef} dir={lang === "ar" ? "rtl" : "ltr"}>
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen((previous) => !previous)}
         className="relative rounded-sm p-1.5 text-text-faint transition-colors hover:bg-surface-2 hover:text-text"
-        aria-label="Notifications"
-        title="Notifications"
+        aria-label={text("notificationsTitle")}
+        title={text("notificationsTitle")}
+        aria-expanded={open}
       >
-        <Bell className="h-4 w-4" />
-        {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 flex h-2 w-2 items-center justify-center rounded-full bg-accent animate-pulse" />
-        )}
+        <Bell className="h-4 w-4" aria-hidden="true" />
+        {unreadCount > 0 && <span aria-label={text("unreadDot")} className="absolute top-1 end-1 flex h-2 w-2 rounded-full bg-accent animate-pulse" />}
       </button>
 
       {open && (
-        <div className="absolute left-0 bottom-full mb-2 w-80 rounded-xl border border-border bg-surface-2 p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95">
-          <div className="flex items-center justify-between border-b border-border pb-2 px-2 pt-1">
+        <div className="absolute end-0 bottom-full mb-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-surface-2 p-2 shadow-2xl z-50 animate-in fade-in zoom-in-95">
+          <div className="flex items-center justify-between gap-2 border-b border-border pb-2 px-2 pt-1">
             <span className="text-xs font-semibold text-text flex items-center gap-1.5">
-              <Bell className="h-3.5 w-3.5 text-accent" />
-              Notifications & Updates
+              <Bell className="h-3.5 w-3.5 text-accent" aria-hidden="true" /> {text("notificationsTitle")}
             </span>
             {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                className="flex items-center gap-1 text-[11px] text-text-muted hover:text-accent font-mono transition-colors"
-              >
-                <CheckCheck className="h-3 w-3" />
-                Mark all read
+              <button type="button" onClick={handleMarkAllRead} className="flex items-center gap-1 text-[11px] text-text-muted hover:text-accent font-mono transition-colors">
+                <CheckCheck className="h-3 w-3" aria-hidden="true" /> {text("markAllRead")}
               </button>
             )}
           </div>
 
+          {actionError && <p role="alert" className="mx-2 mt-2 text-[11px] text-amber-300">{actionError}</p>}
+          {error && <p role="alert" className="mx-2 mt-2 text-[11px] text-rose-300">{error}</p>}
           <div className="max-h-72 overflow-y-auto divide-y divide-border/40 py-1">
-            {notifications.length === 0 ? (
-              <div className="py-6 text-center text-xs text-text-faint">
-                No notifications right now
-              </div>
+            {loading && notifications.length === 0 ? (
+              <div role="status" className="py-6 text-center text-xs text-text-faint">{text("loadingNotifications")}</div>
+            ) : notifications.length === 0 ? (
+              <div className="py-6 text-center text-xs text-text-faint">{error ? text("notificationsLoadFailed") : text("noNotificationsTitle")}</div>
             ) : (
-              notifications.map((n) => (
+              notifications.map((notification) => (
                 <div
-                  key={n.id}
-                  role={n.link ? "button" : undefined}
-                  tabIndex={n.link ? 0 : undefined}
-                  onClick={() => openNotification(n)}
-                  onKeyDown={(e) => {
-                    if (n.link && (e.key === "Enter" || e.key === " ")) {
-                      e.preventDefault()
-                      openNotification(n)
+                  key={notification.id}
+                  role={notification.link ? "button" : undefined}
+                  tabIndex={notification.link ? 0 : undefined}
+                  onClick={() => openNotification(notification)}
+                  onKeyDown={(event) => {
+                    if (notification.link && (event.key === "Enter" || event.key === " ")) {
+                      event.preventDefault()
+                      openNotification(notification)
                     }
                   }}
-                  className={cn(
-                    "flex flex-col gap-1 p-2.5 transition-colors rounded-lg text-left my-0.5",
-                    n.link ? "cursor-pointer" : "",
-                    !n.is_read ? "bg-surface-3/70 border border-accent/20" : "hover:bg-surface-3/30"
-                  )}
+                  className={cn("flex flex-col gap-1 p-2.5 transition-colors rounded-lg text-left my-0.5", notification.link ? "cursor-pointer" : "", !notification.is_read ? "bg-surface-3/70 border border-accent/20" : "hover:bg-surface-3/30")}
                 >
                   <div className="flex items-start justify-between gap-1.5">
                     <div className="flex items-center gap-1.5">
-                      {getTypeIcon(n.type)}
-                      <span className="text-xs font-bold text-text">{n.title}</span>
-                      {n.link ? <ExternalLink className="h-3 w-3 text-text-faint shrink-0" /> : null}
+                      {getTypeIcon(notification.type)}
+                      <span className="text-xs font-bold text-text">{notification.title}</span>
                     </div>
-                    {!n.is_read && (
-                      <button
-                        onClick={(e) => handleMarkAsRead(n.id, e)}
-                        className="text-text-faint hover:text-accent p-0.5 rounded transition"
-                        title="Mark as read"
-                      >
-                        <Check className="h-3 w-3" />
+                    {!notification.is_read && (
+                      <button type="button" aria-label={text("markRead")} title={text("markRead")} onClick={(event) => { event.stopPropagation(); void handleMarkAsRead(notification) }} className="text-text-faint hover:text-accent">
+                        <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" />
                       </button>
                     )}
                   </div>
-                  <p className="text-[11px] text-text-muted leading-relaxed pl-5 whitespace-pre-line font-sans">
-                    {n.message}
-                  </p>
-                  <div className="flex items-center gap-2 pl-5 mt-1">
-                    <span className="text-[10px] font-mono text-text-faint flex items-center gap-1">
-                      <Clock className="h-2.5 w-2.5" />
-                      {formatNotificationDate(n.created_at)}
-                    </span>
-                    {n.isUpdate && n.category && (
-                      <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded border border-cyan-500/20 bg-cyan-500/10 text-cyan-400">
-                        {n.category}
-                      </span>
-                    )}
+                  <p className="text-[11px] text-text-muted line-clamp-2 leading-relaxed">{notification.message}</p>
+                  <div className="flex items-center justify-between gap-2 text-[9px] font-mono text-text-faint uppercase tracking-wider">
+                    <span>{notification.category || notification.type}</span>
+                    <span>{formatNotificationDate(notification.created_at, lang, text("recently"))}</span>
                   </div>
                 </div>
               ))
             )}
           </div>
-
-          <div className="border-t border-border pt-2 px-2 flex items-center justify-between text-center">
-            <a
-              href="/updates"
-              onClick={() => setOpen(false)}
-              className="text-[10px] font-mono text-accent hover:underline inline-flex items-center gap-1"
-            >
-              <span>Platform Updates ↗</span>
-            </a>
-            <a
-              href="/notifications"
-              onClick={() => setOpen(false)}
-              className="text-[10px] font-mono text-text-muted hover:text-text inline-flex items-center gap-1"
-            >
-              <span>All Messages →</span>
-            </a>
+          <div className="flex items-center justify-between border-t border-border/60 pt-2 mt-1 px-2">
+            <button type="button" onClick={() => { setOpen(false); navigate("/notifications") }} className="text-[10px] font-mono text-text-muted hover:text-accent transition-colors">{text("viewAllNotifications")}</button>
+            <button type="button" onClick={() => { setOpen(false); navigate("/updates") }} className="text-[10px] font-mono text-text-faint hover:text-text transition-colors">{text("platformUpdates")}</button>
           </div>
         </div>
       )}
