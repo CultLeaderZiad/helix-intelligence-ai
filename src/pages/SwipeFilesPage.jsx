@@ -6,23 +6,18 @@ import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { API_BASE_URL } from "@/services/config"
 import { getAccessToken } from "@/services/sessionStore"
-import { 
-  Bookmark, 
-  Trash2, 
-  ExternalLink, 
-  RefreshCw, 
-  SearchX, 
-  FolderPlus, 
-  CheckCircle2, 
-  Tag, 
-  Film, 
-  Image as ImageIcon,
-  Plus,
-  Link as LinkIcon,
-  Sparkles,
-  Download,
-  Play,
-  ArrowRight
+import {
+  Bookmark
+  Trash2
+  RefreshCw
+  SearchX
+  CheckCircle2
+  Film
+  Image as ImageIcon
+  Plus
+  Link as LinkIcon
+  Sparkles
+  Download
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"

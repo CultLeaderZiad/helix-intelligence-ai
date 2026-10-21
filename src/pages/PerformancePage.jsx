@@ -8,19 +8,16 @@ import { useLanguage } from "@/context/LanguageContext"
 import { useSearchContext } from "@/context/SearchContext"
 import { creativeService } from "@/services"
 import {
-  Activity,
-  TrendingUp,
-  Clock,
-  Flame,
-  Award,
-  Sparkles,
-  Bookmark,
-  Play,
-  Image as ImageIcon,
-  CheckCircle,
-  BarChart3,
-  Layers,
-  ArrowUpRight,
+  Activity
+  TrendingUp
+  Clock
+  Award
+  Sparkles
+  Bookmark
+  Play
+  Image as ImageIcon
+  BarChart3
+  Layers
   Eye
 } from "lucide-react"
 import { Tag } from "@/components/ui/Tag"
@@ -83,15 +80,15 @@ function WatchThisQueryPanel({ query }) {
           </p>
           <div className="flex flex-wrap items-center gap-1.5">
             {run?.is_baseline ? (
-              <Tag>Baseline recorded</Tag>
+              <Tag className="">Baseline recorded</Tag>
             ) : changes > 0 ? (
               <>
-                {run.new_count > 0 ? <Tag tone="success">{run.new_count} new</Tag> : null}
-                {run.changed_count > 0 ? <Tag tone="warning">{run.changed_count} changed</Tag> : null}
-                {run.killed_count > 0 ? <Tag tone="danger">{run.killed_count} stopped</Tag> : null}
+                {run.new_count > 0 ? <Tag className="" tone="success">{run.new_count} new</Tag> : null}
+                {run.changed_count > 0 ? <Tag className="" tone="warning">{run.changed_count} changed</Tag> : null}
+                {run.killed_count > 0 ? <Tag className="" tone="danger">{run.killed_count} stopped</Tag> : null}
               </>
             ) : (
-              <Tag>No changes yet</Tag>
+              <Tag className="">No changes yet</Tag>
             )}
           </div>
           <Button
