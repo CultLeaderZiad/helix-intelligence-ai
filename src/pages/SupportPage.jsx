@@ -1,89 +1,52 @@
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { MessageSquare, Plus, CheckCircle2, Clock, AlertCircle, Send, User, Shield, Sparkles, Bug } from "lucide-react"
-import { supportService } from "../services"
 import { useLanguage } from "@/context/LanguageContext"
 import { SupportFeedbackModal } from "../components/SupportFeedbackModal"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { w5Support } from "@/i18n/w5Support"
+import { formatMemberDate } from "@/i18n/memberMessages"
+import { useSupport } from "@/hooks/useSupport"
 
 export function SupportPage() {
   const { lang, t } = useLanguage()
   const words = w5Support[lang] || w5Support.en
   const text = (key) => t(key, words[key] || w5Support.en[key] || key)
-  const [tickets, setTickets] = useState([])
-  const [selectedTicket, setSelectedTicket] = useState(null)
-  const [ticketDetails, setTicketDetails] = useState(null)
+  const {
+    tickets,
+    selectedTicket,
+    ticketDetails,
+    isLoading,
+    isLoadingDetails,
+    isSendingReply,
+    errorCode,
+    refreshTickets,
+    selectTicket,
+    sendReply,
+  } = useSupport()
   const [replyMessage, setReplyMessage] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSendingReply, setIsSendingReply] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [error, setError] = useState(null)
+  const [localError, setLocalError] = useState("")
   const [toast, setToast] = useState(null)
+  const errorMessage = localError || (errorCode ? text(errorCode) : "")
 
   const showToast = (msg) => {
     setToast(msg)
     setTimeout(() => setToast(null), 4000)
   }
 
-  const loadTickets = async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const data = await supportService.listTickets()
-      const ticketList = Array.isArray(data) ? data : []
-      setTickets(ticketList)
-      if (ticketList.length > 0 && !selectedTicket) {
-        loadTicketDetails(ticketList[0].id)
-      }
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message
-      setError(typeof detail === "string" ? detail : text("loadTicketsFailed"))
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const loadTicketDetails = async (id) => {
-    setSelectedTicket(id)
-    setTicketDetails(null)
-    setError(null)
-    try {
-      const details = await supportService.getTicket(id)
-      setTicketDetails(details)
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message
-      setError(typeof detail === "string" ? detail : text("loadTicketsFailed"))
-    }
-  }
-
-  useEffect(() => {
-    loadTickets()
-  }, [])
-
   const handleSendReply = async (e) => {
     e.preventDefault()
     if (!replyMessage.trim()) {
-      setError(text("replyEmpty"))
+      setLocalError(text("replyEmpty"))
       return
     }
     if (!selectedTicket) return
 
-    setIsSendingReply(true)
-    setError(null)
-    try {
-      const newReply = await supportService.replyTicket(selectedTicket, replyMessage.trim())
-      setTicketDetails((prev) => ({
-        ...prev,
-        replies: [...(prev.replies || []), newReply]
-      }))
-      setReplyMessage("")
-      showToast(text("replySent"))
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message
-      setError(typeof detail === "string" ? detail : text("replyFailed"))
-    } finally {
-      setIsSendingReply(false)
-    }
+    setLocalError("")
+    const newReply = await sendReply(selectedTicket, replyMessage.trim())
+    if (!newReply) return
+    setReplyMessage("")
+    showToast(text("replySent"))
   }
 
   return (
