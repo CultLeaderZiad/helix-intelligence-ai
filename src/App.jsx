@@ -216,7 +216,7 @@ export default function App() {
                       <Route path="/admin/support" element={<SupportAdminPage />} />
                       <Route path="/admin/data-sources" element={optionalPage(<DataSourcesPage />)} />
                       <Route path="/admin/scrape-jobs" element={optionalPage(<ScrapeJobsPage />)} />
-                      <Route path="/admin/health" element={<SystemHealthPage />} />
+                      <Route path="/admin/health" element={optionalPage(<SystemHealthPage />)} />
                       <Route path="/admin/audit-log" element={<AuditLogPage />} />
                       {ADMIN_NAV_ITEMS.filter((i) => !i.built).map((item) => (
                         <Route
