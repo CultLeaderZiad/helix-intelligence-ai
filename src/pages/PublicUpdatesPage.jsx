@@ -12,7 +12,7 @@ import {
   Sparkles,
   RefreshCw,
   BookOpen,
-  X
+  X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 

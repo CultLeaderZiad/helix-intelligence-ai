@@ -8,21 +8,9 @@ import {
   Network,
   PenLine,
   Activity,
-  Bookmark,
   Shield,
-  CreditCard,
-  Sparkles,
-  Zap,
-  ArrowRight,
   Layers,
-  Flame,
-  Clock,
   CheckCircle2,
-  HelpCircle,
-  Code,
-  Sliders,
-  Database,
-  Cpu
 } from "lucide-react"
 
 const GUIDE_STEPS = [

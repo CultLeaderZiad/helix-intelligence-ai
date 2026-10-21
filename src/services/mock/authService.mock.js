@@ -181,7 +181,7 @@ const authService = {
    * Always resolves ok, even for an unknown email: revealing whether an
    * address is registered is an account-enumeration leak. The UI shows
    * the same confirmation either way.
-   * @param {{ email: string }} params
+   * @param {{ email?: string }} [params]
    * @returns {Promise<{ ok: true, email: string }>}
    */
   async requestPasswordReset({ email } = {}) {
