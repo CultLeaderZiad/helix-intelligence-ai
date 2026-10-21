@@ -13,7 +13,6 @@ import {
   PenLine,
   CircleSlash,
   Radio,
-  ExternalLink,
 } from "lucide-react"
 import { dashboardService, playbookService } from "@/services"
 import { Panel } from "@/components/ui/Panel"
@@ -242,7 +241,7 @@ export default function DashboardPage() {
             </Button>
             <Button
               size="sm"
-              variant="accent"
+              variant="primary"
               onClick={handleShareAsPlaybook}
               disabled={compilingPlaybook || (data?.top_performers || []).length === 0}
               className="flex items-center gap-1.5"
@@ -271,7 +270,7 @@ export default function DashboardPage() {
                 </div>
                 <Button
                   size="sm"
-                  variant="accent"
+                  variant="primary"
                   onClick={() => navigate("/discover")}
                   className="flex items-center gap-1.5 shrink-0"
                 >
@@ -300,7 +299,7 @@ export default function DashboardPage() {
                       <span className="font-mono text-[10px] text-text-muted hidden sm:inline">
                         Strict Real Data Grounding
                       </span>
-                      <Tag variant="neutral" size="sm" className="font-mono text-[9px] uppercase">
+                      <Tag variant="neutral" className="font-mono text-[9px] uppercase">
                         Live Intelligence
                       </Tag>
                     </div>
@@ -328,7 +327,7 @@ export default function DashboardPage() {
                 </p>
               </div>
               {data?.has_monitors && (
-                <Tag variant="accent" size="sm" className="font-mono text-[10px]">
+                <Tag tone="accent" className="font-mono text-[10px]">
                   {data.active_monitors_count} ACTIVE {data.active_monitors_count === 1 ? "MONITOR" : "MONITORS"}
                 </Tag>
               )}
@@ -343,7 +342,7 @@ export default function DashboardPage() {
                     return (
                       <div key={change.id} className="flex flex-col justify-between rounded-md border border-border/60 bg-surface-2 p-3 space-y-2">
                         <div className="flex items-center justify-between gap-2">
-                          <Tag variant={meta.variant} size="sm" className="font-mono text-[9px] flex items-center gap-1">
+                          <Tag variant={meta.variant} className="font-mono text-[9px] flex items-center gap-1">
                             <Icon className="h-3 w-3" />
                             {meta.label}
                           </Tag>
@@ -399,7 +398,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
                   </div>
-                  <Button size="sm" variant="accent" onClick={() => navigate("/monitors")} className="shrink-0 text-xs flex items-center gap-1.5">
+                  <Button size="sm" variant="primary" onClick={() => navigate("/monitors")} className="shrink-0 text-xs flex items-center gap-1.5">
                     <Radio className="h-3 w-3" />
                     Set Up Competitor Monitor
                   </Button>
@@ -437,7 +436,7 @@ export default function DashboardPage() {
                               {creative.headline || creative.brand_name || "Ad Creative"}
                             </span>
                             {isCreativeNew(creative) && (
-                              <Tag variant="success" size="sm" className="font-mono text-[8px] py-0 px-1">
+                              <Tag variant="success" className="font-mono text-[8px] py-0 px-1">
                                 NEW
                               </Tag>
                             )}
@@ -496,7 +495,7 @@ export default function DashboardPage() {
                                 {creative.headline || creative.brand_name || "Ad Creative"}
                               </span>
                               {isCreativeNew(creative) && (
-                                <Tag variant="success" size="sm" className="font-mono text-[8px] py-0 px-1">
+                                <Tag variant="success" className="font-mono text-[8px] py-0 px-1">
                                   NEW
                                 </Tag>
                               )}
@@ -624,7 +623,7 @@ export default function DashboardPage() {
                           
                           <div>
                             <p className="font-mono text-[10px] text-text-faint uppercase">Dominant Format</p>
-                            <Tag variant="accent" className="mt-1">{brand.dominant_format.toUpperCase()}</Tag>
+                            <Tag tone="accent" className="mt-1">{brand.dominant_format.toUpperCase()}</Tag>
                           </div>
                         </div>
                       </div>

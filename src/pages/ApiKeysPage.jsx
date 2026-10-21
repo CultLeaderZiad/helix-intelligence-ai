@@ -5,20 +5,18 @@ import { API_BASE_URL } from "@/services/config"
 import { getAccessToken } from "@/services/sessionStore"
 import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
-import { 
-  Key, 
-  PlusCircle, 
-  Copy, 
-  Trash2, 
-  RefreshCw, 
-  CheckCircle2, 
-  ShieldAlert, 
-  Code2,
-  Sparkles,
-  Check,
-  AlertCircle,
-  Lock,
-  ArrowRight
+import {
+  Key
+  PlusCircle
+  Copy
+  Trash2
+  RefreshCw
+  CheckCircle2
+  ShieldAlert
+  Code2
+  Sparkles
+  AlertCircle
+  Lock
 } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
@@ -486,13 +484,13 @@ export function ApiKeysPage() {
             <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="py-8 text-center text-slate-500">
+                  <td colSpan={5} className="py-8 text-center text-slate-500">
                     Loading API keys...
                   </td>
                 </tr>
               ) : keys.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="py-8 text-center text-slate-500">
+                  <td colSpan={5} className="py-8 text-center text-slate-500">
                     No active API keys found. Click "Generate New Key" to create one.
                   </td>
                 </tr>
