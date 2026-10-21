@@ -1,48 +1,38 @@
 import React, { useState, useEffect } from "react"
 import { adminService, authService } from "@/services"
-import { 
-  Users, 
-  Search, 
-  RefreshCw, 
-  CheckCircle2, 
-  Key,
-  X,
-  CreditCard
-} from "lucide-react"
+import { Users, Search, RefreshCw, CheckCircle2, Key } from "lucide-react"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { useLanguage } from "@/context/LanguageContext"
+import {
+  adminAccessLabel,
+  adminAccountStatusLabel,
+  adminMessage,
+  adminRoleLabel,
+  formatAdminDate,
+  getAdminAccessStatus,
+} from "@/i18n/adminMessages"
 
 export function UsersPage() {
-  const { t } = useLanguage()
+  const { lang, isRtl, t } = useLanguage()
   const [users, setUsers] = useState([])
-  const [plans, setPlans] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
   const [impersonatingId, setImpersonatingId] = useState(null)
-
-  // Confirmation modal states
   const [banTargetUser, setBanTargetUser] = useState(null)
   const [isBanModalBusy, setIsBanModalBusy] = useState(false)
   const [impersonateTargetUser, setImpersonateTargetUser] = useState(null)
-
-  // Plan switch modal
-  const [planSwitchUser, setPlanSwitchUser] = useState(null)
-  const [selectedPlanId, setSelectedPlanId] = useState("")
 
   const fetchUsers = async () => {
     setLoading(true)
     setError(null)
     try {
-      const [usersData, plansData] = await Promise.all([
-        adminService.listUsers(),
-        adminService.listPlans()
-      ])
+      const usersData = await adminService.listUsers()
       setUsers(Array.isArray(usersData) ? usersData : [])
-      setPlans(Array.isArray(plansData) ? plansData : [])
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to load users")
+      console.error("Failed to load users", err)
+      setError(adminMessage(lang, "Failed to load users."))
     } finally {
       setLoading(false)
     }
@@ -50,69 +40,57 @@ export function UsersPage() {
 
   useEffect(() => {
     fetchUsers()
-    // Real-time polling every 10s so new test users and status updates appear immediately
     const interval = setInterval(() => {
       adminService.listUsers().then((usersData) => {
         if (Array.isArray(usersData)) setUsers(usersData)
-      }).catch(() => {})
+      }).catch((err) => console.error("Failed to refresh users", err))
     }, 10000)
     return () => clearInterval(interval)
   }, [])
 
-  const showToast = (msg) => {
-    setToast(msg)
+  const showToast = (message) => {
+    setToast(message)
     setTimeout(() => setToast(null), 4000)
-  }
-
-  const handleBanToggle = (user) => {
-    setBanTargetUser(user)
   }
 
   const confirmBanToggle = async () => {
     if (!banTargetUser) return
     setIsBanModalBusy(true)
+    setError(null)
     try {
       await adminService.banUser(banTargetUser.id, !banTargetUser.is_banned)
-      showToast(`User ${banTargetUser.email} ${banTargetUser.is_banned ? "unbanned" : "banned"} successfully.`)
+      showToast(adminMessage(lang, "User {email} {action} successfully.", {
+        email: banTargetUser.email,
+        action: banTargetUser.is_banned ? "unbanned" : "banned",
+      }))
       setBanTargetUser(null)
-      fetchUsers()
+      await fetchUsers()
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to update ban status")
+      console.error("Failed to update ban status", err)
+      setError(adminMessage(lang, "Failed to update ban status."))
     } finally {
       setIsBanModalBusy(false)
     }
   }
 
   const handleRoleChange = async (user, newRole) => {
+    setError(null)
     try {
       await adminService.updateUserRole(user.id, newRole)
-      showToast(`User ${user.email} role changed to ${newRole}.`)
-      fetchUsers()
+      showToast(adminMessage(lang, "User {email} role changed to {role}.", {
+        email: user.email,
+        role: adminRoleLabel(lang, newRole),
+      }))
+      await fetchUsers()
     } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to update user role")
+      console.error("Failed to update user role", err)
+      setError(adminMessage(lang, "Failed to update user role."))
     }
-  }
-
-  const handleSwitchPlan = async (e) => {
-    e.preventDefault()
-    if (!planSwitchUser || !selectedPlanId) return
-
-    try {
-      await adminService.switchUserPlan(planSwitchUser.id, selectedPlanId)
-      showToast(`Switched plan for ${planSwitchUser.email} successfully.`)
-      setPlanSwitchUser(null)
-      fetchUsers()
-    } catch (err) {
-      setError(err?.response?.data?.detail || err?.message || "Failed to switch plan")
-    }
-  }
-
-  const handleImpersonate = (user) => {
-    setImpersonateTargetUser(user)
   }
 
   const confirmImpersonate = async () => {
     if (!impersonateTargetUser) return
+    setError(null)
     setImpersonatingId(impersonateTargetUser.id)
     try {
       const res = await adminService.impersonateUser(impersonateTargetUser.id)
@@ -120,8 +98,11 @@ export function UsersPage() {
         authService.switchToImpersonatedSession(res.access_token)
         showToast(t("impersonationProgress").replace("{email}", impersonateTargetUser.email))
         window.location.replace("/discover")
+      } else {
+        setError(t("impersonationFailed"))
       }
     } catch (err) {
+      console.error("Failed to impersonate user", err)
       setError(t("impersonationFailed"))
     } finally {
       setImpersonatingId(null)
@@ -129,23 +110,24 @@ export function UsersPage() {
     }
   }
 
-  const filteredUsers = users.filter((u) =>
-    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (u.full_name && u.full_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (u.organization_name && u.organization_name.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredUsers = users.filter((user) =>
+    (user.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.full_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.organization_name || "").toLowerCase().includes(searchTerm.toLowerCase())
   )
+  const approvedCount = users.filter((user) => getAdminAccessStatus(user) === "approved").length
+  const adminCount = users.filter((user) => user.role === "admin").length
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-8 font-sans">
-      {/* Header */}
+    <div dir={isRtl ? "rtl" : "ltr"} className="w-full max-w-7xl mx-auto p-6 md:p-8 space-y-8 font-sans">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-100 flex items-center gap-3">
             <Users className="w-7 h-7 text-indigo-400" />
-            User Management & Impersonation
+            {adminMessage(lang, "User Management & Impersonation")}
           </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Manage user roles, ban abusive accounts, override plans, and view filtered usage logs.
+            {adminMessage(lang, "Manage user roles, ban abusive accounts, and review admin-granted workspace access.")}
           </p>
         </div>
         <button
@@ -154,7 +136,7 @@ export function UsersPage() {
           className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono rounded border border-slate-700 transition"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+          {adminMessage(lang, "Refresh")}
         </button>
       </div>
 
@@ -164,240 +146,127 @@ export function UsersPage() {
           {toast}
         </div>
       )}
-
       {error && (
-        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-rose-400 text-sm flex items-center justify-between">
+        <div role="alert" className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-rose-300 text-sm flex items-center justify-between">
           <span>{error}</span>
-          <button onClick={fetchUsers} className="underline text-xs font-mono ml-4">Retry</button>
+          <button onClick={fetchUsers} className="underline text-xs font-mono ms-4">{adminMessage(lang, "Retry")}</button>
         </div>
       )}
 
-      {/* Summary KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-          <span className="text-[11px] font-mono text-slate-400 block">Total Users</span>
-          <span className="text-xl font-bold font-mono text-slate-100">{users.length}</span>
-        </div>
-        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-          <span className="text-[11px] font-mono text-slate-400 block">Active Trials</span>
-          <span className="text-xl font-bold font-mono text-cyan-400">
-            {users.filter(u => u.is_trial_active || u.plan_id === "plan_trial_default").length}
-          </span>
-        </div>
-        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-          <span className="text-[11px] font-mono text-slate-400 block">Admins</span>
-          <span className="text-xl font-bold font-mono text-indigo-400">
-            {users.filter(u => u.role === "admin").length}
-          </span>
-        </div>
-        <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
-          <span className="text-[11px] font-mono text-slate-400 block">Active Filtered</span>
-          <span className="text-xl font-bold font-mono text-accent">
-            {filteredUsers.length}
-          </span>
-        </div>
+        <Summary label={adminMessage(lang, "Total Users")} value={users.length} />
+        <Summary label={adminMessage(lang, "Approved access")} value={approvedCount} tone="text-emerald-400" />
+        <Summary label={adminMessage(lang, "Administrators")} value={adminCount} tone="text-indigo-400" />
+        <Summary label={adminMessage(lang, "Active Filtered")} value={filteredUsers.length} tone="text-accent" />
       </div>
 
-      {/* Filter */}
       <div className="relative max-w-md">
-        <Search className="w-4 h-4 absolute left-3 top-3 text-slate-500" />
+        <Search className="w-4 h-4 absolute start-3 top-3 text-slate-500" />
         <input
           type="text"
-          placeholder="Search by name, email, or organization..."
+          placeholder={adminMessage(lang, "Search by name, email, or organization...")}
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500"
+          onChange={(event) => setSearchTerm(event.target.value)}
+          className="w-full ps-9 pe-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-200 text-xs font-mono focus:outline-none focus:border-indigo-500"
         />
       </div>
 
-      {/* Users Table */}
       <div className="bg-slate-900/60 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+          <table className="w-full text-start border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/40 text-slate-400 font-mono">
-                <th className="py-3.5 px-4 font-semibold">User</th>
-                <th className="py-3.5 px-4 font-semibold">Role</th>
-                <th className="py-3.5 px-4 font-semibold">Organization / Plan</th>
-                <th className="py-3.5 px-4 font-semibold">Status</th>
-                <th className="py-3.5 px-4 font-semibold">Created</th>
-                <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                <th className="py-3.5 px-4 font-semibold">{adminMessage(lang, "User Email")}</th>
+                <th className="py-3.5 px-4 font-semibold">{adminMessage(lang, "Role")}</th>
+                <th className="py-3.5 px-4 font-semibold">{adminMessage(lang, "Organization / Access")}</th>
+                <th className="py-3.5 px-4 font-semibold">{adminMessage(lang, "Account status")}</th>
+                <th className="py-3.5 px-4 font-semibold">{adminMessage(lang, "Created")}</th>
+                <th className="py-3.5 px-4 font-semibold text-end">{adminMessage(lang, "Actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-500 font-mono">
-                    Loading users...
-                  </td>
-                </tr>
+                <tr><td colSpan={6} className="py-12 text-center text-slate-500 font-mono">{adminMessage(lang, "Loading users...")}</td></tr>
               ) : filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-500 font-mono">
-                    No users found matching search.
+                <tr><td colSpan={6} className="py-12 text-center text-slate-500 font-mono">{adminMessage(lang, "No users found matching search.")}</td></tr>
+              ) : filteredUsers.map((user) => (
+                <tr key={user.id} className="hover:bg-slate-800/30 transition">
+                  <td className="py-3.5 px-4">
+                    <div className="font-semibold text-slate-200">{user.full_name || user.email.split("@")[0]}</div>
+                    <div className="font-mono text-slate-400 text-[11px]">{user.email}</div>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <select
+                      value={user.role}
+                      onChange={(event) => handleRoleChange(user, event.target.value)}
+                      className="px-2 py-1 rounded text-[11px] font-mono uppercase bg-slate-950 border border-slate-800 text-slate-300 focus:outline-none"
+                      aria-label={adminMessage(lang, "Role")}
+                    >
+                      <option value="customer">{adminRoleLabel(lang, "customer")}</option>
+                      <option value="assistant-admin">{adminRoleLabel(lang, "assistant-admin")}</option>
+                      <option value="admin">{adminRoleLabel(lang, "admin")}</option>
+                    </select>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <div className="text-slate-300 font-medium">{user.organization_name || adminMessage(lang, "None")}</div>
+                    <div className="text-[11px] text-emerald-300 font-mono">
+                      {adminAccessLabel(lang, getAdminAccessStatus(user), Boolean(user.organization_id))}
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
+                      user.is_banned
+                        ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
+                        : user.is_suspended
+                        ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                        : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    }`}>
+                      {adminAccountStatusLabel(lang, user.status)}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">
+                    {formatAdminDate(user.created_at, lang)}
+                  </td>
+                  <td className="py-3.5 px-4 text-end space-x-2">
+                    <button
+                      onClick={() => setBanTargetUser(user)}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold transition ${
+                        user.is_banned
+                          ? "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30"
+                          : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20"
+                      }`}
+                    >
+                      {adminMessage(lang, user.is_banned ? "Unban" : "Ban")}
+                    </button>
+                    <button
+                      onClick={() => setImpersonateTargetUser(user)}
+                      disabled={impersonatingId === user.id || user.is_banned}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded border border-slate-700 transition inline-flex items-center gap-1"
+                    >
+                      <Key className="w-3 h-3 text-amber-400" />
+                      {adminMessage(lang, impersonatingId === user.id ? "Logging in..." : "Impersonate")}
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                filteredUsers.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-800/30 transition">
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-slate-200">{u.full_name || u.email.split("@")[0]}</div>
-                      <div className="font-mono text-slate-400 text-[11px]">{u.email}</div>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <select
-                        value={u.role}
-                        onChange={(e) => handleRoleChange(u, e.target.value)}
-                        className={`px-2 py-1 rounded text-[11px] font-mono uppercase bg-slate-950 border focus:outline-none ${
-                          u.role === "admin"
-                            ? "border-rose-500/40 text-rose-400"
-                            : u.role === "assistant-admin"
-                            ? "border-amber-500/40 text-amber-400"
-                            : "border-slate-800 text-slate-300"
-                        }`}
-                      >
-                        <option value="customer">customer</option>
-                        <option value="assistant-admin">assistant-admin</option>
-                        <option value="admin">admin</option>
-                      </select>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <div className="text-slate-300 font-medium">{u.organization_name || "—"}</div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[11px] text-teal-400 font-mono">{u.plan_name || "Custom"}</span>
-                        <button
-                          onClick={() => {
-                            setPlanSwitchUser(u)
-                            setSelectedPlanId(u.plan_id || "")
-                          }}
-                          className="text-[10px] text-slate-500 hover:text-slate-300 underline"
-                        >
-                          Change
-                        </button>
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase ${
-                        u.is_banned
-                          ? "bg-rose-500/20 text-rose-400 border border-rose-500/40"
-                          : u.is_suspended
-                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
-                          : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                      }`}>
-                        {u.status}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4 font-mono text-slate-400 text-[11px]">
-                      {new Date(u.created_at).toLocaleDateString()}
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right space-x-2">
-                      {/* Ban / Unban Button */}
-                      <button
-                        onClick={() => handleBanToggle(u)}
-                        className={`px-2.5 py-1 rounded text-xs font-semibold transition ${
-                          u.is_banned
-                            ? "bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30"
-                            : "bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20"
-                        }`}
-                      >
-                        {u.is_banned ? "Unban" : "Ban"}
-                      </button>
-
-                      {/* Impersonate */}
-                      <button
-                        onClick={() => handleImpersonate(u)}
-                        disabled={impersonatingId === u.id || u.is_banned}
-                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded border border-slate-700 transition inline-flex items-center gap-1"
-                      >
-                        <Key className="w-3 h-3 text-amber-400" />
-                        {impersonatingId === u.id ? "Logging in..." : "Impersonate"}
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Plan Override Modal */}
-      {planSwitchUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-teal-400" /> Switch Workspace Plan
-              </h2>
-              <button onClick={() => setPlanSwitchUser(null)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs text-slate-400">
-              Select a new subscription tier for <span className="text-slate-200 font-semibold">{planSwitchUser.email}</span>.
-            </p>
-
-            <form onSubmit={handleSwitchPlan} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1.5">Target Plan</label>
-                <select
-                  value={selectedPlanId}
-                  onChange={(e) => setSelectedPlanId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white text-sm focus:outline-none focus:border-teal-500"
-                >
-                  <option value="">Select Plan...</option>
-                  {plans.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.credit_allowance} credits • ${p.price_monthly || 0}/mo)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setPlanSwitchUser(null)}
-                  className="px-4 py-2 rounded-xl text-xs text-slate-400 hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!selectedPlanId}
-                  className="px-5 py-2 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-xs transition"
-                >
-                  Update Plan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Ban / Unban Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!banTargetUser}
-        title={banTargetUser?.is_banned ? "Unban User Account" : "Ban User Account"}
-        description={
-          banTargetUser?.is_banned
-            ? `Are you sure you want to unban ${banTargetUser?.email}? Their account access and login capabilities will be immediately restored.`
-            : `Are you sure you want to ban ${banTargetUser?.email}? This will immediately invalidate their sessions and block all login attempts.`
-        }
-        confirmText={banTargetUser?.is_banned ? "Unban Account" : "Ban Account"}
+        title={adminMessage(lang, banTargetUser?.is_banned ? "Unban User Account" : "Ban User Account")}
+        description={banTargetUser?.is_banned
+          ? adminMessage(lang, "Are you sure you want to unban {email}? Their account access and login capabilities will be immediately restored.", { email: banTargetUser?.email ?? "" })
+          : adminMessage(lang, "Are you sure you want to ban {email}? This will immediately invalidate their sessions and block all login attempts.", { email: banTargetUser?.email ?? "" })}
+        confirmText={adminMessage(lang, banTargetUser?.is_banned ? "Unban Account" : "Ban Account")}
+        cancelText={adminMessage(lang, "Cancel")}
         variant={banTargetUser?.is_banned ? "primary" : "danger"}
         isBusy={isBanModalBusy}
         onConfirm={confirmBanToggle}
         onCancel={() => setBanTargetUser(null)}
       />
-
-      {/* Impersonation Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!impersonateTargetUser}
         title={t("impersonationTitle")}
@@ -409,6 +278,15 @@ export function UsersPage() {
         onConfirm={confirmImpersonate}
         onCancel={() => setImpersonateTargetUser(null)}
       />
+    </div>
+  )
+}
+
+function Summary({ label, value, tone = "text-slate-100" }) {
+  return (
+    <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+      <span className="text-[11px] font-mono text-slate-400 block">{label}</span>
+      <span className={`text-xl font-bold font-mono ${tone}`}>{value}</span>
     </div>
   )
 }
