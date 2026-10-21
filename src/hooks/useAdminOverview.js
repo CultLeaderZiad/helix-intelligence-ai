@@ -42,7 +42,7 @@ export function useAdminOverview() {
     // Only throw if all five queries were rejected (complete outage)
     const allFailed = results.every((r) => r.status === "rejected")
     if (allFailed) {
-      throw results[0].reason || new Error("Failed to load operations dashboard.")
+      throw (statsRes.status === "rejected" && statsRes.reason) || new Error("Failed to load operations dashboard.")
     }
 
     return [stats, jobs, health, organizations, users]
