@@ -20,6 +20,7 @@ import { OnboardingWizardModal } from "@/components/OnboardingWizardModal"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
+import w5Discover from "@/i18n/w5Discover"
 
 const EMPTY_FILTERS = {
   country: "ALL",
@@ -47,16 +48,16 @@ const EMPTY_FILTERS = {
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 
 export function DiscoverPage() {
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { latestSearch, saveCompletedSearch, selectActiveCreative, selectSearchSession } = useSearchContext()
   const persistCompletedSearch = /** @type {(search: Record<string, unknown>) => void} */ (saveCompletedSearch)
   const setActiveCreative = /** @type {(creative: object) => void} */ (selectActiveCreative)
   const setSearchSession = /** @type {(session: object) => void} */ (selectSearchSession)
-  const { t } = useLanguage()
+  const { t, lang } = useLanguage()
+  const copy = w5Discover[lang] ?? w5Discover.en
   const [query, setQuery] = useState(() => searchParams.get("q") || latestSearch?.query || "")
   const [queryLanguage, setQueryLanguage] = useState(() => {
     try {
@@ -72,13 +73,26 @@ export function DiscoverPage() {
   const [selectedId, setSelectedId] = useState(null)
   const [showOnboardingModal, setShowOnboardingModal] = useState(false)
   const [tourEnabled, setTourEnabled] = useState(false)
+  const [onboardingSaveError, setOnboardingSaveError] = useState(false)
   const [showSupportModal, setShowSupportModal] = useState(false)
   const [showDraftsModal, setShowDraftsModal] = useState(false)
 
   const isBelowLg = useIsBelowLg()
   const { report } = useTelemetry()
   const { user, completeOnboarding } = useAuth()
-  const { phase, job, results, error, submit, refine, cancel, retry, isBusy } =
+  const {
+    phase,
+    job,
+    results,
+    error,
+    cancelError,
+    submit,
+    refine,
+    cancel,
+    retry,
+    isBusy,
+    isCancelling,
+  } =
     useDiscoverySearch()
 
   useEffect(() => {
@@ -169,15 +183,19 @@ export function DiscoverPage() {
     }, 200)
   }
 
-  function handleDismissOnboarding() {
-    setShowOnboardingModal(false)
-    completeOnboarding()
+  async function finishOnboarding() {
+    setTourEnabled(false)
+    try {
+      await completeOnboarding()
+      setOnboardingSaveError(false)
+    } catch {
+      setOnboardingSaveError(true)
+    }
   }
 
-  function handleGoToDashboard() {
+  function handleDismissOnboarding() {
     setShowOnboardingModal(false)
-    completeOnboarding()
-    navigate("/dashboard")
+    void finishOnboarding()
   }
 
   function runDiscovery() {
@@ -231,14 +249,12 @@ export function DiscoverPage() {
       <OnboardingTour 
         user={user} 
         enabled={tourEnabled} 
-        onComplete={() => {
-          setTourEnabled(false)
-          completeOnboarding()
-        }} 
+        onComplete={finishOnboarding}
       />
+      {onboardingSaveError && <div role="alert" className="flex items-center gap-3 border-b border-border bg-surface p-3 text-sm"><span>{t("onboardingSaveFailed")}</span><Button onClick={finishOnboarding}>{t("retry")}</Button></div>}
       <BreadcrumbBar
         className=""
-        trail={[t("discovery", "Discovery"), t("search", "Live Search"), query ? `"${query}"` : null].filter(Boolean)}
+        trail={[copy.discovery, copy.liveSearch, query ? `"${query}"` : null].filter(Boolean)}
         meta={
           phase === PHASE.READY && results
             ? `${formatInt(results?.total ?? 0)} records · ${formatDuration(
@@ -256,7 +272,7 @@ export function DiscoverPage() {
             className="flex items-center gap-1 text-xs text-text-muted hover:text-text"
           >
             <MessageSquarePlus className="w-3.5 h-3.5 text-teal-400" />
-            Report Issue
+            {t("reportIssue", copy.reportIssue)}
           </Button>
         }
       />
@@ -278,7 +294,15 @@ export function DiscoverPage() {
       />
 
       {showProgress ? (
-        <JobProgress job={job} query={query} onCancel={cancel} />
+        <JobProgress
+          job={job}
+          query={query}
+          onCancel={cancel}
+          onRetry={retry}
+          cancelError={cancelError}
+          isCancelling={isCancelling}
+          showRetry={phase === PHASE.TIMED_OUT}
+        />
       ) : (
         <div id="tour-job-progress" className="w-full h-0" />
       )}
@@ -366,11 +390,11 @@ export function DiscoverPage() {
               <EmptyState
                 icon={RotateCcw}
                 status="interrupted"
-                title="The service restarted while this search was running"
-                description="Nothing was wrong with your query. The backend restarted mid-run, so the job could not finish, and the credits for it have already been refunded to your balance. Running it again will start a fresh search."
+                title={copy.serviceRestarted}
+                description={copy.serviceRestartedDescription}
                 action={
                   <Button size="sm" variant="primary" onClick={retry} className="">
-                    Run the search again
+                    {copy.runSearchAgain}
                   </Button>
                 }
                className=""/>
@@ -385,20 +409,17 @@ export function DiscoverPage() {
               />
             ) : null}
 
-            {phase === PHASE.TIMED_OUT ? (
+            {phase === PHASE.TIMED_OUT && !job ? (
               <EmptyState
                 icon={Clock}
                 size="lg"
                 status={t("stalled")}
                 title={t("takingLonger")}
-                description={t("takingLongerDesc")}
+                description={cancelError ? copy.timeoutNoJob : t("takingLongerDesc")}
                 action={
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="primary" onClick={retry} className="">
-                      {t("retrySearch")}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={cancel} className="">
-                      {t("cancel")}
+                      {copy.retrySearch}
                     </Button>
                   </div>
                 }
@@ -426,7 +447,7 @@ export function DiscoverPage() {
                 <EmptyState
                   icon={SearchX}
                   size="lg"
-                  status={scrapedNothing ? "zero results" : "no matches"}
+                status={scrapedNothing ? copy.statusZeroResults : copy.statusNoMatches}
                   title={
                     scrapedNothing
                       ? t("zeroResultsTitle")
@@ -508,7 +529,6 @@ export function DiscoverPage() {
         isOpen={showOnboardingModal}
         onClose={handleCloseOnboarding}
         onDismiss={handleDismissOnboarding}
-        onDashboard={handleGoToDashboard}
         onSearchSelect={(searchBrand) => setQuery(searchBrand)}
       />
 
