@@ -20,6 +20,8 @@ import {
 import { Button } from "@/components/ui/Button"
 import { Input } from "@/components/ui/Field"
 import { cn } from "@/lib/utils"
+import { useLanguage } from "@/context/LanguageContext"
+import { adminMessage, adminStatusLabel, formatAdminDate } from "@/i18n/adminMessages"
 
 const CATEGORIES = [
   "General API",
@@ -32,29 +34,19 @@ const CATEGORIES = [
 
 const QUICK_EMOJIS = ["🚀", "⚡", "🔔", "🛠️", "💡", "🛡️", "📊", "🎨", "🎵"]
 
-function formatPublishDate(dateStr) {
-  if (!dateStr) return "Recently"
-  try {
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return String(dateStr)
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, "0")
-    const day = String(d.getDate()).padStart(2, "0")
-    return `${year}-${month}-${day}`
-  } catch {
-    return String(dateStr)
-  }
+function formatPublishDate(dateStr, lang) {
+  return dateStr ? formatAdminDate(dateStr, lang) : adminMessage(lang, "Recently")
 }
 
 /**
  * Preview renderer for the Kie.ai style update card
  */
-function CardPreview({ item }) {
-  const publishDate = formatPublishDate(item.starts_at || new Date())
+function CardPreview({ item, lang }) {
+  const publishDate = formatPublishDate(item.starts_at || new Date(), lang)
   const category = item.category || "General API"
 
   return (
-    <div className="rounded-xl border border-border/80 bg-surface/90 p-5 shadow-lg space-y-3 text-left">
+    <div className="rounded-xl border border-border/80 bg-surface/90 p-5 shadow-lg space-y-3 text-start">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 text-xs font-mono text-text-muted">
           <Clock className="h-3.5 w-3.5 text-text-faint" />
@@ -62,23 +54,23 @@ function CardPreview({ item }) {
         </div>
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400 font-mono text-[10px] uppercase">
           <Tag className="h-2.5 w-2.5" />
-          {category}
+          {adminMessage(lang, category)}
         </span>
       </div>
 
       <h3 className="text-base font-bold text-text">
-        {item.title || "Announcement Title"}
+        {item.title || adminMessage(lang, "Announcement Title")}
       </h3>
 
       <div className="text-xs text-text-muted leading-relaxed space-y-1 whitespace-pre-line font-sans">
-        {item.body || "Announcement description and release notes will be rendered here with formatted bullet points and links..."}
+        {item.body || adminMessage(lang, "Announcement description and release notes will be rendered here with formatted bullet points and links...")}
       </div>
 
       {item.link_url && (
         <div className="pt-2 border-t border-border/50">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-surface-elevated border border-border text-[11px] font-mono text-accent">
             <BookOpen className="h-3 w-3" />
-            <span>Documentation Reference: {item.link_url}</span>
+            <span>{adminMessage(lang, "Documentation Reference: {url}", { url: item.link_url })}</span>
             <ExternalLink className="h-2.5 w-2.5 ml-1 text-text-faint" />
           </span>
         </div>
@@ -88,9 +80,11 @@ function CardPreview({ item }) {
 }
 
 export function UpdatesPage() {
+  const { lang, isRtl } = useLanguage()
   const [updates, setUpdates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [notice, setNotice] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [submitting, setSubmitting] = useState(false)
@@ -118,7 +112,8 @@ export function UpdatesPage() {
       const data = await updatesService.getAdminUpdates()
       setUpdates(Array.isArray(data) ? data : [])
     } catch (err) {
-      setError(err.message || "Failed to load updates")
+      console.error("Failed to load updates", err)
+      setError(adminMessage(lang, "Failed to load updates."))
     } finally {
       setLoading(false)
     }
@@ -210,6 +205,8 @@ export function UpdatesPage() {
     if (!formData.title.trim()) return
 
     setSubmitting(true)
+    setError(null)
+    setNotice(null)
     try {
       const payload = {
         ...formData,
@@ -222,9 +219,11 @@ export function UpdatesPage() {
         await updatesService.createAdminUpdate(payload)
       }
       setModalOpen(false)
+      setNotice(adminMessage(lang, "Update saved."))
       fetchUpdates()
     } catch (err) {
-      alert(err.message || "Failed to save update")
+      console.error("Failed to save update", err)
+      setError(adminMessage(lang, "Failed to save update."))
     } finally {
       setSubmitting(false)
     }
@@ -237,18 +236,24 @@ export function UpdatesPage() {
       setUpdates((prev) =>
         prev.map((u) => (u.id === item.id ? { ...u, [field]: !u[field] } : u))
       )
+      setNotice(adminMessage(lang, "Update status saved."))
     } catch (err) {
-      alert(`Failed to update ${field}: ${err.message}`)
+      console.error("Failed to update announcement", err)
+      setError(adminMessage(lang, "Failed to update {field}.", {
+        field: adminMessage(lang, field === "is_published" ? "publication status" : "banner status"),
+      }))
     }
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this update?")) return
+    if (!window.confirm(adminMessage(lang, "Are you sure you want to delete this update?"))) return
     try {
       await updatesService.deleteAdminUpdate(id)
       setUpdates((prev) => prev.filter((u) => u.id !== id))
+      setNotice(adminMessage(lang, "Update deleted."))
     } catch (err) {
-      alert(`Failed to delete update: ${err.message}`)
+      console.error("Failed to delete update", err)
+      setError(adminMessage(lang, "Failed to delete update."))
     }
   }
 
@@ -260,7 +265,7 @@ export function UpdatesPage() {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 md:p-8 space-y-6 font-sans">
+    <div dir={isRtl ? "rtl" : "ltr"} className="w-full max-w-7xl mx-auto p-4 md:p-8 space-y-6 font-sans">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5">
