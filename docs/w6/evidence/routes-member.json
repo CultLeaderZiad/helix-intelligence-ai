@@ -1,0 +1,519 @@
+[
+  {
+    "group": "member",
+    "route": "/discover",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:53:20.119154+00:00",
+    "expected_path": "/discover",
+    "dialogs": 1,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/discover",
+    "title": "Discover · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": false
+  },
+  {
+    "group": "member",
+    "route": "/access",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:53:29.147465+00:00",
+    "expected_path": "/access",
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Access & Usage",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/access",
+    "title": "Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/support",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:53:35.398098+00:00",
+    "expected_path": "/support",
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Support & Feedback",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/support",
+    "title": "Support & Feedback · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 3
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 3
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/settings",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:53:42.469174+00:00",
+    "expected_path": "/settings",
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Account & profile settings",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/settings",
+    "title": "Profile & Settings · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 2
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "screenshot": "screens/settings-en-1280.png",
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/notifications",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:53:47.917598+00:00",
+    "expected_path": "/notifications",
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Notifications & announcements",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/notifications",
+    "title": "Notifications & Announcements · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/discover",
+    "language": "en",
+    "width": 390,
+    "height": 844,
+    "checked_at": "2026-10-21T19:53:54.929757+00:00",
+    "expected_path": "/discover",
+    "dialogs": 1,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/discover",
+    "title": "Discover · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 2
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": false
+  },
+  {
+    "group": "member",
+    "route": "/access",
+    "language": "en",
+    "width": 390,
+    "height": 844,
+    "checked_at": "2026-10-21T19:54:01.722539+00:00",
+    "expected_path": "/access",
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Access & Usage",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/access",
+    "title": "Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 2
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/support",
+    "language": "en",
+    "width": 390,
+    "height": 844,
+    "checked_at": "2026-10-21T19:54:07.358587+00:00",
+    "expected_path": "/support",
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Support & Feedback",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/support",
+    "title": "Support & Feedback · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 2
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/settings",
+    "language": "en",
+    "width": 390,
+    "height": 844,
+    "checked_at": "2026-10-21T19:54:11.913251+00:00",
+    "expected_path": "/settings",
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Account & profile settings",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/settings",
+    "title": "Profile & Settings · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/notifications",
+    "language": "en",
+    "width": 390,
+    "height": 844,
+    "checked_at": "2026-10-21T19:54:18.467294+00:00",
+    "expected_path": "/notifications",
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "Notifications & announcements",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/notifications",
+    "title": "Notifications & Announcements · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 2
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/discover",
+    "language": "ar",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:54:22.888371+00:00",
+    "expected_path": "/discover",
+    "dialogs": 1,
+    "direction": "rtl",
+    "errorBoundary": false,
+    "heading": "",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/discover",
+    "title": "Discover · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 2
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "screenshot": "screens/discover-ar-1280.png",
+    "redirected": false,
+    "passed": false
+  },
+  {
+    "group": "member",
+    "route": "/access",
+    "language": "ar",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:54:35.069825+00:00",
+    "expected_path": "/access",
+    "dialogs": 0,
+    "direction": "rtl",
+    "errorBoundary": false,
+    "heading": "الوصول والاستخدام",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/access",
+    "title": "Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 2
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/support",
+    "language": "ar",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:54:40.231999+00:00",
+    "expected_path": "/support",
+    "dialogs": 0,
+    "direction": "rtl",
+    "errorBoundary": false,
+    "heading": "الدعم والملاحظات",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/support",
+    "title": "Support & Feedback · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 2
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "screenshot": "screens/support-ar-1280.png",
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/settings",
+    "language": "ar",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:54:48.879577+00:00",
+    "expected_path": "/settings",
+    "dialogs": 0,
+    "direction": "rtl",
+    "errorBoundary": false,
+    "heading": "إعدادات الحساب والملف الشخصي",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/settings",
+    "title": "Profile & Settings · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "screenshot": "screens/settings-ar-1280.png",
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/notifications",
+    "language": "ar",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-10-21T19:54:59.984662+00:00",
+    "expected_path": "/notifications",
+    "dialogs": 0,
+    "direction": "rtl",
+    "errorBoundary": false,
+    "heading": "الإشعارات والإعلانات",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/notifications",
+    "title": "Notifications & Announcements · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 2
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  },
+  {
+    "group": "member",
+    "route": "/discover",
+    "language": "ar",
+    "width": 390,
+    "height": 844,
+    "checked_at": "2026-10-21T19:55:06.936264+00:00",
+    "expected_path": "/discover",
+    "dialogs": 1,
+    "direction": "rtl",
+    "errorBoundary": false,
+    "heading": "",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/discover",
+    "title": "Discover · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "screenshot": "screens/discover-ar-390.png",
+    "redirected": false,
+    "passed": false
+  },
+  {
+    "group": "member",
+    "route": "/access",
+    "language": "ar",
+    "width": 390,
+    "height": 844,
+    "checked_at": "2026-10-21T19:55:17.751807+00:00",
+    "expected_path": "/access",
+    "dialogs": 0,
+    "direction": "rtl",
+    "errorBoundary": false,
+    "heading": "الوصول والاستخدام",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/access",
+    "title": "Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [
+      {
+        "method": "GET",
+        "path": "/api/notifications/",
+        "count": 2
+      },
+      {
+        "method": "GET",
+        "path": "/api/updates",
+        "count": 2
+      }
+    ],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  }
+]
