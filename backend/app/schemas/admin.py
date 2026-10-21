@@ -93,6 +93,7 @@ class AdminOrganizationRow(BaseModel):
     custom_feature_flags: Dict[str, Any]
     effective_feature_flags: Dict[str, Any]
     status: str
+    access_status: Optional[str] = None
     trial_expires_at: Optional[str] = None
     total_jobs: int = 0
 
@@ -154,6 +155,7 @@ class AdminUserRow(BaseModel):
     organization_name: Optional[str] = None
     plan_id: Optional[str] = None
     plan_name: Optional[str] = None
+    access_status: Optional[str] = None
     trial_started_at: Optional[str] = None
     trial_expires_at: Optional[str] = None
     created_at: str
