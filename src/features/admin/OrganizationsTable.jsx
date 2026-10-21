@@ -70,7 +70,7 @@ export function OrganizationsTable({ organizations, onRefresh }) {
                 <td className="px-4 py-3 text-right">
                   <Button 
                     size="xs" 
-                    variant="secondary"
+                    variant="default"
                     disabled={grantingId === org.id}
                     onClick={() => handleGrantCredits(org.id)}
                   >

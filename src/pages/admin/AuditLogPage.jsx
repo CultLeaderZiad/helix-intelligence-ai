@@ -6,18 +6,12 @@ import { Tag } from "@/components/ui/Tag"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { adminService } from "@/services"
 import { formatRelative } from "@/lib/format"
-import { 
-  ScrollText, 
-  Search, 
-  RefreshCw, 
-  Filter, 
-  ChevronLeft, 
-  ChevronRight,
-  Shield,
-  Activity,
-  User,
-  Clock,
-  Coins
+import {
+  ScrollText
+  RefreshCw
+  Filter
+  ChevronLeft
+  ChevronRight
 } from "lucide-react"
 
 export function AuditLogPage() {

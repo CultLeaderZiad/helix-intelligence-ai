@@ -13,7 +13,6 @@ import {
   PenLine,
   CircleSlash,
   Radio,
-  ExternalLink,
 } from "lucide-react"
 import { dashboardService, playbookService } from "@/services"
 import { Panel } from "@/components/ui/Panel"
