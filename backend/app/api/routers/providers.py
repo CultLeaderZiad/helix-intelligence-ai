@@ -91,7 +91,7 @@ async def save_gemini_credential(
     # 1. Test key validity
     test_provider = GeminiProvider(api_key=raw_key)
     try:
-        test_res = await test_provider.test_connection()
+        await test_provider.test_connection()
     except Exception as e:
         import re
         clean_err = str(e).replace(raw_key, "[REDACTED]")

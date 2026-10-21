@@ -40,12 +40,6 @@ async def list_notifications(
     result = await db.execute(query)
     items = result.scalars().all()
 
-    # Total unread count
-    unread_count = await db.scalar(
-        select(Notification)
-        .where(Notification.user_id == user_id, Notification.is_read == False)
-    )
-
     return {
         "items": [
             {
