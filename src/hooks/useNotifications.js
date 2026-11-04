@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { notificationService, updatesService } from "@/services"
+import { notificationService } from "@/services"
 import { memberTimestamp } from "@/i18n/memberMessages"
+import { invalidateNotificationReads, readNotificationSources } from "@/hooks/notificationReadCache"
 
 function readUpdateReadState(id) {
   try {
@@ -19,26 +20,40 @@ function writeUpdateReadState(id) {
   }
 }
 
-export function useNotifications(fallbackUpdateBody) {
+export function useNotifications(fallbackUpdateBody, { scope = null } = {}) {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [actionError, setActionError] = useState(null)
-  const requestInFlight = useRef(false)
+  const [dataScope, setDataScope] = useState(scope)
+  const dataScopeRef = useRef(scope)
+  const scopeRef = useRef(scope)
+  scopeRef.current = scope
+  const requestInFlight = useRef(null)
   const markAllInFlight = useRef(false)
-  const notificationsRef = useRef(notifications)
-  notificationsRef.current = notifications
+  const scopedNotifications = dataScope === scope ? notifications : []
+  const scopedLoading = dataScope === scope ? loading : true
+  const scopedError = dataScope === scope ? error : false
+  const scopedActionError = dataScope === scope ? actionError : null
+  const notificationsRef = useRef(scopedNotifications)
+  notificationsRef.current = scopedNotifications
 
-  const refresh = useCallback(async () => {
-    if (requestInFlight.current) return false
-    requestInFlight.current = true
+  const load = useCallback(async (force = false) => {
+    const requestScope = scope
+    if (requestInFlight.current?.scope === requestScope) return false
+    const request = { scope: requestScope }
+    requestInFlight.current = request
+    if (dataScopeRef.current !== requestScope) {
+      dataScopeRef.current = requestScope
+      setDataScope(requestScope)
+      setNotifications([])
+      setActionError(null)
+    }
     setLoading(true)
     setError(false)
     try {
-      const [personalResult, updatesResult] = await Promise.allSettled([
-        notificationService.getNotifications(),
-        updatesService.getPublishedUpdates(),
-      ])
+      const [personalResult, updatesResult] = await readNotificationSources(requestScope, { force })
+      if (scopeRef.current !== requestScope || requestInFlight.current !== request) return false
       const previous = notificationsRef.current
       const personalItems = personalResult.status === "fulfilled"
         ? (Array.isArray(personalResult.value?.items) ? personalResult.value.items : [])
@@ -67,39 +82,46 @@ export function useNotifications(fallbackUpdateBody) {
       if (!succeeded) setError(true)
       return succeeded
     } catch {
-      setError(true)
+      if (scopeRef.current === requestScope) setError(true)
       return false
     } finally {
-      requestInFlight.current = false
-      setLoading(false)
+      if (requestInFlight.current === request) requestInFlight.current = null
+      if (scopeRef.current === requestScope) setLoading(false)
     }
-  }, [fallbackUpdateBody])
+  }, [fallbackUpdateBody, scope])
 
+  const refresh = useCallback(() => load(true), [load])
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    void load(false)
+  }, [load])
 
   const markAsRead = useCallback(async (notification) => {
     setActionError(null)
     if (notification.isUpdate) {
       const saved = writeUpdateReadState(notification.originalUpdateId)
-      setNotifications((previous) => previous.map((item) => (
-        item.id === notification.id ? { ...item, is_read: true } : item
-      )))
-      if (!saved) setActionError("readStateNotSaved")
+      if (saved) invalidateNotificationReads(scope)
+      if (scopeRef.current === scope) {
+        setNotifications((previous) => previous.map((item) => (
+          item.id === notification.id ? { ...item, is_read: true } : item
+        )))
+        if (!saved) setActionError("readStateNotSaved")
+      }
       return saved
     }
     try {
       await notificationService.markAsRead(notification.id)
-      setNotifications((previous) => previous.map((item) => (
-        item.id === notification.id ? { ...item, is_read: true } : item
-      )))
+      if (scopeRef.current === scope) {
+        invalidateNotificationReads(scope)
+        setNotifications((previous) => previous.map((item) => (
+          item.id === notification.id ? { ...item, is_read: true } : item
+        )))
+      }
       return true
     } catch {
-      setActionError("markReadFailed")
+      if (scopeRef.current === scope) setActionError("markReadFailed")
       return false
     }
-  }, [])
+  }, [scope])
 
   const markAllRead = useCallback(async () => {
     if (markAllInFlight.current) return false
@@ -108,28 +130,42 @@ export function useNotifications(fallbackUpdateBody) {
     const snapshot = notificationsRef.current
     const unreadUpdates = snapshot.filter((item) => item.isUpdate && !item.is_read)
     const storageFailed = unreadUpdates.some((item) => !writeUpdateReadState(item.originalUpdateId))
-    setNotifications((previous) => previous.map((item) => (
-      item.isUpdate ? { ...item, is_read: true } : item
-    )))
+    if (unreadUpdates.length) invalidateNotificationReads(scope)
+    if (scopeRef.current === scope) {
+      setNotifications((previous) => previous.map((item) => (
+        item.isUpdate ? { ...item, is_read: true } : item
+      )))
+    }
     const unreadPersonal = snapshot.filter((item) => !item.isUpdate && !item.is_read)
     try {
       if (unreadPersonal.length) {
         try {
           await notificationService.markAllAsRead()
-          setNotifications((previous) => previous.map((item) => (
-            !item.isUpdate ? { ...item, is_read: true } : item
-          )))
+          invalidateNotificationReads(scope)
+          if (scopeRef.current === scope) {
+            setNotifications((previous) => previous.map((item) => (
+              !item.isUpdate ? { ...item, is_read: true } : item
+            )))
+          }
         } catch {
-          setActionError("markAllReadFailed")
+          if (scopeRef.current === scope) setActionError("markAllReadFailed")
           return false
         }
       }
-      if (storageFailed) setActionError("readStateNotSaved")
+      if (storageFailed && scopeRef.current === scope) setActionError("readStateNotSaved")
       return !storageFailed
     } finally {
       markAllInFlight.current = false
     }
-  }, [])
+  }, [scope])
 
-  return { notifications, loading, error, actionError, refresh, markAsRead, markAllRead }
+  return {
+    notifications: scopedNotifications,
+    loading: scopedLoading,
+    error: scopedError,
+    actionError: scopedActionError,
+    refresh,
+    markAsRead,
+    markAllRead,
+  }
 }

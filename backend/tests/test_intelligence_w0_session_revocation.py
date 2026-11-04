@@ -44,6 +44,7 @@ async def test_same_second_reset_rejects_old_token_and_accepts_new_sign_in(monke
     The sign-in minted after the reset, still inside that second, is accepted.
     JWT iat is the whole second for both tokens. token_version tells them apart.
     """
+    monkeypatch.setattr("jose.jwt.datetime", _freeze(_at(0.9)))
     monkeypatch.setattr("app.core.security.datetime", _freeze(_at(0.2)))
     before = create_access_token("usr_same_second", token_version=1)
     monkeypatch.setattr("app.core.security.datetime", _freeze(_at(0.8)))
