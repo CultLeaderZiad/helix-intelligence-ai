@@ -24,7 +24,7 @@ import time
 import uuid
 from functools import lru_cache
 from typing import Optional
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from app.core.config import settings
 
@@ -57,6 +57,8 @@ _SAFE_MEDIA_TYPES = {
     ".webm": "video/webm",
     ".mov": "video/quicktime",
 }
+
+_AVATAR_EXTENSIONS = {".gif", ".jpg", ".jpeg", ".png", ".webp"}
 
 
 def media_response_headers(filename: str) -> tuple[str, dict]:
@@ -263,9 +265,8 @@ def resolve_stored_url(
     if public and (url == public or url.startswith(public + "/")):
         key = url[len(public):].lstrip("/")
         return _presign_r2_key(key, ttl_seconds)
-    marker = "/uploads/"
-    if marker in url:
-        filename = url.split(marker, 1)[1].split("?", 1)[0]
+    filename = _local_upload_filename(url)
+    if filename is not None:
         return issue_local_url(
             filename,
             org_id=org_id,
@@ -285,6 +286,21 @@ def _public_api_origin() -> str:
     return origin.rstrip("/").removesuffix("/api")
 
 
+def _local_upload_filename(url: str) -> Optional[str]:
+    origin = _public_api_origin()
+    if url.startswith("/uploads/"):
+        path = url
+    elif origin and url.startswith(f"{origin}/uploads/"):
+        path = url[len(origin):]
+    else:
+        return None
+    encoded = path.split("?", 1)[0].split("#", 1)[0][len("/uploads/"):]
+    filename = unquote(encoded)
+    if not filename or filename.startswith(".") or "/" in filename or "\\" in filename:
+        return None
+    return filename
+
+
 def _store_local(filename: str, data: bytes) -> str:
     file_path = os.path.join(UPLOAD_DIR, filename)
     with open(file_path, "wb") as f:
@@ -294,11 +310,11 @@ def _store_local(filename: str, data: bytes) -> str:
         "This file will be lost on the next restart or deploy.",
         filename,
     )
-    return issue_local_url(filename)
+    return f"/uploads/{filename}"
 
 
 async def store_media_bytes(job_id: str, data: bytes, mime_type: str = "image/png") -> str:
-    """Persist binary media and return a durable public URL."""
+    """Persist binary media and return a storage reference for scoped resolution."""
     if not data:
         raise ValueError("store_media_bytes called with empty data")
 
@@ -340,10 +356,7 @@ async def store_media_from_url(job_id: str, source_url: str) -> str:
 
 
 async def save_file(data: bytes, filename: str, content_type: Optional[str] = None) -> str:
-    """Save raw file bytes and return a durable URL (F34).
-    
-    Compatible with existing callers expecting a filename-based save.
-    """
+    """Save raw bytes; local references need scoped resolution before display."""
     if not data:
         raise ValueError("save_file called with empty data")
 
@@ -365,7 +378,11 @@ async def save_avatar(data: bytes, mime_type: str, extension: str, user_id: str)
     """Store a re-encoded avatar. R2 is a separate media origin when configured."""
     if not data:
         raise ValueError("save_avatar called with empty data")
-    filename = f"avatar_{user_id}_{uuid.uuid4().hex[:12]}.{extension}"
+    extension = extension.lower().lstrip(".")
+    if f".{extension}" not in _AVATAR_EXTENSIONS:
+        raise ValueError("Unsupported avatar extension")
+    owner_tag = hashlib.sha256(str(user_id).encode("utf-8")).hexdigest()
+    filename = f"avatar_{owner_tag}_{uuid.uuid4().hex}.{extension}"
     disposition = f'inline; filename="avatar.{extension}"'
     if r2_enabled():
         key = f"avatars/{filename}"
@@ -373,4 +390,29 @@ async def save_avatar(data: bytes, mime_type: str, extension: str, user_id: str)
         return f"r2://{key}"
     _store_local(filename, data)
     return f"/uploads/{filename}"
+
+
+def is_user_avatar_filename(filename: str, user_id: str) -> bool:
+    """Match only avatar object names issued for this user, including legacy names."""
+    if not filename or os.path.basename(filename) != filename or "/" in filename or "\\" in filename:
+        return False
+    extension = os.path.splitext(filename)[1].lower()
+    if extension not in _AVATAR_EXTENSIONS:
+        return False
+
+    stem = filename[:-len(extension)]
+    owner_tag = hashlib.sha256(str(user_id).encode("utf-8")).hexdigest()
+    current_prefix = f"avatar_{owner_tag}_"
+    if stem.startswith(current_prefix):
+        suffix = stem[len(current_prefix):]
+        return len(suffix) == 32 and all(char in "0123456789abcdef" for char in suffix.lower())
+
+    legacy_user_id = str(user_id)
+    if not legacy_user_id or "/" in legacy_user_id or "\\" in legacy_user_id:
+        return False
+    legacy_prefix = f"avatar_{legacy_user_id}_"
+    if not stem.startswith(legacy_prefix):
+        return False
+    suffix = stem[len(legacy_prefix):]
+    return len(suffix) == 12 and all(char in "0123456789abcdef" for char in suffix.lower())
 
