@@ -1,8 +1,8 @@
 /**
  * The single switch that decides where data comes from.
  *
- * Keep local and preview builds on the same-origin API proxy. Production-only
- * deployments must opt into the production environment explicitly.
+ * Keep local and preview builds on the same-origin API proxy. Unclassified
+ * production-mode builds use production origin rules.
  *
  * No component or hook changes. Nothing else in the app reads these vars.
  */
@@ -31,7 +31,7 @@ export const DATA_SOURCE = rawDataSource === "mock" ? "mock" : "api"
 
 export const API_BASE_URL = resolveApiBaseUrl(
   env.VITE_API_BASE_URL,
-  env.VITE_ENVIRONMENT ?? "development",
+  env.VITE_ENVIRONMENT,
   env.PROD === true
 )
 
