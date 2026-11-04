@@ -1,7 +1,19 @@
 import os
 import json
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+
+from .origins import is_loopback_host, validate_database_target, validate_http_target
+
+
+def _dotenv_files_for_environment(environment: str | None):
+    if environment != "development":
+        return None
+    config_path = Path(__file__).resolve()
+    project_root = config_path.parents[3]
+    backend_root = config_path.parents[2]
+    return (str(project_root / ".env.local"), str(backend_root / ".env.local"))
 
 
 class Settings(BaseSettings):
@@ -32,15 +44,11 @@ class Settings(BaseSettings):
     AUTH_DEV_RESET_RETURN: bool = os.getenv("AUTH_DEV_RESET_RETURN", "False").lower() in ("true", "1", "yes")
 
     # Public app origin used to build password-reset links
+    # Local default; production deployment values must be injected explicitly.
     PUBLIC_APP_BASE_URL: str = os.getenv(
-        "PUBLIC_APP_BASE_URL",
-        "https://helix-intelligence-ai-six.vercel.app",
+        "PUBLIC_APP_BASE_URL", "http://localhost:3000"
     ).rstrip("/")
 
-    # CORS — see _parse_cors_origins() below.  Declared as str so
-    # pydantic-settings won't try JSON-decoding a comma-separated
-    # value from the env var.  main.py imports `cors_origins` (not
-    # this field) for the CORS middleware.
     BACKEND_CORS_ORIGINS: str = ""
 
     # MOCKS
@@ -50,31 +58,11 @@ class Settings(BaseSettings):
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     
     # NEON AUTH
-    NEON_JWKS_URL: str = os.getenv(
-        "NEON_JWKS_URL", 
-        os.getenv(
-            "NEON_AUTH_JWKS_URL",
-            "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json"
-        )
-    )
-    NEON_AUTH_URL: str = os.getenv(
-        "NEON_AUTH_BASE_URL",
-        "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth"
-    )
-    NEON_JWT_ISSUER: str = os.getenv(
-        "NEON_JWT_ISSUER",
-        os.getenv(
-            "NEON_AUTH_BASE_URL",
-            "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth",
-        ),
-    )
-    NEON_JWT_AUDIENCE: str = os.getenv(
-        "NEON_JWT_AUDIENCE",
-        os.getenv(
-            "NEON_AUTH_BASE_URL",
-            "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth",
-        ),
-    )
+    NEON_JWKS_URL: str = os.getenv("NEON_JWKS_URL", os.getenv("NEON_AUTH_JWKS_URL", "")).rstrip("/")
+    NEON_AUTH_URL: str = os.getenv("NEON_AUTH_BASE_URL", os.getenv("NEON_AUTH_URL", "")).rstrip("/")
+    NEON_JWT_ISSUER: str = os.getenv("NEON_JWT_ISSUER", os.getenv("NEON_AUTH_BASE_URL", "")).rstrip("/")
+    NEON_JWT_AUDIENCE: str = os.getenv("NEON_JWT_AUDIENCE", os.getenv("NEON_AUTH_BASE_URL", "")).rstrip("/")
+
     NEON_WEBHOOK_SECRET: str = os.getenv("NEON_WEBHOOK_SECRET", "")
     JWKS_REFRESH_LIMIT: int = int(os.getenv("JWKS_REFRESH_LIMIT", "8"))
     JWKS_REFRESH_WINDOW_S: int = int(os.getenv("JWKS_REFRESH_WINDOW_S", "60"))
@@ -97,7 +85,22 @@ class Settings(BaseSettings):
 
 
     def __init__(self, **values):
-        super().__init__(**values)
+        if "_env_file" in values:
+            raise ValueError("Explicit dotenv file overrides are not supported")
+
+        requested_environment = values.get("ENVIRONMENT")
+        if requested_environment is None or not str(requested_environment).strip():
+            requested_environment = os.getenv("ENVIRONMENT")
+        if not requested_environment:
+            requested_environment = "production" if os.getenv("RENDER") else "development"
+        values["ENVIRONMENT"] = requested_environment
+
+        environment = _ENVIRONMENT_ALIASES.get(str(requested_environment).strip().lower())
+        if environment in ("development", "preview") and os.getenv("RENDER"):
+            environment = "production"
+        env_files = _dotenv_files_for_environment(environment)
+
+        super().__init__(_env_file=env_files, **values)
         if not self.SECRET_KEY:
             raise ValueError(
                 "SECRET_KEY environment variable is not set. "
@@ -155,10 +158,7 @@ class Settings(BaseSettings):
     ADYNTEL_API_KEY: str = os.getenv("ADYNTEL_API_KEY", "")
     ADYNTEL_EMAIL: str = os.getenv("ADYNTEL_EMAIL", "")
     # Public API origin used to build webhook URLs
-    PUBLIC_API_BASE_URL: str = os.getenv(
-        "PUBLIC_API_BASE_URL",
-        "https://helix-intelligence-ai.onrender.com/api",
-    ).rstrip("/")
+    PUBLIC_API_BASE_URL: str = os.getenv("PUBLIC_API_BASE_URL", "/api").rstrip("/")
 
     # OBJECT STORAGE (Cloudflare R2, S3-compatible)
     # Render's disk is ephemeral: anything written locally is destroyed on the
@@ -222,7 +222,7 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
     RESEND_FROM: str = os.getenv("RESEND_FROM", "")
     # Origin used to build links in emails and notifications.
-    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:5173").rstrip("/")
+    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:3000").rstrip("/")
 
     # 7-DAY TRIAL & MEDIA GENERATION LIMITS
     TRIAL_DAYS: int = int(os.getenv("TRIAL_DAYS", "7"))
@@ -255,7 +255,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         case_sensitive=True,
-        env_file=("../.env", "../.env.local", ".env", ".env.local"),
+        env_file=None,
         extra="ignore",
         env_ignore_empty=True,
     )
@@ -267,23 +267,30 @@ class Settings(BaseSettings):
 # comma-separated values.  This is the single source of truth for CORS
 # origins throughout the app.
 # ---------------------------------------------------------------------------
-def _parse_cors_origins() -> List[str]:
-    """Parse BACKEND_CORS_ORIGINS env var.
+_LOCAL_CORS_ORIGINS = (
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+)
 
-    Accepts comma-separated:
-        "https://app.vercel.app,https://preview.vercel.app"
-    or JSON array:
-        '["https://app.vercel.app"]'
 
-    Returns localhost defaults when the var is unset/empty.
-    """
-    raw = os.getenv("BACKEND_CORS_ORIGINS", "").strip()
-    if not raw:
-        return ["http://localhost:5173", "http://localhost:3000"]
-    if raw.startswith("["):
-        origins = json.loads(raw)
-        return [o.rstrip("/") for o in origins]
-    return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+def _parse_cors_origins(raw: str | None = None, environment: str = "development") -> List[str]:
+    source = os.getenv("BACKEND_CORS_ORIGINS", "") if raw is None else raw
+    source = (source or "").strip()
+    if not source:
+        return [] if environment == "production" else list(_LOCAL_CORS_ORIGINS)
+
+    if source.startswith("["):
+        try:
+            parsed = json.loads(source)
+        except json.JSONDecodeError:
+            raise ValueError("BACKEND_CORS_ORIGINS must be a JSON array or comma-separated list") from None
+        if not isinstance(parsed, list) or any(not isinstance(item, str) for item in parsed):
+            raise ValueError("BACKEND_CORS_ORIGINS must contain only origin strings")
+        values = parsed
+    else:
+        values = source.split(",")
+
+    return [item.strip().rstrip("/") for item in values if item.strip()]
 
 
 _ENVIRONMENT_ALIASES = {
@@ -291,12 +298,12 @@ _ENVIRONMENT_ALIASES = {
     "prod": "production",
     "staging": "staging",
     "stage": "staging",
+    "preview": "preview",
     "test": "test",
     "testing": "test",
     "development": "development",
     "dev": "development",
     "local": "development",
-    "": "development",
 }
 
 
@@ -310,44 +317,101 @@ def classified_environment(cfg=None) -> str:
             "Use development, test, staging, or production."
         )
     env = _ENVIRONMENT_ALIASES[raw]
-    if env == "development" and os.getenv("RENDER"):
+    if env in ("development", "preview") and os.getenv("RENDER"):
         return "production"
     return env
 
 
 def validate_boot_invariants(cfg) -> None:
-    """Refuse to serve when production configuration is unsafe or incomplete."""
+    if cfg is None:
+        cfg = settings
     env = classified_environment(cfg)
-    if env != "production":
-        return
     errors = []
-    if getattr(cfg, "USE_MOCKS", False):
-        errors.append("USE_MOCKS must be false when ENVIRONMENT=production")
-    if getattr(cfg, "HELIX_DISPATCH_INLINE", False):
-        errors.append("HELIX_DISPATCH_INLINE must be false when ENVIRONMENT=production")
-    if getattr(cfg, "AUTH_DEV_RESET_RETURN", False):
-        errors.append("AUTH_DEV_RESET_RETURN must be false when ENVIRONMENT=production")
-    secret = getattr(cfg, "SECRET_KEY", "") or ""
-    if len(secret) < 32:
-        errors.append("Missing or short SECRET_KEY: production requires at least 32 characters")
-    encryption_key = (getattr(cfg, "CREDENTIAL_ENCRYPTION_KEY", "") or "").strip()
-    if not encryption_key:
-        errors.append("Missing required integration key: CREDENTIAL_ENCRYPTION_KEY")
-    elif encryption_key == secret:
-        errors.append("CREDENTIAL_ENCRYPTION_KEY must not equal SECRET_KEY")
-    if not (getattr(cfg, "RESEND_API_KEY", "") or "").strip() or not (getattr(cfg, "RESEND_FROM", "") or "").strip():
-        errors.append("Missing required delivery configuration: RESEND_API_KEY and RESEND_FROM")
-    app_url = (getattr(cfg, "PUBLIC_APP_BASE_URL", "") or "").strip()
-    if not app_url.startswith("https://"):
-        errors.append("PUBLIC_APP_BASE_URL must be an https origin in production")
-    if getattr(cfg, "APIFY_ENABLED", False) and not (getattr(cfg, "APIFY_API_TOKEN", "") or "").strip():
-        errors.append("Missing required integration key: APIFY_API_TOKEN (APIFY_ENABLED is true)")
-    for model_name in ("GROQ_MODEL", "GEMINI_TEXT_MODEL", "GEMINI_IMAGE_MODEL"):
-        if not (getattr(cfg, model_name, "") or "").strip():
-            errors.append(f"Missing required model setting: {model_name}")
-    if errors:
-        raise RuntimeError("Refusing to serve production traffic: " + "; ".join(errors))
 
+    url_settings = (
+        ("PUBLIC_APP_BASE_URL", False),
+        ("PUBLIC_API_BASE_URL", True),
+        ("APP_BASE_URL", False),
+        ("NEON_JWKS_URL", False),
+        ("NEON_AUTH_URL", False),
+        ("R2_PUBLIC_BASE_URL", False),
+        ("R2_ENDPOINT_URL", False),
+        ("SCRAPLING_WORKER_URL", False),
+    )
+    parsed_targets = {}
+    for name, allow_relative in url_settings:
+        value = getattr(cfg, name, "") or ""
+        try:
+            parsed_targets[name] = validate_http_target(
+                value, name=name, environment=env, allow_relative=allow_relative
+            )
+        except ValueError as exc:
+            errors.append(str(exc))
+            parsed_targets[name] = None
+
+    try:
+        validate_database_target(getattr(cfg, "DATABASE_URL", "") or "", environment=env)
+    except ValueError as exc:
+        errors.append(str(exc))
+
+    for name in ("NEON_JWT_ISSUER", "NEON_JWT_AUDIENCE"):
+        value = (getattr(cfg, name, "") or "").strip()
+        if value.startswith(("http://", "https://", "//")):
+            try:
+                validate_http_target(value, name=name, environment=env)
+            except ValueError as exc:
+                errors.append(str(exc))
+
+    raw_cors = getattr(cfg, "BACKEND_CORS_ORIGINS", "") or ""
+    try:
+        origins = _parse_cors_origins(raw_cors, env)
+    except ValueError as exc:
+        errors.append(str(exc))
+        origins = []
+
+    for origin in origins:
+        try:
+            validate_http_target(
+                origin, name="BACKEND_CORS_ORIGINS", environment=env, origin_only=True
+            )
+        except ValueError as exc:
+            errors.append(str(exc))
+
+    if env == "production":
+        for name in ("PUBLIC_APP_BASE_URL", "APP_BASE_URL"):
+            parsed = parsed_targets.get(name)
+            if not getattr(cfg, name, "") or parsed is None or is_loopback_host(parsed.hostname):
+                errors.append(f"{name} must be explicitly configured with a public HTTPS origin")
+        if not raw_cors.strip() or not origins:
+            errors.append("BACKEND_CORS_ORIGINS must be explicitly configured in production")
+
+        if getattr(cfg, "USE_MOCKS", False):
+            errors.append("USE_MOCKS must be false when ENVIRONMENT=production")
+        if getattr(cfg, "HELIX_DISPATCH_INLINE", False):
+            errors.append("HELIX_DISPATCH_INLINE must be false when ENVIRONMENT=production")
+        if getattr(cfg, "AUTH_DEV_RESET_RETURN", False):
+            errors.append("AUTH_DEV_RESET_RETURN must be false when ENVIRONMENT=production")
+        secret = getattr(cfg, "SECRET_KEY", "") or ""
+        if len(secret) < 32:
+            errors.append("SECRET_KEY must contain at least 32 characters in production")
+        encryption_key = getattr(cfg, "CREDENTIAL_ENCRYPTION_KEY", "") or ""
+        if not encryption_key or encryption_key == secret:
+            errors.append("CREDENTIAL_ENCRYPTION_KEY must be set and differ from SECRET_KEY")
+        if not getattr(cfg, "RESEND_API_KEY", "") or not getattr(cfg, "RESEND_FROM", ""):
+            errors.append("RESEND_API_KEY and RESEND_FROM must be set in production")
+        if getattr(cfg, "APIFY_ENABLED", False) and not getattr(cfg, "APIFY_API_TOKEN", ""):
+            errors.append("APIFY_API_TOKEN must be set when APIFY_ENABLED=true in production")
+        for name in ("GROQ_MODEL", "GEMINI_TEXT_MODEL", "GEMINI_IMAGE_MODEL"):
+            if not getattr(cfg, name, ""):
+                errors.append(f"{name} must be set in production")
+
+    if errors:
+        prefix = (
+            "Refusing to serve production traffic"
+            if env == "production"
+            else "Refusing to serve with unsafe configuration"
+        )
+        raise RuntimeError(f"{prefix}: " + "; ".join(errors))
 
 settings = Settings()
 
