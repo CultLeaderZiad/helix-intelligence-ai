@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+bash "$(dirname "$0")/setup-local.sh"
 source "$(dirname "$0")/preview-common.sh"
 ensure_local_postgres
 cd "$ROOT"
