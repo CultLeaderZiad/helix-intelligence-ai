@@ -1,0 +1,53 @@
+{
+  "implementationCommit": "6d3f3ba912c7780a7685c1c54aaf8bfc98684933",
+  "localOnly": true,
+  "providerCallsAttempted": false,
+  "signupHistory": [],
+  "steps": [],
+  "earlierOnboardingSteps": [
+    {
+      "action": "Authenticated local signup account reaches onboarding",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 0,
+        "path": "/discover",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": true
+      }
+    },
+    {
+      "action": "Industry prefills optional query; query cleared to avoid provider calls",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 0,
+        "path": "/discover",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": true
+      }
+    },
+    {
+      "action": "Help starts exactly one Discover tour",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 1,
+        "path": "/discover",
+        "tourCount": 1,
+        "tourTitle": "Discover",
+        "wizard": false
+      }
+    }
+  ],
+  "recordingScope": "Desktop EN/AR tour restart, persistence, access, settings and support; mobile interaction evidence captured separately because the recorder disallows viewport resizing.",
+  "signupCorrection": "The initial reserved example.test domain was rejected (422); a corrected example.com signup returned 200 and created this local account."
+}
