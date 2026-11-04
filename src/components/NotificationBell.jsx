@@ -1,10 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { AlertTriangle, Bell, CheckCheck, Info, Megaphone, Sparkles } from "lucide-react"
-import { notificationService, updatesService } from "@/services"
+import { notificationService } from "@/services"
+import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { w5Support } from "@/i18n/w5Support"
 import { cn } from "@/lib/utils"
+import {
+  getNotificationReadScope,
+  invalidateNotificationReads,
+  readNotificationSources,
+} from "@/hooks/notificationReadCache"
 
 const POLL_INTERVAL_MS = 20_000
 const MAX_BACKOFF_MS = 120_000
@@ -38,33 +44,48 @@ function formatNotificationDate(raw, lang, recently) {
 
 export function NotificationBell({ className }) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { lang, t } = useLanguage()
   const words = w5Support[lang] || w5Support.en
   const text = (key) => t(key, words[key] || w5Support.en[key] || key)
+  const readScope = getNotificationReadScope(user)
+  const scopeRef = useRef(readScope)
+  scopeRef.current = readScope
   const [open, setOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [actionError, setActionError] = useState(null)
+  const [dataScope, setDataScope] = useState(readScope)
+  const dataScopeRef = useRef(readScope)
   const menuRef = useRef(null)
-  const notificationsRef = useRef(notifications)
-  const requestInFlight = useRef(false)
+  const scopedNotifications = dataScope === readScope ? notifications : []
+  const scopedLoading = dataScope === readScope ? loading : true
+  const scopedError = dataScope === readScope ? error : null
+  const scopedActionError = dataScope === readScope ? actionError : null
+  const notificationsRef = useRef(scopedNotifications)
+  const requestInFlight = useRef(null)
   const readRequests = useRef(new Set())
   const markAllInFlight = useRef(false)
   const activeRef = useRef(false)
-  notificationsRef.current = notifications
+  notificationsRef.current = scopedNotifications
 
   const fetchNotifications = useCallback(async () => {
-    if (requestInFlight.current) return false
-    requestInFlight.current = true
+    const requestScope = readScope
+    if (requestInFlight.current?.scope === requestScope) return false
+    const request = { scope: requestScope }
+    requestInFlight.current = request
+    if (dataScopeRef.current !== requestScope) {
+      dataScopeRef.current = requestScope
+      setDataScope(requestScope)
+      setNotifications([])
+      setActionError(null)
+    }
     if (activeRef.current && notificationsRef.current.length === 0) setLoading(true)
     setError(null)
     try {
-      const [personalResult, updatesResult] = await Promise.allSettled([
-        notificationService.getNotifications(),
-        updatesService.getPublishedUpdates(),
-      ])
-      if (!activeRef.current) return false
+      const [personalResult, updatesResult] = await readNotificationSources(requestScope)
+      if (!activeRef.current || scopeRef.current !== requestScope || requestInFlight.current !== request) return false
       const previous = notificationsRef.current
       const personalItems = personalResult.status === "fulfilled"
         ? (Array.isArray(personalResult.value?.items) ? personalResult.value.items : [])
@@ -88,19 +109,20 @@ export function NotificationBell({ className }) {
         new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime()
       ))
       setNotifications(merged)
+      setDataScope(requestScope)
       if (personalResult.status !== "fulfilled" || updatesResult.status !== "fulfilled") {
         setError(text("notificationsLoadFailed"))
         return false
       }
       return true
     } catch {
-      if (activeRef.current) setError(text("notificationsLoadFailed"))
+      if (activeRef.current && scopeRef.current === requestScope) setError(text("notificationsLoadFailed"))
       return false
     } finally {
-      requestInFlight.current = false
-      if (activeRef.current) setLoading(false)
+      if (requestInFlight.current === request) requestInFlight.current = null
+      if (activeRef.current && scopeRef.current === requestScope) setLoading(false)
     }
-  }, [lang, t])
+  }, [lang, t, readScope])
 
   const fetchRef = useRef(fetchNotifications)
   fetchRef.current = fetchNotifications
@@ -119,7 +141,7 @@ export function NotificationBell({ className }) {
 
     const poll = async () => {
       if (stopped || isDocumentHidden()) return
-      if (requestInFlight.current) {
+      if (requestInFlight.current?.scope === scopeRef.current) {
         schedule(1000)
         return
       }
@@ -149,6 +171,10 @@ export function NotificationBell({ className }) {
   }, [])
 
   useEffect(() => {
+    if (activeRef.current && !isDocumentHidden()) void fetchRef.current()
+  }, [readScope])
+
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) setOpen(false)
     }
@@ -158,23 +184,30 @@ export function NotificationBell({ className }) {
 
   const handleMarkAsRead = async (notification) => {
     if (!notification || notification.is_read || readRequests.current.has(notification.id)) return
+    const actionScope = readScope
     setActionError(null)
     if (notification.isUpdate) {
       const saved = writeUpdateReadState(notification.originalUpdateId)
-      setNotifications((previous) => previous.map((item) => (
-        item.id === notification.id ? { ...item, is_read: true } : item
-      )))
-      if (!saved) setActionError(text("readStateNotSaved"))
+      if (saved) invalidateNotificationReads(actionScope)
+      if (scopeRef.current === actionScope) {
+        setNotifications((previous) => previous.map((item) => (
+          item.id === notification.id ? { ...item, is_read: true } : item
+        )))
+        if (!saved) setActionError(text("readStateNotSaved"))
+      }
       return
     }
     readRequests.current.add(notification.id)
     try {
       await notificationService.markAsRead(notification.id)
-      setNotifications((previous) => previous.map((item) => (
-        item.id === notification.id ? { ...item, is_read: true } : item
-      )))
+      invalidateNotificationReads(actionScope)
+      if (scopeRef.current === actionScope) {
+        setNotifications((previous) => previous.map((item) => (
+          item.id === notification.id ? { ...item, is_read: true } : item
+        )))
+      }
     } catch {
-      setActionError(text("markReadFailed"))
+      if (scopeRef.current === actionScope) setActionError(text("markReadFailed"))
     } finally {
       readRequests.current.delete(notification.id)
     }
@@ -183,26 +216,35 @@ export function NotificationBell({ className }) {
   const handleMarkAllRead = async () => {
     if (markAllInFlight.current) return
     markAllInFlight.current = true
+    const actionScope = readScope
     setActionError(null)
     const unreadUpdates = notificationsRef.current.filter((item) => item.isUpdate && !item.is_read)
     const storageFailed = unreadUpdates.some((item) => !writeUpdateReadState(item.originalUpdateId))
-    setNotifications((previous) => previous.map((item) => (
-      item.isUpdate ? { ...item, is_read: true } : item
-    )))
+    if (unreadUpdates.length) invalidateNotificationReads(actionScope)
+    if (scopeRef.current === actionScope) {
+      setNotifications((previous) => previous.map((item) => (
+        item.isUpdate ? { ...item, is_read: true } : item
+      )))
+    }
     const unreadPersonal = notificationsRef.current.filter((item) => !item.isUpdate && !item.is_read)
     let personalFailed = false
     if (unreadPersonal.length) {
       try {
         await notificationService.markAllAsRead()
-        setNotifications((previous) => previous.map((item) => (
-          !item.isUpdate ? { ...item, is_read: true } : item
-        )))
+        invalidateNotificationReads(actionScope)
+        if (scopeRef.current === actionScope) {
+          setNotifications((previous) => previous.map((item) => (
+            !item.isUpdate ? { ...item, is_read: true } : item
+          )))
+        }
       } catch {
         personalFailed = true
       }
     }
-    if (personalFailed) setActionError(text("markAllReadFailed"))
-    else if (storageFailed) setActionError(text("readStateNotSaved"))
+    if (scopeRef.current === actionScope) {
+      if (personalFailed) setActionError(text("markAllReadFailed"))
+      else if (storageFailed) setActionError(text("readStateNotSaved"))
+    }
     markAllInFlight.current = false
   }
 
@@ -221,7 +263,7 @@ export function NotificationBell({ className }) {
     return <Info className="h-3.5 w-3.5 text-cyan-400 shrink-0" aria-hidden="true" />
   }
 
-  const unreadCount = notifications.filter((item) => !item.is_read).length
+  const unreadCount = scopedNotifications.filter((item) => !item.is_read).length
 
   return (
     <div className="relative" ref={menuRef} dir={lang === "ar" ? "rtl" : "ltr"}>
@@ -250,15 +292,15 @@ export function NotificationBell({ className }) {
             )}
           </div>
 
-          {actionError && <p role="alert" className="mx-2 mt-2 text-[11px] text-amber-300">{actionError}</p>}
-          {error && <p role="alert" className="mx-2 mt-2 text-[11px] text-rose-300">{error}</p>}
+          {scopedActionError && <p role="alert" className="mx-2 mt-2 text-[11px] text-amber-300">{scopedActionError}</p>}
+          {scopedError && <p role="alert" className="mx-2 mt-2 text-[11px] text-rose-300">{scopedError}</p>}
           <div className="max-h-72 overflow-y-auto divide-y divide-border/40 py-1">
-            {loading && notifications.length === 0 ? (
+            {scopedLoading && scopedNotifications.length === 0 ? (
               <div role="status" className="py-6 text-center text-xs text-text-faint">{text("loadingNotifications")}</div>
-            ) : notifications.length === 0 ? (
-              <div className="py-6 text-center text-xs text-text-faint">{error ? text("notificationsLoadFailed") : text("noNotificationsTitle")}</div>
+            ) : scopedNotifications.length === 0 ? (
+              <div className="py-6 text-center text-xs text-text-faint">{scopedError ? text("notificationsLoadFailed") : text("noNotificationsTitle")}</div>
             ) : (
-              notifications.map((notification) => (
+              scopedNotifications.map((notification) => (
                 <div
                   key={notification.id}
                   role={notification.link ? "button" : undefined}
