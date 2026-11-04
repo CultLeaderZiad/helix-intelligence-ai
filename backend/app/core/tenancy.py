@@ -12,7 +12,7 @@ Rules:
 Organization ids come from the authenticated user and membership rows.
 Callers must not trust an org id supplied only by a header or body.
 """
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import List, Optional
@@ -164,6 +164,34 @@ async def apply_tenant_context(db: AsyncSession, ctx: Optional[TenantContext] = 
         text("SELECT set_config('helix.enforce', :flag, true)"),
         {"flag": "1" if ctx.enforce else "0"},
     )
+
+
+@asynccontextmanager
+async def tenant_db_scope(
+    db: AsyncSession,
+    org_ids: Optional[List[str]],
+    user_id: str = "",
+    *,
+    platform_admin: bool = False,
+    enforce: bool = True,
+):
+    """Bind a short-lived RLS scope and restore the caller's database context."""
+    previous = current_tenant()
+    token = bind_tenant(
+        org_ids,
+        user_id,
+        platform_admin=platform_admin,
+        enforce=enforce,
+    )
+    try:
+        await apply_tenant_context(db)
+        yield current_tenant()
+    finally:
+        reset_tenant(token)
+        await apply_tenant_context(
+            db,
+            previous or TenantContext([], "", platform_admin=False, enforce=True),
+        )
 
 
 async def get_user_org_ids(db: AsyncSession, user: User) -> Optional[List[str]]:

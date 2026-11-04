@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -445,7 +446,8 @@ async def test_profile_avatar_and_password_writes_persist_with_audit(monkeypatch
             assert Image.open(io.BytesIO(encoded)).format == "PNG"
             assert ext == "png"
             assert user_id == user.id
-            return "/uploads/w6-test-avatar.png"
+            filename = f"avatar_{hashlib.sha256(user_id.encode()).hexdigest()}_{uuid.uuid4().hex}.png"
+            return f"/uploads/{filename}"
 
         monkeypatch.setattr(account_router.storage_service, "save_avatar", save_avatar_test_double)
         result = await account_router.upload_avatar(
@@ -453,9 +455,10 @@ async def test_profile_avatar_and_password_writes_persist_with_audit(monkeypatch
             db=db,
             current_user=user,
         )
-        assert "/uploads/w6-test-avatar.png?" in result["avatar_url"]
+        assert result["avatar_url"].startswith("/uploads/avatar_")
+        assert "?" in result["avatar_url"]
         await db.refresh(user)
-        assert user.avatar_url == "/uploads/w6-test-avatar.png"
+        assert user.avatar_url.startswith("/uploads/avatar_")
 
         logs = (await db.execute(
             select(UsageLog).where(
