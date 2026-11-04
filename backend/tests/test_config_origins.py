@@ -44,7 +44,12 @@ def test_production_http_targets_require_public_https_origins():
         "https://api.example.invalid/v1", name="API_BASE_URL", environment="production"
     )
     assert parsed is not None and parsed.hostname == "api.example.invalid"
-    for value in ("http://api.example.invalid", "https://localhost:8000"):
+    for value in (
+        "http://api.example.invalid", "https://localhost:8000", "https://10.0.0.1",
+        "https://192.168.1.1", "https://169.254.169.254", "https://100.64.0.1",
+        "https://[fc00::1]", "https://[fe80::1]", "https://[::ffff:10.0.0.1]",
+        "https://2130706433", "https://127.1", "https://0x7f000001", "https://8.8.8.8",
+    ):
         with pytest.raises(ValueError, match="public HTTPS"):
             validate_http_target(value, name="API_BASE_URL", environment="production")
 
