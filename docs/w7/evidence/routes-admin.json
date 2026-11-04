@@ -1,0 +1,25 @@
+[
+  {
+    "group": "admin",
+    "route": "/admin",
+    "language": "en",
+    "width": 1280,
+    "height": 800,
+    "checked_at": "2026-11-04T11:05:36.169424+00:00",
+    "expected_path": "/admin",
+    "dialogs": 0,
+    "direction": "ltr",
+    "errorBoundary": false,
+    "heading": "",
+    "horizontalOverflow": false,
+    "invalidDate": false,
+    "path": "/admin",
+    "title": "Dashboard · Helix Intelligence",
+    "failedRequests": [],
+    "duplicateRequests": [],
+    "consoleErrors": [],
+    "uncaughtErrors": [],
+    "redirected": false,
+    "passed": true
+  }
+]
