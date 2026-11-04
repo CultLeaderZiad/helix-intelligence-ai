@@ -14,10 +14,14 @@ Usage (from backend/):
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from alembic.config import Config
 from alembic.script import ScriptDirectory
+from sqlalchemy.engine import make_url
+
+from app.core.origins import validate_database_target
 
 
 PROD_STAMP = "c4d92e1f7a8b"
@@ -48,19 +52,22 @@ def _contains_revision(revision: str, ancestor: str) -> bool:
 
 
 def _admin_dsn() -> str:
-    url = os.environ.get("TEST_DATABASE_URL") or os.environ.get("DATABASE_URL") or ""
+    url = os.environ.get("TEST_DATABASE_URL") or ""
     if not url:
-        raise SystemExit("Set TEST_DATABASE_URL to an admin Postgres URL")
+        raise SystemExit("Set TEST_DATABASE_URL to an explicit loopback admin Postgres URL")
     url = url.replace("postgresql+asyncpg://", "postgresql://").replace("postgres://", "postgresql://")
-    # Connect to the maintenance database when creating and dropping others.
-    if "/" in url.rsplit("@", 1)[-1]:
-        head, _db = url.rsplit("/", 1)
-        return head + "/postgres"
-    return url
+    try:
+        validate_database_target(url, environment="test")
+        parsed = make_url(url)
+        if parsed.get_backend_name() != "postgresql":
+            raise ValueError("PostgreSQL required")
+    except ValueError:
+        raise SystemExit("TEST_DATABASE_URL must select an explicit loopback PostgreSQL target") from None
+    return parsed.set(database="postgres").render_as_string(hide_password=False)
 
 
 def _db_dsn(name: str) -> str:
-    return _admin_dsn().rsplit("/", 1)[0] + "/" + name
+    return make_url(_admin_dsn()).set(database=name).render_as_string(hide_password=False)
 
 
 def _psql(dsn: str, statement: str) -> str:
@@ -76,6 +83,8 @@ def _psql(dsn: str, statement: str) -> str:
 
 
 def _recreate(name: str) -> None:
+    if not re.fullmatch(r"helix_(?:w2_|migration_fail_)[a-z0-9_]{1,40}", name):
+        raise SystemExit("Database name must identify a disposable Helix proof database")
     admin = _admin_dsn()
     _psql(
         admin,
@@ -83,7 +92,7 @@ def _recreate(name: str) -> None:
         f"WHERE datname = '{name}' AND pid <> pg_backend_pid()",
     )
     _psql(admin, f"DROP DATABASE IF EXISTS {name}")
-    _psql(admin, f"CREATE DATABASE {name} OWNER helix")
+    _psql(admin, f"CREATE DATABASE {name}")
 
 
 def _alembic(*args: str, database: str) -> subprocess.CompletedProcess[str]:
