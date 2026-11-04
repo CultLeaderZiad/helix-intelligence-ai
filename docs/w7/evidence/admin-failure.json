@@ -1,0 +1,10 @@
+[
+  {
+    "action": "admin update read with deliberately aborted request",
+    "errorShown": true
+  },
+  {
+    "action": "admin update read after removing failure interception",
+    "recovered": true
+  }
+]
