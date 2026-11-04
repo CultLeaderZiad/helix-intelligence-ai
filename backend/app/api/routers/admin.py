@@ -13,6 +13,7 @@ from app.schemas.admin import (
     AdminUsageLogsFilterResponse
 )
 from app.services import admin_service, support_service
+from app.services.billing_service import is_platform_admin
 from app.core.deps import get_db, get_current_full_admin, require_admin_permission
 from app.models.user import User
 from datetime import datetime as _datetime
@@ -178,7 +179,7 @@ async def impersonate_user(
     target = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
-    if target.role == "admin":
+    if is_platform_admin(target):
         raise HTTPException(status_code=403, detail="Impersonating an administrator is not permitted")
     return await admin_service.impersonate_user(db, user_id, actor=current_admin)
 
