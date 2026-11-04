@@ -9,6 +9,8 @@ from fastapi import HTTPException
 from app.models.api_key import ApiKey
 from app.models.user import User
 from app.models.organization import Organization
+from app.models.organization_member import OrganizationMember
+from app.core.tenancy import tenant_db_scope
 from app.services.billing_service import check_quota_and_feature, get_or_create_default_org
 
 def hash_key(raw_key: str) -> str:
@@ -95,49 +97,60 @@ async def authenticate_api_key(db: AsyncSession, raw_key: str) -> Tuple[User, Or
     if api_key is None:
         raise HTTPException(status_code=401, detail="Invalid or revoked API Key")
 
-    # api_keys is the credential lookup boundary and has no tenant RLS policy;
-    # use its verified org/user ids to seed the scoped context before joining
-    # the RLS-protected organizations and entitlement tables.
-    from app.core.tenancy import apply_tenant_context, bind_tenant
+    # The credential row is not RLS-scoped; its verified owner and workspace
+    # constrain every subsequent lookup.
+    async with tenant_db_scope(db, [api_key.org_id], api_key.user_id):
+        user = (
+            await db.execute(select(User).where(User.id == api_key.user_id))
+        ).scalar_one_or_none()
+        org = (
+            await db.execute(select(Organization).where(Organization.id == api_key.org_id))
+        ).scalar_one_or_none()
+        if user is None or org is None:
+            raise HTTPException(status_code=401, detail="Invalid or revoked API Key")
 
-    bind_tenant([api_key.org_id], api_key.user_id, platform_admin=False, enforce=True)
-    await apply_tenant_context(db)
-    user = (
-        await db.execute(select(User).where(User.id == api_key.user_id))
-    ).scalar_one_or_none()
-    org = (
-        await db.execute(select(Organization).where(Organization.id == api_key.org_id))
-    ).scalar_one_or_none()
-    if user is None or org is None:
-        raise HTTPException(status_code=401, detail="Invalid or revoked API Key")
+        if getattr(user, "is_banned", False) or getattr(user, "is_suspended", False):
+            raise HTTPException(status_code=403, detail="Account is not active")
 
-    # Re-validate public_api entitlement (F61)
-    from app.models.plan import Plan
-    plan = None
-    if org.plan_id:
-        plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
+        if org.owner_id != user.id:
+            membership = (await db.execute(
+                select(OrganizationMember).where(
+                    OrganizationMember.org_id == org.id,
+                    OrganizationMember.user_id == user.id,
+                )
+            )).scalar_one_or_none()
+            if membership is None:
+                api_key.is_active = False
+                await db.commit()
+                raise HTTPException(status_code=401, detail="Invalid or revoked API Key")
 
-    # A key is scoped to its organization, so a platform-admin owner does not
-    # bypass the grant. Empty or missing public_api stays off.
-    user._scoped_org_id = org.id
-    from app.services.billing_service import _merged_flags, _require_active_grant
+        # Re-validate public_api entitlement (F61)
+        from app.models.plan import Plan
+        plan = None
+        if org.plan_id:
+            plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
 
-    grant = await _require_active_grant(db, org, user)
-    effective_flags = _merged_flags(plan, org) if plan is not None else {}
-    if grant is not None:
-        effective_flags.update(grant.feature_flags or {})
+        # A key is scoped to its organization, so a platform-admin owner does not
+        # bypass the grant. Empty or missing public_api stays off.
+        user._scoped_org_id = org.id
+        from app.services.billing_service import _merged_flags, _require_active_grant
 
-    if effective_flags.get("public_api") is not True:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "feature_disabled",
-                "message": "The organization associated with this API key does not have the 'public_api' entitlement enabled.",
-                "feature": "public_api",
-            },
-        )
+        grant = await _require_active_grant(db, org, user)
+        effective_flags = _merged_flags(plan, org) if plan is not None else {}
+        if grant is not None:
+            effective_flags.update(grant.feature_flags or {})
 
-    api_key.last_used_at = datetime.datetime.now(datetime.timezone.utc)
-    await db.commit()
+        if effective_flags.get("public_api") is not True:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "feature_disabled",
+                    "message": "The organization associated with this API key does not have the 'public_api' entitlement enabled.",
+                    "feature": "public_api",
+                },
+            )
+
+        api_key.last_used_at = datetime.datetime.now(datetime.timezone.utc)
+        await db.commit()
 
     return user, org

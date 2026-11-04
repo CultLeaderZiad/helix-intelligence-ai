@@ -31,7 +31,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import authenticate_bearer, get_db
 from app.models.media_job import MediaGenerationJob
 from app.models.organization import Organization
+from app.models.organization_member import OrganizationMember
 from app.models.user import User
+from app.core.tenancy import tenant_db_scope
 from app.services.storage_service import UPLOAD_DIR, media_response_headers, verify_capability
 
 router = APIRouter()
@@ -110,14 +112,35 @@ async def get_upload(
     # `token` used to carry a full JWT. It is no longer an access credential.
     del token
     capability_ok = verify_capability(filename, sig, exp, org or "", uid or "", ver or "")
-    if capability_ok and uid:
-        owner = (await db.execute(select(User).where(User.id == uid))).scalar_one_or_none()
-        if owner is None or _token_version(owner) != str(ver or "") or getattr(owner, "is_banned", False):
-            capability_ok = False
-    if capability_ok and org:
-        organization = (await db.execute(select(Organization).where(Organization.id == org))).scalar_one_or_none()
-        if organization is None or (organization.status or "active") != "active":
-            capability_ok = False
+    if capability_ok and org and not uid:
+        capability_ok = False
+    if capability_ok:
+        async with tenant_db_scope(db, [org] if org else [], uid or ""):
+            owner = None
+            if uid:
+                owner = (await db.execute(select(User).where(User.id == uid))).scalar_one_or_none()
+                if (
+                    owner is None
+                    or _token_version(owner) != str(ver or "")
+                    or getattr(owner, "is_banned", False)
+                    or getattr(owner, "is_suspended", False)
+                ):
+                    capability_ok = False
+            if capability_ok and org:
+                organization = (await db.execute(
+                    select(Organization).where(Organization.id == org)
+                )).scalar_one_or_none()
+                if organization is None or (organization.status or "active") != "active":
+                    capability_ok = False
+                elif uid and organization.owner_id != uid:
+                    membership = (await db.execute(
+                        select(OrganizationMember).where(
+                            OrganizationMember.org_id == org,
+                            OrganizationMember.user_id == uid,
+                        )
+                    )).scalar_one_or_none()
+                    if membership is None:
+                        capability_ok = False
     if not capability_ok:
         user = await _authenticated_user(request, db)
         if not user or not await _user_owns_file(db, user, filename):
