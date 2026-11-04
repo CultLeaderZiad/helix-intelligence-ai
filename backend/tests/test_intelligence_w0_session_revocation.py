@@ -51,6 +51,7 @@ async def test_same_second_reset_rejects_old_token_and_accepts_new_sign_in(monke
     monkeypatch.setattr("app.core.security.datetime", _freeze(_at(-0.2)))
     previous_second = create_access_token("usr_same_second", token_version=2)
 
+    monkeypatch.setattr("jose.jwt.datetime", _freeze(_at(0.9)))
     before_payload = await verify_neon_token(before)
     after_payload = await verify_neon_token(after)
     previous_payload = await verify_neon_token(previous_second)
