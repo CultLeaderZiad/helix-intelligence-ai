@@ -510,7 +510,7 @@ export function UpdatesPage() {
                   )}
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  {adminMessage(lang, "Kie.ai Card Preview")}
+                  {adminMessage(lang, "Card preview")}
                 </button>
               </div>
 
