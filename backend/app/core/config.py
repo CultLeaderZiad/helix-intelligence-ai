@@ -1,7 +1,19 @@
 import os
 import json
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+
+from .origins import is_loopback_host, validate_database_target, validate_http_target
+
+
+def _dotenv_files_for_environment(environment: str | None):
+    if environment != "development":
+        return None
+    config_path = Path(__file__).resolve()
+    project_root = config_path.parents[3]
+    backend_root = config_path.parents[2]
+    return (str(project_root / ".env.local"), str(backend_root / ".env.local"))
 
 
 class Settings(BaseSettings):
@@ -97,7 +109,22 @@ class Settings(BaseSettings):
 
 
     def __init__(self, **values):
-        super().__init__(**values)
+        if "_env_file" in values:
+            raise ValueError("Explicit dotenv file overrides are not supported")
+
+        requested_environment = values.get("ENVIRONMENT")
+        if requested_environment is None or not str(requested_environment).strip():
+            requested_environment = os.getenv("ENVIRONMENT")
+        if not requested_environment:
+            requested_environment = "production" if os.getenv("RENDER") else "development"
+        values["ENVIRONMENT"] = requested_environment
+
+        environment = _ENVIRONMENT_ALIASES.get(str(requested_environment).strip().lower())
+        if environment == "development" and os.getenv("RENDER"):
+            environment = "production"
+        env_files = _dotenv_files_for_environment(environment)
+
+        super().__init__(_env_file=env_files, **values)
         if not self.SECRET_KEY:
             raise ValueError(
                 "SECRET_KEY environment variable is not set. "
@@ -255,7 +282,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         case_sensitive=True,
-        env_file=("../.env", "../.env.local", ".env", ".env.local"),
+        env_file=None,
         extra="ignore",
         env_ignore_empty=True,
     )
