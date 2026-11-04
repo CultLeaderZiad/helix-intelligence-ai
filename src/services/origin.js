@@ -28,8 +28,8 @@ function isLoopbackHostname(hostname) {
   return octets.length === 4 && octets[0] === 127 && octets.every((part) => part >= 0 && part <= 255)
 }
 
-export function resolveApiBaseUrl(value, environment = "development", productionBuild = false) {
-  const env = normalizeFrontendEnvironment(environment)
+export function resolveApiBaseUrl(value, environment = "", productionBuild = false) {
+  const env = normalizeFrontendEnvironment(environment.trim() || (productionBuild ? "production" : "development"))
   if (env === "production" && productionBuild !== true) {
     throw new Error("VITE_ENVIRONMENT=production requires a production build.")
   }
@@ -57,8 +57,9 @@ export function resolveApiBaseUrl(value, environment = "development", production
   if (env !== "production" && !loopback) {
     throw new Error("VITE_API_BASE_URL must use a loopback host outside production.")
   }
-  if (env === "production" && (loopback || url.protocol !== "https:")) {
-    throw new Error("VITE_API_BASE_URL must use a public HTTPS host in production.")
+  const dnsHost = /\.[a-z][a-z\d-]*\.?$/i.test(url.hostname)
+  if (env === "production" && (loopback || !dnsHost || url.protocol !== "https:")) {
+    throw new Error("VITE_API_BASE_URL must use a public HTTPS DNS host in production.")
   }
 
   return base.replace(/\/+$/, "")
