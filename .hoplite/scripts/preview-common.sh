@@ -4,7 +4,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LOCAL="$ROOT/.hoplite/local/w7"
 PG_BIN="${HELIX_LOCAL_PG_BIN:-/usr/lib/postgresql/16/bin}"
 mkdir -p "$LOCAL"
-chmod 700 "$LOCAL"
+# The postgres uid must retain traversal when this file is sourced again.
+if [ "$(id -u)" -eq 0 ]; then chmod 711 "$LOCAL"; else chmod 700 "$LOCAL"; fi
 if [ -x "$ROOT/backend/venv/bin/python" ]; then
   PYTHON="$ROOT/backend/venv/bin/python"
 elif [ -x /tmp/w4-venv/bin/python ]; then

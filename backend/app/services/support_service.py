@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import re
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
@@ -29,6 +30,20 @@ def _is_support_staff(user: User) -> bool:
     return permissions.get("support") is True or (
         isinstance(sections, (list, tuple)) and "support" in sections
     )
+
+
+def _sanitize_context_data(value: Any) -> Any:
+    sensitive_markers = ("apikey", "authentication", "authorization", "cookie", "credential", "jwt", "password", "secret", "token")
+    if isinstance(value, dict):
+        sanitized = {}
+        for key, item in value.items():
+            normalized_key = re.sub(r"[^a-z0-9]", "", str(key).lower())
+            sensitive = normalized_key == "auth" or any(marker in normalized_key for marker in sensitive_markers)
+            sanitized[key] = "[REDACTED]" if sensitive else _sanitize_context_data(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_sanitize_context_data(item) for item in value]
+    return value
 
 
 @asynccontextmanager
@@ -65,7 +80,7 @@ async def create_ticket(
         message=message,
         status="open",
         tag=tag,
-        context_data=context_data or {}
+        context_data=_sanitize_context_data(context_data or {})
     )
     db.add(ticket)
     await db.commit()
