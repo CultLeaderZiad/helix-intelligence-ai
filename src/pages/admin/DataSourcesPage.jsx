@@ -69,7 +69,7 @@ const PROVIDERS_METADATA = [
   },
   {
     id: "neon",
-    name: "Neon Serverless Postgres",
+    name: "PostgreSQL",
     category: "Relational DB & Telemetry",
     priority: "Core Infrastructure",
     description: "Distributed PgBouncer connection pool storing users, organizations, swipe files, and usage logs.",
