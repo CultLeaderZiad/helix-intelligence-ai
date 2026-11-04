@@ -8,6 +8,8 @@ from fastapi import HTTPException
 from app.models.organization_member import OrganizationMember, OrganizationInvite
 from app.models.organization import Organization
 from app.models.user import User
+from app.models.api_key import ApiKey
+from app.core.tenancy import tenant_db_scope
 from app.services.billing_service import check_quota_and_feature, get_or_create_default_org
 
 def _format_utc_iso(dt: Optional[datetime.datetime]) -> Optional[str]:
@@ -202,9 +204,13 @@ async def cancel_invite(db: AsyncSession, user: User, invite_id: str) -> Dict[st
 
 async def accept_invite(db: AsyncSession, token: str, user: User) -> Dict[str, Any]:
     # 1. Row-lock invite with FOR UPDATE to prevent concurrent double-acceptance (F47)
-    invite = (await db.execute(
-        select(OrganizationInvite).where(OrganizationInvite.token == token, OrganizationInvite.status == "pending").with_for_update()
-    )).scalar_one_or_none()
+    async with tenant_db_scope(db, None, user.id, platform_admin=True):
+        invite = (await db.execute(
+            select(OrganizationInvite).where(
+                OrganizationInvite.token == token,
+                OrganizationInvite.status == "pending",
+            ).with_for_update()
+        )).scalar_one_or_none()
 
     if not invite:
         raise HTTPException(status_code=404, detail="Invalid or expired invitation")
@@ -216,54 +222,55 @@ async def accept_invite(db: AsyncSession, token: str, user: User) -> Dict[str, A
             detail="This invitation was issued to a different email address. Please sign in with the invited email account."
         )
 
-    now = datetime.datetime.now(datetime.timezone.utc)
-    if invite.expires_at.tzinfo is None:
-        invite_exp = invite.expires_at.replace(tzinfo=datetime.timezone.utc)
-    else:
-        invite_exp = invite.expires_at
+    async with tenant_db_scope(db, [invite.org_id], user.id):
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if invite.expires_at.tzinfo is None:
+            invite_exp = invite.expires_at.replace(tzinfo=datetime.timezone.utc)
+        else:
+            invite_exp = invite.expires_at
 
-    if now > invite_exp:
-        invite.status = "expired"
-        await db.commit()
-        raise HTTPException(status_code=400, detail="Invitation has expired")
+        if now > invite_exp:
+            invite.status = "expired"
+            await db.commit()
+            raise HTTPException(status_code=400, detail="Invitation has expired")
 
-    org = (await db.execute(select(Organization).where(Organization.id == invite.org_id))).scalar_one_or_none()
-    if not org:
-        raise HTTPException(status_code=404, detail="Organization not found")
+        org = (await db.execute(select(Organization).where(Organization.id == invite.org_id))).scalar_one_or_none()
+        if not org:
+            raise HTTPException(status_code=404, detail="Organization not found")
 
-    # 3. Check if user is owner or already a member
-    if org.owner_id == user.id:
-        invite.status = "accepted"
-        await db.commit()
-        return {"success": True, "message": "You are the owner of this organization", "org_id": invite.org_id}
+        # 3. Check if user is owner or already a member
+        if org.owner_id == user.id:
+            invite.status = "accepted"
+            await db.commit()
+            return {"success": True, "message": "You are the owner of this organization", "org_id": invite.org_id}
 
-    existing_member = (await db.execute(
-        select(OrganizationMember).where(
-            OrganizationMember.org_id == invite.org_id,
-            OrganizationMember.user_id == user.id
+        existing_member = (await db.execute(
+            select(OrganizationMember).where(
+                OrganizationMember.org_id == invite.org_id,
+                OrganizationMember.user_id == user.id
+            )
+        )).scalar_one_or_none()
+
+        if existing_member:
+            invite.status = "accepted"
+            await db.commit()
+            return {"success": True, "message": "Already a member of this organization", "org_id": invite.org_id}
+
+        # 4. Atomically insert member and mark invite accepted
+        invited_role = invite.role if invite.role in INVITE_ROLES else None
+        if invited_role is None:
+            raise HTTPException(status_code=422, detail="Invitation role is not allowed")
+        new_member = OrganizationMember(
+            org_id=invite.org_id,
+            user_id=user.id,
+            role=invited_role,
         )
-    )).scalar_one_or_none()
-
-    if existing_member:
+        metadata = dict(getattr(user, "signup_metadata", None) or {})
+        metadata["active_org_id"] = invite.org_id
+        user.signup_metadata = metadata
+        db.add(new_member)
         invite.status = "accepted"
         await db.commit()
-        return {"success": True, "message": "Already a member of this organization", "org_id": invite.org_id}
-
-    # 4. Atomically insert member and mark invite accepted
-    invited_role = invite.role if invite.role in INVITE_ROLES else None
-    if invited_role is None:
-        raise HTTPException(status_code=422, detail="Invitation role is not allowed")
-    new_member = OrganizationMember(
-        org_id=invite.org_id,
-        user_id=user.id,
-        role=invited_role,
-    )
-    metadata = dict(getattr(user, "signup_metadata", None) or {})
-    metadata["active_org_id"] = invite.org_id
-    user.signup_metadata = metadata
-    db.add(new_member)
-    invite.status = "accepted"
-    await db.commit()
 
     return {"success": True, "message": "Successfully joined organization", "org_id": invite.org_id}
 
@@ -280,6 +287,16 @@ async def remove_member(db: AsyncSession, user: User, member_id: str) -> Dict[st
 
     if member.user_id == user.id or member.user_id == org.owner_id:
         raise HTTPException(status_code=400, detail="Cannot remove the organization owner")
+
+    api_keys = (await db.execute(
+        select(ApiKey).where(
+            ApiKey.org_id == org.id,
+            ApiKey.user_id == member.user_id,
+            ApiKey.is_active.is_(True),
+        )
+    )).scalars().all()
+    for api_key in api_keys:
+        api_key.is_active = False
 
     await db.delete(member)
     await db.commit()
