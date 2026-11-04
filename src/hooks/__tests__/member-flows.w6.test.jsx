@@ -158,6 +158,27 @@ describe("useSupport", () => {
 })
 
 describe("useNotifications", () => {
+  it("rejects a prior session response while the user identity is unresolved", async () => {
+    let resolveOldRead
+    vi.mocked(notificationService.getNotifications)
+      .mockReturnValueOnce(new Promise((resolve) => { resolveOldRead = resolve }))
+      .mockResolvedValueOnce({ items: [{ id: "new-session-notice" }] })
+    setAccessToken("unresolved-session-a")
+    const previousScope = getNotificationReadScope(undefined)
+    const hook = renderHook(() => useNotifications("Update published", {
+      scope: getNotificationReadScope(undefined),
+    }))
+    await waitFor(() => expect(notificationService.getNotifications).toHaveBeenCalledTimes(1))
+
+    setAccessToken("unresolved-session-b")
+    expect(getNotificationReadScope(undefined)).not.toBe(previousScope)
+    hook.rerender()
+    await waitFor(() => expect(hook.result.current.loading).toBe(false))
+    expect(hook.result.current.notifications.map((item) => item.id)).toEqual(["new-session-notice"])
+    await act(async () => { resolveOldRead({ items: [{ id: "old-session-notice" }] }) })
+    expect(hook.result.current.notifications.map((item) => item.id)).toEqual(["new-session-notice"])
+  })
+
   it("caches completed reads only for the same session and workspace", async () => {
     setAccessToken("session-a")
     const user = { id: "member-1", organization_id: "workspace-1" }
