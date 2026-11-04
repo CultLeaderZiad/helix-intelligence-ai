@@ -3,18 +3,25 @@ import { useNavigate } from "react-router-dom"
 import { AlertTriangle, Bell, Check, CheckCheck, Info, Megaphone, RefreshCw } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { Button } from "@/components/ui/Button"
+import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { w5Support } from "@/i18n/w5Support"
 import { formatMemberDate } from "@/i18n/memberMessages"
 import { useNotifications } from "@/hooks/useNotifications"
+import { getNotificationReadScope } from "@/hooks/notificationReadCache"
 import { cn } from "@/lib/utils"
 
 export function NotificationsPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { lang, t } = useLanguage()
   const words = w5Support[lang] || w5Support.en
   const text = (key) => t(key, words[key] || w5Support.en[key] || key)
-  const { notifications, loading, error, actionError, refresh, markAsRead, markAllRead } = useNotifications(text("updatePublished"))
+  const readScope = getNotificationReadScope(user)
+  const { notifications, loading, error, actionError, refresh, markAsRead, markAllRead } = useNotifications(
+    text("updatePublished"),
+    { scope: readScope },
+  )
   const [filterType, setFilterType] = useState("all")
 
   const filtered = notifications.filter((item) => {
