@@ -758,16 +758,28 @@ async def update_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    previous_role = user.role
     user.role = role
-    if admin_permissions is not None:
-        user.admin_permissions = admin_permissions
+    user.is_platform_admin = role == "admin"
+    if role == "assistant-admin":
+        if admin_permissions is not None:
+            user.admin_permissions = admin_permissions
+        elif previous_role != "assistant-admin":
+            user.admin_permissions = {}
+    else:
+        user.admin_permissions = {}
 
     if actor_id:
         await record_admin_audit_event(
             db,
             actor_id,
             "admin_user_role_updated",
-            {"target_user_id": user.id, "role": role},
+            {
+                "target_user_id": user.id,
+                "role": role,
+                "is_platform_admin": user.is_platform_admin,
+                "admin_permissions": user.admin_permissions or {},
+            },
             org_id=await _primary_org_id(db, user.id),
         )
     await db.commit()
@@ -777,7 +789,9 @@ async def update_user_role(
         "success": True,
         "message": f"User role updated to {role}",
         "user_id": user.id,
-        "role": user.role
+        "role": user.role,
+        "is_platform_admin": user.is_platform_admin,
+        "admin_permissions": user.admin_permissions or {},
     }
 
 async def switch_user_plan(db: AsyncSession, target_user_id: str, plan_id: str) -> Dict[str, Any]:
@@ -836,6 +850,9 @@ async def broadcast_announcement(
     }
 
 async def impersonate_user(db: AsyncSession, target_user_id: str, actor: Optional[User] = None) -> ImpersonateResponse:
+    if actor is None or actor.role != "admin":
+        raise HTTPException(status_code=403, detail="Full administrator access is required")
+
     user = (await db.execute(select(User).where(User.id == target_user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -843,7 +860,7 @@ async def impersonate_user(db: AsyncSession, target_user_id: str, actor: Optiona
     # SECURITY: never allow privilege escalation through impersonation. An
     # assistant-admin used to be able to mint a full-admin token by targeting an
     # admin user; block that at the service layer as well as the route.
-    if user.role == "admin":
+    if is_platform_admin(user):
         raise HTTPException(status_code=403, detail="Impersonating an administrator is not permitted")
 
     metadata = getattr(user, "signup_metadata", None) or {}
@@ -1090,7 +1107,9 @@ async def approve_access_request(
     from app.models.access_grant import AccessRequest
 
     _require_platform_admin(actor)
-    row = (await db.execute(select(AccessRequest).where(AccessRequest.id == request_id))).scalar_one_or_none()
+    row = (await db.execute(
+        select(AccessRequest).where(AccessRequest.id == request_id).with_for_update()
+    )).scalar_one_or_none()
     if row is None or row.status != "pending":
         raise HTTPException(status_code=404, detail="Pending access request not found")
     granted = await grant_organization_access(
@@ -1118,7 +1137,9 @@ async def reject_access_request(db: AsyncSession, actor: User, request_id: str, 
     from app.models.access_grant import AccessRequest
 
     _require_platform_admin(actor)
-    row = (await db.execute(select(AccessRequest).where(AccessRequest.id == request_id))).scalar_one_or_none()
+    row = (await db.execute(
+        select(AccessRequest).where(AccessRequest.id == request_id).with_for_update()
+    )).scalar_one_or_none()
     if row is None or row.status != "pending":
         raise HTTPException(status_code=404, detail="Pending access request not found")
     row.status = "rejected"
@@ -1138,10 +1159,15 @@ async def reject_access_request(db: AsyncSession, actor: User, request_id: str, 
 
 async def revoke_organization_access(db: AsyncSession, actor: User, org_id: str, note: Optional[str] = None) -> Dict[str, Any]:
     """Revoke the active grant. Workspace rows stay in the database."""
-    from app.services.billing_service import _latest_grant
+    from app.models.access_grant import OrganizationAccessGrant
 
     _require_platform_admin(actor)
-    grant = await _latest_grant(db, org_id)
+    grant = (await db.execute(
+        select(OrganizationAccessGrant)
+        .where(OrganizationAccessGrant.org_id == org_id)
+        .order_by(OrganizationAccessGrant.granted_at.desc())
+        .with_for_update()
+    )).scalars().first()
     if grant is None or grant.revoked_at is not None:
         raise HTTPException(status_code=404, detail={"code": "grant_not_found", "message": "No active grant to revoke."})
     now = datetime.datetime.now(datetime.timezone.utc)

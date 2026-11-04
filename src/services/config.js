@@ -31,7 +31,7 @@ export const DATA_SOURCE = rawDataSource === "mock" ? "mock" : "api"
 
 export const API_BASE_URL = resolveApiBaseUrl(
   env.VITE_API_BASE_URL,
-  env.VITE_ENVIRONMENT ?? "development",
+  env.VITE_ENVIRONMENT,
   env.PROD === true
 )
 
