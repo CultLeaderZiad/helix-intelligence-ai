@@ -103,8 +103,9 @@ def validate_http_target(
     loopback = is_loopback_host(parsed.hostname)
     if environment != "production" and not loopback:
         raise ValueError(f"{name} must use a loopback host outside production")
-    if environment == "production" and (loopback or parsed.scheme.lower() != "https"):
-        raise ValueError(f"{name} must use a public HTTPS host in production")
+    dns_host = re.search(r"\.[A-Za-z][A-Za-z0-9-]*$", parsed.hostname.rstrip(".").encode("idna").decode("ascii"))
+    if environment == "production" and (loopback or not dns_host or parsed.scheme.lower() != "https"):
+        raise ValueError(f"{name} must use a public HTTPS DNS host in production")
     return parsed
 
 
