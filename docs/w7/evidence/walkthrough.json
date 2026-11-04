@@ -1,0 +1,19 @@
+{
+  "implementationCommit": "6d3f3ba912c7780a7685c1c54aaf8bfc98684933",
+  "localOnly": true,
+  "providerCallsAttempted": false,
+  "signupHistory": [
+    {
+      "path": "/api/auth/sign-up",
+      "method": "POST",
+      "status": 422
+    },
+    {
+      "path": "/api/auth/sign-up",
+      "method": "POST",
+      "status": 200
+    }
+  ],
+  "steps": [],
+  "signupCorrection": "The initial reserved example.test domain was rejected (422); a corrected example.com signup returned 200 and created this local account."
+}
