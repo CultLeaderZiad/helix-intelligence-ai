@@ -1,0 +1,83 @@
+Repo: CultLeaderZiad/helix-intelligence-ai Work ONLY on the existing branch fix/intelligence-W4 (head 085ae50, draft PR #26, base fix/intelligence-W3 at 6066dc8). Rules: never push to or open a PR into main (main auto-deploys to production). No merge, force-push, deploy, or production DB access. Keep PR #26 as a draft. No fake data or UI, and no billing or pricing features (access is admin-granted only).
+
+Before coding, read README.md, ARCHITECTURE.md, DEVELOPMENT.md, API_CONTRACTS.md (and DESIGN_SYSTEM.md if present), then the full W4 spec below and the PR #26 description and comments.
+
+Already done in 085ae50 (do not redo; just keep it green)
+Repair of the historical alignment migration, a forward repair, and fresh/upgrade/dirty-data/rollback tests.
+Fix for duplicate compensation under lock contention.
+Sanitized operational events, observable revocation failures, safe probe opt-in, and the Meta script import fix.
+checkJs typecheck, ESLint, Vitest gates, unfiltered pyflakes in CI, a separate rollback DB, and a release migration guard.
+Backend: 222 passed, 1 skipped.
+Remaining
+The frontend and session changes from the W4 spec were never committed. Implement them.
+Make the gates pass for real, without suppressing anything or adding blanket ignores: pnpm typecheck (currently exit 2), pnpm lint (exit 1), and the full pyflakes run (exit 1). Fix the actual diagnostics, unused imports included. If an item truly can't be fixed in scope, list it with file:line and the reason.
+Re-run everything:
+python -m pytest -q tests
+python -m compileall -q app
+alembic upgrade head, check, downgrade -1, then upgrade on a disposable Postgres
+pnpm typecheck, lint, test and build
+Do a browser check of the changed frontend flows on a local dev server, in EN and AR (RTL).
+Report (post it as a comment on PR #26)
+What changed
+What was verified (each command and its exit code, plus the browser check)
+What is still unverified
+The single P0 next step
+Never claim zero bugs or production ready.
+
+Original W4 spec
+Helix Intelligence — Wave W4 (Operations, code health, distribution) — agent prompt
+You are fixing Helix Intelligence in https://github.com/CultLeaderZiad/helix-intelligence-ai.
+
+Git rules (non-negotiable)
+Create branch fix/intelligence-W4 from the current tip of fix/intelligence-W3 (record git rev-parse origin/fix/intelligence-W3 in the report).
+Push only fix/intelligence-W4. Open a DRAFT PR with base fix/intelligence-W3, head fix/intelligence-W4.
+Never push to main (auto-deploys to Vercel and Render). Never merge. Never deploy. Never force-push. Preserve unrelated changes from earlier waves.
+Read first (before any edit)
+README.md, ARCHITECTURE.md, DESIGN_SYSTEM.md, API_CONTRACTS.md, DEVELOPMENT.md (note any missing file and continue).
+intelligence-rereview-5b45806.md (W4 section) if present or attached.
+Re-verify each finding against current code. If already fixed (e.g. by W0–W3), report it with evidence; don't re-implement. Auth storage/security items owned by W0 must be verified, not duplicated.
+Product rules that must hold
+Keep Vite 7 / React 19 / Tailwind v4, lazy routes, Page → hook → service. No framework migration.
+English and Arabic with full RTL. Every new/changed user-facing string goes through the current language layer with EN and AR entries; browser-check RTL, error, empty and progress states.
+No fake data: no sample contacts, scores/confidence, "verified" claims, placeholder stats, testimonials, logos or canned AI output. Unknown stays null/empty and labelled. Illustrative previews must be explicitly labelled with no placeholder metrics.
+Access is manual admin approval, not billing. Do not add or re-enable checkout, prices, plans for sale or payment webhooks; billing provider routes stay 503. For W4-06 "centralize plans/pricing": centralize any plan/entitlement definitions only as admin-granted access tiers and remove unsupported pricing promises from marketing (PricingSection.jsx); do not add purchasable prices.
+Brand copy sells "AI solutions"; remove WhatsApp/automation phrasing.
+Do not weaken RLS, roles or tenancy (the deny-by-default policies and the startup guard against BYPASSRLS roles must stay).
+Never use production data, accounts or real credentials. Don't print secrets or copy real .env files. Disposable PostgreSQL only; never run audit/probe scripts against production.
+No new libraries unless you document why existing/native tools can't do it (lint/typecheck/test tooling is expected here: justify each and commit the lockfile change).
+Allowed existing files
+.github/workflows/ci.yml; backend/alembic/versions/b1c2d3e4f5a6_complete_production_schema_alignment.py (reviewed compatibility repair only); backend/app/api/routers/auth.py; backend/app/api/routers/health.py; backend/app/core/config.py; backend/app/main.py; backend/app/services/ai/base.py; backend/app/services/billing_service.py (no billing features); backend/app/services/creative_service.py; backend/app/services/discover_service.py; backend/app/services/leadgen_pipeline.py; backend/requirements.txt; backend/scripts/test_new_meta.py; backend/tests/test_phase6_pipeline_integrity_suite.py; backend/workers/scrapling/README.md; docs/compliance/LEGAL_DOCS.md; docs/production-readiness/remediation-status.md; helix-audit/probes/runtime-probes.py; package.json; pnpm-lock.yaml; render.yaml; src/App.jsx; src/components/ErrorBoundary.jsx; src/components/ui/ConfirmDialog.jsx; src/context/AuthContext.jsx; src/context/LanguageContext.jsx; src/context/SearchContext.jsx; src/features/marketing/Hero.jsx; src/features/marketing/LoopsSection.jsx; src/features/marketing/PricingSection.jsx; src/pages/CreatePage.jsx; src/pages/DiscoverPage.jsx; src/pages/IntelligencePage.jsx; src/pages/LegalPage.jsx; src/pages/admin/UsersPage.jsx; src/services/api/authService.api.js; src/services/config.js; src/services/http.js; src/services/index.js; EN/AR locale files when strings change; lint/typecheck/test config files at repo root (new, justified).
+
+New files only for: backend/tests/test_intelligence_w4_*.py, src/**/__tests__/*w4*, small modules adjacent to listed files, tooling config (eslint/tsconfig-or-jsconfig/vitest), and forward Alembic revisions. List each new file and why. Never rewrite deployed migrations except a reviewed repair; prefer forward revisions and test fresh, upgraded, dirty-data and rollback paths. If a fix needs another file, stop that fix, report path + reason, finish the rest.
+
+Changes and acceptance criteria
+W4-01 (High) migrations: fix helper scope and deterministic downgrades; backfill/validate rows before constraints; don't swallow DDL exceptions; test fresh/upgraded/dirty-data/rollback on disposable DBs; document a controlled release-migration step plus backup/roll-forward plan.
+W4-02 (High) real gates: add real pnpm typecheck (JS via checkJs/jsconfig as appropriate), pnpm lint (ESLint, incl. no-unused-vars/imports) and pnpm test (Vitest + Testing Library) scripts with real behaviour tests — no no-op scripts. Clean up the unused imports/vars lint finds. Extend backend tests to real signatures/transactions and two-tenant/concurrency cases. Wire all gates plus fresh migration/drift/rollback into .github/workflows/ci.yml. Correct remediation-status.md to observed evidence bound to exact commit SHAs, with external follow-up owners.
+W4-03 (Medium) errors/logging: stable sanitized error responses; structured logs with request/tenant/actor/job IDs and secret redaction; error reporting only if a real transport is configured (otherwise report it as unwired); audit sensitive mutations (incl. admin access grants); observable revocation failures; tests for failed dependencies and redaction; minimize emails in logs.
+W4-04 (Medium) session: one auth/session abstraction (prefer validated HttpOnly Secure cookie + CSRF where appropriate); atomic switch/clear; private cache namespaced by user+org and purged on logout; guarded storage access; bounded, attributable impersonation return (or fresh admin sign-in); tests for impersonation/account switching.
+W4-05 (Medium) code health: split by domain only after regression coverage; remove helpers proven unused by import/call-site analysis; keep active Scout scrapers; move probes out of production paths or require explicit isolated-DB opt-in; replace mock-detection branches with injectable interfaces; repair script imports.
+W4-06 (Medium) disclosures: see billing rule above; update real processors/storage disclosures; verify the deletion runbook end to end; complete EN/AR + RTL; publish only operator-verified privacy contacts.
+W4-07 (Low) legal text: remove repeated wording; flag for operator (Ziad) approval — don't mark approved.
+W4-08 (Medium) marketing/product honesty: remove sample contact, score/confidence and unsupported "verified" claims; "AI solutions" copy; empty states or real consented sourced content.
+W4-09 (Low) React purity: pure state updaters; persist in guarded effects/handlers; separate focus acquire/restore from changing dialog callbacks; test busy rerenders, StrictMode and keyboard focus in ConfirmDialog.
+Verification (repo root, disposable PostgreSQL only)
+Inspect package.json scripts first. If a gate is missing, run it to show the failure, then add it; never invent a passing result.
+
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+(cd backend && python -m compileall -q app && python -m pyflakes app)
+(cd backend && python -m alembic upgrade head && python -m alembic check)
+(cd backend && python -m pytest -q tests)
+(cd backend && python -m alembic downgrade -1 && python -m alembic upgrade head && python -m alembic check)
+
+Plus the focused W4 behaviour/concurrency/redaction tests. Separate disposable DBs for upgrade/drift and rollback. Browser check (EN + AR/RTL): landing/marketing, pricing section (no purchasable prices), legal page, login/logout/account switch, admin users + impersonation return, error boundary, ConfirmDialog keyboard focus. Screenshot each.
+
+Final report (exactly this format)
+What changed: per finding (W4-01..09), files changed + new files with justification; PR link and final commit SHA.
+What was verified: each command with exit code and one-line result; focused tests; browser steps with screenshots.
+What's unverified: mocks-only items, live providers, error-reporting transport, legal approval, production.
+Blocked: fixes needing files outside the allowed list (path + reason).
+Single P0 next step.
+Never claim "zero bugs", "fully functional" or "production healthy". Do not merge. Stop after the report.
