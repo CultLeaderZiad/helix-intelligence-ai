@@ -173,7 +173,9 @@ async def test_versionless_local_token_is_rejected_and_revocation_boundary_holds
 
 
 @pytest.mark.asyncio
-async def test_external_issuer_session_respects_audience_and_revocation():
+async def test_external_issuer_session_respects_audience_and_revocation(monkeypatch):
+    monkeypatch.setattr(settings, "NEON_JWT_ISSUER", "http://127.0.0.1/test-issuer")
+    monkeypatch.setattr(settings, "NEON_JWT_AUDIENCE", "helix-test-audience")
     private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     pem = private.private_bytes(
         serialization.Encoding.PEM,
