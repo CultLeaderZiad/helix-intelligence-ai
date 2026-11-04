@@ -61,11 +61,10 @@ export function getNotificationReadScope(user) {
     activeToken = token
     sessionVersion += 1
   }
-  if (user?.id == null) return null
   return JSON.stringify([
     sessionVersion,
-    String(user.id),
-    user.organization_id == null ? null : String(user.organization_id),
+    user?.id == null ? null : String(user.id),
+    user?.organization_id == null ? null : String(user.organization_id),
   ])
 }
 
