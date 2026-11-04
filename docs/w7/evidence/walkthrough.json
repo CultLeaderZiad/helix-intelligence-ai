@@ -1,0 +1,240 @@
+{
+  "implementationCommit": "6d3f3ba912c7780a7685c1c54aaf8bfc98684933",
+  "localOnly": true,
+  "providerCallsAttempted": false,
+  "signupHistory": [],
+  "steps": [
+    {
+      "action": "Completed signup account does not replay onboarding",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 0,
+        "path": "/discover",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Settings restarts exactly one Discover tour",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 1,
+        "path": "/discover",
+        "tourCount": 1,
+        "tourTitle": "Discover",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Tour advances to Search a brand",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 1,
+        "path": "/discover",
+        "tourCount": 1,
+        "tourTitle": "Search a brand",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Tour advances to Review your results",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 1,
+        "path": "/discover",
+        "tourCount": 1,
+        "tourTitle": "Review your results",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Completed onboarding and tour stay closed after reload",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 0,
+        "path": "/discover",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Access remains admin-granted; no checkout",
+      "state": {
+        "direction": "ltr",
+        "heading": "Access & Usage",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 0,
+        "path": "/access",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Profile and tour settings are available",
+      "state": {
+        "direction": "ltr",
+        "heading": "Account & profile settings",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 0,
+        "path": "/settings",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Support route opens from navigation",
+      "state": {
+        "direction": "ltr",
+        "heading": "Support & Feedback",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 0,
+        "path": "/support",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Arabic desktop support uses RTL without overflow",
+      "state": {
+        "direction": "rtl",
+        "heading": "الدعم والملاحظات",
+        "horizontalOverflow": false,
+        "language": "ar",
+        "overlays": 0,
+        "path": "/support",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Separate screenshot: Arabic mobile support uses RTL without overflow",
+      "state": {
+        "direction": "rtl",
+        "heading": "الدعم والملاحظات",
+        "horizontalOverflow": false,
+        "language": "ar",
+        "overlays": 0,
+        "path": "/support",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Separate mobile interaction: drawer opens",
+      "state": {
+        "direction": "rtl",
+        "heading": "الدعم والملاحظات",
+        "horizontalOverflow": false,
+        "language": "ar",
+        "overlays": 0,
+        "path": "/support",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": false
+      }
+    },
+    {
+      "action": "Separate mobile interaction: Escape closes drawer",
+      "state": {
+        "direction": "rtl",
+        "heading": "الدعم والملاحظات",
+        "horizontalOverflow": false,
+        "language": "ar",
+        "overlays": 0,
+        "path": "/support",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": false
+      }
+    }
+  ],
+  "earlierOnboardingSteps": [
+    {
+      "action": "Authenticated local signup account reaches onboarding",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 0,
+        "path": "/discover",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": true
+      }
+    },
+    {
+      "action": "Industry prefills optional query; query cleared to avoid provider calls",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 0,
+        "path": "/discover",
+        "tourCount": 0,
+        "tourTitle": "",
+        "wizard": true
+      }
+    },
+    {
+      "action": "Help starts exactly one Discover tour",
+      "state": {
+        "direction": "ltr",
+        "heading": "",
+        "horizontalOverflow": false,
+        "language": "en",
+        "overlays": 1,
+        "path": "/discover",
+        "tourCount": 1,
+        "tourTitle": "Discover",
+        "wizard": false
+      }
+    }
+  ],
+  "recordingScope": "Desktop EN/AR tour restart, persistence, access, settings and support; mobile interaction evidence captured separately because the recorder disallows viewport resizing.",
+  "signupCorrection": "The initial reserved example.test domain was rejected (422); a corrected example.com signup returned 200 and created this local account.",
+  "uncaughtErrors": [],
+  "consoleErrors": [],
+  "failedRequests": [],
+  "discoverSubmissions": [],
+  "passed": true,
+  "signupHistoryBeforeRecorderReset": [
+    {
+      "method": "POST",
+      "path": "/api/auth/sign-up",
+      "status": 422
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/sign-up",
+      "status": 200
+    }
+  ],
+  "signupHistorySource": "Browser request history inspected before recording; recorder history was subsequently reset. The final recording signs into the already-created local account."
+}
