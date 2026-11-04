@@ -188,7 +188,7 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
             return "success"
         return "unknown"
 
-    # --- Neon Postgres: live probe ---
+    # --- PostgreSQL: live probe ---
     db_status, db_detail, db_latency = "danger", "Disconnected", None
     try:
         start = datetime.datetime.now()
@@ -199,7 +199,7 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
     except Exception as e:
         db_detail = f"Probe failed: {str(e)[:120]}"
     services.append(AdminServiceHealth(
-        id="db-neon", name="Neon Serverless Postgres",
+        id="db-neon", name="PostgreSQL",
         status=db_status, detail=db_detail,
         latency_ms=db_latency, last_checked=checked_at,
     ))

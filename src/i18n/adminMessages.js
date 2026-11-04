@@ -176,7 +176,7 @@ const arabicMessages = {
   "Post Platform Update": "نشر تحديث للمنصة",
   "Configure headline, rich release notes, clickable doc links, and publish date.": "أدخل العنوان وتفاصيل الإصدار والروابط القابلة للنقر وتاريخ النشر.",
   "Editor": "المحرر",
-  "Kie.ai Card Preview": "معاينة بطاقة Kie.ai",
+  "Card preview": "معاينة البطاقة",
   "Public Post Card Appearance:": "مظهر بطاقة المنشور العامة:",
   "Post Title *": "عنوان المنشور *",
   "Quick Emojis:": "رموز تعبيرية سريعة:",
