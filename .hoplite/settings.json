@@ -3,10 +3,7 @@
   "ports": {
     "preview": 3000,
     "additional": {
-      "backend": {
-        "port": 8000,
-        "label": "FastAPI backend"
-      }
+      "backend": 8000
     }
   },
   "scripts": {
