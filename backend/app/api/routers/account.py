@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
 from pydantic import BaseModel, field_validator
+from urllib.parse import unquote, urlsplit
 
 from app.schemas.account import TrialStatusResponse
 from app.core.deps import get_db, get_current_user
@@ -51,11 +52,38 @@ class ProfileUpdateRequest(BaseModel):
         return v
 
 def _avatar_url(user: User) -> str:
+    avatar_ref = user.avatar_url or ""
+    if not avatar_ref:
+        return ""
+
     metadata = user.signup_metadata or {}
-    return storage_service.resolve_stored_url(
-        user.avatar_url or "", user_id=user.id,
-        token_version=str(int(metadata.get("token_version", 1))),
-    ) or ""
+    try:
+        token_version = str(int(metadata.get("token_version", 1)))
+    except (TypeError, ValueError):
+        token_version = "1"
+
+    if avatar_ref.startswith("r2://avatars/"):
+        filename = avatar_ref.removeprefix("r2://avatars/")
+        if not storage_service.is_user_avatar_filename(filename, user.id):
+            return ""
+        return storage_service.resolve_stored_url(
+            avatar_ref, user_id=user.id, token_version=token_version,
+        ) or ""
+
+    try:
+        parsed = urlsplit(avatar_ref)
+    except ValueError:
+        return ""
+    if not parsed.scheme and not parsed.netloc and parsed.path.startswith("/uploads/"):
+        filename = unquote(parsed.path.removeprefix("/uploads/"))
+        if not storage_service.is_user_avatar_filename(filename, user.id):
+            return ""
+        return storage_service.resolve_stored_url(
+            avatar_ref, user_id=user.id, token_version=token_version,
+        ) or ""
+    if parsed.scheme == "https" and parsed.hostname and not parsed.username and not parsed.password:
+        return avatar_ref
+    return ""
 
 
 @router.get("/profile")
@@ -82,7 +110,7 @@ async def update_profile(
         current_user.full_name = req.full_name
         changed_fields.append("full_name")
     if req.avatar_url is not None:
-        if not _acceptable_avatar_reference(req.avatar_url.strip()):
+        if not _acceptable_avatar_reference(req.avatar_url.strip(), current_user.id):
             raise HTTPException(status_code=400, detail={"code": "avatar_rejected", "message": "Avatar URL must be an https URL or an uploaded file."})
         current_user.avatar_url = req.avatar_url.strip()
         changed_fields.append("avatar_url")
@@ -112,14 +140,22 @@ async def update_profile(
         }
     }
 
-def _acceptable_avatar_reference(url: str) -> bool:
+def _acceptable_avatar_reference(url: str, user_id: str) -> bool:
     if url == "":
         return True
-    if url.startswith("/uploads/") and ".." not in url and "\\" not in url:
-        return True
-    from urllib.parse import urlparse
-    parsed = urlparse(url)
-    return parsed.scheme == "https" and bool(parsed.hostname) and not parsed.username
+    try:
+        parsed = urlsplit(url)
+    except ValueError:
+        return False
+    if not parsed.scheme and not parsed.netloc and parsed.path.startswith("/uploads/"):
+        filename = unquote(parsed.path.removeprefix("/uploads/"))
+        return storage_service.is_user_avatar_filename(filename, user_id)
+    return (
+        parsed.scheme == "https"
+        and bool(parsed.hostname)
+        and not parsed.username
+        and not parsed.password
+    )
 
 
 @router.post("/avatar")
