@@ -7,6 +7,7 @@ import io
 from PIL import Image, UnidentifiedImageError
 
 MAX_AVATAR_BYTES = 2 * 1024 * 1024
+MAX_AVATAR_PIXELS = 20_000_000
 
 _FORMATS = {
     "PNG": ("image/png", "png", "PNG"),
@@ -47,8 +48,12 @@ def prepare_avatar_image(data: bytes, max_bytes: int = MAX_AVATAR_BYTES) -> tupl
         raise AvatarRejected("Avatar must be a PNG, JPEG, WEBP, or GIF image")
     try:
         with Image.open(io.BytesIO(data)) as probe:
+            if probe.width * probe.height > MAX_AVATAR_PIXELS:
+                raise AvatarRejected("Avatar dimensions exceed the pixel limit")
             probe.verify()
         with Image.open(io.BytesIO(data)) as image:
+            if image.width * image.height > MAX_AVATAR_PIXELS:
+                raise AvatarRejected("Avatar dimensions exceed the pixel limit")
             fmt = (image.format or "").upper()
             spec = _FORMATS.get(fmt)
             if spec is None:
@@ -69,7 +74,7 @@ def prepare_avatar_image(data: bytes, max_bytes: int = MAX_AVATAR_BYTES) -> tupl
                 image.save(out, format="PNG")
     except AvatarRejected:
         raise
-    except (UnidentifiedImageError, OSError, ValueError, SyntaxError) as exc:
+    except (Image.DecompressionBombError, UnidentifiedImageError, OSError, ValueError, SyntaxError) as exc:
         raise AvatarRejected("Avatar must be a PNG, JPEG, WEBP, or GIF image") from exc
     encoded = out.getvalue()
     if not encoded or len(encoded) > max_bytes or _looks_like_active_content(encoded):
