@@ -4,8 +4,14 @@ import { accountService, notificationService, supportService, updatesService } f
 import { formatMemberDate, getMemberMessage, getMemberRoleLabel, memberMessages, memberTimestamp } from "@/i18n/memberMessages"
 import { w5Support } from "@/i18n/w5Support"
 import { useNotifications } from "@/hooks/useNotifications"
+import {
+  clearNotificationReadCache,
+  getNotificationReadScope,
+  readNotificationSources,
+} from "@/hooks/notificationReadCache"
 import { useProfileSettings } from "@/hooks/useProfileSettings"
 import { useSupport } from "@/hooks/useSupport"
+import { setAccessToken } from "@/services/sessionStore"
 
 vi.mock("@/services", () => ({
   accountService: {
@@ -30,6 +36,7 @@ vi.mock("@/services", () => ({
 beforeEach(() => {
   vi.clearAllMocks()
   window.localStorage.clear()
+  clearNotificationReadCache()
   vi.mocked(accountService.getProfile).mockResolvedValue({ full_name: "Ada", email: "ada@example.test", role: "member" })
   vi.mocked(accountService.uploadAvatar).mockResolvedValue({ avatar_url: "https://example.test/avatar.png" })
   vi.mocked(accountService.updateProfile).mockResolvedValue({
@@ -151,6 +158,120 @@ describe("useSupport", () => {
 })
 
 describe("useNotifications", () => {
+  it("rejects a prior session response while the user identity is unresolved", async () => {
+    let resolveOldRead
+    vi.mocked(notificationService.getNotifications)
+      .mockReturnValueOnce(new Promise((resolve) => { resolveOldRead = resolve }))
+      .mockResolvedValueOnce({ items: [{ id: "new-session-notice" }] })
+    setAccessToken("unresolved-session-a")
+    const previousScope = getNotificationReadScope(undefined)
+    const hook = renderHook(() => useNotifications("Update published", {
+      scope: getNotificationReadScope(undefined),
+    }))
+    await waitFor(() => expect(notificationService.getNotifications).toHaveBeenCalledTimes(1))
+
+    setAccessToken("unresolved-session-b")
+    expect(getNotificationReadScope(undefined)).not.toBe(previousScope)
+    hook.rerender()
+    await waitFor(() => expect(hook.result.current.loading).toBe(false))
+    expect(hook.result.current.notifications.map((item) => item.id)).toEqual(["new-session-notice"])
+    await act(async () => { resolveOldRead({ items: [{ id: "old-session-notice" }] }) })
+    expect(hook.result.current.notifications.map((item) => item.id)).toEqual(["new-session-notice"])
+  })
+
+  it("caches completed reads only for the same session and workspace", async () => {
+    setAccessToken("session-a")
+    const user = { id: "member-1", organization_id: "workspace-1" }
+    const firstScope = getNotificationReadScope(user)
+
+    await readNotificationSources(firstScope)
+    await readNotificationSources(firstScope)
+    expect(notificationService.getNotifications).toHaveBeenCalledTimes(1)
+    expect(updatesService.getPublishedUpdates).toHaveBeenCalledTimes(1)
+
+    await readNotificationSources(getNotificationReadScope({ ...user, organization_id: "workspace-2" }))
+    setAccessToken("session-b")
+    const secondSessionScope = getNotificationReadScope(user)
+    await readNotificationSources(secondSessionScope)
+    expect(notificationService.getNotifications).toHaveBeenCalledTimes(3)
+    expect(updatesService.getPublishedUpdates).toHaveBeenCalledTimes(3)
+
+    window.dispatchEvent(new Event("helix:session-clearing"))
+    await readNotificationSources(secondSessionScope)
+    expect(notificationService.getNotifications).toHaveBeenCalledTimes(4)
+    expect(updatesService.getPublishedUpdates).toHaveBeenCalledTimes(4)
+  })
+
+  it("leaves pending reads independent and reuses only their completed results", async () => {
+    const pendingPersonal = []
+    const pendingUpdates = []
+    const personalResults = [
+      new Promise((resolve) => pendingPersonal.push(resolve)),
+      new Promise((resolve) => pendingPersonal.push(resolve)),
+    ]
+    const updateResults = [
+      new Promise((resolve) => pendingUpdates.push(resolve)),
+      new Promise((resolve) => pendingUpdates.push(resolve)),
+    ]
+    vi.mocked(notificationService.getNotifications)
+      .mockReturnValueOnce(personalResults[0])
+      .mockReturnValueOnce(personalResults[1])
+    vi.mocked(updatesService.getPublishedUpdates)
+      .mockReturnValueOnce(updateResults[0])
+      .mockReturnValueOnce(updateResults[1])
+
+    const first = readNotificationSources("session:member:workspace")
+    const second = readNotificationSources("session:member:workspace")
+    await Promise.resolve()
+    expect(notificationService.getNotifications).toHaveBeenCalledTimes(2)
+    expect(updatesService.getPublishedUpdates).toHaveBeenCalledTimes(2)
+
+    pendingPersonal.forEach((resolve) => resolve({ items: [] }))
+    pendingUpdates.forEach((resolve) => resolve([]))
+    await Promise.all([first, second])
+    await readNotificationSources("session:member:workspace")
+    expect(notificationService.getNotifications).toHaveBeenCalledTimes(2)
+    expect(updatesService.getPublishedUpdates).toHaveBeenCalledTimes(2)
+  })
+
+  it("shares completed reads between hook instances and forces explicit refreshes", async () => {
+    const scope = "session:member:workspace"
+    const first = renderHook(() => useNotifications("Update published", { scope }))
+    await waitFor(() => expect(first.result.current.loading).toBe(false))
+    const second = renderHook(() => useNotifications("Update published", { scope }))
+    await waitFor(() => expect(second.result.current.loading).toBe(false))
+
+    expect(notificationService.getNotifications).toHaveBeenCalledTimes(1)
+    expect(updatesService.getPublishedUpdates).toHaveBeenCalledTimes(1)
+
+    await act(async () => { await first.result.current.refresh() })
+    expect(notificationService.getNotifications).toHaveBeenCalledTimes(2)
+    expect(updatesService.getPublishedUpdates).toHaveBeenCalledTimes(2)
+    first.unmount()
+    second.unmount()
+  })
+
+  it("invalidates completed reads after a successful personal mark-read action", async () => {
+    const scope = "session:member:workspace"
+    vi.mocked(notificationService.getNotifications).mockResolvedValue({
+      items: [{ id: "notice-1", is_read: false, created_at: "2026-10-21T10:00:00Z" }],
+    })
+    const first = renderHook(() => useNotifications("Update published", { scope }))
+    await waitFor(() => expect(first.result.current.loading).toBe(false))
+
+    await act(async () => {
+      await first.result.current.markAsRead(first.result.current.notifications[0])
+    })
+    expect(notificationService.markAsRead).toHaveBeenCalledWith("notice-1")
+
+    const second = renderHook(() => useNotifications("Update published", { scope }))
+    await waitFor(() => expect(second.result.current.loading).toBe(false))
+    expect(notificationService.getNotifications).toHaveBeenCalledTimes(2)
+    expect(updatesService.getPublishedUpdates).toHaveBeenCalledTimes(2)
+    first.unmount()
+    second.unmount()
+  })
+
   it("merges notifications safely and reports failed mark-all actions", async () => {
     vi.mocked(notificationService.getNotifications).mockResolvedValueOnce({
       items: [{ id: "notice-1", type: "system", is_read: false, created_at: "2026-10-21T10:00:00Z" }],

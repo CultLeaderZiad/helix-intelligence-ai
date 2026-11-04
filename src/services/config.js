@@ -1,12 +1,13 @@
 /**
  * The single switch that decides where data comes from.
  *
- * Cutover to FastAPI is:
- *   VITE_DATA_SOURCE=api
- *   VITE_API_BASE_URL=https://api.helix.internal
+ * Keep local and preview builds on the same-origin API proxy. Unclassified
+ * production-mode builds use production origin rules.
  *
  * No component or hook changes. Nothing else in the app reads these vars.
  */
+
+import { resolveApiBaseUrl } from "./origin.js"
 
 const env = import.meta.env
 
@@ -28,7 +29,11 @@ if (env.PROD && rawDataSource === "mock") {
 /** @type {'mock'|'api'} */
 export const DATA_SOURCE = rawDataSource === "mock" ? "mock" : "api"
 
-export const API_BASE_URL = env.VITE_API_BASE_URL ?? "/api"
+export const API_BASE_URL = resolveApiBaseUrl(
+  env.VITE_API_BASE_URL,
+  env.VITE_ENVIRONMENT,
+  env.PROD === true
+)
 
 /** Mock-only knobs, used to rehearse slow networks and failures. */
 export const MOCK_LATENCY_MS = [180, 520]

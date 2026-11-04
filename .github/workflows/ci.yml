@@ -92,7 +92,18 @@ jobs:
         run: |
           python -c "import app.main; print('FastAPI app imported OK; routes:', len(app.main.app.routes))"
       - name: Run pytest test suite
-        run: python -m pytest -v tests
+        env:
+          ENVIRONMENT: test
+          TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+          W4_DISPOSABLE_DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: |
+          python -m pytest -v tests -W error --junitxml=/tmp/helix-pytest.xml
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          report = ET.parse("/tmp/helix-pytest.xml")
+          skipped = sum(int(suite.get("skipped", "0")) for suite in report.iter("testsuite"))
+          assert skipped == 0, f"Full backend suite must not skip tests: {skipped} skipped"
+          PY
 
   secret-scan:
     runs-on: ubuntu-latest
