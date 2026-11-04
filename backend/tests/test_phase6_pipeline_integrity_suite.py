@@ -41,9 +41,12 @@ _PHASE6_FLAGS = {
 
 
 @pytest.mark.asyncio
-async def test_storage_service_save_file_and_r2_validation():
+async def test_storage_service_save_file_and_r2_validation(monkeypatch, tmp_path):
     """F34 & F49: Test save_file writes and R2 validation rules."""
     from app.services import storage_service
+    from urllib.parse import parse_qs, urlsplit
+
+    monkeypatch.setattr(storage_service, "UPLOAD_DIR", str(tmp_path))
 
     # 1. Empty data should raise ValueError
     with pytest.raises(ValueError):
@@ -54,7 +57,18 @@ async def test_storage_service_save_file_and_r2_validation():
     url = await storage_service.save_file(data, "avatar.png", content_type="image/png")
     assert url is not None
     assert "avatar_" in url
-    assert "sig=" in url
+    assert url.startswith("/uploads/") and "sig=" not in url
+    assert (tmp_path / urlsplit(url).path.rsplit("/", 1)[-1]).read_bytes() == data
+    signed = storage_service.resolve_stored_url(
+        url, org_id="storage-test-org", user_id="storage-test-user", token_version="1",
+    )
+    parts = urlsplit(signed)
+    query = {key: values[0] for key, values in parse_qs(parts.query).items()}
+    assert query["org"] == "storage-test-org" and query["uid"] == "storage-test-user"
+    assert storage_service.verify_capability(
+        parts.path.rsplit("/", 1)[-1], query["sig"], query["exp"],
+        query["org"], query["uid"], query["ver"],
+    )
 
     # 3. Partial R2 configuration must raise RuntimeError (F49)
     with patch.object(storage_service.settings, "R2_ACCOUNT_ID", "acc_123"), \
