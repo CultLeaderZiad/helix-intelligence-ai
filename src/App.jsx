@@ -51,7 +51,6 @@ const ForgotPasswordPage = safeLazy(() => import("@/pages/auth/ForgotPasswordPag
 const ResetPasswordPage = safeLazy(() => import("@/pages/auth/ResetPasswordPage").then(m => ({ default: m.ResetPasswordPage })))
 const DiscoverPage = safeLazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
 const IntelligencePage = safeLazy(() => import("@/pages/IntelligencePage").then(m => ({ default: m.IntelligencePage })))
-const PerformancePage = safeLazy(() => import("./pages/PerformancePage").then(m => ({ default: m.default || m.PerformancePage })))
 const optionalPage = (page) => EXPERIMENTAL_FEATURES_ENABLED ? page : <Navigate to="/discover" replace />
 
 const DashboardPage = safeLazy(() => import("./pages/DashboardPage").then(m => ({ default: m.default })))
@@ -103,7 +102,6 @@ const PUBLIC_TITLES = {
   "/swipe-files": "Swipe Files",
   "/scout/lead-generation": "Lead Generation",
   "/intelligence": "Intelligence & Patterns",
-  "/performance": "Performance & Fatigue",
   "/billing": "Billing & Usage",
   "/api-keys": "API Keys",
   "/team": "Team Members",
@@ -234,7 +232,6 @@ export default function App() {
                       <Route path="/scout" element={<Navigate to={EXPERIMENTAL_FEATURES_ENABLED ? "/scout/social" : "/discover"} replace />} />
                       <Route path="/scout/lead-generation" element={optionalPage(<ScoutLeadGenerationPage />)} />
                       <Route path="/scout/:mode" element={optionalPage(<ScoutPage />)} />
-                      <Route path="performance" element={optionalPage(<PerformancePage />)} />
                       <Route path="dashboard" element={optionalPage(<DashboardPage />)} />
                       <Route path="/swipe-files" element={optionalPage(<SwipeFilesPage />)} />
                       <Route path="/access" element={<BillingPage />} />

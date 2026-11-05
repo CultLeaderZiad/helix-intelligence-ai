@@ -26,7 +26,6 @@ from app.api.routers import (
     support,
     playbooks,
     dashboard,
-    simulation,
     uploads,
     monitors,
     scout,
@@ -114,7 +113,6 @@ app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["a
 app.include_router(support.router, prefix=f"{settings.API_V1_STR}/support", tags=["support"])
 app.include_router(playbooks.router, prefix=f"{settings.API_V1_STR}/playbooks", tags=["playbooks"])
 app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["dashboard"])
-app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation", tags=["simulation"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", tags=["monitors"])
 app.include_router(scout.router, prefix=f"{settings.API_V1_STR}/scout", tags=["scout"])

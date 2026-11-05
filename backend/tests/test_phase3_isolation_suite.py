@@ -42,7 +42,6 @@ from app.core.deps import require_admin_permission
 from app.services.creative_service import save_creative, generate_patterns_for_recent_creatives
 from app.services.playbook_service import compile_playbook
 from app.services.analysis_service import generate_insight_for_creative
-from app.services.simulation_service import simulate_creative_for_audiences
 from app.services.team_service import _check_team_management_permission, invite_member, accept_invite
 from app.services.api_key_service import authenticate_api_key, hash_key
 
@@ -190,10 +189,10 @@ def test_f05_brands_and_patterns_tenant_scoping():
 
 
 # ---------------------------------------------------------------------------
-# F06: Insights & Simulation Cross-Tenant Isolation
+# F06: Insights Cross-Tenant Isolation
 # ---------------------------------------------------------------------------
 @pytest.mark.asyncio
-async def test_f06_insights_and_simulation_cross_tenant_isolation():
+async def test_f06_insights_cross_tenant_isolation():
     user_b = User(id="usr_b", email="user_b@tenant-b.com", role="customer")
     org_b = Organization(id="org_b", name="Tenant B Org", owner_id=user_b.id)
     creative_a = Creative(id="cr_foreign", job_id="job_foreign", brand_id="foreign_brand")
@@ -224,16 +223,6 @@ async def test_f06_insights_and_simulation_cross_tenant_isolation():
         )
     assert exc_insight.value.status_code == 404
 
-    # simulate_creative_for_audiences on foreign creative -> 404
-    with pytest.raises(HTTPException) as exc_sim:
-        await simulate_creative_for_audiences(
-            db=db,
-            creative_id=creative_a.id,
-            segment_ids=["gen_z_gamers"],
-            user=user_b,
-            user_org_ids=[org_b.id]
-        )
-    assert exc_sim.value.status_code == 404
 
 
 # ---------------------------------------------------------------------------

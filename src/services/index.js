@@ -11,7 +11,6 @@ import accountApi from "./api/accountService.api"
 import notificationApi from "./api/notificationService.api"
 import mediaApi from "./api/mediaService.api"
 import dashboardApi from "./api/dashboardService.api"
-import simulationApi from "./api/simulationService.api"
 import supportApi from "./api/supportService.api"
 import playbookApi from "./api/playbookService.api"
 import { updatesApi } from "./api/updatesService.api"
@@ -29,7 +28,6 @@ export const accountService = accountApi
 export const notificationService = notificationApi
 export const mediaService = mediaApi
 export const dashboardService = dashboardApi
-export const simulationService = simulationApi
 export const supportService = supportApi
 export const playbookService = playbookApi
 export const updatesService = updatesApi

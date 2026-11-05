@@ -24,7 +24,6 @@ import { useMediaGenerate } from "@/hooks/useMediaGenerate"
 import { useSearchContext } from "@/context/SearchContext"
 import { useAuth } from "@/context/AuthContext"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
-import { AudienceSimulationPanel } from "@/features/create/AudienceSimulationPanel"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 
 const CREATIVE_MODES = {
@@ -431,7 +430,6 @@ export function CreatePage() {
               )}
 
               {/* Synthetic Audience Rehearsal */}
-              {sourceCreative && <AudienceSimulationPanel creativeId={sourceCreative.id} />}
 
               {/* Prompt Assistant & Quick Formula Templates */}
               <div className="flex flex-col gap-2">

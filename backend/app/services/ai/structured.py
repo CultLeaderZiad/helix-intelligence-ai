@@ -7,7 +7,6 @@ import uuid
 from typing import Any, Iterable
 
 from app.schemas.analysis import Insight, Pattern
-from app.schemas.simulation import SegmentReaction
 
 _INSIGHT_KINDS = {"opportunity", "warning", "observation"}
 _PATTERN_FAMILIES = {"visual", "copy", "structural"}
@@ -104,48 +103,6 @@ def parse_patterns(data: Any, *, allowed_ids: Iterable[str], model_version: str)
     return parsed
 
 
-def parse_simulation(data: Any, segments) -> dict:
-    if not isinstance(data, dict):
-        raise InvalidModelOutput("simulation response is not an object")
-    raw = data.get("segment_reactions")
-    if not isinstance(raw, list) or not raw:
-        raise InvalidModelOutput("segment_reactions is missing")
-    by_id = {segment.id: segment for segment in segments}
-    reactions = []
-    for item in raw:
-        if not isinstance(item, dict):
-            raise InvalidModelOutput("segment reaction is not an object")
-        segment = by_id.get(item.get("segment_id"))
-        if segment is None:
-            raise InvalidModelOutput("segment_id is not one of the requested personas")
-        try:
-            appeal = float(item.get("appeal_score"))
-        except (TypeError, ValueError) as exc:
-            raise InvalidModelOutput("appeal_score is not a number") from exc
-        if appeal < 0 or appeal > 1:
-            raise InvalidModelOutput("appeal_score is outside 0..1")
-        credibility = item.get("credibility_assessment")
-        if not isinstance(credibility, str) or not credibility.strip():
-            raise InvalidModelOutput("credibility_assessment is missing")
-        reactions.append(SegmentReaction(
-            segment_id=segment.id,
-            segment_label=segment.label,
-            appeal_score=appeal,
-            objections=[str(x) for x in item.get("objections") or [] if str(x).strip()],
-            confusing_claims=[str(x) for x in item.get("confusing_claims") or [] if str(x).strip()],
-            credibility_assessment=credibility.strip(),
-            compliance_risks=[str(x) for x in item.get("compliance_risks") or [] if str(x).strip()],
-        ))
-    if len(reactions) != len(segments):
-        raise InvalidModelOutput("simulation did not return every requested segment")
-    angles = data.get("recommended_angles")
-    if not isinstance(angles, list) or not angles:
-        raise InvalidModelOutput("recommended_angles is missing")
-    return {
-        "segment_reactions": reactions,
-        "recommended_angles": [str(item).strip() for item in angles if str(item).strip()],
-        "generated_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-    }
 
 
 def parse_translation(data: Any, *, target_lang: str) -> dict:

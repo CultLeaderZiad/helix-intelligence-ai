@@ -44,7 +44,7 @@ async def test_ai_provider_failure_is_sanitized():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["insight", "patterns", "simulation"])
+@pytest.mark.parametrize("operation", ["insight", "patterns"])
 async def test_provider_http_failures_never_echo_upstream_payload(operation, caplog):
     class BrokenProvider(AIProvider):
         async def _call_api(self, messages):
@@ -54,8 +54,7 @@ async def test_provider_http_failures_never_echo_upstream_payload(operation, cap
     creative = SimpleNamespace(id="creative-1", headline="Synthetic", body="Copy",
                                platform="meta", format="image", cta=None, days_active=1)
     call = {"insight": lambda: provider.generate_insight(creative),
-            "patterns": lambda: provider.generate_patterns([creative]),
-            "simulation": lambda: provider.simulate_audience_reactions(creative, [])}[operation]
+            "patterns": lambda: provider.generate_patterns([creative])}[operation]
     with pytest.raises(HTTPException) as caught:
         await call()
     assert caught.value.status_code == 503

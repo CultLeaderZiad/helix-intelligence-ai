@@ -92,13 +92,6 @@ export const DOCS_REGISTRY = [
             readTime: '4 min',
           },
           {
-            slug: 'concept-audience-simulation',
-            title: 'Audience Simulation Rehearsal',
-            description: 'What synthetic persona rehearsal is and why it is not a statistical predictor.',
-            file: 'user-guide/concept-audience-simulation.md',
-            readTime: '4 min',
-          },
-          {
             slug: 'lead-generation',
             title: 'Scout Lead Generation (Scrapling)',
             description: 'Public-web lead generation: ICP brief, seeds, engines, recipes, provenance, and export.',
