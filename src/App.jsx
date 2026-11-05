@@ -81,9 +81,6 @@ const SupportPage = safeLazy(() => import("@/pages/SupportPage").then(m => ({ de
 const NotificationsPage = safeLazy(() => import("@/pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })))
 const DocsHomePage = safeLazy(() => import("@/pages/docs/DocsHomePage").then(m => ({ default: m.DocsHomePage })))
 const DocsDetailPage = safeLazy(() => import("@/pages/docs/DocsDetailPage").then(m => ({ default: m.DocsDetailPage })))
-const ScoutPage = safeLazy(() => import("@/pages/ScoutPage").then(m => ({ default: m.default || m.ScoutPage })))
-const ScoutCliDocsPage = safeLazy(() => import("@/pages/docs/ScoutCliDocsPage").then(m => ({ default: m.default || m.ScoutCliDocsPage })))
-const ScoutLeadGenerationPage = safeLazy(() => import("@/pages/ScoutLeadGenerationPage").then(m => ({ default: m.default || m.ScoutLeadGenerationPage })))
 const LegalPage = safeLazy(() => import("@/pages/LegalPage").then(m => ({ default: m.LegalPage })))
 
 const PUBLIC_TITLES = {
@@ -98,7 +95,6 @@ const PUBLIC_TITLES = {
   "/forgot-password": "Reset password",
   "/reset-password": "Set a new password",
   "/swipe-files": "Swipe Files",
-  "/scout/lead-generation": "Lead Generation",
   "/intelligence": "Intelligence & Patterns",
   "/billing": "Billing & Usage",
   "/api-keys": "API Keys",
@@ -106,8 +102,6 @@ const PUBLIC_TITLES = {
   "/settings": "Profile & Settings",
   "/support": "Support & Feedback",
   "/notifications": "Notifications & Announcements",
-  "/scout": "Scout · Social Lead Gen",
-  "/docs/scout-cli": "Scout CLI Reference",
 }
 
 function DocumentTitle() {
@@ -191,7 +185,6 @@ export default function App() {
 
                   {/* Public documentation system */}
                   <Route path="/docs" element={<DocsHomePage />} />
-                  <Route path="/docs/scout-cli" element={<ScoutCliDocsPage />} />
                   <Route path="/docs/:section" element={<DocsDetailPage />} />
                   <Route path="/docs/:section/:slug" element={<DocsDetailPage />} />
 
@@ -226,9 +219,6 @@ export default function App() {
                       <Route path="/discover" element={<DiscoverPage />} />
                       <Route path="/intelligence" element={optionalPage(<IntelligencePage />)} />
                       <Route path="/monitors" element={optionalPage(<MonitorsPage />)} />
-                      <Route path="/scout" element={<Navigate to={EXPERIMENTAL_FEATURES_ENABLED ? "/scout/social" : "/discover"} replace />} />
-                      <Route path="/scout/lead-generation" element={optionalPage(<ScoutLeadGenerationPage />)} />
-                      <Route path="/scout/:mode" element={optionalPage(<ScoutPage />)} />
                       <Route path="/swipe-files" element={optionalPage(<SwipeFilesPage />)} />
                       <Route path="/access" element={<BillingPage />} />
                       <Route path="/billing" element={<Navigate to="/access" replace />} />

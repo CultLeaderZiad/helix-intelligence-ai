@@ -12,7 +12,7 @@ import pytest
 
 from app.core.tenancy import current_tenant
 from app.services import job_reconciliation as reconciliation
-from workers.scrapling import worker
+from workers.jobs import worker
 
 
 def session_factory(db):
@@ -187,9 +187,8 @@ async def test_worker_starts_and_cancels_periodic_maintenance():
         with patch.object(reconciliation, "reconcile_once", side_effect=startup), \
              patch.object(reconciliation, "reconciliation_loop", side_effect=periodic), \
              patch("app.services.work_outbox.claim_next_work_item", side_effect=claim), \
-             patch.object(worker, "_claim_next_job_async", AsyncMock(return_value=None)), \
              patch.object(worker, "POLL_INTERVAL_S", 0):
-            await worker._worker_loop(AsyncMock())
+            await worker._worker_loop()
         assert events == ["startup", "periodic", "claim", "cancelled"]
     finally:
         worker._stop.clear()

@@ -193,7 +193,6 @@ class Settings(BaseSettings):
     MEDIA_GENERATION_DEADLINE_S: float = float(os.getenv("MEDIA_GENERATION_DEADLINE_S", "120"))
     # Managed image/video calls may fall back to Pollinations only when this is set.
     # BYOK failures never use it.
-    SCRAPLING_MIN_INTERVAL_S: float = float(os.getenv("SCRAPLING_MIN_INTERVAL_S", "1.0"))
 
     # MONITORS (scheduled competitor watches)
     # The scheduler is whatever calls POST /api/monitors/tick with this secret
@@ -220,29 +219,6 @@ class Settings(BaseSettings):
     # Origin used to build links in emails and notifications.
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:3000").rstrip("/")
 
-    # 7-DAY TRIAL & MEDIA GENERATION LIMITS
-
-    # SCRAPLING LEAD GENERATION (Scout · Lead Generation sub-product)
-    # Worker-gated: when disabled, POST /scout/leadgen/jobs refuses with an
-    # honest worker_offline error instead of queueing work nothing will claim.
-    SCRAPLING_WORKER_ENABLED: bool = os.getenv("SCRAPLING_WORKER_ENABLED", "False").lower() in ("true", "1", "yes")
-    # Dev-only single-process fallback: runs the pipeline as an in-API
-    # background task (Scrapling is lazily imported, so uvicorn still boots
-    # without browsers). Prefer the Docker worker in production.
-    SCRAPLING_INLINE_WORKER: bool = os.getenv("SCRAPLING_INLINE_WORKER", "False").lower() in ("true", "1", "yes")
-    SCRAPLING_DEFAULT_ENGINE: str = os.getenv("SCRAPLING_DEFAULT_ENGINE", "stealth")   # http | stealth | dynamic
-    SCRAPLING_ROBOTS_OBEY: bool = os.getenv("SCRAPLING_ROBOTS_OBEY", "True").lower() in ("true", "1", "yes")
-    SCRAPLING_MAX_CONCURRENCY: int = int(os.getenv("SCRAPLING_MAX_CONCURRENCY", "4"))
-    SCRAPLING_PROXY_LIST: str = os.getenv("SCRAPLING_PROXY_LIST", "")   # newline or comma separated proxy URLs
-    SCRAPLING_CHECKPOINT_DIR: str = os.getenv("SCRAPLING_CHECKPOINT_DIR", "/tmp/helix-leadgen-checkpoints")
-    SCRAPLING_CREDIT_PER_PAGE: float = float(os.getenv("SCRAPLING_CREDIT_PER_PAGE", "0.15"))
-    SCRAPLING_CREDIT_BASE: float = float(os.getenv("SCRAPLING_CREDIT_BASE", "1.0"))
-    SCRAPLING_DOCKER_IMAGE: str = os.getenv("SCRAPLING_DOCKER_IMAGE", "ghcr.io/d4vinci/scrapling:latest")
-    SCRAPLING_WORKER_URL: str = os.getenv("SCRAPLING_WORKER_URL", "")   # optional health ping
-    # How recently the worker must have heartbeat before /worker/health says online.
-    SCRAPLING_HEARTBEAT_FRESH_S: int = int(os.getenv("SCRAPLING_HEARTBEAT_FRESH_S", "90"))
-    # Max log lines persisted on the job (FIFO); UI renders the tail.
-    SCRAPLING_MAX_LOG_LINES: int = int(os.getenv("SCRAPLING_MAX_LOG_LINES", "400"))
 
 
     model_config = SettingsConfigDict(
@@ -326,7 +302,6 @@ def validate_boot_invariants(cfg) -> None:
         ("APP_BASE_URL", False),
         ("R2_PUBLIC_BASE_URL", False),
         ("R2_ENDPOINT_URL", False),
-        ("SCRAPLING_WORKER_URL", False),
     )
     parsed_targets = {}
     for name, allow_relative in url_settings:

@@ -33,8 +33,6 @@ from app.models.plan import Plan
 from app.models.usage_log import UsageLog
 from app.models.creative import Creative
 from app.models.ai_insight import AIInsight
-from app.models.scout import ScoutJob, ScoutMapsJob
-from app.models.leadgen import LeadGenJob
 from app.models.api_usage import ExternalApiUsage
 from app.services.billing_service import (
     charge,
@@ -47,9 +45,7 @@ from app.services.ai.base import AIProvider
 from app.services.analysis_service import generate_insight_for_creative
 from app.services.api_usage_service import check_global_cap_and_log_preflight, APILimitExceeded
 from app.services.job_reconciliation import _sweep_unrefunded_failed_jobs, reconcile_once
-from app.services.leadgen_pipeline import _fail_job, _finish
 from app.schemas.analysis import Insight
-from app.schemas.leadgen import LeadGenBrief, LeadGenSeeds, CreateLeadGenJobRequest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -343,65 +339,11 @@ def test_f10_http_js_restricts_mutation_retries():
 # ---------------------------------------------------------------------------
 # F27: LeadGen Billing & User Budget Ceilings
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f27_leadgen_budget_ceiling_rejection_and_charge():
-    from app.api.routers.leadgen import compute_credit_cost
-
-    brief = LeadGenBrief(
-        icp="SaaS founders",
-        geos=["US"],
-        max_pages=10,
-        max_leads=5,
-        credit_budget=2.0  # Budget specified by user: 2.0 credits
-    )
-    cost = compute_credit_cost(brief, enrich_emails=True, generate_outreach=True)
-    # Base 3.0 + 10*0.1 (1.0) + 0.25*5 (1.25) + 0.1*5 (0.5) = 5.75
-    assert cost > brief.credit_budget
-
-    # Assert that cost exceeds budget check
-    assert brief.credit_budget < cost
 
 
 # ---------------------------------------------------------------------------
 # F28: Pre-Work Failure Reversals (Scout & LeadGen Refunds)
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f28_prework_failure_refunds_deducted_credits():
-    user = User(id="usr_f28", email="f28@test.com", role="customer")
-    org = Organization(id="org_f28", name="Org F28", owner_id=user.id, credit_balance=50.0)
-    leadgen_job = LeadGenJob(
-        id="job_lg_f28",
-        org_id=org.id,
-        user_id=user.id,
-        status="running",
-        credits_used=5.5,
-        credit_budget=10.0,
-    )
-
-    refunded_amounts = []
-
-    class MockPipelineDB:
-        async def execute(self, q):
-            return MockResult(item=leadgen_job)
-
-        def add(self, obj): pass
-        async def commit(self): pass
-
-    class MockContextManager:
-        def __init__(self, db_inst): self.db_inst = db_inst
-        async def __aenter__(self): return self.db_inst
-        async def __aexit__(self, *args): pass
-
-    mock_db = MockPipelineDB()
-
-    # Mock refund inside leadgen_pipeline
-    with patch("app.services.billing_service.refund", AsyncMock(side_effect=lambda db, org_id, amount, reason, job_id: refunded_amounts.append(amount))):
-        with patch("app.services.leadgen_pipeline.worker_session_maker", return_value=MockContextManager(mock_db)):
-            await _finish(leadgen_job.id, 0.0, "Seed stage failed", failed=True)
-
-    assert len(refunded_amounts) == 1
-    assert refunded_amounts[0] == 5.5
-    assert leadgen_job.status == "failed"
 
 
 # ---------------------------------------------------------------------------

@@ -35,27 +35,12 @@ def check(condition: bool, label: str, failures: list[str]) -> None:
 def main() -> int:
     failures: list[str] = []
 
-    scout = read("app/api/routers/scout.py")
-    # 3. No email-substring admin bypass anywhere; central gate in place.
-    # (Strip comments first: the fix's own explanatory comments mention the old
-    # backdoor, and only executable code should be asserted on.)
-    scout_code = "\n".join(
-        line for line in scout.splitlines() if not line.strip().startswith("#")
-    )
+    # 3. Scout (with its email-substring billing backdoor history) was removed
+    # in W8; it must not come back.
     check(
-        '"cultleader" in' not in scout_code
-        and 'in (current_user.email or "")' not in scout_code,
-        "scout: no email-substring admin bypass",
-        failures,
-    )
-    check(
-        scout.count("assert_can_spend(") >= 2 and scout.count("await charge(") >= 2,
-        "scout: central row-locked gate + charge() on both job routes",
-        failures,
-    )
-    check(
-        "org.credit_balance = 250" not in scout and "org.credit_balance = max(" not in scout,
-        "scout: no direct credit_balance writes",
+        not (ROOT / "app/api/routers/scout.py").exists()
+        and not (ROOT / "app/api/routers/leadgen.py").exists(),
+        "scout/leadgen: routers removed",
         failures,
     )
 

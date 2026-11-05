@@ -131,6 +131,12 @@ too. Verify that before creating anything.
 With the owner role in `DATABASE_URL`, W2+ refuses to boot in production.
 That is intended.
 
+### Worker
+
+The Render Background Worker must use `backend/workers/jobs/Dockerfile`
+(W8 replaced `backend/workers/scrapling/`, which is deleted). It runs Discover
+and Monitor work items plus job reconciliation and needs no browser.
+
 ### Hosting
 
 - Put the Render API and worker in the same region as Neon (us-east-2 /

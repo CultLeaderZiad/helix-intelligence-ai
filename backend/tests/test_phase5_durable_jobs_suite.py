@@ -27,15 +27,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from app.core.config import settings
 from app.db.session import worker_session_maker, worker_engine
 from app.models.user import User
-from app.models.leadgen import LeadGenWorkerHeartbeat
 from app.schemas.auth import UserCreate
 from app.services.security_service import is_ip_blocked, is_safe_public_url, safe_http_get
-from app.services.leadgen_pipeline import _is_private_host as pipe_is_private_host
 from app.services.job_reconciliation import reconcile_once
 from app.services.team_service import _format_utc_iso
 from app.services.auth_service import register_user
 from app.api.routers.updates import normalize_to_utc
-from app.api.routers.leadgen import _is_worker_available
 from sqlalchemy.pool import NullPool
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -83,10 +80,8 @@ def test_f23_ssrf_ipv4_mapped_ipv6_and_private_host_blocking():
     for ip_str in blocked_ips:
         ip_obj = ipaddress.ip_address(ip_str)
         assert is_ip_blocked(ip_obj) is True, f"security_service is_ip_blocked failed for {ip_str}"
-        assert pipe_is_private_host(ip_str) is True, f"leadgen_pipeline failed to block {ip_str}"
         assert is_safe_public_url(f"http://{ip_str}/path") is False
 
-    assert pipe_is_private_host("localhost") is True
     assert is_safe_public_url("http://localhost:8000/api") is False
 
     # Public hosts must be permitted
@@ -94,7 +89,6 @@ def test_f23_ssrf_ipv4_mapped_ipv6_and_private_host_blocking():
     for ip_str in allowed_ips:
         ip_obj = ipaddress.ip_address(ip_str)
         assert is_ip_blocked(ip_obj) is False, f"security_service blocked legitimate {ip_str}"
-        assert pipe_is_private_host(ip_str) is False, f"leadgen_pipeline blocked legitimate {ip_str}"
         assert is_safe_public_url(f"https://{ip_str}/api") is True
 
 
@@ -164,41 +158,6 @@ async def test_f25_reconciliation_sweeper_handles_all_job_types():
 # 4. F26: Live Worker Health Verification
 # ==============================================================================
 
-@pytest.mark.asyncio
-async def test_f26_live_worker_health_verification():
-    """Verify _is_worker_available checks live heartbeat and rejects when worker is dead."""
-    db = AsyncMock()
-
-    # Case 1: Disabled worker -> unavailable
-    with patch.object(settings, "SCRAPLING_INLINE_WORKER", False), \
-         patch.object(settings, "SCRAPLING_WORKER_ENABLED", False), \
-         patch.object(settings, "SCRAPLING_WORKER_URL", ""):
-        db.execute.return_value = MockResult(item=None)
-        is_avail = await _is_worker_available(db)
-        assert is_avail is False
-
-    # Case 2: Worker enabled, remote URL empty, fresh heartbeat -> available
-    with patch.object(settings, "SCRAPLING_INLINE_WORKER", False), \
-         patch.object(settings, "SCRAPLING_WORKER_ENABLED", True), \
-         patch.object(settings, "SCRAPLING_WORKER_URL", ""):
-        fresh_hb = LeadGenWorkerHeartbeat(
-            id="scrapling_worker",
-            updated_at=datetime.datetime.now(timezone.utc),
-            browsers_ready=True,
-        )
-        db.execute.return_value = MockResult(item=fresh_hb)
-        is_avail = await _is_worker_available(db)
-        assert is_avail is True
-
-        # Case 3: Heartbeat is stale (older than fresh window) -> unavailable
-        stale_hb = LeadGenWorkerHeartbeat(
-            id="scrapling_worker",
-            updated_at=datetime.datetime.now(timezone.utc) - datetime.timedelta(minutes=10),
-            browsers_ready=True,
-        )
-        db.execute.return_value = MockResult(item=stale_hb)
-        is_avail = await _is_worker_available(db)
-        assert is_avail is False
 
 
 # ==============================================================================

@@ -27,9 +27,6 @@ export function CommandBar({ open, onClose }) {
         run: () => navigate(s.path),
       })),
       ...(EXPERIMENTAL_FEATURES_ENABLED ? [
-      { id: "scout-social", label: "Go to Scout · Social / Atlas", hint: "live", run: () => navigate("/scout/social") },
-      { id: "scout-leadgen", label: "Go to Scout · Lead Generation", hint: "scrapling_engine", run: () => navigate("/scout/lead-generation") },
-      { id: "scout-maps", label: "Go to Scout · Maps", hint: "experimental", run: () => navigate("/scout/maps") },
       ] : []),
     ],
     [navigate, t],

@@ -12,8 +12,6 @@ const FEATURES = [
   { key: "swipe_files", label: "Swipe Files" },
   { key: "team_accounts", label: "Team Accounts" },
   { key: "public_api", label: "Public API" },
-  { key: "scout", label: "Scout" },
-  { key: "leadgen", label: "Lead Generation" },
   { key: "monitors", label: "Monitors" },
 ]
 

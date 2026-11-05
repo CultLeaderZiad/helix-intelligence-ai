@@ -13,9 +13,6 @@ import supportApi from "./api/supportService.api"
 import playbookApi from "./api/playbookService.api"
 import { updatesApi } from "./api/updatesService.api"
 import monitorApi from "./api/monitorService.api"
-import scoutApi from "./api/scoutService.api"
-import mapsScoutApi from "./api/mapsScoutService.api"
-import leadgenApi from "./api/leadgen"
 
 export const discoverService = discoverApi
 export const creativeService = creativeApi
@@ -27,9 +24,6 @@ export const notificationService = notificationApi
 export const supportService = supportApi
 export const playbookService = playbookApi
 export const updatesService = updatesApi
-export const scoutService = scoutApi
-export const mapsScoutService = mapsScoutApi
 export const monitorService = monitorApi
-export const leadgenService = leadgenApi
 
 export { ServiceError } from "./http"

@@ -26,8 +26,6 @@ from app.api.routers import (
     playbooks,
     uploads,
     monitors,
-    scout,
-    leadgen,
 )
 
 @asynccontextmanager
@@ -111,10 +109,6 @@ app.include_router(support.router, prefix=f"{settings.API_V1_STR}/support", tags
 app.include_router(playbooks.router, prefix=f"{settings.API_V1_STR}/playbooks", tags=["playbooks"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", tags=["monitors"])
-app.include_router(scout.router, prefix=f"{settings.API_V1_STR}/scout", tags=["scout"])
-app.include_router(scout.router, prefix="/api/v1/scout", tags=["scout"])
-# Scout · Lead Generation (scrapling_engine worker) — separate router so Social/Atlas stays untouched
-app.include_router(leadgen.router, prefix=f"{settings.API_V1_STR}/scout/leadgen", tags=["leadgen"])
 
 # Locally stored media. This is served by a router rather than a StaticFiles
 # mount so that access is checked: the old mount handed any file to anyone who

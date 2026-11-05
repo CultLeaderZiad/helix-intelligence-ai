@@ -245,7 +245,6 @@ VENDOR_HOSTS = {
     "overpass-api.de": "OpenStreetMap Overpass",
     "lz4.overpass-api.de": "OpenStreetMap Overpass mirror",
     "overpass.kumi.systems": "OpenStreetMap Overpass mirror",
-    "api.github.com": "GitHub public API used by Scout",
 }
 
 

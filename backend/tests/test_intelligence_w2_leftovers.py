@@ -8,11 +8,9 @@ import httpx
 import pytest
 from unittest.mock import AsyncMock, patch
 
-from app.api.routers.scout import csv_metric
 from app.db.session import worker_session_maker
 from app.models.organization import Organization
 from app.models.pattern import Pattern
-from app.models.scout import ScoutMapsJob, ScoutMapsLead
 from app.models.user import User
 from app.services.scraping.base import ProviderFailure, RawCreative
 from app.services.scraping.normalizer import normalize_creative
@@ -154,15 +152,10 @@ def test_normalizer_persists_provenance_fields():
     assert creative.engagement_rate is None
 
 
-def test_csv_metric_keeps_zero_and_blanks_unknown():
-    assert csv_metric(None) == ""
-    assert csv_metric(0) == 0
-    assert csv_metric(0.0) == 0.0
-    assert csv_metric(4.5) == 4.5
 
 
 @pytest.mark.asyncio
-async def test_unmeasured_lift_and_reviews_persist_as_null_while_zero_stays_zero():
+async def test_unmeasured_lift_persists_as_null():
     suffix = uuid.uuid4().hex[:8]
     async with worker_session_maker() as db:
         user = User(id=f"u_{suffix}", email=f"{suffix}@example.com", password_hash="x", role="member")
@@ -178,36 +171,11 @@ async def test_unmeasured_lift_and_reviews_persist_as_null_while_zero_stays_zero
             prevalence=0.2,
             lift_index=None,
         )
-        job = ScoutMapsJob(id=f"mj_{suffix}", org_id=org.id, user_id=user.id, keyword="clinics", city="Cairo")
-        db.add_all([pattern, job])
-        await db.flush()
-        unknown = ScoutMapsLead(
-            id=f"ml_unknown_{suffix}",
-            job_id=job.id,
-            org_id=org.id,
-            title="No rating",
-            rating=None,
-            reviews_count=None,
-        )
-        zero = ScoutMapsLead(
-            id=f"ml_zero_{suffix}",
-            job_id=job.id,
-            org_id=org.id,
-            title="Zero rating",
-            rating=0,
-            reviews_count=0,
-        )
-        db.add_all([unknown, zero])
+        db.add(pattern)
         await db.commit()
 
         stored_pattern = await db.get(Pattern, pattern.id)
-        stored_unknown = await db.get(ScoutMapsLead, unknown.id)
-        stored_zero = await db.get(ScoutMapsLead, zero.id)
         assert stored_pattern.lift_index is None
-        assert stored_unknown.rating is None
-        assert stored_unknown.reviews_count is None
-        assert stored_zero.rating == 0
-        assert stored_zero.reviews_count == 0
 
 
 @pytest.mark.asyncio

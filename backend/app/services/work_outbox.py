@@ -1,4 +1,4 @@
-"""Postgres outbox for long discovery, media, scout, maps, and monitor work.
+"""Postgres outbox for long discovery and monitor work.
 
 A claim takes a short lease. The network call happens after the lease
 transaction commits. Restarting a worker releases the lease; it does not
@@ -474,14 +474,6 @@ async def _dispatch(kind, job_id, payload, org_id, user_id, item_id, owner, atte
             lease_owner=owner,
             lease_generation=attempt_count,
         )
-        return
-    if kind == "scout":
-        from app.services.scout_service import execute_scout_job
-        await execute_scout_job(job_id)
-        return
-    if kind == "maps":
-        from app.services.maps_scout_service import execute_maps_scout
-        await execute_maps_scout(job_id)
         return
     if kind == "monitor":
         from app.services.monitor_service import run_monitor

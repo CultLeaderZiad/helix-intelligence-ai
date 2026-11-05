@@ -19,7 +19,6 @@ from unittest.mock import AsyncMock, patch
 from app.db.session import worker_session_maker
 from app.models.organization import Organization
 from app.models.scrape_job import ScrapeJob
-from app.models.scout import ScoutMapsJob, ScoutMapsLead
 from app.models.user import User
 from app.models.work_item import WorkItem
 from app.services.ai.base import AIProvider
@@ -30,7 +29,6 @@ from app.services.billing_service import (
     release_reservation,
     reserve_credits,
 )
-from app.services.maps_scout_service import _optional_float, _optional_int
 from app.services.safe_fetch import UnsafeFetch, safe_http_get
 from app.services.work_outbox import claim_next_work_item, enqueue_work, requeue_expired_leases
 from app.schemas.creative import Creative as CreativeSchema
@@ -131,37 +129,6 @@ async def test_meta_http_failure_is_not_counted_as_success():
     assert provider.successful_queries_count == 0
 
 
-@pytest.mark.asyncio
-async def test_missing_rating_persists_as_null():
-    suffix = uuid.uuid4().hex[:8]
-    async with worker_session_maker() as db:
-        user = User(id=f"u_{suffix}", email=f"{suffix}@example.com", password_hash="x", role="member")
-        org = Organization(id=f"o_{suffix}", name="Org", owner_id=user.id, plan="pro", credit_balance=10)
-        db.add(user)
-        await db.flush()
-        db.add(org)
-        job = ScoutMapsJob(id=f"mj_{suffix}", org_id=org.id, user_id=user.id, keyword="clinics", city="Cairo")
-        db.add(job)
-        await db.flush()
-        lead = ScoutMapsLead(
-            id=f"ml_{suffix}",
-            job_id=job.id,
-            org_id=org.id,
-            title="Clinic with no rating",
-            metadata_raw={
-                "rating": {"value": None, "provider": "overpass", "source_url": "https://overpass-api.de/api/interpreter", "fetched_at": "2026-10-18T00:00:00+00:00"},
-                "reviews_count": {"value": None, "provider": "overpass", "source_url": "https://overpass-api.de/api/interpreter", "fetched_at": "2026-10-18T00:00:00+00:00"},
-            },
-        )
-        lead.rating = _optional_float(None)
-        lead.reviews_count = _optional_int(None)
-        db.add(lead)
-        await db.commit()
-        stored = await db.get(ScoutMapsLead, lead.id)
-        assert stored.rating is None
-        assert stored.reviews_count is None
-        assert stored.metadata_raw["rating"]["value"] is None
-        assert stored.metadata_raw["reviews_count"]["source_url"]
 
 
 @pytest.mark.asyncio

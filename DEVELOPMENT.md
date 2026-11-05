@@ -156,7 +156,7 @@ this app reach 5.3 minutes at p95, so an age-based rule would have to wait out
 the slowest legitimate job — roughly ten minutes — before it could call
 anything dead.
 
-The durable scrapling worker runs the sweep at startup **and** on a 60s timer,
+The jobs worker (`backend/workers/jobs`) runs the sweep at startup **and** on a 60s timer,
 using `worker_session_maker` for maintenance and refunds. The API does not run
 startup sweeps or periodic maintenance; keep the worker service running for
 recovery. Startup alone is not enough: a restart that comes back in seconds
@@ -418,7 +418,7 @@ worker-only, so API logins must not inherit `helix_worker`.
 
 Then set each password out of band (`ALTER ROLE ... PASSWORD` from a secret
 store) and point `DATABASE_URL` at that login. The API uses
-`helix_api_login`. The scrapling worker uses `helix_worker_login`. Both
+`helix_api_login`. The jobs worker uses `helix_worker_login`. Both
 inherit `SELECT, INSERT, UPDATE, DELETE` on public tables and `USAGE, SELECT`
 on sequences. Migration `d4f6a8c0e2b1` grants those privileges again and sets
 default privileges for tables created later by the migration role.

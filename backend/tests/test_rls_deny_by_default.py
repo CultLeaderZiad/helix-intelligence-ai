@@ -13,7 +13,7 @@ from sqlalchemy.pool import NullPool
 from app.core.deps import _bind_request_tenant
 from app.core.tenancy import tenant_scope
 from app.db.session import worker_engine, worker_session_maker
-from app.models.leadgen import LeadGenJob  # noqa: F401 - register all mapped tables
+import app.models  # noqa: F401 - register all mapped tables
 from app.models.organization import Organization
 from app.models.monitor import Monitor, MonitorRun
 from app.models.usage_log import UsageLog

@@ -57,10 +57,6 @@ def _rules() -> list[Tuple[str, int, int, str]]:
         ("/api/patterns/generate", paid_limit, paid_window, PAID_AI_BUCKET),
         ("/api/creatives/", paid_limit, paid_window, PAID_AI_BUCKET),
         ("/api/insights/", paid_limit, paid_window, PAID_AI_BUCKET),
-        ("/api/scout/maps/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
-        ("/api/scout/leadgen/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
-        ("/api/scout/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
-        ("/api/leadgen/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
         ("/api/playbooks", paid_limit, paid_window, PAID_AI_BUCKET),
     ]
 

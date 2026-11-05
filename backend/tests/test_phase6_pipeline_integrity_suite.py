@@ -14,7 +14,6 @@ from app.models.user import User
 from app.models.organization import Organization
 from app.models.scrape_job import ScrapeJob
 from app.models.creative import Creative
-from app.models.leadgen import LeadGenJob
 from app.models.access_grant import OrganizationAccessGrant
 
 
@@ -232,102 +231,8 @@ async def test_discovery_provider_outage_and_refund():
             assert refunds[0].credits_deducted == -DISCOVER_SEARCH_CREDIT_COST
 
 
-@pytest.mark.asyncio
-async def test_leadgen_checkpoint_resume_and_pause_refresh():
-    """F30: Resumed leadgen job with checkpoint_path restores checkpoint; pause loop uses populate_existing."""
-    from app.services.leadgen_pipeline import _load_checkpoint, _save_checkpoint
-
-    async with worker_session_maker() as db:
-        test_uid = f"usr_lg_{uuid.uuid4().hex[:8]}"
-        test_oid = f"org_lg_{uuid.uuid4().hex[:8]}"
-        u = User(id=test_uid, email=f"{test_uid}@example.com", password_hash="pw", role="member")
-        o = Organization(id=test_oid, name="LG Org", owner_id=test_uid, plan="pro", credit_balance=100.0)
-        db.add(u)
-        await db.flush()
-        db.add(o)
-        await db.commit()
-
-        job_id = f"lg_job_{uuid.uuid4().hex[:8]}"
-        job = LeadGenJob(
-            id=job_id,
-            org_id=test_oid,
-            user_id=test_uid,
-            status="queued",
-            engine_default="stealth",
-            brief={"query": "solar installers"},
-            seeds=["https://solar1.com"]
-        )
-        db.add(job)
-        await db.commit()
-
-        # Save checkpoint
-        _save_checkpoint(job, ["https://solar1.com", "https://solar2.com"], processed=1)
-        await db.commit()
-
-        # Verify checkpoint_path is set on the model
-        assert job.checkpoint_path is not None
-
-        # Verify condition for resume_checkpoint: even if status is queued, bool(job.checkpoint_path) activates resume
-        resume_checkpoint = job.status == "paused" or bool(job.checkpoint_path)
-        assert resume_checkpoint is True
-
-        loaded = _load_checkpoint(job)
-        assert loaded is not None
-        assert loaded["pending"] == ["https://solar1.com", "https://solar2.com"]
-        assert loaded["processed"] == 1
 
 
-@pytest.mark.asyncio
-async def test_scrapling_xhr_capture_with_ssrf_safety():
-    """F81: scrapling_engine.fetch matches capture_xhr_pattern and fetches safely with safe_http_get."""
-    from app.services import scrapling_engine
-
-    sample_html = """
-    <html>
-      <head>
-        <script>
-          fetch('/api/v1/contacts.json').then(r => r.json());
-          axios.get('http://169.254.169.254/latest/meta-data');
-        </script>
-      </head>
-      <body><h1>Test Page</h1></body>
-    </html>
-    """
-
-    mock_resp = MagicMock()
-    mock_resp.status = 200
-    mock_resp.text = sample_html
-    mock_resp.url = "https://publicsite.example.com"
-
-    mock_fetcher = MagicMock()
-    mock_fetcher.get.return_value = mock_resp
-
-    mock_scrapling = MagicMock()
-    mock_scrapling.fetchers.StealthyFetcher = mock_fetcher
-    mock_scrapling.fetchers.Fetcher = mock_fetcher
-
-    with patch.dict(sys.modules, {"scrapling": mock_scrapling, "scrapling.fetchers": mock_scrapling.fetchers}), \
-         patch("app.services.scrapling_engine.is_available", return_value=True), \
-         patch("app.services.scrapling_engine.robots_allowed", return_value=True), \
-         patch("app.services.security_service.is_safe_public_url", return_value=True), \
-         patch("app.services.security_service.safe_http_get") as mock_safe_get:
-
-        mock_xhr_resp = MagicMock()
-        mock_xhr_resp.status_code = 200
-        mock_xhr_resp.text = '{"email": "contact@publicsite.example.com", "phone": "+15551234567"}'
-        mock_safe_get.return_value = mock_xhr_resp
-
-        res = scrapling_engine.fetch(
-            url="https://publicsite.example.com",
-            engine="stealth",
-            capture_xhr_pattern=r"contacts\.json"
-        )
-
-        assert res["fetch_status"] == "ok"
-        assert len(res["captured_xhr"]) == 1
-        assert "contacts.json" in res["captured_xhr"][0]
-        # XHR payload is embedded in HTML
-        assert "contact@publicsite.example.com" in res["html"]
 
 
 @pytest.mark.asyncio
