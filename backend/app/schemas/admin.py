@@ -9,7 +9,6 @@ class AdminOverviewStats(BaseModel):
     window_label: str
     total_credits_consumed: float = 0.0
     total_provider_cost_usd: float = 0.0
-    active_trials: int = 0
     today_api_calls: int = 0
     today_api_spend: float = 0.0
 
@@ -94,7 +93,6 @@ class AdminOrganizationRow(BaseModel):
     effective_feature_flags: Dict[str, Any]
     status: str
     access_status: Optional[str] = None
-    trial_expires_at: Optional[str] = None
     total_jobs: int = 0
 
 class GrantCreditsRequest(BaseModel):
@@ -156,8 +154,6 @@ class AdminUserRow(BaseModel):
     plan_id: Optional[str] = None
     plan_name: Optional[str] = None
     access_status: Optional[str] = None
-    trial_started_at: Optional[str] = None
-    trial_expires_at: Optional[str] = None
     created_at: str
     is_suspended: Optional[bool] = False
     is_banned: Optional[bool] = False

@@ -6,12 +6,10 @@ from typing import List, Optional
 from pydantic import BaseModel, field_validator
 from urllib.parse import unquote, urlsplit
 
-from app.schemas.account import TrialStatusResponse
 from app.core.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.usage_log import UsageLog
 from app.models.organization import Organization
-from app.services.ai.ai_router import TRIAL_DAILY_REQUEST_LIMIT
 from app.services import billing_service, api_key_service, team_service, storage_service
 from app.core.security import get_password_hash, verify_password
 
@@ -95,7 +93,6 @@ async def get_profile(current_user: User = Depends(get_current_user)):
         "avatar_url": _avatar_url(current_user),
         "role": current_user.role,
         "has_completed_onboarding": getattr(current_user, "has_completed_onboarding", False),
-        "trial_expires_at": current_user.trial_expires_at.isoformat() if current_user.trial_expires_at else None,
         "created_at": current_user.created_at.isoformat() if current_user.created_at else ""
     }
 
@@ -241,57 +238,6 @@ async def get_today_real_usage(
         "as_of_utc": now.isoformat()
     }
 
-@router.get("/trial-status", response_model=TrialStatusResponse)
-async def get_trial_status(
-    db: AsyncSession = Depends(get_db), 
-    current_user: User = Depends(get_current_user)
-):
-    now = datetime.datetime.now(datetime.timezone.utc)
-    
-    is_active = False
-    days_remaining = 0
-    
-    if getattr(current_user, "role", "") == "admin":
-        is_active = True
-        days_remaining = 999
-    elif current_user.trial_expires_at:
-        if now < current_user.trial_expires_at:
-            is_active = True
-            delta = current_user.trial_expires_at - now
-            days_remaining = max(0, delta.days)
-
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    query = select(func.count(UsageLog.id)).where(
-        UsageLog.user_id == current_user.id,
-        UsageLog.created_at >= today_start
-    )
-    usage_count = await db.scalar(query) or 0
-
-    from app.services.billing_service import get_or_create_default_org, _utc_midnight
-    org = await get_or_create_default_org(db, current_user)
-    from app.models.plan import Plan
-    plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
-    plan = plan_result.scalar_one_or_none()
-    if not plan:
-        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
-
-    daily_limit = getattr(plan, "daily_credit_limit", None) if plan else None
-    daily_used = round(float(org.daily_credits_used_today or 0.0), 2)
-    daily_remaining = round(max(0, (daily_limit or 0) - daily_used), 2) if daily_limit else None
-    daily_resets_at = None
-    if daily_limit:
-        daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
-    
-    return TrialStatusResponse(
-        active=is_active,
-        days_remaining=days_remaining,
-        requests_used=usage_count,
-        requests_limit=TRIAL_DAILY_REQUEST_LIMIT,
-        daily_credit_limit=daily_limit,
-        daily_credits_used=daily_used,
-        daily_credits_remaining=daily_remaining,
-        daily_credits_resets_at_utc=daily_resets_at
-    )
 
 @router.post("/onboarding-complete")
 async def complete_onboarding(

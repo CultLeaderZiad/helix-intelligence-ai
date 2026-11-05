@@ -10,7 +10,7 @@ import { SkipToContent } from '@/components/ui/SkipToContent'
 import { useLanguage } from '@/context/LanguageContext'
 
 const GUIDE_LINKS = [
-  { label: 'docsQuickStart', to: '/docs/user-guide/quickstart-account-and-trial' },
+  { label: 'docsQuickStart', to: '/docs/user-guide/quickstart-account-and-access' },
   { label: 'docsHowDiscover', to: '/docs/user-guide/concept-how-discover-works' },
   { label: 'docsScoringLink', to: '/docs/user-guide/concept-scoring-system' },
   { label: 'docsEstimatedLink', to: '/docs/user-guide/concept-estimated-vs-real-data' },
@@ -114,7 +114,7 @@ export function DocsHomePage() {
             <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs">
               <span className="font-mono text-[11px] text-text-faint">{t('docsPopular')}:</span>
               {[
-                { label: 'docsQuickStart', to: '/docs/user-guide/quickstart-account-and-trial' },
+                { label: 'docsQuickStart', to: '/docs/user-guide/quickstart-account-and-access' },
                 { label: 'docsHowDiscover', to: '/docs/user-guide/concept-how-discover-works' },
                 { label: 'docsUsageLimits', to: '/docs/api-reference/credit-costs-and-limits' },
                 { label: 'docsFaqLink', to: '/docs/user-guide/faq' },
@@ -158,7 +158,7 @@ export function DocsHomePage() {
                 <DocsLinkList links={GUIDE_LINKS} t={t} direction={direction} />
               </div>
               <Link
-                to="/docs/user-guide/quickstart-account-and-trial"
+                to="/docs/user-guide/quickstart-account-and-access"
                 className="mt-6 inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-border bg-surface-2 px-4 py-2 font-mono text-xs font-medium text-text transition-colors hover:bg-surface-3 hover:text-accent"
               >
                 {t('docsExploreGuide')}

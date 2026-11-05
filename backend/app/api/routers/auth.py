@@ -51,12 +51,6 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     }
 
     now = datetime.datetime.now(datetime.timezone.utc)
-    trial_days_remaining = None
-    if user.trial_expires_at:
-        trial_exp = user.trial_expires_at
-        if trial_exp.tzinfo is None:
-            trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
-        trial_days_remaining = max(0, (trial_exp - now).days) if trial_exp > now else 0
 
     daily_limit = getattr(plan, "daily_credit_limit", None) if plan else None
     daily_used = round(billing_service.effective_daily_credits_used(org), 2) if org else 0.0
@@ -96,7 +90,6 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
             "bulk_export": True,
             "custom_webhooks": True,
         }
-        trial_days_remaining = None
         daily_limit = None
         daily_remaining = 999999.0
         credit_balance = max(credit_balance, 999999.0)
@@ -122,18 +115,14 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         access_token=access_token,
         feature_flags=effective_flags,
         credit_balance=credit_balance,
-        trial_days_remaining=trial_days_remaining,
         daily_credit_limit=daily_limit,
         daily_credits_used=daily_used,
         daily_credits_remaining=daily_remaining,
         daily_credits_resets_at_utc=daily_resets_at,
-        trial_active=trial_summary.get("trial_active", True),
         images_used_today=trial_summary.get("images_used_today", 0),
         images_daily_limit=trial_summary.get("images_daily_limit", 5),
         images_remaining_today=trial_summary.get("images_remaining_today", 5),
         images_trial_total=trial_summary.get("images_trial_total", 0),
-        trial_ends_at=trial_summary.get("trial_ends_at"),
-        requires_plan=trial_summary.get("requires_plan", False),
         plan_id=(org.plan_id if org else None) or "plan_trial_default",
         org_id=org.id if org else None,
         org_name=org.name if org else None,

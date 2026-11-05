@@ -839,7 +839,7 @@ async def _handle_blocked(monitor_id: str, reason: str, message: str) -> None:
         if not monitor:
             return
         already_paused = monitor.status == "paused"
-        if reason in ("trial_expired", "feature_disabled", "insufficient_credits"):
+        if reason in ("feature_disabled", "insufficient_credits"):
             monitor.status = "paused"
             monitor.paused_reason = message
         else:

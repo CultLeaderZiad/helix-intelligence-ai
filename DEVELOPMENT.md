@@ -226,7 +226,7 @@ same gatekeeper (`assert_can_spend`) against the **monitor owner's** plan, with
 `feature_name="monitors"`. Feature flags fail closed. A platform admin grant
 is what turns a feature on. There is no separate paid tier.
 
-Blocked runs do not retry forever. A trial expiry, disabled feature or exhausted
+Blocked runs do not retry forever. A disabled feature or exhausted
 balance pauses the monitor and notifies the owner once; a daily cap only defers
 it to the next cadence, since that clears on its own.
 
@@ -325,23 +325,19 @@ python scripts/reset_admin_password.py --email you@gmail.com --password 'NewPass
 
 Helix enforces strict server-side credit caps with database row-level locking (`with_for_update()`) on organizations to prevent race conditions and protect external provider quotas.
 
-### Credit Cost Table
-| Action | Credits | Description |
-|---|---|---|
-| `discover_job` | 2.0 | Base ad library search & creative scraping |
-| `discover_deep_fallback` | +3.0 | Bright Data deep search surcharge (only if prior sources return 0) |
-| `create_image` | 3.0 | Gemini or AI image generation |
-| `create_video` | 8.0 | Gemini video/motion generation |
-| `ai_insight` | 1.0 | Single creative deep LLM insight |
-| `pattern_pack` | 1.0 | Pattern synthesis across scraped ads |
-| `ai_chat` | 0.5 | Interactive creative AI chat query |
+### Credit costs
 
-### Trial Defaults
-- **Plan ID**: `plan_trial_default` (7-Day Free Trial)
-- **Initial Credit Balance**: `25.0` credits
-- **Daily Credit Limit**: `3.5` credits/day (resets daily at `00:00:00 UTC`)
-- **Trial Duration**: 7 days from user registration (`trial_expires_at`)
-- **Admin Role**: Bypasses all quota and credit limits (`role="admin"`).
+Charged server-side by `assert_can_spend`; the values live in
+`backend/app/services/billing_service.py` and are the source of truth.
+
+| Action | Credits |
+|---|---|
+| Discover search | 1.0 |
+| Discover deep search surcharge | 2.0 |
+
+Access is granted by a platform administrator; there is no trial, plan
+purchase or checkout. A new workspace starts on the default plan with every
+feature off until an admin grants access.
 
 ### Standardized Error Responses
 - `402 Payment Required` (Insufficient credits):
@@ -349,10 +345,10 @@ Helix enforces strict server-side credit caps with database row-level locking (`
   {
     "detail": {
       "code": "insufficient_credits",
-      "message": "Not enough credits for this action (1.0 available, 3.0 required). Upgrade or wait for trial reset.",
+      "message": "Not enough credits for this action (1.0 available, 3.0 required). Ask a workspace administrator for more credits.",
       "credit_balance": 1.0,
       "required": 3.0,
-      "plan_name": "7-Day Free Trial"
+      "plan_name": "Granted"
     }
   }
   ```
@@ -369,7 +365,7 @@ Helix enforces strict server-side credit caps with database row-level locking (`
     }
   }
   ```
-- `403 Forbidden` (`trial_expired` or `feature_disabled`).
+- `403 Forbidden` (`feature_disabled`, or access not granted).
 
 ---
 
@@ -392,41 +388,6 @@ Discover uses an ordered, cost-aware canonical chain to avoid unnecessary API co
 - **Honest Zero-Results**: Never fakes creatives; there is no mock mode. Returns clear report of all attempted sources.
 
 ---
-
-## 7-Day Trial & Gemini Image Generation
-
-HELIX provides a 7-day free trial with daily image creation powered by the existing `GEMINI_API_KEY`:
-
-### Entitlement Rules:
-- **Trial Duration**: 7 days from signup (`trial_started_at` to `trial_expires_at`).
-- **Trial Daily Quota**: 5 image generations per UTC day (resets at 00:00 UTC).
-- **Trial Total Cap**: 25 total image generations across the entire trial.
-- **Video Generation**: Disabled during trial; available exclusively on paid plans.
-- **Paid Plans**: 50+ images per day.
-- **Admin Users**: Unlimited bypass across all features.
-
-### Environment Configuration:
-- `GEMINI_API_KEY`: *(Required server-side only)* Google Gemini API key. Never exposed to browser or client.
-- `GEMINI_IMAGE_MODEL`: `gemini-3.1-flash-image` (default stable image model).
-- `TRIAL_DAYS`: `7`
-- `TRIAL_IMAGES_PER_DAY`: `5`
-- `TRIAL_IMAGES_TOTAL`: `25`
-- `PAID_IMAGES_PER_DAY`: `50`
-
-### Running the Gemini Image Live Smoke Test:
-To execute a real development smoke test against Google Gemini's image API:
-```bash
-ENABLE_GEMINI_LIVE_TEST=true python backend/scripts/test_gemini_image_live.py
-```
-
-### Running the Test Suites:
-```bash
-# Run Gemini Trial & Entitlement suite
-python backend/tests/test_gemini_trial_suite.py
-
-# Run Gemini Diagnostic suite
-python backend/tests/test_gemini_suite.py
-```
 
 ## Row-level security roles
 

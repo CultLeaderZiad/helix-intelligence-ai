@@ -57,7 +57,6 @@ const optionalPage = (page) => EXPERIMENTAL_FEATURES_ENABLED ? page : <Navigate 
 const DashboardPage = safeLazy(() => import("./pages/DashboardPage").then(m => ({ default: m.default })))
 const CreatePage = safeLazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
 const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
-const GuidePage = safeLazy(() => import("@/pages/GuidePage").then(m => ({ default: m.GuidePage })))
 const SwipeFilesPage = safeLazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
 const BillingPage = safeLazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
 const ApiKeysPage = safeLazy(() => import("@/pages/ApiKeysPage").then(m => ({ default: m.ApiKeysPage })))
@@ -69,7 +68,6 @@ const OverviewPage = safeLazy(() => import("@/pages/admin/OverviewPage").then(m 
 const AdminPendingPage = safeLazy(() => import("@/pages/admin/AdminPendingPage").then(m => ({ default: m.AdminPendingPage })))
 const OrganizationsPage = safeLazy(() => import("@/pages/admin/OrganizationsPage").then(m => ({ default: m.OrganizationsPage })))
 const AccessRequestsPage = safeLazy(() => import("@/pages/admin/AccessRequestsPage").then(m => ({ default: m.AccessRequestsPage })))
-const SubscriptionsPlansPage = safeLazy(() => import("@/pages/admin/SubscriptionsPlansPage").then(m => ({ default: m.SubscriptionsPlansPage })))
 const UsagePage = safeLazy(() => import("@/pages/admin/UsagePage").then(m => ({ default: m.UsagePage })))
 const FeatureFlagsPage = safeLazy(() => import("@/pages/admin/FeatureFlagsPage").then(m => ({ default: m.FeatureFlagsPage })))
 const UsersPage = safeLazy(() => import("@/pages/admin/UsersPage").then(m => ({ default: m.UsersPage })))
@@ -103,7 +101,6 @@ const PUBLIC_TITLES = {
   "/forgot-password": "Reset password",
   "/reset-password": "Set a new password",
   "/swipe-files": "Swipe Files",
-  "/guide": "Playbook & Guide",
   "/scout/lead-generation": "Lead Generation",
   "/intelligence": "Intelligence & Patterns",
   "/performance": "Performance & Fatigue",
@@ -206,10 +203,8 @@ export default function App() {
                   <Route element={<ProtectedRoute requireRole="admin" />}>
                     <Route element={<AdminShellLayout />}>
                       <Route path="/admin" element={<OverviewPage />} />
-                      <Route path="/admin/guide" element={optionalPage(<GuidePage />)} />
                       <Route path="/admin/organizations" element={<OrganizationsPage />} />
                       <Route path="/admin/access-requests" element={<AccessRequestsPage />} />
-                      <Route path="/admin/subscriptions" element={optionalPage(<SubscriptionsPlansPage />)} />
                       <Route path="/admin/usage" element={optionalPage(<UsagePage />)} />
                       <Route path="/admin/feature-flags" element={optionalPage(<FeatureFlagsPage />)} />
                       <Route path="/admin/users" element={<UsersPage />} />
@@ -242,7 +237,6 @@ export default function App() {
                       <Route path="performance" element={optionalPage(<PerformancePage />)} />
                       <Route path="dashboard" element={optionalPage(<DashboardPage />)} />
                       <Route path="/swipe-files" element={optionalPage(<SwipeFilesPage />)} />
-                      <Route path="/guide" element={optionalPage(<GuidePage />)} />
                       <Route path="/access" element={<BillingPage />} />
                       <Route path="/billing" element={<Navigate to="/access" replace />} />
                       <Route path="/api-keys" element={optionalPage(<ApiKeysPage />)} />

@@ -40,7 +40,6 @@
  * @property {string} email
  * @property {string} role
  * @property {number} credit_balance
- * @property {number} trial_days_remaining
  * @property {number} daily_credit_limit
  * @property {number} daily_credits_used
  * @property {number} daily_credits_remaining

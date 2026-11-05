@@ -116,15 +116,12 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         # F71: Log anonymized attribution metadata without logging plain email alongside it
         logger.info("Attribution captured for signup: fields=%s", [k for k in signup_metadata if k != "token_version"])
 
-    now = datetime.datetime.now(datetime.timezone.utc)
     user = User(
         email=email,
         password_hash=password_hash,
         full_name=full_name,
         role="customer",
-        signup_metadata=signup_metadata,
-        trial_started_at=now,
-        trial_expires_at=now + datetime.timedelta(days=7)
+        signup_metadata=signup_metadata
     )
     db.add(user)
     try:
@@ -143,7 +140,8 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     bind_tenant([], user.id, platform_admin=False, enforce=True)
     await apply_tenant_context(db)
 
-    # Auto-create a personal org for every new user with 25 trial credits and default trial plan
+    # Every new user gets a personal workspace on the default plan. It stays
+    # pending (all features off) until a platform admin grants access.
     from app.models.organization import Organization
     org_name = full_name or user_in.email.split("@")[0]
     org = Organization(

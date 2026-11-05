@@ -24,10 +24,10 @@ export const DOCS_REGISTRY = [
         groupTitle: 'Quick Start',
         items: [
           {
-            slug: 'quickstart-account-and-trial',
+            slug: 'quickstart-account-and-access',
             title: 'Account & Access',
             description: 'Create an account and request administrator-approved access.',
-            file: 'user-guide/quickstart-account-and-trial.md',
+            file: 'user-guide/quickstart-account-and-access.md',
             readTime: '3 min',
           },
           {

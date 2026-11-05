@@ -84,7 +84,6 @@ function sessionToUser(session, fallbackName) {
     name: displayName,
     full_name: session.full_name ?? null,
     credit_balance: session.credit_balance ?? 0,
-    trial_days_remaining: session.trial_days_remaining ?? null,
     daily_credit_limit: session.daily_credit_limit ?? null,
     daily_credits_used: session.daily_credits_used ?? 0,
     daily_credits_remaining: session.daily_credits_remaining ?? null,

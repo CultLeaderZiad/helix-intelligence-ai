@@ -69,7 +69,7 @@ const ROUTES = [
   { name: "Sign In (/sign-in)", path: "/sign-in", auth: false },
   { name: "Sign Up (/sign-up)", path: "/sign-up", auth: false },
   { name: "Docs Overview (/docs)", path: "/docs", auth: false },
-  { name: "Docs Detail (/docs/user-guide/quickstart-account-and-trial)", path: "/docs/user-guide/quickstart-account-and-trial", auth: false },
+  { name: "Docs Detail (/docs/user-guide/quickstart-account-and-access)", path: "/docs/user-guide/quickstart-account-and-access", auth: false },
   { name: "Public Playbook (/public-playbook)", path: "/public-playbook", auth: false },
   { name: "Privacy Policy (/privacy)", path: "/privacy", auth: false },
   { name: "Terms of Service (/terms)", path: "/terms", auth: false },

@@ -426,11 +426,10 @@ async def assert_can_spend(
 ) -> Tuple[Organization, Plan]:
     """
     Strict server-side gatekeeper.
-    Performs atomic row-level lock on the organization, verifies 7-day trial expiration,
-    checks feature flags, verifies daily limits, and validates credit balance.
+    Performs atomic row-level lock on the organization, checks feature flags, verifies daily limits, and validates credit balance.
 
     Raises:
-      - 403: trial_expired or feature_disabled
+      - 403: feature_disabled
       - 429: daily_limit_reached
       - 402: insufficient_credits
     """
@@ -491,24 +490,8 @@ async def assert_can_spend(
             },
         )
 
-    # 2. Check 7-Day Trial Expiration
+    # 2. Access is admin-granted; there is no time-limited trial.
     now = datetime.datetime.now(datetime.timezone.utc)
-    if plan.type == "trial" and user.trial_expires_at:
-        trial_exp = user.trial_expires_at
-        if trial_exp.tzinfo is None:
-            trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
-        if now > trial_exp:
-            org.status = "trial_expired"
-            await db.commit()
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "code": "trial_expired",
-                    "message": "The trial window has ended. A platform admin has to approve access before this workspace can continue.",
-                    "trial_expires_at": _format_iso(user.trial_expires_at),
-                    "credit_balance": round(float(org.credit_balance), 2)
-                }
-            )
 
     grant = await _require_active_grant(db, org, user)
     # 3. Check Feature Flags. A missing or empty flag is denied.
@@ -541,7 +524,7 @@ async def assert_can_spend(
                     "message": (
                         f"Daily credit limit reached ({daily_limit:.1f} credits/day). "
                         f"Used {org.daily_credits_used_today:.1f} of {daily_limit:.1f} credits today. "
-                        f"Resets at {reset_str}. Upgrade or wait for trial reset."
+                        f"Resets at {reset_str}."
                     ),
                     "daily_limit": daily_limit,
                     "daily_used": round(float(org.daily_credits_used_today), 2),
@@ -559,7 +542,7 @@ async def assert_can_spend(
             status_code=402,
             detail={
                 "code": "insufficient_credits",
-                "message": f"Not enough credits for this action ({org.credit_balance:.1f} available, {required_credits:.1f} required). Upgrade or wait for trial reset.",
+                "message": f"Not enough credits for this action ({org.credit_balance:.1f} available, {required_credits:.1f} required). Ask a workspace administrator for more credits.",
                 "credit_balance": round(float(org.credit_balance), 2),
                 "required": required_credits,
                 "plan_name": plan.name
@@ -1202,12 +1185,6 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
     logs = logs_result.scalars().all()
 
     now = datetime.datetime.now(datetime.timezone.utc)
-    trial_days_remaining = None
-    if user.trial_expires_at:
-        trial_exp = user.trial_expires_at
-        if trial_exp.tzinfo is None:
-            trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
-        trial_days_remaining = max(0, (trial_exp - now).days) if trial_exp > now else 0
 
     daily_limit = getattr(plan, "daily_credit_limit", None)
     await _ensure_daily_reset(db, org)
@@ -1229,20 +1206,16 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
         "credits_used": round(float(org.credits_used), 2),
         "status": org.status,
         "access": await access_status_for_org(db, org.id),
-        "subscription_lifecycle": "metered" if plan.type == "pay_as_you_go" else ("trial" if plan.type == "trial" else "admin_allocated"),
+        "subscription_lifecycle": "metered" if plan.type == "pay_as_you_go" else ("pending_access" if plan.type == "trial" else "admin_allocated"),
         "renews_at": None,
-        "trial_expires_at": _format_iso(user.trial_expires_at),
-        "trial_days_remaining": trial_days_remaining,
         "daily_credit_limit": daily_limit,
         "daily_credits_used": daily_used,
         "daily_credits_remaining": daily_remaining,
         "daily_credits_resets_at_utc": daily_resets_at,
-        "trial_active": trial_summary["trial_active"],
         "images_used_today": trial_summary["images_used_today"],
         "images_daily_limit": trial_summary["images_daily_limit"],
         "images_remaining_today": trial_summary["images_remaining_today"],
         "images_trial_total": trial_summary["images_trial_total"],
-        "requires_plan": trial_summary["requires_plan"],
         "feature_flags": plan.feature_flags or {},
         "recent_usage": [
             {

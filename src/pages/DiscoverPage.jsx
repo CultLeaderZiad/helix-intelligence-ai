@@ -403,8 +403,8 @@ export function DiscoverPage() {
             {phase === PHASE.ERROR && !isServiceRestart(error) ? (
               <ErrorState
                 error={error}
-                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
-                description={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? t("discoverNeedsAccess") : undefined}
+                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
+                description={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? t("discoverNeedsAccess") : undefined}
                 className=""
               />
             ) : null}

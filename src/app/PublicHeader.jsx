@@ -12,7 +12,7 @@ export function PublicHeader() {
   const isHome = location.pathname === "/"
   const items = [
     { label: t("productNav"), href: isHome ? "#product" : "/#product" },
-    { label: t("accessNav"), href: isHome ? "#pricing" : "/#pricing" },
+    { label: t("accessNav"), href: isHome ? "#access" : "/#access" },
     { label: t("docsNavigation"), href: "/docs" },
     { label: t("updatesNavigation"), href: "/updates" },
     { label: t(isAuthenticated ? "consoleNav" : "signInNav"), href: isAuthenticated ? "/discover" : "/sign-in", isPrimary: true },

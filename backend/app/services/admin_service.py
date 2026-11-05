@@ -119,7 +119,6 @@ async def get_overview(db: AsyncSession) -> AdminOverviewStats:
     active_jobs = await db.scalar(select(func.count(ScrapeJob.id)).where(ScrapeJob.status == "running")) or 0
     total_credits = await db.scalar(select(func.sum(UsageLog.credits_deducted))) or 0.0
     total_cost = await db.scalar(select(func.sum(UsageLog.cost_usd))) or 0.0
-    active_trials = await db.scalar(select(func.count(Organization.id)).where(Organization.plan_id == "plan_trial_default")) or 0
 
     now = datetime.datetime.now(datetime.timezone.utc)
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -134,7 +133,6 @@ async def get_overview(db: AsyncSession) -> AdminOverviewStats:
         window_label="All Time",
         total_credits_consumed=round(float(total_credits), 2),
         total_provider_cost_usd=round(float(total_cost), 4),
-        active_trials=active_trials,
         today_api_calls=today_api_calls,
         today_api_spend=round(float(today_api_spend), 4)
     )
@@ -433,7 +431,6 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
             effective_feature_flags=_redact_flags(effective_flags),
             status=org.status or "active",
             access_status=await _organization_access_status(db, org.id),
-            trial_expires_at=_iso_utc(owner.trial_expires_at) if owner else None,
             total_jobs=job_counts.get(org.id, 0)
         ))
     return orgs
@@ -661,8 +658,6 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
             plan_id=org.plan_id if org else None,
             plan_name=plan.name if plan else None,
             access_status=await _organization_access_status(db, org.id if org else None),
-            trial_started_at=_iso_utc(user.trial_started_at),
-            trial_expires_at=_iso_utc(user.trial_expires_at),
             created_at=_iso_utc(user.created_at) or "",
             is_suspended=bool(getattr(user, "is_suspended", False) or False),
             is_banned=bool(getattr(user, "is_banned", False) or False),
