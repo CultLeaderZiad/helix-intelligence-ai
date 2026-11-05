@@ -190,7 +190,22 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 for k in stale_keys:
                     self._buckets.pop(k, None)
 
-        except Exception as exc:  # fail open — never let the shield break the app
+        except Exception as exc:
+            # Credential endpoints fail closed: an unthrottled sign-in is a
+            # brute-force window. Everything else fails open so a limiter bug
+            # cannot take the product down.
+            if prefix.startswith("/api/auth/"):
+                logger.error("Rate limiter error on %s (failing closed): %s", prefix, exc)
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "detail": {
+                            "code": "auth_rate_limiter_unavailable",
+                            "message": "Sign-in is briefly unavailable. Please try again shortly.",
+                        }
+                    },
+                    headers={"Retry-After": "5"},
+                )
             logger.error("Rate limiter error (failing open): %s", exc)
 
         return await call_next(request)

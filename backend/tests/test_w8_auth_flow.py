@@ -15,6 +15,7 @@ import httpx
 import pytest
 from sqlalchemy import event, select
 
+from app.core.config import settings
 from app.core.security import create_access_token, get_password_hash
 from app.db.session import async_session_maker, engine
 from app.main import app
@@ -22,6 +23,13 @@ from app.models.plan import Plan
 from app.models.user import User
 
 GENERIC_401 = "Incorrect email or password"
+
+
+@pytest.fixture(autouse=True)
+def _no_rate_limit(monkeypatch, request):
+    # This module signs in many times per minute; the limiter has its own test.
+    if "rate_limiter" not in request.node.name:
+        monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", False)
 
 
 def _suffix() -> str:
@@ -33,9 +41,39 @@ def _client() -> httpx.AsyncClient:
 
 
 async def _sign_up(client, email: str, password: str) -> dict:
+    """Sign up, then sign in (sign-up itself never returns a session)."""
     response = await client.post("/api/auth/sign-up", json={"email": email, "password": password, "name": "W8 Test"})
-    assert response.status_code == 200, response.text
-    return response.json()
+    assert response.status_code == 202, response.text
+    assert "access_token" not in response.json()
+    signed_in = await client.post("/api/auth/sign-in", json={"email": email, "password": password})
+    assert signed_in.status_code == 200, signed_in.text
+    return signed_in.json()
+
+
+@pytest.mark.asyncio
+async def test_sign_up_answers_identically_for_new_and_registered_emails():
+    suffix = _suffix()
+    email, password = f"w8-enum-{suffix}@example.com", f"Enum-{suffix}-Pw1!"
+    async with _client() as client:
+        first = await client.post("/api/auth/sign-up", json={"email": email, "password": password})
+        again_same = await client.post("/api/auth/sign-up", json={"email": email.upper(), "password": password})
+        again_other = await client.post("/api/auth/sign-up", json={"email": email, "password": password + "x"})
+        responses = [first, again_same, again_other]
+        assert {r.status_code for r in responses} == {202}
+        assert first.json() == again_same.json() == again_other.json()
+        assert all("access_token" not in r.json() for r in responses)
+        # The existing account was not changed by the repeated sign-ups.
+        ok = await client.post("/api/auth/sign-in", json={"email": email, "password": password})
+        changed = await client.post("/api/auth/sign-in", json={"email": email, "password": password + "x"})
+        assert ok.status_code == 200 and changed.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_password_length_is_enforced_on_the_server():
+    async with _client() as client:
+        too_short = await client.post("/api/auth/sign-up", json={"email": f"w8-short-{_suffix()}@example.com", "password": "Ab1!xyz"})
+        too_long = await client.post("/api/auth/sign-up", json={"email": f"w8-long-{_suffix()}@example.com", "password": "A1!" + "x" * 200})
+        assert too_short.status_code == too_long.status_code == 422
 
 
 async def _platform_admin_and_plan(suffix: str):
@@ -212,6 +250,26 @@ def test_tenant_listener_is_registered_once_for_the_shared_session_class():
     before = set(session_module._listened_session_classes)
     session_module._install_tenant_listener(session_module.async_session_maker)
     assert session_module._listened_session_classes == before == {sync_class}
+
+
+@pytest.mark.asyncio
+async def test_rate_limiter_fails_closed_on_auth_and_open_elsewhere(monkeypatch):
+    from app.middleware import rate_limit
+
+    monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", True)
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("limiter state unavailable")
+
+    monkeypatch.setattr(rate_limit.RateLimitMiddleware, "_client_ip", broken)
+    async with _client() as client:
+        auth = await client.post("/api/auth/sign-in", json={"email": "x@example.com", "password": "whatever-123"})
+        assert auth.status_code == 503
+        assert auth.json()["detail"]["code"] == "auth_rate_limiter_unavailable"
+        # A non-auth limited route is not blocked by the limiter fault itself
+        # (it reaches the app and is rejected there for lack of credentials).
+        other = await client.post("/api/discovery/jobs", json={})
+        assert other.status_code in (401, 403, 422)
 
 
 def test_pool_ping_is_a_single_simple_query():

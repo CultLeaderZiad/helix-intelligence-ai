@@ -10,7 +10,9 @@ class Organization(Base):
 
     id = Column(String, primary_key=True, default=generate_uuid)
     name = Column(String, nullable=False)
-    owner_id = Column(String, ForeignKey("users.id"), nullable=False)
+    # Indexed: every authenticated request resolves orgs by owner, and the
+    # organizations RLS policy filters on it.
+    owner_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
     plan_id = Column(String, default="plan_trial_default", server_default="plan_trial_default", nullable=False)
     plan = Column(String, default="trial") # Legacy text field fallback ('trial' | 'pay_as_you_go' | 'custom')
     credit_balance = Column(Float, default=25.0, server_default="25", nullable=False)

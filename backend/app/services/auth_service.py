@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -81,14 +82,21 @@ async def revoke_user_sessions(db: AsyncSession, user: User, *, commit: bool = T
         await db.refresh(user)
     return new_version
 
+class EmailAlreadyRegistered(Exception):
+    """Internal signal only. The sign-up route answers identically either way."""
+
+
 async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     raw_name = (user_in.name or "").strip()
     full_name = raw_name if raw_name else None
 
     email = _normalize_email(user_in.email)
+    # PBKDF2 runs off the event loop, and also for an existing email, so the
+    # duplicate path costs the same time as a real registration.
+    password_hash = await asyncio.to_thread(get_password_hash, user_in.password)
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
+        raise EmailAlreadyRegistered()
 
     # Collect UTM and referral source attribution if present, sanitizing PII (F71)
     signup_metadata = {"token_version": 1}
@@ -111,7 +119,7 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     now = datetime.datetime.now(datetime.timezone.utc)
     user = User(
         email=email,
-        password_hash=get_password_hash(user_in.password),
+        password_hash=password_hash,
         full_name=full_name,
         role="customer",
         signup_metadata=signup_metadata,
@@ -125,7 +133,7 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         await db.rollback()
         err_msg = str(e).lower()
         if "unique" in err_msg or "integrity" in err_msg or "already exists" in err_msg:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
+            raise EmailAlreadyRegistered() from None
         logger.exception("Failed to flush new user record: %s", e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not create user account. Please try again.")
 
@@ -158,7 +166,7 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         await db.rollback()
         err_msg = str(e).lower()
         if "unique" in err_msg or "integrity" in err_msg or "already exists" in err_msg:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
+            raise EmailAlreadyRegistered() from None
         logger.exception("Failed to commit new user organization: %s", e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not initialize user workspace. Please try again.")
     bind_tenant([org.id], user.id, platform_admin=False, enforce=True)

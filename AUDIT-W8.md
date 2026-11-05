@@ -215,10 +215,10 @@ and the cut features is the main lever.
 |---|---|---|---|
 | S1 | **`USE_MOCKS=true` is an authentication bypass outside production.** Any password signs in; an email containing "admin" gets an **admin** token (`auth_service.py:48-49`). Production refuses the flag at boot; **staging, preview and test do not.** | **High** for any shared non-prod environment | Delete `USE_MOCKS` entirely. |
 | S2 | `api_keys` has `org_id`/`user_id` but **no RLS policy** (not in any `ENABLE ROW LEVEL SECURITY` or policy migration) | Medium | App-level filters only. Add a policy, or cut API keys. |
-| S3 | Sign-up **reveals whether an email is registered** ("An account with this email already exists"); forgot-password deliberately does not | Medium | Return a generic response. |
-| S4 | **No server-side minimum password length** (frontend checks 8 characters only) | Medium | Validate in `UserCreate` and on reset. |
+| S3 | Sign-up revealed whether an email was registered ("An account with this email already exists") | Medium | **Fixed in W8:** sign-up now answers `202` with the same body, no token, and the same hashing work for new and existing emails; the client then signs in. Residual: sign-up followed by sign-in can still infer an existing account; closing that needs email verification (no mail provider yet). |
+| S4 | ~~No server-side minimum password length~~ **Audit error.** `UserCreate`, `PasswordResetConfirm` and the profile password change already enforce 8–128 characters in Pydantic; the first pass searched only routers and services. | — | W8 adds a regression test (422 for too short and too long). |
 | S5 | Access token lives in `localStorage` (`helix_access_token`) for **8 days** | Medium | An XSS hit means an 8-day session theft. Shorten it plus add refresh, or move to an `HttpOnly` cookie. Sign-out does revoke server-side (verified). |
-| S6 | Rate limiter is in-memory per process and **fails open** on any internal error (`rate_limit.py:193`); state resets on restart; not shared across instances | Medium | Fail closed for `/auth/*`. Move to a Postgres or Redis counter when more than one instance runs. |
+| S6 | Rate limiter is in-memory per process and failed open on any internal error; state resets on restart; not shared across instances | Medium | **Partly fixed in W8:** `/api/auth/*` now fails closed (503) on a limiter fault. Still per-process; move to a Postgres or Redis counter when more than one instance runs. |
 | S7 | Neon Auth webhook and JWKS still accepted (`POST /api/auth/webhook`, `NEON_*`) although login no longer uses Neon Auth | Low–Medium | Remove the unused auth path. |
 | S8 | `AUTH_DEV_RESET_RETURN` returns reset links in API responses when on (refused in production) | Low | Remove once email is configured. |
 | S9 | Scraping real businesses' contact details (Maps Scout, Lead-gen); real clinic contacts committed in mocks | Legal / ToS | Cut with Scout. |
@@ -304,7 +304,6 @@ Hidden behind a disabled flag rather than deleted: **Team** (optional 4th).
 **Kept-feature fixes** (small; done with Phase 3, not removals):
 - add the `organizations.owner_id` index;
 - generic sign-up response (S3);
-- server-side password minimum (S4);
 - rate limiter fails closed for auth (S6);
 - honest Discover sort labels (§3.3);
 - write the missing `DESIGN_SYSTEM.md`, or drop the link to it;

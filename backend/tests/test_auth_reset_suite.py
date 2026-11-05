@@ -108,10 +108,12 @@ async def main():
         new_user_req = types.SimpleNamespace(email="Mixed.Case@Test.com", password="Passw0rd!", name="Mixed")
         registered = await auth_service.register_user(db, new_user_req)
         assert registered.email == "mixed.case@test.com", registered.email
-        await expect_http_error(
-            auth_service.register_user(db, types.SimpleNamespace(email="MIXED.CASE@test.COM", password="Passw0rd!", name="Dup")),
-            400,
-        )
+        try:
+            await auth_service.register_user(db, types.SimpleNamespace(email="MIXED.CASE@test.COM", password="Passw0rd!", name="Dup"))
+        except auth_service.EmailAlreadyRegistered:
+            pass
+        else:
+            raise AssertionError("duplicate case-variant email was registered")
         print("[PASS] sign-up stores lowercase email; duplicate rejected case-insensitively")
 
         # 7. Stale links do NOT invalidate newer links (F18)

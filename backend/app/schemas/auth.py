@@ -56,6 +56,12 @@ class PasswordResetConfirm(BaseModel):
             raise ValueError('Password cannot exceed 128 characters')
         return v
 
+class SignUpAccepted(BaseModel):
+    """Identical for new and already-registered emails. Carries no token."""
+    ok: bool = True
+    message: str
+
+
 class SessionResponse(BaseModel):
     user_id: str
     email: str

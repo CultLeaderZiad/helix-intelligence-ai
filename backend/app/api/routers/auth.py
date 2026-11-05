@@ -6,7 +6,7 @@ from sqlalchemy import select
 import datetime
 
 from app.core.observability import log_event
-from app.schemas.auth import UserCreate, UserLogin, SessionResponse, PasswordResetRequest, PasswordResetConfirm
+from app.schemas.auth import UserCreate, UserLogin, SessionResponse, SignUpAccepted, PasswordResetRequest, PasswordResetConfirm
 from app.services import auth_service, billing_service
 from app.core.deps import _bind_request_tenant, get_db, get_current_user, oauth2_scheme
 from app.models.user import User
@@ -142,35 +142,38 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         has_completed_onboarding=getattr(user, "has_completed_onboarding", False)
     )
 
-@router.post("/sign-up", response_model=SessionResponse)
+# One response for every accepted sign-up, whether or not the email was
+# already registered: same status, same body, no token. The client signs in
+# next. Fully closing account discovery needs email verification, which is
+# not built (no mail provider is configured).
+SIGN_UP_ACCEPTED = SignUpAccepted(
+    message="If this email can be used, the account is ready. Sign in with the same email and password.",
+)
+
+
+@router.post("/sign-up", response_model=SignUpAccepted, status_code=status.HTTP_202_ACCEPTED)
 async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     try:
         user = await auth_service.register_user(db, user_in)
-        from app.core.security import create_access_token
-        token_ver = (user.signup_metadata or {}).get("token_version", 1)
-        token = create_access_token(subject=user.id, role=user.role, token_version=token_ver)
-        # Fire-and-forget welcome email — completely decoupled from SQLAlchemy session
-        try:
-            import asyncio
-            from app.services import lifecycle_email_service
-            asyncio.create_task(lifecycle_email_service.send_welcome_email(user.email, user.full_name or ""))
-        except Exception as mail_err:
-            log_event(logger, "welcome_email_scheduling_failed", error=mail_err, actor_id=user.id)
-        return await build_session_response(db, user, access_token=token)
+    except auth_service.EmailAlreadyRegistered:
+        return SIGN_UP_ACCEPTED
     except HTTPException:
         raise
     except Exception as e:
         log_event(logger, "signup_failed", error=e)
-        err_msg = str(e).lower()
-        if "unique" in err_msg or "integrity" in err_msg or "already exists" in err_msg:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="An account with this email already exists."
-            )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Account registration is temporarily unavailable. Please try again in a few moments."
-        )
+        ) from None
+    # Fire-and-forget welcome email, decoupled from the request session.
+    try:
+        import asyncio
+        from app.services import lifecycle_email_service
+        asyncio.create_task(lifecycle_email_service.send_welcome_email(user.email, user.full_name or ""))
+    except Exception as mail_err:
+        log_event(logger, "welcome_email_scheduling_failed", error=mail_err, actor_id=user.id)
+    return SIGN_UP_ACCEPTED
+
 
 @router.post("/sign-in", response_model=SessionResponse)
 async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
