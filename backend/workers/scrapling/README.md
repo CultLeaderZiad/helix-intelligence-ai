@@ -63,7 +63,7 @@ The optional health presence diagnostics require `HEALTH_DIAGNOSTIC_KEY` via
 the JWT signing key no longer authorizes diagnostics. Without a dedicated key,
 only the public health/readiness state is returned.
 
-`helix-audit/probes/runtime-probes.py` is import-safe and refuses execution
+`backend/scripts/runtime-probes.py` is import-safe and refuses execution
 unless `HELIX_ALLOW_DISPOSABLE_PROBES=yes`, `ENVIRONMENT=test`, and
 `DATABASE_URL` identifies an empty local PostgreSQL database named
 `helix_w4_probe_*` (no query overrides). Create a new database explicitly;

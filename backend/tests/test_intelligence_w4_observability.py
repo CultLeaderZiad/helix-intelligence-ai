@@ -154,7 +154,7 @@ async def test_health_diagnostics_do_not_accept_signing_key(monkeypatch):
 
 
 def _load_runtime_probe():
-    path = Path(__file__).parents[2] / "helix-audit/probes/runtime-probes.py"
+    path = Path(__file__).parents[1] / "scripts/runtime-probes.py"
     spec = importlib.util.spec_from_file_location("w4_runtime_probe", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
