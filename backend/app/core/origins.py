@@ -109,7 +109,52 @@ def validate_http_target(
     return parsed
 
 
-def validate_database_target(value: str | None, *, environment: str) -> None:
+_TLS_MODES = frozenset({"require", "verify-ca", "verify-full"})
+
+
+def _normalize_host(hostname: str | None) -> str:
+    return (hostname or "").strip().lower().rstrip(".")
+
+
+def _endpoint_label(hostname: str) -> str:
+    """First DNS label without Neon's ``-pooler`` suffix.
+
+    Neon serves one compute endpoint under two names (``ep-x`` and
+    ``ep-x-pooler``); both must count as the same database.
+    """
+    label = _normalize_host(hostname).split(".", 1)[0]
+    return label[: -len("-pooler")] if label.endswith("-pooler") else label
+
+
+def _validate_allowed_remote_database(
+    parsed: SplitResult, query: dict, *, production_host: str | None
+) -> None:
+    """Admit one explicitly allowlisted remote host outside production."""
+    if not parsed.scheme.lower().startswith("postgres"):
+        raise ValueError("ALLOWED_REMOTE_DATABASE_HOST only applies to PostgreSQL URLs")
+    production = _normalize_host(production_host)
+    if not production or not _valid_hostname(production):
+        raise ValueError(
+            "ALLOWED_REMOTE_DATABASE_HOST requires PRODUCTION_DATABASE_HOST so the "
+            "production endpoint can be refused"
+        )
+    host = _normalize_host(parsed.hostname)
+    if host == production or _endpoint_label(host) == _endpoint_label(production):
+        raise ValueError("DATABASE_URL must never target the production database endpoint outside production")
+    if query.get("host") or query.get("hostaddr"):
+        raise ValueError("DATABASE_URL must not override the allowlisted remote host")
+    modes = [m.strip().lower() for m in query.get("sslmode", []) + query.get("ssl", [])]
+    if not modes or any(mode not in _TLS_MODES for mode in modes):
+        raise ValueError("DATABASE_URL must require TLS (sslmode=require) for a remote host")
+
+
+def validate_database_target(
+    value: str | None,
+    *,
+    environment: str,
+    allowed_remote_host: str | None = None,
+    production_host: str | None = None,
+) -> None:
     raw = (value or "").strip()
     if not raw:
         return
@@ -122,9 +167,13 @@ def validate_database_target(value: str | None, *, environment: str) -> None:
     if parsed.hostname and not _valid_hostname(parsed.hostname):
         raise ValueError("DATABASE_URL must contain a valid host")
     if environment != "production":
-        if parsed.hostname and not is_loopback_host(parsed.hostname):
-            raise ValueError("DATABASE_URL must use a loopback host outside production")
         query = parse_qs(parsed.query, keep_blank_values=True)
+        if parsed.hostname and not is_loopback_host(parsed.hostname):
+            allowed = _normalize_host(allowed_remote_host)
+            if not allowed or _normalize_host(parsed.hostname) != allowed:
+                raise ValueError("DATABASE_URL must use a loopback host outside production")
+            _validate_allowed_remote_database(parsed, query, production_host=production_host)
+            return
         overrides = query.get("host", []) + query.get("hostaddr", [])
         if any(not (host.startswith("/") or is_loopback_host(host)) for host in overrides):
             raise ValueError("DATABASE_URL host overrides must use loopback hosts or local sockets")

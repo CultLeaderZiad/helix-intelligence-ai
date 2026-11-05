@@ -56,6 +56,12 @@ class Settings(BaseSettings):
 
     # DATABASE
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    # Outside production, DATABASE_URL must be loopback unless its host exactly
+    # equals ALLOWED_REMOTE_DATABASE_HOST (e.g. a Neon dev/staging branch
+    # endpoint) and the URL requires TLS. PRODUCTION_DATABASE_HOST must also be
+    # set; that endpoint is always refused. Ignored when ENVIRONMENT=production.
+    ALLOWED_REMOTE_DATABASE_HOST: str = os.getenv("ALLOWED_REMOTE_DATABASE_HOST", "")
+    PRODUCTION_DATABASE_HOST: str = os.getenv("PRODUCTION_DATABASE_HOST", "")
     
     # NEON AUTH
     NEON_JWKS_URL: str = os.getenv("NEON_JWKS_URL", os.getenv("NEON_AUTH_JWKS_URL", "")).rstrip("/")
@@ -350,7 +356,12 @@ def validate_boot_invariants(cfg) -> None:
             parsed_targets[name] = None
 
     try:
-        validate_database_target(getattr(cfg, "DATABASE_URL", "") or "", environment=env)
+        validate_database_target(
+            getattr(cfg, "DATABASE_URL", "") or "",
+            environment=env,
+            allowed_remote_host=getattr(cfg, "ALLOWED_REMOTE_DATABASE_HOST", "") or "",
+            production_host=getattr(cfg, "PRODUCTION_DATABASE_HOST", "") or "",
+        )
     except ValueError as exc:
         errors.append(str(exc))
 
