@@ -41,7 +41,6 @@ from app.core.tenancy import get_user_org_ids
 from app.core.deps import require_admin_permission
 from app.services.creative_service import save_creative, generate_patterns_for_recent_creatives
 from app.services.playbook_service import compile_playbook
-from app.services.analysis_service import generate_insight_for_creative
 from app.services.team_service import _check_team_management_permission, invite_member, accept_invite
 from app.services.api_key_service import authenticate_api_key, hash_key
 
@@ -191,37 +190,6 @@ def test_f05_brands_and_patterns_tenant_scoping():
 # ---------------------------------------------------------------------------
 # F06: Insights Cross-Tenant Isolation
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f06_insights_cross_tenant_isolation():
-    user_b = User(id="usr_b", email="user_b@tenant-b.com", role="customer")
-    org_b = Organization(id="org_b", name="Tenant B Org", owner_id=user_b.id)
-    creative_a = Creative(id="cr_foreign", job_id="job_foreign", brand_id="foreign_brand")
-
-    class MockDB:
-        async def execute(self, stmt):
-            stmt_str = str(stmt)
-            class Res:
-                def __init__(self, data):
-                    self._data = data
-                def scalar_one_or_none(self):
-                    return self._data
-            if "creatives.id =" in stmt_str or "WHERE creatives.id" in stmt_str:
-                return Res(creative_a)
-            if "scrape_jobs.org_id" in stmt_str:
-                return Res("org_a_foreign")
-            return Res(None)
-
-    db = MockDB()
-
-    # generate_insight_for_creative on foreign creative -> 404
-    with pytest.raises(HTTPException) as exc_insight:
-        await generate_insight_for_creative(
-            db=db,
-            creative_id=creative_a.id,
-            user=user_b,
-            user_org_ids=[org_b.id]
-        )
-    assert exc_insight.value.status_code == 404
 
 
 

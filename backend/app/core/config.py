@@ -141,8 +141,6 @@ class Settings(BaseSettings):
         if os.getenv("APIFY_ENABLED", "").strip()
         else bool((os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")).strip())
     )
-    AIHUBMIX_API_KEY: str = os.getenv("AIHUBMIX_API_KEY", "")
-    TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
     METAPI_API_KEY: str = (
 
         os.getenv("METAPI_API_KEY", "")

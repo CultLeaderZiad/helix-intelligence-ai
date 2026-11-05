@@ -33,18 +33,17 @@ async def test_ai_provider_failure_is_sanitized():
             raise RuntimeError("CANARY_PROVIDER_KEY prompt customer data")
 
     with pytest.raises(HTTPException) as caught:
-        await BrokenProvider().generate_insight(SimpleNamespace(
+        await BrokenProvider().generate_patterns([SimpleNamespace(
             id="creative-id", headline="Synthetic", body="Synthetic copy",
             format="image", platform="meta", cta=None, days_active=1,
-        ))
+        )])
     assert caught.value.status_code == 503
-    assert caught.value.detail == "AI insight generation is temporarily unavailable."
-    assert caught.value.headers["X-Error-Code"] == "analysis_unavailable"
+    assert caught.value.detail["code"] == "analysis_unavailable"
     assert "CANARY_PROVIDER_KEY" not in str(caught.value.detail)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["insight", "patterns"])
+@pytest.mark.parametrize("operation", ["patterns"])
 async def test_provider_http_failures_never_echo_upstream_payload(operation, caplog):
     class BrokenProvider(AIProvider):
         async def _call_api(self, messages):
@@ -53,8 +52,7 @@ async def test_provider_http_failures_never_echo_upstream_payload(operation, cap
     provider = BrokenProvider()
     creative = SimpleNamespace(id="creative-1", headline="Synthetic", body="Copy",
                                platform="meta", format="image", cta=None, days_active=1)
-    call = {"insight": lambda: provider.generate_insight(creative),
-            "patterns": lambda: provider.generate_patterns([creative])}[operation]
+    call = {"patterns": lambda: provider.generate_patterns([creative])}[operation]
     with pytest.raises(HTTPException) as caught:
         await call()
     assert caught.value.status_code == 503

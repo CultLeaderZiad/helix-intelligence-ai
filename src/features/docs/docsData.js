@@ -38,13 +38,6 @@ export const DOCS_REGISTRY = [
             readTime: '4 min',
           },
           {
-            slug: 'quickstart-reading-intelligence',
-            title: 'Reading the Intelligence Breakdown',
-            description: 'Interpret Hook, Clarity, Retention, and Composite scores.',
-            file: 'user-guide/quickstart-reading-intelligence.md',
-            readTime: '4 min',
-          },
-          {
             slug: 'quickstart-credits-and-limits',
             title: 'Credit Balances & Daily Limits',
             description: 'Understand credit consumption, daily quotas, and reset schedules.',

@@ -15,7 +15,6 @@ from app.api.routers import (
     auth,
     discover,
     creatives,
-    analysis,
     admin,
     health,
     account,
@@ -99,9 +98,6 @@ app.include_router(account.router, prefix=f"{settings.API_V1_STR}/account", tags
 app.include_router(notifications.router, prefix=f"{settings.API_V1_STR}/notifications", tags=["notifications"])
 app.include_router(discover.router, prefix=f"{settings.API_V1_STR}/discovery", tags=["discovery"])
 app.include_router(creatives.router, prefix=f"{settings.API_V1_STR}/creatives", tags=["creatives"])
-app.include_router(creatives.brands_router, prefix=f"{settings.API_V1_STR}/brands", tags=["brands"])
-app.include_router(creatives.patterns_router, prefix=f"{settings.API_V1_STR}/patterns", tags=["patterns"])
-app.include_router(analysis.insights_router, prefix=f"{settings.API_V1_STR}/insights", tags=["insights"])
 app.include_router(providers.router, prefix=f"{settings.API_V1_STR}", tags=["providers"])
 app.include_router(updates.router, prefix=f"{settings.API_V1_STR}/updates", tags=["updates"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])

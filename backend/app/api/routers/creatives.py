@@ -1,16 +1,13 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List
-from app.schemas.creative import Creative, Brand
-from app.schemas.analysis import Pattern, Insight
+from typing import Optional
+from app.schemas.creative import Creative
 from app.schemas.common import Paginated
-from app.services import creative_service, analysis_service
+from app.services import creative_service
 from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 
 router = APIRouter(dependencies=[Depends(require_feature("intelligence"))])
-brands_router = APIRouter(dependencies=[Depends(require_feature("discover"))])
-patterns_router = APIRouter(dependencies=[Depends(require_feature("intelligence"))])
 
 @router.get("", response_model=Paginated[Creative])
 @router.get("/", response_model=Paginated[Creative])
@@ -61,37 +58,6 @@ async def unsave_creative_from_swipe_file(
 ):
     return await creative_service.unsave_creative(db, current_user, creative_id)
 
-@router.get("/{creative_id}/insights", response_model=Paginated[Insight])
-async def get_creative_insights(
-    creative_id: str, 
-    db: AsyncSession = Depends(get_db), 
-    current_user: User = Depends(get_current_user)
-):
-    from app.core.tenancy import get_user_org_ids
-    scope = await get_user_org_ids(db, current_user)
-    return await analysis_service.get_creative_insight(db, creative_id, user_org_ids=scope)
-
-from pydantic import BaseModel
-
-class ByokGenerateRequest(BaseModel):
-    job_id: Optional[str] = None
-    byok_key: Optional[str] = None
-    byok_provider: Optional[str] = None
-
-@router.post("/{creative_id}/generate-insights", response_model=Insight)
-async def generate_creative_insights(
-    creative_id: str,
-    payload: Optional[ByokGenerateRequest] = None,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    from app.core.tenancy import get_user_org_ids
-    scope = await get_user_org_ids(db, current_user)
-    byok_key = payload.byok_key if payload else None
-    byok_provider = payload.byok_provider if payload else None
-    return await analysis_service.generate_insight_for_creative(
-        db, creative_id, current_user, byok_key, byok_provider, user_org_ids=scope
-    )
 
 @router.get("/{creative_id}", response_model=Creative)
 async def get_creative(
@@ -102,63 +68,3 @@ async def get_creative(
     from app.core.tenancy import get_user_org_ids
     scope = await get_user_org_ids(db, current_user)
     return await creative_service.get_creative_by_id(db, creative_id, user_org_ids=scope)
-
-@brands_router.get("/", response_model=Paginated[Brand])
-async def get_brands(
-    page: int = 1,
-    page_size: int = 20,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    from app.core.tenancy import get_user_org_ids
-    scope = await get_user_org_ids(db, current_user)
-    return await creative_service.list_brands(db, page, page_size, user_org_ids=scope)
-
-@patterns_router.get("/", response_model=Paginated[Pattern])
-async def get_patterns(
-    page: int = 1,
-    page_size: int = 20,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    from app.core.tenancy import get_user_org_ids
-    scope = await get_user_org_ids(db, current_user)
-    return await creative_service.list_patterns(db, page, page_size, user_org_ids=scope)
-
-@patterns_router.post("/generate", response_model=List[Pattern])
-async def generate_patterns(
-    payload: Optional[ByokGenerateRequest] = None,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    from app.core.tenancy import get_user_org_ids
-    scope = await get_user_org_ids(db, current_user)
-    job_id = payload.job_id if payload else None
-    byok_key = payload.byok_key if payload else None
-    byok_provider = payload.byok_provider if payload else None
-    return await creative_service.generate_patterns_for_recent_creatives(
-        db, current_user, job_id=job_id, byok_key=byok_key, byok_provider=byok_provider, user_org_ids=scope
-    )
-
-
-from pydantic import BaseModel
-
-class TranslateCopyRequest(BaseModel):
-    text: str
-    target_lang: str = "en"
-    breakdown: bool = True
-
-@router.post("/translate-copy")
-async def translate_copy(
-    payload: TranslateCopyRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_feature("intelligence")),
-):
-    return await creative_service.translate_ad_copy(
-        text=payload.text,
-        target_lang=payload.target_lang,
-        breakdown=payload.breakdown,
-        db=db,
-        user=current_user,
-    )
-

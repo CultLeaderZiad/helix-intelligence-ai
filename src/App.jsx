@@ -50,7 +50,6 @@ const SignUpPage = safeLazy(() => import("@/pages/auth/SignUpPage").then(m => ({
 const ForgotPasswordPage = safeLazy(() => import("@/pages/auth/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })))
 const ResetPasswordPage = safeLazy(() => import("@/pages/auth/ResetPasswordPage").then(m => ({ default: m.ResetPasswordPage })))
 const DiscoverPage = safeLazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
-const IntelligencePage = safeLazy(() => import("@/pages/IntelligencePage").then(m => ({ default: m.IntelligencePage })))
 const optionalPage = (page) => EXPERIMENTAL_FEATURES_ENABLED ? page : <Navigate to="/discover" replace />
 
 const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
@@ -95,7 +94,6 @@ const PUBLIC_TITLES = {
   "/forgot-password": "Reset password",
   "/reset-password": "Set a new password",
   "/swipe-files": "Swipe Files",
-  "/intelligence": "Intelligence & Patterns",
   "/billing": "Billing & Usage",
   "/api-keys": "API Keys",
   "/team": "Team Members",
@@ -217,7 +215,6 @@ export default function App() {
                   <Route element={<ProtectedRoute />}>
                     <Route element={<AuthenticatedShell />}>
                       <Route path="/discover" element={<DiscoverPage />} />
-                      <Route path="/intelligence" element={optionalPage(<IntelligencePage />)} />
                       <Route path="/monitors" element={optionalPage(<MonitorsPage />)} />
                       <Route path="/swipe-files" element={optionalPage(<SwipeFilesPage />)} />
                       <Route path="/access" element={<BillingPage />} />

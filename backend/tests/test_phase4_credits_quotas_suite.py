@@ -40,9 +40,8 @@ from app.services.billing_service import (
     get_idempotent_operation,
     assert_can_spend,
 )
-from app.services.ai.ai_router import AIRouter, MultiTierAIProvider, TRIAL_DAILY_REQUEST_LIMIT
+from app.services.ai.ai_router import AIRouter, MultiTierAIProvider
 from app.services.ai.base import AIProvider
-from app.services.analysis_service import generate_insight_for_creative
 from app.services.api_usage_service import check_global_cap_and_log_preflight, APILimitExceeded
 from app.services.job_reconciliation import _sweep_unrefunded_failed_jobs, reconcile_once
 from app.schemas.analysis import Insight
@@ -216,104 +215,6 @@ async def test_f08_idempotent_refund_and_reconciliation_sweeper():
 # ---------------------------------------------------------------------------
 # F09: Provider Outage Honesty (No Fake 92% Confidence Teardown)
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f09_provider_outage_raises_honest_503_without_charging():
-    now = datetime.datetime.now(datetime.timezone.utc)
-    user = User(id="usr_f09", email="f09@test.com", role="customer")
-    org = Organization(
-        id="org_f09",
-        name="Org F09",
-        owner_id=user.id,
-        credit_balance=50.0,
-        daily_credits_reset_at=now,
-    )
-    creative = Creative(
-        id="cr_f09",
-        brand_id="br_f09",
-        job_id="job_f09",
-        headline="Disruptive Ad",
-        body="This is an ad body that is interesting.",
-        platform="meta",
-        format="image",
-        days_active=10,
-    )
-
-    class FailingProvider(AIProvider):
-        async def _call_api(self, messages):
-            raise RuntimeError("Upstream AI Provider 503 Overloaded")
-
-    provider = FailingProvider()
-
-    persisted_insights = []
-    charges = []
-
-    class MockAnalysisDB:
-        def __init__(self):
-            self.bind = MagicMock()
-            self.bind.dialect.name = "postgresql"
-
-        async def execute(self, q):
-            q_str = str(q).lower()
-            if "organizations" in q_str:
-                return MockResult(item=org)
-            elif "plans" in q_str:
-                return MockResult(item=Plan(
-                    id="plan_test",
-                    type="paid",
-                    name="Paid",
-                    feature_flags={
-                        "discover": True,
-                        "intelligence": True,
-                        "create": True,
-                        "swipe_files": True,
-                        "scout": False,
-                        "leadgen": False,
-                        "monitors": False,
-                    },
-                ))
-            elif "organization_access_grants" in q_str:
-                return MockResult(item=SimpleNamespace(
-                    org_id=org.id,
-                    plan_id="plan_test",
-                    feature_flags={"intelligence": True, "discover": True, "create": True, "swipe_files": True},
-                    revoked_at=None,
-                    expires_at=None,
-                    granted_at=now,
-                    granted_by_user_id=user.id,
-                ))
-            elif "scrape_jobs" in q_str:
-                return MockResult(item=org.id)
-            elif "creatives.id in" in q_str or "select creatives.id from creatives" in q_str:
-                return MockResult(items=[creative.id])
-            elif "creatives" in q_str:
-                return MockResult(item=creative)
-
-            return MockResult(item=None)
-
-        def add(self, obj):
-            if isinstance(obj, AIInsight):
-                persisted_insights.append(obj)
-            elif isinstance(obj, UsageLog):
-                charges.append(obj)
-
-        async def commit(self): pass
-        async def refresh(self, obj): pass
-
-    db = MockAnalysisDB()
-
-    with patch("app.services.ai.ai_router.AIRouter.get_provider_for_user", AsyncMock(return_value=provider)):
-        with pytest.raises(HTTPException) as exc_info:
-            await generate_insight_for_creative(db, "cr_f09", user, user_org_ids=[org.id])
-
-        # Must raise honest 503
-        assert exc_info.value.status_code == 503
-        assert "temporarily unavailable" in exc_info.value.detail or "failed" in exc_info.value.detail
-
-        # Absolutely NO fake insights saved to DB
-        assert len(persisted_insights) == 0
-        # Absolutely NO credits charged to user
-        assert len(charges) == 0
-        assert org.credit_balance == 50.0
 
 
 # ---------------------------------------------------------------------------

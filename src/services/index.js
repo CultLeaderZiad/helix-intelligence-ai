@@ -4,7 +4,6 @@
  */
 import discoverApi from "./api/discoverService.api"
 import creativeApi from "./api/creativeService.api"
-import analysisApi from "./api/analysisService.api"
 import authApi from "./api/authService.api"
 import adminApi from "./api/adminService.api"
 import accountApi from "./api/accountService.api"
@@ -16,7 +15,6 @@ import monitorApi from "./api/monitorService.api"
 
 export const discoverService = discoverApi
 export const creativeService = creativeApi
-export const analysisService = analysisApi
 export const authService = authApi
 export const adminService = adminApi
 export const accountService = accountApi

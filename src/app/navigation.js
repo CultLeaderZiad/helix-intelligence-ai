@@ -1,5 +1,5 @@
 import { EXPERIMENTAL_FEATURES_ENABLED } from "@/lib/productFeatures"
-import { Radar, Network, Eye } from "lucide-react"
+import { Radar, Eye } from "lucide-react"
 
 /**
  * The loops of the product. Single source of truth for the sidebar,
@@ -13,14 +13,6 @@ const ALL_SECTIONS = [
     label: "Discover",
     icon: Radar,
     description: "Query competitor ad libraries and rank what is running.",
-    status: "live",
-  },
-  {
-    key: "intelligence",
-    path: "/intelligence",
-    label: "Intelligence",
-    icon: Network,
-    description: "Mine recurring patterns across a discovered corpus.",
     status: "live",
   },
   {

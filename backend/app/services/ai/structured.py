@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import datetime
 import uuid
 from typing import Any, Iterable
 
-from app.schemas.analysis import Insight, Pattern
+from app.schemas.analysis import Pattern
 
 _INSIGHT_KINDS = {"opportunity", "warning", "observation"}
 _PATTERN_FAMILIES = {"visual", "copy", "structural"}
@@ -40,31 +39,6 @@ def _confidence(value: Any) -> float:
     return number
 
 
-def parse_insight(data: Any, *, creative_id: str, model_version: str) -> Insight:
-    if not isinstance(data, dict):
-        raise InvalidModelOutput("insight response is not an object")
-    kind = _require_text(data, "kind")
-    if kind not in _INSIGHT_KINDS:
-        raise InvalidModelOutput("kind is not an allowed value")
-    evidence = data.get("evidence_creative_ids")
-    if not isinstance(evidence, list) or creative_id not in evidence:
-        raise InvalidModelOutput("evidence_creative_ids must include the creative")
-    if any(item != creative_id for item in evidence):
-        raise InvalidModelOutput("evidence_creative_ids contains an unknown id")
-    return Insight(
-        id=f"insight_{uuid.uuid4().hex}",
-        creative_id=creative_id,
-        kind=kind,
-        title=_require_text(data, "title"),
-        summary=_require_text(data, "summary"),
-        confidence=_confidence(data.get("confidence")),
-        evidence_creative_ids=[creative_id],
-        model_version=model_version,
-        generated_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        emotional_resonance=data.get("emotional_resonance") if isinstance(data.get("emotional_resonance"), str) else None,
-        script_teardown=data.get("script_teardown") if isinstance(data.get("script_teardown"), str) else None,
-        fatigue_prediction=data.get("fatigue_prediction") if isinstance(data.get("fatigue_prediction"), str) else None,
-    )
 
 
 def parse_patterns(data: Any, *, allowed_ids: Iterable[str], model_version: str) -> list:
@@ -105,30 +79,6 @@ def parse_patterns(data: Any, *, allowed_ids: Iterable[str], model_version: str)
 
 
 
-def parse_translation(data: Any, *, target_lang: str) -> dict:
-    if not isinstance(data, dict):
-        raise InvalidModelOutput("translation response is not an object")
-    translated = _require_text(data, "translated_text")
-    detected = _require_text(data, "detected_lang")
-    if len(detected) > 12:
-        raise InvalidModelOutput("detected_lang is not a language code")
-    breakdown = data.get("breakdown")
-    if not isinstance(breakdown, dict):
-        raise InvalidModelOutput("breakdown is missing")
-    cleaned = {}
-    for key in ("hook", "problem", "solution", "cta"):
-        cleaned[key] = _require_text(breakdown, key)
-    lowered = translated.lower()
-    if "naturia" in lowered or "parasite cleanse" in lowered or "بيوفيلم" in translated:
-        raise InvalidModelOutput("translation matched a removed canned template")
-    return {
-        "status": "ok",
-        "target_lang": target_lang,
-        "detected_lang": detected,
-        "translated_text": translated,
-        "breakdown": cleaned,
-        "charged": False,
-    }
 
 
 def parse_entity(data: Any) -> dict:
