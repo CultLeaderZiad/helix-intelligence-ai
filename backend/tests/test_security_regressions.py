@@ -97,12 +97,13 @@ def main() -> int:
     tenancy = ROOT / "app/core/tenancy.py"
     check(tenancy.exists(), "tenancy helper module exists", failures)
 
-    # 4. Auth webhook: real signature comparison, fails closed.
+    # 4. Auth webhook: W8 removed the Neon Auth webhook entirely, which is
+    # stronger than signature checks. It must not come back unauthenticated.
     auth = read("app/api/routers/auth.py")
     check(
-        "hmac.compare_digest" in auth
-        and 'status_code=503, detail="Auth webhook is not configured"' in auth,
-        "auth webhook: HMAC enforced and closed when unconfigured",
+        '@router.post("/webhook")' not in auth
+        and not (ROOT / "app/services/neon_webhook.py").exists(),
+        "auth webhook: removed (no unauthenticated user-creation endpoint)",
         failures,
     )
     check(
