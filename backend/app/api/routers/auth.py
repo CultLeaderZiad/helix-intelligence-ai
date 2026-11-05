@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 import datetime
 
 from app.core.observability import log_event
@@ -19,19 +19,21 @@ logger = logging.getLogger(__name__)
 async def build_session_response(db: AsyncSession, user: User, access_token: str = None) -> SessionResponse:
     org = None
     try:
-        org = await billing_service.get_or_create_default_org(db, user)
+        # Read-only: this response is never committed, so daily counters are
+        # evaluated in memory instead of being flushed and rolled back.
+        org = await billing_service.get_or_create_default_org(db, user, apply_daily_reset=False)
     except Exception as org_err:
         log_event(logger, "session_org_lookup_failed", error=org_err, actor_id=user.id)
 
     plan = None
     if org and org.plan_id:
         try:
-            plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
+            plan = await db.get(Plan, org.plan_id)
         except Exception as exc:
             log_event(logger, "session_plan_lookup_failed", error=exc, actor_id=user.id, tenant_id=org.id)
     if not plan:
         try:
-            plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
+            plan = await db.get(Plan, "plan_trial_default")
         except Exception as exc:
             log_event(logger, "session_default_plan_lookup_failed", error=exc, actor_id=user.id)
 
@@ -57,24 +59,19 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         trial_days_remaining = max(0, (trial_exp - now).days) if trial_exp > now else 0
 
     daily_limit = getattr(plan, "daily_credit_limit", None) if plan else None
-    daily_used = round(float(getattr(org, "daily_credits_used_today", 0.0) or 0.0), 2) if org else 0.0
+    daily_used = round(billing_service.effective_daily_credits_used(org), 2) if org else 0.0
     daily_remaining = round(max(0.0, (daily_limit or 0.0) - daily_used), 2) if daily_limit is not None else None
     daily_resets_at = None
 
-    try:
-        if org:
-            from app.services.billing_service import _ensure_daily_reset, _utc_midnight
-            await _ensure_daily_reset(db, org)
-            if daily_limit:
-                daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
-    except Exception as reset_err:
-        log_event(logger, "session_daily_reset_failed", error=reset_err, actor_id=user.id, tenant_id=getattr(org, "id", None))
+    if org and daily_limit:
+        from app.services.billing_service import _utc_midnight
+        daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
 
     trial_summary = {}
     try:
         if org:
             from app.services.billing_service import get_trial_usage_summary
-            trial_summary = await get_trial_usage_summary(db, user, org)
+            trial_summary = await get_trial_usage_summary(db, user, org, apply_resets=False)
     except Exception as trial_err:
         log_event(logger, "session_trial_summary_failed", error=trial_err, actor_id=user.id, tenant_id=getattr(org, "id", None))
 
@@ -178,10 +175,7 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 @router.post("/sign-in", response_model=SessionResponse)
 async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
     try:
-        token = await auth_service.authenticate_user(db, user_in)
-        from app.models.user import User as UserModel
-        result = await db.execute(select(UserModel).where(func.lower(UserModel.email) == user_in.email.lower().strip()))
-        user = result.scalar_one_or_none()
+        token, user = await auth_service.authenticate_user_and_load(db, user_in)
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
         await _bind_request_tenant(db, user)

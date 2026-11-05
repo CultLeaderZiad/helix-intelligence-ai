@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from fastapi import HTTPException, status
@@ -35,10 +37,19 @@ def _hash_reset_token(token: str) -> str:
 
 
 async def authenticate_user(db: AsyncSession, user_in: UserLogin) -> str:
-    if settings.USE_MOCKS:
-        return create_access_token(subject="mock-admin-id", role="admin" if "admin" in user_in.email else "customer")
+    token, _user = await authenticate_user_and_load(db, user_in)
+    return token
 
+
+async def authenticate_user_and_load(db: AsyncSession, user_in: UserLogin) -> tuple[str, Optional[User]]:
+    """Verify credentials and return the token with the user row already loaded,
+    so callers do not query the same user a second time."""
     email = _normalize_email(user_in.email)
+    if settings.USE_MOCKS:
+        token = create_access_token(subject="mock-admin-id", role="admin" if "admin" in user_in.email else "customer")
+        result = await db.execute(select(User).where(func.lower(User.email) == email))
+        return token, result.scalar_one_or_none()
+
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     user = result.scalar_one_or_none()
 
@@ -60,7 +71,7 @@ async def authenticate_user(db: AsyncSession, user_in: UserLogin) -> str:
 
     metadata = getattr(user, "signup_metadata", None) or {}
     token_version = metadata.get("token_version", 1)
-    return create_access_token(subject=user.id, role=user.role, token_version=token_version)
+    return create_access_token(subject=user.id, role=user.role, token_version=token_version), user
 
 async def revoke_user_sessions(db: AsyncSession, user: User, *, commit: bool = True) -> int:
     """Increment the user's token version to immediately invalidate all existing sessions."""

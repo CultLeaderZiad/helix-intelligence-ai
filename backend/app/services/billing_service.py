@@ -245,6 +245,17 @@ def _format_iso(dt: Optional[datetime.datetime]) -> Optional[str]:
     return dt.isoformat()
 
 
+def daily_reset_due(org: Organization, now: Optional[datetime.datetime] = None) -> bool:
+    """True when the org's daily credit counter belongs to an earlier UTC day."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    return org.daily_credits_reset_at is None or org.daily_credits_reset_at < _utc_midnight(now)
+
+
+def effective_daily_credits_used(org: Organization) -> float:
+    """Today's usage without writing: a stale counter reads as zero."""
+    return 0.0 if daily_reset_due(org) else float(org.daily_credits_used_today or 0.0)
+
+
 async def _ensure_daily_reset(db: AsyncSession, org: Organization) -> None:
     """
     If the org's daily counter hasn't been reset since the current UTC
@@ -253,7 +264,7 @@ async def _ensure_daily_reset(db: AsyncSession, org: Organization) -> None:
     now = datetime.datetime.now(datetime.timezone.utc)
     today_midnight = _utc_midnight(now)
 
-    if org.daily_credits_reset_at is None or org.daily_credits_reset_at < today_midnight:
+    if daily_reset_due(org, now):
         org.daily_credits_used_today = 0.0
         org.daily_credits_reset_at = today_midnight
         await db.flush()
@@ -319,7 +330,8 @@ async def resolve_active_org(db: AsyncSession, user: User) -> Optional[Organizat
 async def get_or_create_default_org(
     db: AsyncSession,
     user: User,
-    lock_row: bool = False
+    lock_row: bool = False,
+    apply_daily_reset: bool = True,
 ) -> Organization:
     """
     Retrieves or creates the default organization for a user.
@@ -344,7 +356,8 @@ async def get_or_create_default_org(
                     .execution_options(populate_existing=True)
                 )
             ).scalar_one()
-        await _ensure_daily_reset(db, resolved)
+        if apply_daily_reset:
+            await _ensure_daily_reset(db, resolved)
         return resolved
 
     query = select(Organization).where(Organization.owner_id == user.id)
@@ -368,7 +381,8 @@ async def get_or_create_default_org(
         member_org = (await db.execute(member_query)).scalars().first()
         if member_org:
             org = member_org
-            await _ensure_daily_reset(db, org)
+            if apply_daily_reset:
+                await _ensure_daily_reset(db, org)
             return org
 
         created = False
@@ -1286,6 +1300,11 @@ def get_trial_days_remaining(user: User) -> int:
     return max(0, delta.days + (1 if delta.seconds > 0 else 0))
 
 
+def image_reset_due(org: Organization) -> bool:
+    """True when the org's image/video counters belong to an earlier UTC day."""
+    return org.images_today_date != datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+
+
 async def _ensure_daily_image_reset(db: AsyncSession, org: Organization) -> None:
     """Resets org.images_generated_today at UTC date boundaries."""
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -1297,12 +1316,22 @@ async def _ensure_daily_image_reset(db: AsyncSession, org: Organization) -> None
         await db.flush()
 
 
-async def get_trial_usage_summary(db: AsyncSession, user: User, org: Optional[Organization] = None) -> Dict[str, Any]:
-    """Returns normalized image usage metrics for trial/paid user."""
+async def get_trial_usage_summary(
+    db: AsyncSession,
+    user: User,
+    org: Optional[Organization] = None,
+    apply_resets: bool = True,
+) -> Dict[str, Any]:
+    """Returns normalized image usage metrics for trial/paid user.
+
+    ``apply_resets=False`` is for read-only callers that never commit: stale
+    daily counters are reported as zero without issuing an UPDATE.
+    """
     if not org:
-        org = await get_or_create_default_org(db, user, lock_row=False)
-    else:
+        org = await get_or_create_default_org(db, user, lock_row=False, apply_daily_reset=apply_resets)
+    elif apply_resets:
         await _ensure_daily_image_reset(db, org)
+    counters_stale = (not apply_resets) and image_reset_due(org)
 
     is_admin = getattr(user, "role", None) == "admin"
     is_trial = org.plan == "trial" or bool(org.plan_id and org.plan_id.startswith("plan_trial"))
@@ -1313,7 +1342,7 @@ async def get_trial_usage_summary(db: AsyncSession, user: User, org: Optional[Or
     if is_admin:
         daily_limit = 99999
 
-    used_today = int(getattr(org, "images_generated_today", 0) or 0)
+    used_today = 0 if counters_stale else int(getattr(org, "images_generated_today", 0) or 0)
     remaining_today = max(0, daily_limit - used_today)
     total_used = int(getattr(org, "images_trial_total", 0) or 0)
     requires_plan = (not is_admin) and is_trial and (not active or total_used >= settings.TRIAL_IMAGES_TOTAL)
@@ -1321,14 +1350,15 @@ async def get_trial_usage_summary(db: AsyncSession, user: User, org: Optional[Or
     # Video limits. Trial video is disabled. Zero on a plan stays zero.
     plan_row = None
     if org.plan_id:
-        plan_row = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
+        # Session identity map first: the caller has usually loaded this plan.
+        plan_row = await db.get(Plan, org.plan_id)
     if is_admin:
         video_daily_limit = 99999
     elif is_trial:
         video_daily_limit = 0
     else:
         video_daily_limit = _explicit_limit(getattr(plan_row, "daily_video_limit", None) if plan_row else None, 0)
-    videos_used_today = int(getattr(org, "videos_generated_today", 0) or 0)
+    videos_used_today = 0 if counters_stale else int(getattr(org, "videos_generated_today", 0) or 0)
     videos_remaining_today = max(0, video_daily_limit - videos_used_today)
 
     return {
