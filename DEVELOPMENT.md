@@ -15,7 +15,7 @@ cd backend
 python -m venv venv
 venv\Scripts\activate      # Windows
 # source venv/bin/activate # Mac/Linux
-pip install -r requirements.txt
+pip install -r requirements.txt        # add -dev.txt to run tests: pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
 ```
 The backend API runs at `http://localhost:8000/api`.
