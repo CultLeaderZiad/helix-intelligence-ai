@@ -89,6 +89,10 @@ class Settings(BaseSettings):
     # Empty means forwarding headers are ignored and the TCP peer is used.
     TRUSTED_PROXY_CIDRS: str = os.getenv("TRUSTED_PROXY_CIDRS", "")
 
+    # Emit a Server-Timing header (connect/ping/db/rls/hash/app/total) on every
+    # response. Off by default: it exposes internal timing to clients.
+    SERVER_TIMING_ENABLED: bool = os.getenv("SERVER_TIMING_ENABLED", "False").lower() in ("true", "1", "yes")
+
 
     def __init__(self, **values):
         if "_env_file" in values:

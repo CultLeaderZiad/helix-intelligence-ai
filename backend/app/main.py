@@ -91,6 +91,13 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
 
+# Opt-in latency breakdown (Server-Timing header). Registered last so it is the
+# outermost middleware and its total covers every other layer.
+if settings.SERVER_TIMING_ENABLED:
+    from app.core import timing as request_timing
+    from app.db.session import worker_engine
+    request_timing.install(app, (engine, worker_engine))
+
 # Include routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(account.router, prefix=f"{settings.API_V1_STR}/account", tags=["account"])

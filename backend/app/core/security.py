@@ -285,7 +285,9 @@ def _verify_password_sync(plain_password: str, hashed_password: str) -> bool:
 async def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a hash, off the event loop."""
     import asyncio
-    return await asyncio.to_thread(_verify_password_sync, plain_password, hashed_password)
+    from app.core.timing import aspan
+    async with aspan("hash"):
+        return await asyncio.to_thread(_verify_password_sync, plain_password, hashed_password)
 
 def verify_hmac_signature(body: bytes, signature: str, secret: str) -> bool:
     """Constant-time HMAC-SHA256 check for inbound webhook signatures.
