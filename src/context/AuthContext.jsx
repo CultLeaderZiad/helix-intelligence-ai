@@ -15,9 +15,7 @@ import { getAccessToken, getCachedUser, setCachedUser } from "@/services/session
  * AUTH — session + role, the single source of identity truth
  * ============================================================
  * This context is the ONLY thing the app reads identity from. It talks
- * exclusively to `authService` (from `@/services`), which is the same
- * mock ⇄ API swap boundary every other domain uses — flipping
- * VITE_DATA_SOURCE=api needs zero changes here.
+ * exclusively to `authService` (from `@/services`), the FastAPI client.
  *
  * Role logic lives here and in the route guard, never inside a page. A
  * component asks "who is this / am I allowed", it does not compute the

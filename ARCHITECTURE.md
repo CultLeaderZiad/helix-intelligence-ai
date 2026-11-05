@@ -73,15 +73,11 @@ src/
     useMediaQuery.js       useIsMobile / useIsBelowLg / useIsBelowXl
 
   services/            The data boundary (see API_CONTRACTS.md)
-    index.js             Picks mock vs. api per domain, exported as the only import surface
-    config.js            DATA_SOURCE / API_BASE_URL / mock latency & failure knobs
+    index.js             The only import surface; every domain uses its api/* client
+    config.js            API_BASE_URL and job polling limits
     contracts.js          JSDoc-only typedefs — the agreed shape client ⇄ backend
     http.js               fetch wrapper + ServiceError, used only by api/*
-    api/                  Thin FastAPI-shaped implementations (not wired up yet)
-    mock/                 In-memory implementations backed by src/data/*
-
-  data/                Fixtures. Only ever imported by services/mock/*
-    creatives.js, brands.js, patterns.js, insights.js, jobs.js
+    api/                  FastAPI clients (there is no mock or fixture data source)
 
   lib/                 Pure functions, no React, no service imports
     format.js  Every numeric/date readout in the UI routes through here
@@ -110,11 +106,11 @@ Feature hook (e.g. useDiscoverySearch)
   │
   ▼
 services/index.js
-  the ONLY module that knows whether data is mocked or real
+  the only import surface for data
   │
   ▼
-services/mock/*.mock.js   OR   services/api/*.api.js
-  (selected per-domain by DATA_SOURCE, see API_CONTRACTS.md)
+services/api/*.api.js
+  FastAPI clients (see API_CONTRACTS.md)
 ```
 
 Concretely, for Discover:
@@ -138,7 +134,7 @@ Concretely, for Discover:
   `useDiscoverySearch` because it's a different service domain
   (creatives vs. discovery jobs).
 - **No component in `features/discover/` or `pages/` imports from
-  `services/mock`, `services/api`, or `src/data` directly.** They only
+  `services/api` directly.** They only
   ever import `discoverService` / `creativeService` / `analysisService`
   from `@/services`, or — more commonly — only receive already-fetched
   data as props from a hook.
@@ -150,21 +146,11 @@ service domain, and the hook is the only caller of `@/services`. This is
 what lets the FastAPI cutover (see `API_CONTRACTS.md`) touch zero
 component code.
 
-One documented, deliberate exception: `ResultsTable.jsx` and
-`JobProgress.jsx` import `brandsById` (from `@/data/brands`) and
-`DISCOVERY_STAGES` (from `@/data/jobs`) directly. These are not row data —
-`brandsById` resolves a display name the list endpoint doesn't embed, and
-`DISCOVERY_STAGES` is shared pipeline vocabulary the real worker will
-report against with the same keys. Both imports disappear the moment the
-corresponding endpoint embeds/returns that data; nothing else about the
-component changes.
-
 ## 5. Data models
 
 Canonical shapes live as JSDoc typedefs in `src/services/contracts.js`
 (no runtime code — types only, so editors get intellisense without
-TypeScript). Every mock and every future HTTP implementation must satisfy
-these shapes exactly.
+TypeScript). Every API client must satisfy these shapes exactly.
 
 - **`Creative`** — `id`, `brand_id`, `platform`, `format`, `headline`,
   `body`, `cta`, `landing_domain`, `thumbnail_ratio`, `duration_seconds`,
@@ -206,10 +192,10 @@ deliberately imperfect: a minority of records have null/missing fields
 (no thumbnail ratio, no engagement rate, unscored composite) so the UI is
 forced to handle real-world gaps from day one, not just the happy path.
 
-## 6. Mock service interfaces
+## 6. Service interfaces
 
-See [`API_CONTRACTS.md`](./API_CONTRACTS.md) for the full contract,
-endpoint mapping, and the mock ⇄ API parity guarantee.
+See [`API_CONTRACTS.md`](./API_CONTRACTS.md) for the full contract and
+endpoint mapping.
 
 ## 7. Current Discover flow
 
@@ -252,30 +238,21 @@ endpoint mapping, and the mock ⇄ API parity guarantee.
 8. The backend's webhook handler dedupes the event, updates the job status, and if successful, downloads the generated artifact to persistent storage.
 9. The polling frontend receives the updated status (`succeeded`) and artifact URL, rendering the result with full lineage intact.
 
-## 9. Future FastAPI integration — PLANNED
+## 9. Backend integration
 
-Not implemented. When it happens:
+Every service talks to the FastAPI backend through `services/api/*.api.js`
+and `request()` in `services/http.js`, which throws a normalized
+`ServiceError` on failure. There is no mock data source: W8 removed the
+in-memory mocks, the `src/data` fixtures, the `VITE_DATA_SOURCE` switch and
+the backend `USE_MOCKS` flag. `VITE_API_BASE_URL` selects the backend origin
+(same-origin `/api` proxy locally and in previews).
 
-- Set `VITE_DATA_SOURCE=api` and `VITE_API_BASE_URL=<backend origin>`.
-- `src/services/index.js` switches every domain's service from
-  `services/mock/*.mock.js` to `services/api/*.api.js` — this is the
-  entire cutover. No component, hook, or page changes.
-- The `api/*.api.js` files already exist and are written against the
-  contracts in `contracts.js`; they call `request()` from `services/http.js`,
-  which throws a normalized `ServiceError` on failure so error-handling
-  code never branches on data source.
-- Expected endpoints are documented as comments at the top of each
-  `api/*.api.js` file (e.g. `POST /v1/discovery/jobs`,
-  `GET /v1/creatives/{id}`). See `API_CONTRACTS.md` for the full list.
+## 10. Database
 
-## 10. Future Neon database integration — PLANNED
-
-Not implemented, and nothing in this repository talks to a database.
-When a backend is built, the FastAPI service is expected to be backed by
-Neon Postgres; the frontend has no direct database dependency in any
-scenario — it only ever talks to the HTTP contract in `contracts.js`.
-This frontend repo requires no changes for that integration beyond the
-`VITE_DATA_SOURCE` / `VITE_API_BASE_URL` cutover in §9.
+The backend runs on Neon Postgres with row-level security. The API connects
+as `helix_api_login` and the worker as `helix_worker_login`; see
+`docs/w8/login-latency-and-production-db.md`. The frontend has no direct
+database dependency.
 
 ## 11–14. Design tokens, motion rules, anti-patterns
 

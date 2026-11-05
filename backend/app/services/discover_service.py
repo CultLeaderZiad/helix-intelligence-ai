@@ -554,20 +554,6 @@ async def trigger_search(
     )
 
 async def get_job_status(db: AsyncSession, job_id: str, user_org_ids: Optional[List[str]] = None) -> Job:
-    if settings.USE_MOCKS:
-        return Job(
-            job_id=job_id,
-            status="running",
-            progress=0.5,
-            stage="scraping",
-            stage_label="Scraping Platforms",
-            stage_index=2,
-            stages_total=5,
-            records_found=15,
-            elapsed_ms=5000,
-            created_at=_isoformat_utc(_utcnow())
-        )
-    
     result = await db.execute(select(ScrapeJob).where(ScrapeJob.id == job_id))
     job = result.scalar_one_or_none()
     
@@ -599,28 +585,6 @@ async def get_job_status(db: AsyncSession, job_id: str, user_org_ids: Optional[L
 
 async def list_recent_jobs(db: AsyncSession, user_id: str, page: int = 1, page_size: int = 8) -> Paginated[Job]:
     offset, page_size = pagination_bounds(page, page_size)
-    if settings.USE_MOCKS:
-        mock_job = Job(
-            job_id="mock-job-id-123",
-            status="succeeded",
-            progress=1.0,
-            stage="scoring",
-            stage_label="Scoring Creatives",
-            stage_index=4,
-            stages_total=5,
-            records_found=15,
-            elapsed_ms=12000,
-            created_at=_isoformat_utc(_utcnow()),
-            completed_at=_isoformat_utc(_utcnow())
-        )
-        return Paginated(
-            items=[mock_job],
-            total=1,
-            page=page,
-            page_size=page_size,
-            has_more=False
-        )
-
     count_query = select(func.count(ScrapeJob.id)).join(
         Organization, ScrapeJob.org_id == Organization.id
     ).where(Organization.owner_id == user_id)

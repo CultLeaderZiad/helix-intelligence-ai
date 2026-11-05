@@ -270,8 +270,7 @@ async def test_f71_register_user_sanitizes_pii_from_attribution():
         referrer="https://partner.com/welcome?token=s3cr3t&user_email=leak@domain.com",  # Query params!
     )
 
-    with patch.object(settings, "USE_MOCKS", False), \
-         patch("app.services.auth_service.logger.info") as mock_logger:
+    with patch("app.services.auth_service.logger.info") as mock_logger:
         await register_user(db, user_in)
 
         assert captured_user is not None

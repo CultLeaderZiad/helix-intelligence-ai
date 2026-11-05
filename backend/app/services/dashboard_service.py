@@ -152,22 +152,6 @@ async def generate_narrative_summary(
 
 
 async def get_dashboard_metrics(db: AsyncSession, user: Optional[User] = None) -> Dict[str, Any]:
-    if settings.USE_MOCKS:
-        return {
-            "narrative_summary": {
-                "status": "empty",
-                "summary": None,
-                "message": "Run your first search to start seeing insights here."
-            },
-            "has_monitors": False,
-            "active_monitors_count": 0,
-            "monitor_changes": [],
-            "top_performers": [],
-            "reach_leaderboard": [],
-            "timeline": [],
-            "cross_brand": []
-        }
-
     from app.core.tenancy import get_user_org_ids
     org_ids = await get_user_org_ids(db, user) if user is not None else []
 

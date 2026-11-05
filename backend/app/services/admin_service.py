@@ -115,18 +115,6 @@ def _redact_flags(flags) -> dict:
     }
 
 async def get_overview(db: AsyncSession) -> AdminOverviewStats:
-    if settings.USE_MOCKS:
-        return AdminOverviewStats(
-            organizations=10,
-            active_scrape_jobs=2,
-            system_health="operational",
-            api_error_rate=0.01,
-            window_label="Last 24h",
-            total_credits_consumed=142.5,
-            total_provider_cost_usd=1.42,
-            active_trials=8
-        )
-    
     org_count = await db.scalar(select(func.count(Organization.id))) or 0
     active_jobs = await db.scalar(select(func.count(ScrapeJob.id)).where(ScrapeJob.status == "running")) or 0
     total_credits = await db.scalar(select(func.sum(UsageLog.credits_deducted))) or 0.0

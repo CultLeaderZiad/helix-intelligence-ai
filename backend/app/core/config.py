@@ -51,9 +51,6 @@ class Settings(BaseSettings):
 
     BACKEND_CORS_ORIGINS: str = ""
 
-    # MOCKS
-    USE_MOCKS: bool = os.getenv("USE_MOCKS", "False").lower() in ("true", "1")
-
     # DATABASE
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
     # Outside production, DATABASE_URL must be loopback unless its host exactly
@@ -400,8 +397,6 @@ def validate_boot_invariants(cfg) -> None:
         if not raw_cors.strip() or not origins:
             errors.append("BACKEND_CORS_ORIGINS must be explicitly configured in production")
 
-        if getattr(cfg, "USE_MOCKS", False):
-            errors.append("USE_MOCKS must be false when ENVIRONMENT=production")
         if getattr(cfg, "HELIX_DISPATCH_INLINE", False):
             errors.append("HELIX_DISPATCH_INLINE must be false when ENVIRONMENT=production")
         if getattr(cfg, "AUTH_DEV_RESET_RETURN", False):

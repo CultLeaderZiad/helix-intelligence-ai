@@ -434,17 +434,6 @@ async def assert_can_spend(
       - 429: daily_limit_reached
       - 402: insufficient_credits
     """
-    if settings.USE_MOCKS:
-        org = await get_or_create_default_org(db, user, lock_row=False)
-        mock_plan = Plan(
-            id="plan_mock",
-            name="Mock Plan",
-            type="trial",
-            credit_allowance=100,
-            feature_flags={feature_name: True} if feature_name else {}
-        )
-        return org, mock_plan
-
     org = await get_or_create_default_org(db, user, lock_row=lock_row)
 
     # API-key scope is applied by get_or_create_default_org before this bypass.

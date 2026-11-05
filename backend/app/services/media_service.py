@@ -306,19 +306,6 @@ async def gemini_generate_media_task(job_id: str, user_id: str, org_id: str, cus
             await db.commit()
 
 
-async def mock_generate_media_task(job_id: str):
-    """Production never completes a mock image. The flag is rejected at boot."""
-    from app.db.session import async_session_maker
-    async with async_session_maker() as db:
-        result = await db.execute(select(MediaGenerationJob).where(MediaGenerationJob.id == job_id))
-        job = result.scalar_one_or_none()
-        if job:
-            job.status = "failed"
-            job.failure_kind = "mock_disabled"
-            job.error_message = "Mock media generation is disabled."
-            await db.commit()
-
-
 async def create_media_job(db: AsyncSession, user: User, request: MediaGenerationRequest) -> MediaGenerationJob:
     """
     Creates and initiates a media generation job.
@@ -340,16 +327,11 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
         lock_row=True
     )
 
-    requested_provider = (request.provider or "").lower()
-
     # Provider routing. The Higgsfield provider was removed from the app:
     # every generation runs through Gemini (managed key or BYOK), with the
     # in-task Pollinations fallback for video. Legacy "higgsfield" requests
     # are accepted and served by Gemini so existing clients keep working.
-    if requested_provider == "mock" and settings.USE_MOCKS:
-        provider = "mock"
-    else:
-        provider = "gemini"
+    provider = "gemini"
 
     # SECURITY: per-request BYOK keys must never be persisted with the job or
     # echoed in job responses. Keep it in memory and hand it to the task only.
@@ -389,12 +371,9 @@ async def create_media_job(db: AsyncSession, user: User, request: MediaGeneratio
     except Exception:
         logger.exception("media work item was not enqueued for %s", job.id)
     if inline_execution_enabled():
-        if provider == "mock":
-            asyncio.create_task(_with_heartbeat(lambda: mock_generate_media_task(job.id), job.id))
-        else:
-            asyncio.create_task(
-                _with_heartbeat(lambda: gemini_generate_media_task(job.id, user.id, org.id, custom_api_key=request_api_key), job.id)
-            )
+        asyncio.create_task(
+            _with_heartbeat(lambda: gemini_generate_media_task(job.id, user.id, org.id, custom_api_key=request_api_key), job.id)
+        )
 
     return job
 

@@ -61,7 +61,6 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `SECRET_KEY` | ✅ | JWT signing key. Generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `DATABASE_URL` | ✅ | Neon Postgres connection string (with asyncpg driver) |
 | `BACKEND_CORS_ORIGINS` | ✅ | Comma-separated origins, **must include the Vercel URL exactly** (scheme + host, no trailing slash): `https://helix-intelligence-ai-six.vercel.app,http://localhost:5173,http://localhost:3000` |
-| `USE_MOCKS` | ✅ | **Must be `false` in production.** When `true`, sign-in always returns a fake admin token regardless of credentials. |
 | `PUBLIC_API_BASE_URL` | ✅ (prod) | Public API base for webhooks, e.g. `https://helix-intelligence-ai.onrender.com/api` |
 | `HF_API_KEY_ID` | ✅ (for Create) | Gemini API Key ID |
 | `HF_API_KEY_SECRET` | ✅ (for Create) | Gemini API Key Secret |
@@ -91,10 +90,9 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 
 ### Frontend (Vercel)
 
-The frontend builds on Vercel. **Two env vars must be set at build time** (Vercel → Settings → Environment Variables):
+The frontend builds on Vercel. **This env var must be set at build time** (Vercel → Settings → Environment Variables):
 
 ```
-VITE_DATA_SOURCE=api
 VITE_API_BASE_URL=https://helix-intelligence-ai.onrender.com/api
 ```
 
@@ -104,7 +102,7 @@ The URL **must be absolute** — a relative `/api` path will 404 because the fro
 
 The Vite dev proxy in `vite.config.js` (`/api → http://127.0.0.1:8000`) **only works during local development**. It has no effect in a production build.
 
-Without the two env vars above, sign-up/sign-in and all other API calls will fail with network errors in production while working fine locally. This is the single most common "it works on my machine" deployment issue.
+Without the env var above, sign-up/sign-in and all other API calls will fail with network errors in production while working fine locally. This is the single most common "it works on my machine" deployment issue.
 
 ## Media storage
 
@@ -297,7 +295,7 @@ There is **no** Neon Auth / Better Auth dependency on the login path.
 Do **not** set `VITE_NEON_AUTH_URL` — it is no longer used and was the cause of the "Invalid origin" error in production.
 
 Auth is always backed by the FastAPI service — the frontend never signs in
-against the mock (`authService` is the API client in every data-source mode,
+against a mock (`authService` is always the API client,
 so a real account always works).
 
 ### Password reset ("auth failed" recovery)
@@ -393,7 +391,7 @@ Discover uses an ordered, cost-aware canonical chain to avoid unnecessary API co
 ```
 
 - **Query Caching**: Succeeded queries are cached for **12 hours** per organization. Duplicate searches within 12 hours return cached jobs instantly with 0 credits deducted.
-- **Honest Zero-Results**: Never fakes mock creatives in production (`USE_MOCKS=false`). Returns clear report of all attempted sources.
+- **Honest Zero-Results**: Never fakes creatives; there is no mock mode. Returns clear report of all attempted sources.
 
 ---
 

@@ -1,11 +1,7 @@
 import { request } from "../http"
 
 /**
- * FastAPI-backed discovery service.
- *
- * Written up front and intentionally thin. Because it satisfies the same
- * interface as discoverService.mock.js, switching VITE_DATA_SOURCE=api
- * requires zero component or hook changes.
+ * FastAPI-backed discovery service. Intentionally thin.
  *
  * Expected endpoints:
  *   POST /api/discovery/jobs         -> Job

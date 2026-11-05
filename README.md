@@ -21,7 +21,7 @@ with no prior context on this conversation.
 |---|---|
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Frontend stack, project structure, component architecture, the page → hook → service contract, data models |
 | [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md) | Design tokens, typography, spacing, motion rules, accent discipline, anti-patterns that must not be reintroduced |
-| [`API_CONTRACTS.md`](./API_CONTRACTS.md) | The mock ⇄ future-FastAPI service contracts, request/response shapes, how the data boundary works |
+| [`API_CONTRACTS.md`](./API_CONTRACTS.md) | The FastAPI service contracts, request/response shapes, how the data boundary works |
 | [`DEVELOPMENT.md`](./DEVELOPMENT.md) | How to run locally, how to build, environment variables, known TODOs, PLANNED integrations, status reporting rules |
 
 ## Status & Reporting Rules

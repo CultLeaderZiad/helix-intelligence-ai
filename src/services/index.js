@@ -1,15 +1,7 @@
-import { DATA_SOURCE } from "./config"
-
-import discoverMock from "./mock/discoverService.mock"
-import creativeMock from "./mock/creativeService.mock"
-import analysisMock from "./mock/analysisService.mock"
-import adminMock from "./mock/adminService.mock"
-import accountMock from "./mock/accountService.mock"
-import notificationMock from "./mock/notificationService.mock"
-import mediaMock from "./mock/mediaService.mock"
-import dashboardMock from "./mock/dashboardService.mock"
-import simulationMock from "./mock/simulationService.mock"
-
+/**
+ * Service layer entry point. Every service talks to the FastAPI backend;
+ * there is no mock or fixture data source.
+ */
 import discoverApi from "./api/discoverService.api"
 import creativeApi from "./api/creativeService.api"
 import analysisApi from "./api/analysisService.api"
@@ -24,39 +16,26 @@ import supportApi from "./api/supportService.api"
 import playbookApi from "./api/playbookService.api"
 import { updatesApi } from "./api/updatesService.api"
 import monitorApi from "./api/monitorService.api"
-
-import scoutMock from "./mock/scoutService.mock"
 import scoutApi from "./api/scoutService.api"
-import mapsScoutMock from "./mock/mapsScoutService.mock"
 import mapsScoutApi from "./api/mapsScoutService.api"
 import leadgenApi from "./api/leadgen"
 
-const useApi = DATA_SOURCE === "api"
-
-export const discoverService = useApi ? discoverApi : discoverMock
-export const creativeService = useApi ? creativeApi : creativeMock
-export const analysisService = useApi ? analysisApi : analysisMock
-/* Accounts always live in the FastAPI backend. Mock-mode sign-in with a
-   real email only ever produced "auth failed" — the in-memory mock does
-   not persist users — so auth is deliberately NOT gated by DATA_SOURCE. */
+export const discoverService = discoverApi
+export const creativeService = creativeApi
+export const analysisService = analysisApi
 export const authService = authApi
-export const adminService = useApi ? adminApi : adminMock
-export const accountService = useApi ? accountApi : accountMock
-export const notificationService = useApi ? notificationApi : notificationMock
-export const mediaService = useApi ? mediaApi : mediaMock
-export const dashboardService = useApi ? dashboardApi : dashboardMock
-export const simulationService = useApi ? simulationApi : simulationMock
+export const adminService = adminApi
+export const accountService = accountApi
+export const notificationService = notificationApi
+export const mediaService = mediaApi
+export const dashboardService = dashboardApi
+export const simulationService = simulationApi
 export const supportService = supportApi
 export const playbookService = playbookApi
 export const updatesService = updatesApi
-export const scoutService = useApi ? scoutApi : scoutMock
-export const mapsScoutService = useApi ? mapsScoutApi : mapsScoutMock
-// Monitors are inherently server-side state (a scheduler runs them), so there
-// is no mock counterpart to switch between.
+export const scoutService = scoutApi
+export const mapsScoutService = mapsScoutApi
 export const monitorService = monitorApi
-/* Lead Generation runs on a real backend worker with no mock counterpart —
-   worker offline is an honest 503, never simulated leads. */
 export const leadgenService = leadgenApi
 
-export { DATA_SOURCE }
 export { ServiceError } from "./http"

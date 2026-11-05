@@ -14,7 +14,6 @@ import sys
 import types
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-prod")
-os.environ.setdefault("USE_MOCKS", "False")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 

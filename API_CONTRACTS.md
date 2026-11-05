@@ -199,7 +199,7 @@ All generation and entitlement gatekeeper failures return machine-readable JSON 
 ## 6. Frontend Job Request Cancellation
 
 Discovery and media job services accept an optional final `{ signal: AbortSignal }`
-argument in both API and mock mode. In particular, discovery result reads use
+argument. In particular, discovery result reads use
 `getJobResults(jobId, pagination, { signal })`; media generation, status, result,
 and cancellation calls use `(paramsOrJobId, { signal })`.
 
@@ -207,8 +207,7 @@ and cancellation calls use `(paramsOrJobId, { signal })`.
 (and each discovery refinement). Unmounting, route navigation, explicit cancel,
 or resubmission aborts outstanding fetches and HTTP retry waits, in addition to
 fencing stale state updates. Media's best-effort server-cancel request is also
-aborted on unmount or resubmission. Mock delays honor the same signal and remove
-their timers/listeners when canceled.
+aborted on unmount or resubmission.
 
 Aborting a client request is **not** proof that a submitted backend job stopped:
 media's explicit cancel action calls the cancellation endpoint, while discovery

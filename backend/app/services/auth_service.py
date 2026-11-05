@@ -13,7 +13,6 @@ from app.core.security import (
     decode_password_reset_token,
 )
 from app.core.config import settings
-import uuid
 import datetime
 import hashlib
 import secrets
@@ -45,11 +44,6 @@ async def authenticate_user_and_load(db: AsyncSession, user_in: UserLogin) -> tu
     """Verify credentials and return the token with the user row already loaded,
     so callers do not query the same user a second time."""
     email = _normalize_email(user_in.email)
-    if settings.USE_MOCKS:
-        token = create_access_token(subject="mock-admin-id", role="admin" if "admin" in user_in.email else "customer")
-        result = await db.execute(select(User).where(func.lower(User.email) == email))
-        return token, result.scalar_one_or_none()
-
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     user = result.scalar_one_or_none()
 
@@ -90,9 +84,6 @@ async def revoke_user_sessions(db: AsyncSession, user: User, *, commit: bool = T
 async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     raw_name = (user_in.name or "").strip()
     full_name = raw_name if raw_name else None
-
-    if settings.USE_MOCKS:
-        return User(id=str(uuid.uuid4()), email=_normalize_email(user_in.email), password_hash="mock", role="customer", full_name=full_name)
 
     email = _normalize_email(user_in.email)
     result = await db.execute(select(User).where(func.lower(User.email) == email))

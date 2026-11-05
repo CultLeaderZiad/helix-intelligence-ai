@@ -135,8 +135,7 @@ async def test_creatives_and_patterns_keep_scope_and_stable_pages(corpus):
 @pytest.mark.asyncio
 async def test_recent_jobs_sql_scope_order_and_bounds(corpus):
     db, users, orgs, jobs, suffix, statements = corpus
-    with patch.object(settings, "USE_MOCKS", False):
-        result = await discover_service.list_recent_jobs(db, users[0], page_size=1)
+    result = await discover_service.list_recent_jobs(db, users[0], page_size=1)
     assert result.total == 1 and [item.job_id for item in result.items] == [jobs[0]]
     assert len(statements) == 2 and "ORDER BY" in statements[1] and "LIMIT" in statements[1]
 
@@ -223,8 +222,7 @@ async def test_explain_actual_scoped_pages_has_bounded_output(corpus):
         await creative_service.list_brands(db, page=2, page_size=7, user_org_ids=[orgs[0]])
         await analysis_service.list_insights(db, page=2, page_size=7, user_org_ids=[orgs[0]])
         await creative_service.list_creatives(db, page=2, page_size=7, user_org_ids=[orgs[0]])
-        with patch.object(settings, "USE_MOCKS", False):
-            await discover_service.list_recent_jobs(db, users[0], page_size=7)
+        await discover_service.list_recent_jobs(db, users[0], page_size=7)
         await playbook_service.list_user_playbooks(db, users[0], page=2, page_size=7)
     finally:
         event.remove(connection.sync_connection, "before_cursor_execute", capture)
@@ -272,8 +270,7 @@ async def test_oversized_positive_page_size_is_capped_for_every_service(corpus, 
 
     event.listen(connection.sync_connection, "before_cursor_execute", capture_bounds)
     try:
-        with patch.object(settings, "USE_MOCKS", False), \
-             patch("app.services.billing_service.check_quota_and_feature", new=AsyncMock()):
+        with patch("app.services.billing_service.check_quota_and_feature", new=AsyncMock()):
             pages = [
                 await creative_service.list_creatives(db, page=2, page_size=page_size, user_org_ids=[orgs[0]]),
                 await creative_service.list_brands(db, page=2, page_size=page_size, user_org_ids=[orgs[0]]),

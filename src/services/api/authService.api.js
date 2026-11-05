@@ -27,9 +27,6 @@ function assertCurrentSessionOperation(version) {
  *
  * All auth goes to the Helix FastAPI backend (Render).
  * Zero dependency on better-auth / Neon Auth / VITE_NEON_AUTH_URL.
- *
- * Interface is identical to authService.mock.js so AuthContext and
- * every page works unchanged regardless of VITE_DATA_SOURCE.
  */
 
 export function getStoredToken() {

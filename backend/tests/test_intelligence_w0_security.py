@@ -348,7 +348,6 @@ async def test_neon_webhook_rejects_bad_signature_and_replays_stable_ack():
 async def test_production_reset_flag_is_forbidden_and_response_has_no_link():
     class Cfg:
         ENVIRONMENT = "production"
-        USE_MOCKS = False
         AUTH_DEV_RESET_RETURN = True
         SECRET_KEY = "x" * 40
         CREDENTIAL_ENCRYPTION_KEY = "y" * 40

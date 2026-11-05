@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils"
 import { Tag } from "@/components/ui/Tag"
 import { ScoreBar } from "@/components/ui/Metric"
-import { brandsById } from "@/data/brands"
 import {
   formatCompact,
   formatDays,
@@ -23,10 +22,6 @@ const PLATFORM_LABEL = {
  * Dense result table — the default view, because scanning 20 rows beats
  * scrolling 20 cards. Row selection is keyboard-navigable and the header
  * is sticky so the column meaning never scrolls away.
- *
- * NOTE: brand lookup reads a fixture map here purely to resolve display
- * names the list endpoint does not embed. When FastAPI ships, the list
- * response will include `brand_name` and this import disappears.
  */
 export function ResultsTable({ items, selectedId, onSelect }) {
   function handleKeyDown(event, index) {
@@ -75,7 +70,6 @@ export function ResultsTable({ items, selectedId, onSelect }) {
         </thead>
         <tbody>
           {items.map((c, i) => {
-            const brand = brandsById[c.brand_id]
             const active = c.id === selectedId
             return (
               <tr
@@ -112,7 +106,7 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                 </td>
                 <td className="px-2 py-2">
                   <span className="block truncate text-xs text-text-muted">
-                    {c.brand_name || brand?.name || "Unknown"}
+                    {c.brand_name || "Unknown"}
                   </span>
                 </td>
                 <td className="px-2 py-2">

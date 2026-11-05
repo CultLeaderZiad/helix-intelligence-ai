@@ -103,7 +103,6 @@ def test_production_boot_requires_explicit_app_and_cors_origins():
         R2_ENDPOINT_URL="",
         DATABASE_URL="postgresql+asyncpg://test:test@db.example.invalid:5432/helix",
         BACKEND_CORS_ORIGINS="https://app.example.invalid",
-        USE_MOCKS=False,
         HELIX_DISPATCH_INLINE=False,
         AUTH_DEV_RESET_RETURN=False,
         SECRET_KEY="s" * 40,
