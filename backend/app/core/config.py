@@ -60,15 +60,6 @@ class Settings(BaseSettings):
     ALLOWED_REMOTE_DATABASE_HOST: str = os.getenv("ALLOWED_REMOTE_DATABASE_HOST", "")
     PRODUCTION_DATABASE_HOST: str = os.getenv("PRODUCTION_DATABASE_HOST", "")
     
-    # NEON AUTH
-    NEON_JWKS_URL: str = os.getenv("NEON_JWKS_URL", os.getenv("NEON_AUTH_JWKS_URL", "")).rstrip("/")
-    NEON_AUTH_URL: str = os.getenv("NEON_AUTH_BASE_URL", os.getenv("NEON_AUTH_URL", "")).rstrip("/")
-    NEON_JWT_ISSUER: str = os.getenv("NEON_JWT_ISSUER", os.getenv("NEON_AUTH_BASE_URL", "")).rstrip("/")
-    NEON_JWT_AUDIENCE: str = os.getenv("NEON_JWT_AUDIENCE", os.getenv("NEON_AUTH_BASE_URL", "")).rstrip("/")
-
-    NEON_WEBHOOK_SECRET: str = os.getenv("NEON_WEBHOOK_SECRET", "")
-    JWKS_REFRESH_LIMIT: int = int(os.getenv("JWKS_REFRESH_LIMIT", "8"))
-    JWKS_REFRESH_WINDOW_S: int = int(os.getenv("JWKS_REFRESH_WINDOW_S", "60"))
 
     # RATE LIMITING (in-memory, per-process token buckets)
     # Protects credential endpoints (brute force / account enumeration) and
@@ -339,8 +330,6 @@ def validate_boot_invariants(cfg) -> None:
         ("PUBLIC_APP_BASE_URL", False),
         ("PUBLIC_API_BASE_URL", True),
         ("APP_BASE_URL", False),
-        ("NEON_JWKS_URL", False),
-        ("NEON_AUTH_URL", False),
         ("R2_PUBLIC_BASE_URL", False),
         ("R2_ENDPOINT_URL", False),
         ("SCRAPLING_WORKER_URL", False),
@@ -365,14 +354,6 @@ def validate_boot_invariants(cfg) -> None:
         )
     except ValueError as exc:
         errors.append(str(exc))
-
-    for name in ("NEON_JWT_ISSUER", "NEON_JWT_AUDIENCE"):
-        value = (getattr(cfg, name, "") or "").strip()
-        if value.startswith(("http://", "https://", "//")):
-            try:
-                validate_http_target(value, name=name, environment=env)
-            except ValueError as exc:
-                errors.append(str(exc))
 
     raw_cors = getattr(cfg, "BACKEND_CORS_ORIGINS", "") or ""
     try:

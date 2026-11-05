@@ -51,8 +51,7 @@ def session_is_revoked(user: User, payload: dict) -> bool:
     ``<=`` against the full boundary.
     """
     metadata = getattr(user, "signup_metadata", None) or {}
-    token_class = payload.get("_token_class")
-    local = token_class != "external"
+    local = True
     token_ver = None
     current_ver = None
     if local:
@@ -77,14 +76,14 @@ def session_is_revoked(user: User, payload: dict) -> bool:
 
 async def authenticate_bearer(db: AsyncSession, token: str) -> User:
     """The single bearer-token dependency used by routes and media access."""
-    from app.core.security import verify_neon_token
+    from app.core.security import verify_session_token
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    payload = await verify_neon_token(token)
+    payload = await verify_session_token(token)
     if not payload:
         raise credentials_exception
     user_id = payload.get("sub")

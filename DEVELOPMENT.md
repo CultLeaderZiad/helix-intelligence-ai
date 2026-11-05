@@ -62,8 +62,6 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `DATABASE_URL` | ✅ | Neon Postgres connection string (with asyncpg driver) |
 | `BACKEND_CORS_ORIGINS` | ✅ | Comma-separated origins, **must include the Vercel URL exactly** (scheme + host, no trailing slash): `https://helix-intelligence-ai-six.vercel.app,http://localhost:5173,http://localhost:3000` |
 | `PUBLIC_API_BASE_URL` | ✅ (prod) | Public API base for webhooks, e.g. `https://helix-intelligence-ai.onrender.com/api` |
-| `HF_API_KEY_ID` | ✅ (for Create) | Gemini API Key ID |
-| `HF_API_KEY_SECRET` | ✅ (for Create) | Gemini API Key Secret |
 | `R2_ACCOUNT_ID` | ✅ (prod) | Cloudflare R2 account id — see "Media storage" below |
 | `R2_ACCESS_KEY_ID` | ✅ (prod) | R2 API token access key id |
 | `R2_SECRET_ACCESS_KEY` | ✅ (prod) | R2 API token secret |
@@ -392,29 +390,6 @@ Discover uses an ordered, cost-aware canonical chain to avoid unnecessary API co
 
 - **Query Caching**: Succeeded queries are cached for **12 hours** per organization. Duplicate searches within 12 hours return cached jobs instantly with 0 credits deducted.
 - **Honest Zero-Results**: Never fakes creatives; there is no mock mode. Returns clear report of all attempted sources.
-
----
-
-## Gemini Create Integration
-
-### Official Authentication Format
-Gemini requires API Key credentials formatted with `Key` (never `Bearer`):
-
-- **Header**: `Authorization: Key {HF_API_KEY_ID}:{HF_API_KEY_SECRET}`
-- **Base URL**: `https://api.gemini.ai`
-- **Default Image Endpoint**: `https://api.gemini.ai/gemini-ai/soul/v2/standard`
-- **Webhook Param**: `?hf_webhook={URL_ENCODED_PUBLIC_API_URL}/webhooks/gemini`
-
-### Operator Proof Curl
-```bash
-export HF_API_KEY_ID="your_key_id"
-export HF_API_KEY_SECRET="your_key_secret"
-curl -s -w "\nHTTP %{http_code}\n" -X POST \
-  "https://api.gemini.ai/gemini-ai/soul/v2/standard" \
-  -H "Authorization: Key ${HF_API_KEY_ID}:${HF_API_KEY_SECRET}" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"A quiet alpine lake at sunrise, editorial photography"}'
-```
 
 ---
 

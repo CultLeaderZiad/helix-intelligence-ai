@@ -202,8 +202,8 @@ async def signout(
     actor_id = None
     if token:
         try:
-            from app.core.security import verify_neon_token
-            payload = await verify_neon_token(token)
+            from app.core.security import verify_session_token
+            payload = await verify_session_token(token)
             if payload and payload.get("sub"):
                 actor_id = payload["sub"]
                 res = await db.execute(select(User).where(User.id == payload["sub"]))
@@ -296,35 +296,3 @@ async def restart_onboarding(current_user: User = Depends(get_current_user), db:
     await db.commit()
     log_event(logger, "onboarding_restarted", actor_id=current_user.id, level=logging.INFO)
     return {"message": "Onboarding marked as incomplete"}
-
-from fastapi import Request
-import hmac
-
-@router.post("/webhook")
-async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)):
-    body = await request.body()
-
-    # SECURITY: this endpoint creates users and organizations, so the caller MUST
-    # be authenticated. Fail CLOSED: Neon Auth URL missing -> refuse (503);
-    # missing/invalid signature -> 401.
-    if not (settings.NEON_AUTH_URL or "").strip():
-        raise HTTPException(status_code=503, detail="Auth webhook is not configured")
-
-    from app.services.neon_webhook import process_auth_webhook, verify_and_parse
-
-    try:
-        payload = await verify_and_parse(body, request.headers)
-    except HTTPException:
-        raise
-    header_event_id = (request.headers.get("x-neon-event-id") or "").strip()
-    body_event_id = str(payload.get("event_id") or "")
-    if not header_event_id or not body_event_id or not hmac.compare_digest(header_event_id, body_event_id):
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
-    try:
-        return await process_auth_webhook(db, payload)
-    except HTTPException:
-        raise
-    except Exception as exc:
-        await db.rollback()
-        log_event(logger, "auth_webhook_processing_failed", error=exc)
-        raise HTTPException(status_code=500, detail="Webhook processing failed")

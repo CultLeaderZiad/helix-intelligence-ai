@@ -9,7 +9,7 @@ import pytest
 from fastapi import HTTPException
 
 from app.core.deps import authenticate_bearer, session_is_revoked
-from app.core.security import create_access_token, verify_neon_token
+from app.core.security import create_access_token, verify_session_token
 
 
 SECOND = 1_792_352_388
@@ -52,9 +52,9 @@ async def test_same_second_reset_rejects_old_token_and_accepts_new_sign_in(monke
     previous_second = create_access_token("usr_same_second", token_version=2)
 
     monkeypatch.setattr("jose.jwt.datetime", _freeze(_at(0.9)))
-    before_payload = await verify_neon_token(before)
-    after_payload = await verify_neon_token(after)
-    previous_payload = await verify_neon_token(previous_second)
+    before_payload = await verify_session_token(before)
+    after_payload = await verify_session_token(after)
+    previous_payload = await verify_session_token(previous_second)
     assert before_payload["iat"] == SECOND
     assert after_payload["iat"] == SECOND
     assert before_payload["ver"] == 1
@@ -82,9 +82,3 @@ async def test_same_second_reset_rejects_old_token_and_accepts_new_sign_in(monke
     assert old_session.value.detail["code"] == "session_revoked"
 
 
-def test_external_session_still_uses_the_full_revocation_timestamp():
-    user = SimpleNamespace(signup_metadata={
-        "sessions_revoked_at": _at(0.4).isoformat(),
-    })
-    assert session_is_revoked(user, {"_token_class": "external", "iat": SECOND})
-    assert not session_is_revoked(user, {"_token_class": "external", "iat": SECOND + 1})

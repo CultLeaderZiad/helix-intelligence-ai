@@ -67,7 +67,7 @@ async def test_provider_http_failures_never_echo_upstream_payload(operation, cap
 async def test_logout_revocation_failure_is_not_success(monkeypatch, caplog):
     from app.core import security
 
-    monkeypatch.setattr(security, "verify_neon_token", AsyncMock(return_value={"sub": "actor-1"}))
+    monkeypatch.setattr(security, "verify_session_token", AsyncMock(return_value={"sub": "actor-1"}))
     db = SimpleNamespace(execute=AsyncMock(side_effect=RuntimeError("CANARY_DB_PASSWORD")))
     with pytest.raises(HTTPException) as caught:
         await auth.signout(db=db, token="CANARY_BEARER")

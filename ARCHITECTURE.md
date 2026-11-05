@@ -86,7 +86,7 @@ src/
     constants.js  Enumerations mirrored from the (future) FastAPI schema
     utils.js  cn() className helper
 
-  styles/globals.css   Design tokens (see DESIGN_SYSTEM.md)
+  styles/globals.css   Design tokens (CSS custom properties + Tailwind theme)
   App.jsx, main.jsx     Root component and entry point
 ```
 
@@ -256,7 +256,8 @@ database dependency.
 
 ## 11–14. Design tokens, motion rules, anti-patterns
 
-See [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md).
+Tokens live in `src/styles/globals.css`. There is no separate design-system
+document yet.
 
 ## 15–16. Running, building, TODOs
 
