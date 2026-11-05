@@ -53,7 +53,6 @@ const DiscoverPage = safeLazy(() => import("@/pages/DiscoverPage").then(m => ({ 
 const IntelligencePage = safeLazy(() => import("@/pages/IntelligencePage").then(m => ({ default: m.IntelligencePage })))
 const optionalPage = (page) => EXPERIMENTAL_FEATURES_ENABLED ? page : <Navigate to="/discover" replace />
 
-const DashboardPage = safeLazy(() => import("./pages/DashboardPage").then(m => ({ default: m.default })))
 const CreatePage = safeLazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
 const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
 const SwipeFilesPage = safeLazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
@@ -232,7 +231,6 @@ export default function App() {
                       <Route path="/scout" element={<Navigate to={EXPERIMENTAL_FEATURES_ENABLED ? "/scout/social" : "/discover"} replace />} />
                       <Route path="/scout/lead-generation" element={optionalPage(<ScoutLeadGenerationPage />)} />
                       <Route path="/scout/:mode" element={optionalPage(<ScoutPage />)} />
-                      <Route path="dashboard" element={optionalPage(<DashboardPage />)} />
                       <Route path="/swipe-files" element={optionalPage(<SwipeFilesPage />)} />
                       <Route path="/access" element={<BillingPage />} />
                       <Route path="/billing" element={<Navigate to="/access" replace />} />

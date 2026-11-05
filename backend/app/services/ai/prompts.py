@@ -9,7 +9,6 @@ PROMPT_INSIGHT = "insight-v2"
 PROMPT_PATTERNS = "patterns-v2"
 PROMPT_TRANSLATION = "translation-v1"
 PROMPT_QUERY = "query-translation-v1"
-PROMPT_NARRATIVE = "dashboard-narrative-v1"
 PROMPT_ENTITY = "entity-dossier-v2"
 PROMPT_OUTREACH = "outreach-v1"
 PROMPT_LANDING = "landing-extract-v1"
@@ -127,18 +126,6 @@ def query_messages(query: str, language_name: str) -> list:
     ]
 
 
-def narrative_messages(facts: str) -> list:
-    return [
-        {
-            "role": "system",
-            "content": (
-                "Write 2-3 plain sentences using only the supplied counts. "
-                "Do not invent brands, events, CTR, or conversion. "
-                f"Prompt version {PROMPT_NARRATIVE}."
-            ),
-        },
-        {"role": "user", "content": untrusted("workspace_counts", facts)},
-    ]
 
 
 def entity_messages(query: str) -> list:

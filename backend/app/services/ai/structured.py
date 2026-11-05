@@ -164,11 +164,3 @@ def parse_outreach(data: Any) -> dict:
     }
 
 
-def narrative_uses_only_facts(text: str, facts: str) -> bool:
-    """Reject a narrative that introduces digits the factual brief does not contain."""
-    import re
-    fact_numbers = set(re.findall(r"\d+(?:\.\d+)?", facts or ""))
-    for number in re.findall(r"\d+(?:\.\d+)?", text or ""):
-        if number not in fact_numbers:
-            return False
-    return True
