@@ -61,13 +61,6 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         from app.services.billing_service import _utc_midnight
         daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
 
-    trial_summary = {}
-    try:
-        if org:
-            from app.services.billing_service import get_trial_usage_summary
-            trial_summary = await get_trial_usage_summary(db, user, org, apply_resets=False)
-    except Exception as trial_err:
-        log_event(logger, "session_trial_summary_failed", error=trial_err, actor_id=user.id, tenant_id=getattr(org, "id", None))
 
     # Administrator Full Privilege Override
     credit_balance = round(float(getattr(org, "credit_balance", 25.0) or 0.0), 2) if org else 25.0
@@ -119,10 +112,6 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         daily_credits_used=daily_used,
         daily_credits_remaining=daily_remaining,
         daily_credits_resets_at_utc=daily_resets_at,
-        images_used_today=trial_summary.get("images_used_today", 0),
-        images_daily_limit=trial_summary.get("images_daily_limit", 5),
-        images_remaining_today=trial_summary.get("images_remaining_today", 5),
-        images_trial_total=trial_summary.get("images_trial_total", 0),
         plan_id=(org.plan_id if org else None) or "plan_trial_default",
         org_id=org.id if org else None,
         org_name=org.name if org else None,

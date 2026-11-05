@@ -131,23 +131,13 @@ def main() -> int:
         failures,
     )
 
-    # 6. Media: per-request BYOK key never persisted with the job.
-    media = read("app/services/media_service.py")
+    # 6/7. Create (media generation) was removed in W8: no service, router
+    # or per-request key handling remains to leak or skip metering.
     check(
-        'parameters.pop("custom_api_key", None)' in media,
-        "media: custom_api_key stripped before persistence",
-        failures,
-    )
-    check(
-        "custom_api_key=request_api_key" in media,
-        "media: key handed to the task in memory, not via DB",
-        failures,
-    )
-
-    # 7. Paid completions are metered on every path.
-    check(
-        "async def meter_media_success(" in media,
-        "media: metering helper exists for completed generations",
+        not (ROOT / "app/services/media_service.py").exists()
+        and not (ROOT / "app/api/routers/media.py").exists()
+        and "media.router" not in read("app/main.py"),
+        "media: generation service and router removed",
         failures,
     )
     # Higgsfield provider was removed from the app - guard the removal.
@@ -160,11 +150,6 @@ def main() -> int:
     check(
         "higgsfield" not in read("app/main.py").lower(),
         "higgsfield: not mounted in main.py",
-        failures,
-    )
-    check(
-        (ROOT / "app/services/media/modes.py").exists(),
-        "media: neutral mode catalogue replaces the provider registry",
         failures,
     )
 

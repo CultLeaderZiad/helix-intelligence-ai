@@ -54,7 +54,6 @@ def _rules() -> list[Tuple[str, int, int, str]]:
         ("/api/auth/forgot-password", auth_limit, auth_window, "auth-forgot"),
         ("/api/auth/reset-password", auth_limit, auth_window, "auth-reset"),
         ("/api/discovery/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
-        ("/api/media/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
         ("/api/patterns/generate", paid_limit, paid_window, PAID_AI_BUCKET),
         ("/api/creatives/", paid_limit, paid_window, PAID_AI_BUCKET),
         ("/api/insights/", paid_limit, paid_window, PAID_AI_BUCKET),

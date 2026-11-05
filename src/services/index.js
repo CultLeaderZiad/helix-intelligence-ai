@@ -9,7 +9,6 @@ import authApi from "./api/authService.api"
 import adminApi from "./api/adminService.api"
 import accountApi from "./api/accountService.api"
 import notificationApi from "./api/notificationService.api"
-import mediaApi from "./api/mediaService.api"
 import supportApi from "./api/supportService.api"
 import playbookApi from "./api/playbookService.api"
 import { updatesApi } from "./api/updatesService.api"
@@ -25,7 +24,6 @@ export const authService = authApi
 export const adminService = adminApi
 export const accountService = accountApi
 export const notificationService = notificationApi
-export const mediaService = mediaApi
 export const supportService = supportApi
 export const playbookService = playbookApi
 export const updatesService = updatesApi

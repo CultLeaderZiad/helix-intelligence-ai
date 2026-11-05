@@ -14,11 +14,6 @@ from app.core.config import settings
 from app.middleware.rate_limit import RateLimitMiddleware, _rules, _is_valid_public_ip
 from app.services.scrapling_engine import robots_allowed
 from app.services.leadgen_pipeline import parse_sitemap
-from app.services.ai.pollinations_provider import (
-    PollinationsProvider,
-    MAX_IMAGE_BYTES,
-    MAX_VIDEO_BYTES,
-)
 from app.api.routers.scout import sanitize_csv_cell as scout_sanitize_csv
 from app.api.routers.leadgen import sanitize_csv_cell as leadgen_sanitize_csv
 
@@ -123,38 +118,6 @@ def test_f66_parse_sitemap_recursion_and_visited_guards():
         assert isinstance(result, list)
 
 
-@pytest.mark.asyncio
-async def test_f66_pollinations_streaming_chunk_limits():
-    provider = PollinationsProvider()
-
-    # Mock client stream exceeding MAX_IMAGE_BYTES
-    async def fake_aiter_bytes(chunk_size):
-        # Yield chunks that sum to more than 15MB
-        chunk = b"X" * (5 * 1024 * 1024)
-        for _ in range(4):  # 20MB total > 15MB
-            yield chunk
-
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.aiter_bytes = fake_aiter_bytes
-
-    class FakeStreamContext:
-        async def __aenter__(self):
-            return mock_resp
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-    class FakeClient:
-        def stream(self, *args, **kwargs):
-            return FakeStreamContext()
-        async def __aenter__(self):
-            return self
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-    with patch("httpx.AsyncClient", return_value=FakeClient()):
-        with pytest.raises(ValueError, match="exceeds maximum allowed size of 15MB"):
-            await provider.generate_image(prompt="test image")
 
 
 # ============================================================================

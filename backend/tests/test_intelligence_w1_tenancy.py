@@ -26,7 +26,6 @@ from app.models.scrape_job import ScrapeJob
 from app.models.user import User
 from app.services.billing_contract import MISSING_BILLING_CONTRACT, refuse_billing_provider_event
 from app.services.billing_service import (
-    assert_can_generate_image,
     assert_can_spend,
     charge,
     refund,
@@ -62,63 +61,6 @@ def test_assistant_without_explicit_permission_is_denied():
     asyncio.run(_run())
 
 
-@pytest.mark.asyncio
-async def test_zero_video_limit_is_not_replaced_with_three():
-    now = datetime.now(timezone.utc)
-    user = User(
-        id="u_zero",
-        email="zero@example.com",
-        role="customer",
-        trial_expires_at=now + timedelta(days=3),
-    )
-    org = Organization(
-        id="org_zero",
-        name="Zero",
-        owner_id=user.id,
-        plan="paid",
-        plan_id="plan_zero",
-        status="active",
-        videos_generated_today=0,
-        images_today_date=now.strftime("%Y-%m-%d"),
-    )
-    plan = Plan(id="plan_zero", name="Zero Video", type="pay_as_you_go", daily_video_limit=0, feature_flags={"create": True})
-
-    class DB:
-        async def execute(self, query):
-            class Result:
-                def __init__(self, item):
-                    self._item = item
-                def scalar_one_or_none(self):
-                    return self._item
-                def scalars(self):
-                    return self
-                def first(self):
-                    return self._item
-            if "organization_access_grants" in str(query).lower():
-                return Result(type("Grant", (), {
-                    "revoked_at": None,
-                    "expires_at": None,
-                    "feature_flags": {"create": True},
-                    "granted_at": now,
-                    "granted_by_user_id": user.id,
-                    "plan_id": plan.id,
-                })())
-            return Result(plan)
-
-        async def scalar(self, _query):
-            return 0
-
-        async def flush(self):
-            return None
-
-        async def commit(self):
-            return None
-
-    with pytest.raises(HTTPException) as exc:
-        await assert_can_generate_image(DB(), user, org, media_type="video")
-    assert exc.value.status_code == 402
-    assert exc.value.detail["code"] == "daily_video_limit"
-    assert exc.value.detail["daily_video_limit"] == 0
 
 
 def test_capability_urls_expire_and_reject_permanent_signatures():

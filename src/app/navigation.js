@@ -1,5 +1,5 @@
 import { EXPERIMENTAL_FEATURES_ENABLED } from "@/lib/productFeatures"
-import { Radar, Network, PenLine, Eye, Crosshair } from "lucide-react"
+import { Radar, Network, Eye, Crosshair } from "lucide-react"
 
 /**
  * The loops of the product. Single source of truth for the sidebar,
@@ -21,14 +21,6 @@ const ALL_SECTIONS = [
     label: "Intelligence",
     icon: Network,
     description: "Mine recurring patterns across a discovered corpus.",
-    status: "live",
-  },
-  {
-    key: "create",
-    path: "/create",
-    label: "Create",
-    icon: PenLine,
-    description: "Draft new creative briefed on the patterns that win.",
     status: "live",
   },
   {

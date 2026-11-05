@@ -74,9 +74,5 @@
   "user-guide/quickstart-reading-intelligence.md": {
     "lastUpdated": "2026-09-14",
     "commitHash": "7854e30"
-  },
-  "user-guide/quickstart-remix-studio.md": {
-    "lastUpdated": "2026-09-27",
-    "commitHash": "97f5234"
   }
 }

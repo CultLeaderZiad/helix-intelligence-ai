@@ -323,26 +323,6 @@ async def test_byok_rejects_redirect_and_private_ip():
         assert calls == []
 
 
-@pytest.mark.asyncio
-async def test_pollinations_image_rejects_redirect_and_private_ip():
-    from app.services.ai.pollinations_provider import PollinationsProvider
-
-    provider = PollinationsProvider()
-    calls = []
-    with patch("app.services.safe_fetch._resolve", _public_resolve), patch(
-        "app.services.safe_fetch._exchange",
-        side_effect=lambda *a, **k: calls.append(a) or _redirect_exchange(),
-    ):
-        with pytest.raises(Exception):
-            await provider.generate_image("studio product")
-        assert len(calls) == 1
-    calls.clear()
-    with patch("app.services.safe_fetch._resolve", _private_resolve), patch(
-        "app.services.safe_fetch._exchange", side_effect=lambda *a, **k: calls.append(a)
-    ):
-        with pytest.raises(Exception):
-            await provider.generate_image("studio product")
-        assert calls == []
 
 
 @pytest.mark.asyncio
@@ -475,24 +455,3 @@ async def test_scrapegraph_search_and_business_reject_redirect_and_private_ip():
         assert calls == []
 
 
-@pytest.mark.asyncio
-async def test_pollinations_video_rejects_redirect_and_private_ip():
-    from app.services.ai.pollinations_provider import PollinationsProvider
-
-    provider = PollinationsProvider()
-    calls = []
-    with patch("app.services.safe_fetch._resolve", _public_resolve), patch(
-        "app.services.safe_fetch._exchange",
-        side_effect=lambda *a, **k: calls.append(a) or _redirect_exchange(),
-    ):
-        with pytest.raises(Exception):
-            await provider.generate_video("studio product")
-        assert len(calls) == 1
-        assert all("127.0.0.1" not in url for url in _urls(calls))
-    calls.clear()
-    with patch("app.services.safe_fetch._resolve", _private_resolve), patch(
-        "app.services.safe_fetch._exchange", side_effect=lambda *a, **k: calls.append(a)
-    ):
-        with pytest.raises(Exception):
-            await provider.generate_video("studio product")
-        assert calls == []

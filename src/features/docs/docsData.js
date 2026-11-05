@@ -45,13 +45,6 @@ export const DOCS_REGISTRY = [
             readTime: '4 min',
           },
           {
-            slug: 'quickstart-remix-studio',
-            title: 'Remix in Create Studio',
-            description: 'Transform winning competitor patterns into original ad scripts.',
-            file: 'user-guide/quickstart-remix-studio.md',
-            readTime: '4 min',
-          },
-          {
             slug: 'quickstart-credits-and-limits',
             title: 'Credit Balances & Daily Limits',
             description: 'Understand credit consumption, daily quotas, and reset schedules.',

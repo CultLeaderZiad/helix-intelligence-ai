@@ -20,6 +20,6 @@ describe("W5 product boundaries", () => {
     vi.stubEnv("VITE_ENABLE_EXPERIMENTAL_FEATURES", "true")
     vi.resetModules()
     const { NAV_SECTIONS } = await import("../navigation")
-    expect(NAV_SECTIONS.map((section) => section.path)).toContain("/create")
+    expect(NAV_SECTIONS.map((section) => section.path)).toContain("/monitors")
   })
 })

@@ -475,21 +475,6 @@ async def _dispatch(kind, job_id, payload, org_id, user_id, item_id, owner, atte
             lease_generation=attempt_count,
         )
         return
-    if kind == "media":
-        from app.services.media_service import gemini_generate_media_task
-        custom_api_key = None
-        token = payload.get("encrypted_byok")
-        if token:
-            from app.services.security_service import decrypt_secret
-            custom_api_key = decrypt_secret(token)
-        await gemini_generate_media_task(
-            job_id,
-            user_id,
-            org_id,
-            custom_api_key=custom_api_key,
-            work_item_id=item_id,
-        )
-        return
     if kind == "scout":
         from app.services.scout_service import execute_scout_job
         await execute_scout_job(job_id)

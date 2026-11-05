@@ -9,12 +9,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 // actual fetch options.signal receives an abort event, not when the hook fences state.
 const nativeFetch = globalThis.fetch
 const fetchMock = vi.fn()
-let useDiscoverySearch, useMediaGenerate
+let useDiscoverySearch
 beforeAll(async () => {
   vi.useFakeTimers()
   vi.stubGlobal("fetch", fetchMock.mockImplementation(async () => response({})))
   ;({ useDiscoverySearch } = await import("../useDiscoverySearch"))
-  ;({ useMediaGenerate } = await import("../useMediaGenerate"))
   // The unrelated module-level health keepalive is not part of a job lifecycle.
   vi.clearAllTimers()
 })
@@ -75,8 +74,7 @@ function transport(domain, stage) {
       if (stage === "refine" && reads === 2) return Promise.resolve(response({ items: ["initial"] }))
       return hangingFetch(options)
     }
-    if (domain === "media" && reads > 1) return hangingFetch(options)
-    return Promise.resolve(response({ id: "job", job_id: "job", status: domain === "media" ? "completed" : "succeeded", result_url: "result.png" }))
+    return Promise.resolve(response({ id: "job", job_id: "job", status: "succeeded", result_url: "result.png" }))
   })
 }
 
@@ -94,7 +92,7 @@ afterEach(() => {
 })
 afterAll(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 
-for (const domain of ["discovery", "media"]) {
+for (const domain of ["discovery"]) {
   describe(`${domain}: component through real API adapter to fetch`, () => {
     for (const action of ["unmount", "navigation", "resubmit"]) {
       it(`${action} rejects an actual native fetch with AbortError`, async () => {
@@ -106,7 +104,7 @@ for (const domain of ["discovery", "media"]) {
           nativeRequest = nativeFetch("data:application/json,%7B%7D", options)
           return nativeRequest
         })
-        mount(domain === "discovery" ? useDiscoverySearch : useMediaGenerate)
+        mount(useDiscoverySearch)
         let observed
         act(() => {
           void latest.submit({ query: "old", prompt: "old" })
@@ -128,7 +126,7 @@ for (const domain of ["discovery", "media"]) {
       for (const action of ["unmount", "navigation", "resubmit", "cancel"]) {
         it(`${action} aborts a pending ${stage} fetch, not merely its state update`, async () => {
           transport(domain, stage)
-          mount(domain === "discovery" ? useDiscoverySearch : useMediaGenerate)
+          mount(useDiscoverySearch)
           await flush(() => { void latest.submit({ query: "old", prompt: "old" }) })
           if (domain === "discovery" && stage !== "submit") await advance(400)
           expect(pending).toHaveLength(1)
@@ -165,7 +163,7 @@ for (const domain of ["discovery", "media"]) {
 
     it("navigation stops a real adapter's HTTP retry backoff", async () => {
       transport(domain, "backoff")
-      mount(domain === "discovery" ? useDiscoverySearch : useMediaGenerate)
+      mount(useDiscoverySearch)
       await flush(() => { void latest.submit({ query: "old" }) })
       if (domain === "discovery") await advance(400)
       const calls = fetchMock.mock.calls.length
@@ -194,24 +192,3 @@ it("a new discovery refinement aborts the prior same-job result fetch", async ()
   expect(vi.getTimerCount()).toBe(0)
 })
 
-for (const action of ["unmount", "navigation", "resubmit"]) {
-  it(`${action} also aborts an in-flight media server-cancel fetch`, async () => {
-    transport("media", "poll")
-    const implementation = fetchMock.getMockImplementation()
-    if (!implementation) throw new Error("Expected an initialized fetch mock")
-    fetchMock.mockImplementation((url, options) => url.endsWith("/cancel")
-      ? hangingFetch(options) : implementation(url, options))
-    mount(useMediaGenerate)
-    await flush(() => { void latest.submit({ prompt: "old" }) })
-    await flush(() => { void latest.cancel() })
-    const cancellation = pending.at(-1)
-    if (action === "unmount") { act(() => root.unmount()); root = null }
-    else if (action === "navigation") await flush(() => navigate("/away"))
-    else await flush(() => { void latest.submit({ prompt: "new" }) })
-    await flush()
-    expect(cancellation.aborted).toBe(true)
-    expect(cancellation.signal.aborted).toBe(true)
-    if (action === "resubmit") expect(latest.phase).toBe("submitting")
-    else expect(vi.getTimerCount()).toBe(0)
-  })
-}

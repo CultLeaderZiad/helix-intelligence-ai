@@ -6,7 +6,7 @@ from app.core.observability import log_event
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional, Dict, Any, Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,6 @@ from app.models.organization import Organization
 from app.models.plan import Plan
 from app.models.usage_log import UsageLog
 from app.models.credit_ledger import CreditLedgerEntry, CreditReservation, OperationIdempotency
-from app.core.config import settings
 
 _MONEY = Decimal("0.000001")
 _ACTIVE_ORG_STATUSES = {"active", "quota_exhausted", "daily_limit_reached"}
@@ -192,25 +191,16 @@ async def _require_active_grant(db: AsyncSession, org: Organization, user: User)
     return await _latest_grant(db, org.id)
 
 
-def _explicit_limit(value, fallback: int) -> int:
-    """None means 'use the documented fallback'. Zero is a real limit."""
-    if value is None:
-        return fallback
-    return int(value)
 
 # Centralized Credit Costs
 DISCOVER_SEARCH_CREDIT_COST = 1.0
 DISCOVER_DEEP_SEARCH_CREDIT_COST = 2.0
-CREATE_IMAGE_CREDIT_COST = 2.0
-CREATE_VIDEO_CREDIT_COST = 5.0
 ANALYSIS_PATTERN_CREDIT_COST = 0.5
 AI_CHAT_CREDIT_COST = 0.25
 
 CREDIT_COSTS: Dict[str, float] = {
     "discover_job": DISCOVER_SEARCH_CREDIT_COST,
     "discover_deep_fallback": DISCOVER_DEEP_SEARCH_CREDIT_COST,
-    "create_image": CREATE_IMAGE_CREDIT_COST,
-    "create_video": CREATE_VIDEO_CREDIT_COST,
     "ai_insight": ANALYSIS_PATTERN_CREDIT_COST,
     "pattern_pack": ANALYSIS_PATTERN_CREDIT_COST,
     "ai_chat": AI_CHAT_CREDIT_COST,
@@ -1192,7 +1182,6 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
     if daily_limit:
         daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
 
-    trial_summary = await get_trial_usage_summary(db, user, org)
 
     return {
         "org_id": org.id,
@@ -1210,10 +1199,6 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
         "daily_credits_used": daily_used,
         "daily_credits_remaining": daily_remaining,
         "daily_credits_resets_at_utc": daily_resets_at,
-        "images_used_today": trial_summary["images_used_today"],
-        "images_daily_limit": trial_summary["images_daily_limit"],
-        "images_remaining_today": trial_summary["images_remaining_today"],
-        "images_trial_total": trial_summary["images_trial_total"],
         "feature_flags": plan.feature_flags or {},
         "recent_usage": [
             {
@@ -1231,368 +1216,18 @@ async def get_org_billing_summary(db: AsyncSession, user: User) -> Dict[str, Any
     }
 
 
-def is_trial_active(user: User) -> bool:
-    """Returns True if the user is within their active 7-day trial window, or is an admin."""
-    if getattr(user, "role", "") == "admin":
-        return True
-    if not user.trial_expires_at:
-        return True
-    now = datetime.datetime.now(datetime.timezone.utc)
-    trial_exp = user.trial_expires_at
-    if trial_exp.tzinfo is None:
-        trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
-    return now <= trial_exp
 
 
-def get_trial_days_remaining(user: User) -> int:
-    """Calculates remaining days in trial."""
-    if getattr(user, "role", "") == "admin":
-        return 999
-    if not user.trial_expires_at:
-        return settings.TRIAL_DAYS
-    now = datetime.datetime.now(datetime.timezone.utc)
-    trial_exp = user.trial_expires_at
-    if trial_exp.tzinfo is None:
-        trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
-    if now > trial_exp:
-        return 0
-    delta = trial_exp - now
-    return max(0, delta.days + (1 if delta.seconds > 0 else 0))
 
 
-def image_reset_due(org: Organization) -> bool:
-    """True when the org's image/video counters belong to an earlier UTC day."""
-    return org.images_today_date != datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
 
 
-async def _ensure_daily_image_reset(db: AsyncSession, org: Organization) -> None:
-    """Resets org.images_generated_today at UTC date boundaries."""
-    now = datetime.datetime.now(datetime.timezone.utc)
-    today_str = now.strftime("%Y-%m-%d")
-    if org.images_today_date != today_str:
-        org.images_generated_today = 0.0
-        org.videos_generated_today = 0.0
-        org.images_today_date = today_str
-        await db.flush()
 
 
-async def get_trial_usage_summary(
-    db: AsyncSession,
-    user: User,
-    org: Optional[Organization] = None,
-    apply_resets: bool = True,
-) -> Dict[str, Any]:
-    """Returns normalized image usage metrics for trial/paid user.
-
-    ``apply_resets=False`` is for read-only callers that never commit: stale
-    daily counters are reported as zero without issuing an UPDATE.
-    """
-    if not org:
-        org = await get_or_create_default_org(db, user, lock_row=False, apply_daily_reset=apply_resets)
-    elif apply_resets:
-        await _ensure_daily_image_reset(db, org)
-    counters_stale = (not apply_resets) and image_reset_due(org)
-
-    is_admin = getattr(user, "role", None) == "admin"
-    is_trial = org.plan == "trial" or bool(org.plan_id and org.plan_id.startswith("plan_trial"))
-    active = is_trial_active(user)
-    days_left = get_trial_days_remaining(user)
-
-    daily_limit = settings.TRIAL_IMAGES_PER_DAY if is_trial else settings.PAID_IMAGES_PER_DAY
-    if is_admin:
-        daily_limit = 99999
-
-    used_today = 0 if counters_stale else int(getattr(org, "images_generated_today", 0) or 0)
-    remaining_today = max(0, daily_limit - used_today)
-    total_used = int(getattr(org, "images_trial_total", 0) or 0)
-    requires_plan = (not is_admin) and is_trial and (not active or total_used >= settings.TRIAL_IMAGES_TOTAL)
-
-    # Video limits. Trial video is disabled. Zero on a plan stays zero.
-    plan_row = None
-    if org.plan_id:
-        # Session identity map first: the caller has usually loaded this plan.
-        plan_row = await db.get(Plan, org.plan_id)
-    if is_admin:
-        video_daily_limit = 99999
-    elif is_trial:
-        video_daily_limit = 0
-    else:
-        video_daily_limit = _explicit_limit(getattr(plan_row, "daily_video_limit", None) if plan_row else None, 0)
-    videos_used_today = 0 if counters_stale else int(getattr(org, "videos_generated_today", 0) or 0)
-    videos_remaining_today = max(0, video_daily_limit - videos_used_today)
-
-    return {
-        "trial_active": active if is_trial else True,
-        "trial_days_remaining": days_left,
-        "images_used_today": used_today,
-        "images_daily_limit": daily_limit,
-        "images_remaining_today": remaining_today,
-        "images_trial_total": total_used,
-        "videos_used_today": videos_used_today,
-        "videos_daily_limit": video_daily_limit,
-        "videos_remaining_today": videos_remaining_today,
-        "trial_ends_at": _format_iso(user.trial_expires_at),
-        "requires_plan": requires_plan
-    }
 
 
-async def assert_can_generate_image(
-    db: AsyncSession,
-    user: User,
-    org: Optional[Organization] = None,
-    media_type: str = "image",
-    lock_row: bool = True
-) -> Tuple[Organization, Plan]:
-    """
-    Strict server-side gatekeeper for Gemini Trial & Paid Media Generation (F11, F55).
-    Guarantees:
-    - 7-day trial expiry -> 402 HTTP (code: trial_expired)
-    - Per-plan / trial daily image limits (with in-flight job reservation) -> 402 HTTP (code: daily_limit)
-    - 25 total images cap on trial -> 402 HTTP (code: trial_total_limit)
-    - Video on trial -> 402 HTTP (code: video_not_allowed)
-    - Per-plan video limit on paid plans (with in-flight reservation) -> 402 HTTP (code: daily_video_limit)
-    - Admin -> Bypass limitations
-    """
-    if not org:
-        org = await get_or_create_default_org(db, user, lock_row=lock_row)
-    else:
-        await _ensure_daily_image_reset(db, org)
-
-    # API-key scope wins before the administrator bypass.
-    if getattr(user, "role", None) == "admin" and not getattr(user, "_scoped_org_id", None):
-        admin_plan = Plan(id="plan_admin", name="Admin", type="admin", credit_allowance=999999)
-        return org, admin_plan
-
-    if (org.status or "active") not in _ACTIVE_ORG_STATUSES:
-        raise HTTPException(
-            status_code=402,
-            detail={
-                "code": "subscription_inactive",
-                "message": "This workspace subscription is not active.",
-                "status": org.status,
-            },
-        )
-
-    # Fetch user plan. A missing plan is not treated as a trial.
-    plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
-    plan = plan_result.scalar_one_or_none()
-    if plan is None:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "plan_unavailable",
-                "message": "This workspace has no plan record. Media generation is closed.",
-                "plan_id": org.plan_id,
-            },
-        )
-    await _require_active_grant(db, org, user)
-    is_trial = (plan.type == "trial") or (org.plan == "trial")
-
-    days_remaining = get_trial_days_remaining(user)
-    used_today = int(getattr(org, "images_generated_today", 0) or 0)
-    total_used = int(getattr(org, "images_trial_total", 0) or 0)
-    is_video = media_type.lower() in ("video", "controlled_video", "before_after", "quick_video", "premium_video")
-
-    # In-flight concurrent media jobs reservation check (F11)
-    from app.models.media_job import MediaGenerationJob
-    in_flight_count = 0
-    try:
-        if hasattr(db, "scalar"):
-            in_flight_count = (await db.scalar(
-                select(func.count(MediaGenerationJob.id)).where(
-                    MediaGenerationJob.org_id == org.id,
-                    MediaGenerationJob.status.in_(("pending", "running", "processing", "in_progress"))
-                )
-            )) or 0
-        elif hasattr(db, "execute"):
-            res = await db.execute(
-                select(func.count(MediaGenerationJob.id)).where(
-                    MediaGenerationJob.org_id == org.id,
-                    MediaGenerationJob.status.in_(("pending", "running", "processing", "in_progress"))
-                )
-            )
-            if hasattr(res, "scalar"):
-                in_flight_count = res.scalar() or 0
-    except Exception as exc:
-        log_event(logger, "media_quota_read_failed", error=exc, tenant_id=org.id, actor_id=user.id)
-        in_flight_count = 0
-
-    # 1. Video limit on trial (video requires a paid plan)
-    if is_trial and is_video:
-        raise HTTPException(
-            status_code=402,
-            detail={
-                "code": "video_not_allowed",
-                "message": "Video generation is not available during the free trial. Please upgrade to a paid plan.",
-                "trial_days_remaining": days_remaining
-            }
-        )
-
-    # 2. Check 7-Day Trial Expiration
-    if is_trial and not is_trial_active(user):
-        org.status = "trial_expired"
-        await db.commit()
-        raise HTTPException(
-            status_code=402,
-            detail={
-                "code": "trial_expired",
-                "message": "Your 7-day free trial has ended. Select a plan to continue creating AI ads.",
-                "images_used_today": used_today,
-                "images_daily_limit": settings.TRIAL_IMAGES_PER_DAY,
-                "images_remaining_today": 0,
-                "trial_days_remaining": 0
-            }
-        )
-
-    # 3. Check 25-image total trial cap, including jobs that are not finished yet.
-    if is_trial and not is_video and (total_used + in_flight_count) >= settings.TRIAL_IMAGES_TOTAL:
-        org.status = "quota_exhausted"
-        await db.commit()
-        raise HTTPException(
-            status_code=402,
-            detail={
-                "code": "trial_total_limit",
-                "message": f"You've reached your total trial allowance of {settings.TRIAL_IMAGES_TOTAL} images. Upgrade to continue creating.",
-                "images_used_today": used_today,
-                "images_daily_limit": settings.TRIAL_IMAGES_PER_DAY,
-                "images_remaining_today": 0,
-                "trial_days_remaining": days_remaining
-            }
-        )
-
-    # 4. Check Daily Video Limit on Paid Plans (F55). Zero stays zero.
-    if is_video:
-        daily_video_limit = _explicit_limit(getattr(plan, "daily_video_limit", None), 0)
-        videos_used_today = int(getattr(org, "videos_generated_today", 0) or 0)
-        if (videos_used_today + in_flight_count) >= daily_video_limit:
-            raise HTTPException(
-                status_code=402,
-                detail={
-                    "code": "daily_video_limit",
-                    "message": f"You've reached your daily limit of {daily_video_limit} videos (including in-flight jobs). Your quota resets at 00:00 UTC.",
-                    "videos_used_today": videos_used_today,
-                    "videos_in_flight": in_flight_count,
-                    "daily_video_limit": daily_video_limit
-                }
-            )
-        return org, plan
-
-    # 5. Check Daily Image Limit (F55, F11)
-    daily_limit = getattr(plan, "daily_image_limit", None) if plan else None
-    if daily_limit is None:
-        daily_limit = settings.TRIAL_IMAGES_PER_DAY if is_trial else settings.PAID_IMAGES_PER_DAY
-
-    if (used_today + in_flight_count) >= daily_limit:
-        raise HTTPException(
-            status_code=402,
-            detail={
-                "code": "daily_limit",
-                "message": f"You've reached today's limit of {daily_limit} images (including in-flight jobs). Your quota resets at 00:00 UTC.",
-                "images_used_today": used_today,
-                "images_in_flight": in_flight_count,
-                "images_daily_limit": daily_limit,
-                "images_remaining_today": max(0, daily_limit - used_today - in_flight_count),
-                "trial_days_remaining": days_remaining
-            }
-        )
-
-    return org, plan
 
 
-async def record_image_generated(
-    db: AsyncSession,
-    user: User,
-    org: Organization,
-    job_id: Optional[str] = None,
-    cost_usd: float = 0.00,
-    provider: str = "gemini",
-    model: Optional[str] = None,
-    latency_ms: Optional[int] = None,
-    commit: bool = True,
-) -> UsageLog:
-    """
-    Increments daily and total image counters and logs usage under row-lock (F11).
-    """
-    lock_query = (
-        select(Organization)
-        .where(Organization.id == org.id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    )
-    locked_org = (await db.execute(lock_query)).scalar_one_or_none() or org
-    await _ensure_daily_image_reset(db, locked_org)
-    locked_org.images_generated_today = (getattr(locked_org, "images_generated_today", 0) or 0) + 1.0
-    locked_org.images_trial_total = (getattr(locked_org, "images_trial_total", 0) or 0) + 1.0
-
-    log = UsageLog(
-        org_id=locked_org.id,
-        user_id=user.id,
-        job_id=job_id,
-        provider=provider,
-        operation="media_generate_image",
-        units=1.0,
-        cost_usd=cost_usd,
-        credits_deducted=0.0,
-        requests_used=1,
-        metadata_json={
-            "images_generated_today": int(locked_org.images_generated_today),
-            "images_trial_total": int(locked_org.images_trial_total),
-            "model": model,
-            "latency_ms": latency_ms,
-            "tokens_observed": False,
-        }
-    )
-    db.add(log)
-    if commit:
-        await db.commit()
-        await db.refresh(locked_org)
-    return log
 
 
-async def record_video_generated(
-    db: AsyncSession,
-    user: User,
-    org: Organization,
-    job_id: Optional[str] = None,
-    cost_usd: float = 0.00,
-    provider: str = "pollinations",
-    model: Optional[str] = None,
-    latency_ms: Optional[int] = None,
-    commit: bool = True,
-) -> UsageLog:
-    """
-    Increments daily video counter and logs usage under row-lock (F11).
-    """
-    lock_query = (
-        select(Organization)
-        .where(Organization.id == org.id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    )
-    locked_org = (await db.execute(lock_query)).scalar_one_or_none() or org
-    await _ensure_daily_image_reset(db, locked_org)
-    locked_org.videos_generated_today = (getattr(locked_org, "videos_generated_today", 0) or 0) + 1.0
-
-    log = UsageLog(
-        org_id=locked_org.id,
-        user_id=user.id,
-        job_id=job_id,
-        provider=provider,
-        operation="media_generate_video",
-        units=1.0,
-        cost_usd=cost_usd,
-        credits_deducted=0.0,
-        requests_used=1,
-        metadata_json={
-            "videos_generated_today": int(locked_org.videos_generated_today),
-            "model": model,
-            "latency_ms": latency_ms,
-            "tokens_observed": False,
-        }
-    )
-    db.add(log)
-    if commit:
-        await db.commit()
-        await db.refresh(locked_org)
-    return log
 

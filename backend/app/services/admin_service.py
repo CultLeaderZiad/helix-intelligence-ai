@@ -250,29 +250,6 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
             latency_ms=None, last_checked=checked_at,
         ))
 
-    # --- Media generation providers: MediaGenerationJob outcomes ---
-    from app.models.media_job import MediaGenerationJob
-    media_rows = (await db.execute(
-        select(MediaGenerationJob.provider, MediaGenerationJob.status)
-        .where(MediaGenerationJob.created_at >= window)
-    )).all()
-    media_stats: Dict[str, Dict[str, int]] = {}
-    for provider, status in media_rows:
-        stats = media_stats.setdefault(provider or "unknown", {"success": 0, "failed": 0})
-        if status == "completed":
-            stats["success"] += 1
-        elif status == "failed":
-            stats["failed"] += 1
-    if media_stats:
-        for provider, stats in sorted(media_stats.items()):
-            services.append(AdminServiceHealth(
-                id=f"media-{provider}",
-                name=f"Media Generation — {provider}",
-                status=_row_status(stats["success"], stats["failed"]),
-                detail=f"{stats['success']} completed, {stats['failed']} failed in last 24h",
-                latency_ms=None, last_checked=checked_at,
-            ))
-
     has_danger = any(s.status == "danger" for s in services)
     state = "degraded" if has_danger else "operational"
     return AdminSystemHealth(state=state, services=services)

@@ -130,7 +130,6 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_TEXT_MODEL: str = os.getenv("GEMINI_TEXT_MODEL", "gemini-flash-latest")
-    POLLINATIONS_API_KEY: str = os.getenv("POLLINATIONS_API_KEY", "")
     GEMINI_IMAGE_MODEL: str = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
     SCRAPEGRAPH_API_KEY: str = os.getenv("SCRAPEGRAPH_API_KEY", "")
     META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
@@ -194,7 +193,6 @@ class Settings(BaseSettings):
     MEDIA_GENERATION_DEADLINE_S: float = float(os.getenv("MEDIA_GENERATION_DEADLINE_S", "120"))
     # Managed image/video calls may fall back to Pollinations only when this is set.
     # BYOK failures never use it.
-    MEDIA_MANAGED_FALLBACK: bool = os.getenv("MEDIA_MANAGED_FALLBACK", "false").lower() in ("true", "1", "yes")
     SCRAPLING_MIN_INTERVAL_S: float = float(os.getenv("SCRAPLING_MIN_INTERVAL_S", "1.0"))
 
     # MONITORS (scheduled competitor watches)
@@ -223,10 +221,6 @@ class Settings(BaseSettings):
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:3000").rstrip("/")
 
     # 7-DAY TRIAL & MEDIA GENERATION LIMITS
-    TRIAL_DAYS: int = int(os.getenv("TRIAL_DAYS", "7"))
-    TRIAL_IMAGES_PER_DAY: int = int(os.getenv("TRIAL_IMAGES_PER_DAY", "5"))
-    TRIAL_IMAGES_TOTAL: int = int(os.getenv("TRIAL_IMAGES_TOTAL", "25"))
-    PAID_IMAGES_PER_DAY: int = int(os.getenv("PAID_IMAGES_PER_DAY", "50"))
 
     # SCRAPLING LEAD GENERATION (Scout · Lead Generation sub-product)
     # Worker-gated: when disabled, POST /scout/leadgen/jobs refuses with an

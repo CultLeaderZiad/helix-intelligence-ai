@@ -23,16 +23,13 @@ from app.core.config import settings, validate_boot_invariants
 from app.core.deps import authenticate_bearer, session_is_revoked
 from app.core.security import create_access_token, verify_session_token
 from app.middleware.rate_limit import client_ip
-from app.models.media_job import MediaGenerationJob
 from app.models.organization import Organization
 from app.models.pattern import Pattern
 from app.models.playbook import Playbook
 from app.models.scrape_job import ScrapeJob
 from app.models.user import User
-from app.schemas.media import MediaGenerationJobResponse
 from app.services.avatar_image import AvatarRejected, prepare_avatar_image
 from app.services.creative_service import list_patterns
-from app.services.media_service import get_media_job
 from app.services.playbook_service import get_public_playbook
 from app.services.safe_fetch import (
     PublicDestination,
@@ -278,33 +275,10 @@ def test_encryption_key_is_versioned_and_plaintext_is_not_returned():
     assert safe_decrypt_secret("plaintext-key") == ""
 
 
-def test_media_response_strips_legacy_secret_fields():
-    now = datetime.now(timezone.utc)
-    job = SimpleNamespace(
-        id="job-1",
-        status="completed",
-        prompt="prompt",
-        provider="gemini",
-        provider_job_id=None,
-        created_at=now,
-        updated_at=now,
-        parameters={
-            "custom_api_key": "super-secret-key",
-            "credential_mode": "byok",
-            "model": "gemini-image",
-        },
-        result_url="https://cdn.example/a.png",
-        error_message="provider failed with super-secret-key",
-        failure_kind=None,
-    )
-    payload = MediaGenerationJobResponse.model_validate(job).model_dump(mode="json")
-    assert "custom_api_key" not in payload["parameters"]
-    assert payload["parameters"]["credential_mode"] == "byok"
-    assert "super-secret-key" not in json.dumps(payload)
 
 
 @pytest.mark.asyncio
-async def test_two_tenants_cannot_read_null_job_patterns_or_cross_org_media_or_anonymous_playbooks():
+async def test_two_tenants_cannot_read_null_job_patterns_or_anonymous_playbooks():
     from app.db.session import worker_session_maker
 
     suffix = uuid.uuid4().hex[:8]
@@ -323,16 +297,6 @@ async def test_two_tenants_cannot_read_null_job_patterns_or_cross_org_media_or_a
         owned = Pattern(id=f"pat_owned_{suffix}", job_id=job_a.id, label="owned", family="copy", prevalence=0.2, lift_index=1.1)
         unowned = Pattern(id=f"pat_null_{suffix}", job_id=None, label="NULLJOB-CANARY", family="copy", prevalence=0.9, lift_index=2.0)
         db.add_all([owned, unowned])
-        media_a = MediaGenerationJob(
-            id=f"media_a_{suffix}",
-            user_id=user_a.id,
-            org_id=org_a.id,
-            prompt="secret",
-            provider="gemini",
-            status="completed",
-            parameters={"custom_api_key": "legacy-byok-canary"},
-        )
-        db.add(media_a)
         playbook = Playbook(
             id=f"pb_{suffix}",
             public_id=f"pub_{suffix}",
@@ -356,10 +320,6 @@ async def test_two_tenants_cannot_read_null_job_patterns_or_cross_org_media_or_a
         assert any(item.id == owned.id for item in own_list.items)
         assert all(item.label != "NULLJOB-CANARY" for item in own_list.items)
 
-        user_a._scoped_org_id = org_b.id
-        assert await get_media_job(db, user_a, media_a.id) is None
-        user_b._scoped_org_id = org_b.id
-        assert await get_media_job(db, user_b, media_a.id) is None
 
         with pytest.raises(HTTPException) as anon:
             await get_public_playbook(db, playbook.public_id, None)

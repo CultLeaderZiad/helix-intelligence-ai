@@ -76,10 +76,6 @@ class SessionResponse(BaseModel):
     daily_credits_used: Optional[float] = None
     daily_credits_remaining: Optional[float] = None
     daily_credits_resets_at_utc: Optional[str] = None
-    images_used_today: Optional[int] = 0
-    images_daily_limit: Optional[int] = 5
-    images_remaining_today: Optional[int] = 5
-    images_trial_total: Optional[int] = 0
     plan_id: Optional[str] = None
     org_id: Optional[str] = None
     org_name: Optional[str] = None

@@ -207,13 +207,6 @@ async def get_today_real_usage(
     )
     searches_today = await db.scalar(searches_stmt) or 0
 
-    # 3. Total images/media generated today
-    media_stmt = select(func.count(UsageLog.id)).where(
-        UsageLog.user_id == current_user.id,
-        UsageLog.created_at >= today_start,
-        UsageLog.operation.ilike("%generate%")
-    )
-    media_today = await db.scalar(media_stmt) or 0
 
     # 4. Org limits
     org = await billing_service.get_or_create_default_org(db, current_user)
@@ -224,16 +217,11 @@ async def get_today_real_usage(
         plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
 
     daily_credit_limit = getattr(plan, "daily_credit_limit", None) if plan else None
-    daily_image_limit = getattr(plan, "daily_image_limit", 5) if plan else 5
-    daily_video_limit = getattr(plan, "daily_video_limit", 3) if plan else 3
 
     return {
         "credits_consumed_today": credits_deducted_today,
         "searches_run_today": searches_today,
-        "images_generated_today": media_today,
         "daily_credit_limit": daily_credit_limit,
-        "daily_image_limit": daily_image_limit,
-        "daily_video_limit": daily_video_limit,
         "credit_balance": round(float(org.credit_balance or 0.0), 2),
         "as_of_utc": now.isoformat()
     }

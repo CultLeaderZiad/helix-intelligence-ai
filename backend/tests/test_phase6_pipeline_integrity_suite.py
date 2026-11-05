@@ -14,7 +14,6 @@ from app.models.user import User
 from app.models.organization import Organization
 from app.models.scrape_job import ScrapeJob
 from app.models.creative import Creative
-from app.models.media_job import MediaGenerationJob
 from app.models.leadgen import LeadGenJob
 from app.models.access_grant import OrganizationAccessGrant
 
@@ -84,149 +83,10 @@ async def test_storage_service_save_file_and_r2_validation(monkeypatch, tmp_path
             storage_service.r2_enabled()
 
 
-@pytest.mark.asyncio
-async def test_gemini_image_generation_kwargs():
-    """F38: Gemini generate_image must accept seed and **kwargs without TypeError."""
-    from app.services.ai.gemini_provider import GeminiProvider
-
-    provider = GeminiProvider(api_key="fake-test-key")
-    assert provider.is_configured is True
-
-    # Calling with seed and unexpected kwargs should not fail with TypeError: unexpected keyword argument
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = {
-            "candidates": [
-                {
-                    "content": {
-                        "parts": [
-                            {
-                                "inline_data": {
-                                    "mime_type": "image/png",
-                                    "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-                                }
-                            }
-                        ]
-                    }
-                }
-            ]
-        }
-        mock_post.return_value = mock_resp
-
-        res = await provider.generate_image(
-            prompt="A futuristic neon city",
-            aspect_ratio="1:1",
-            seed=42,
-            negative_prompt="blurry",
-            guidance_scale=7.5
-        )
-        assert res is not None
-        assert "data" in res
 
 
-@pytest.mark.asyncio
-async def test_pollinations_and_provider_resolver():
-    """F39: Provider resolver checks server GEMINI_API_KEY; Pollinations handles frames & ref images."""
-    from app.services.provider_resolver import _get_managed_provider
-    from app.services.ai.pollinations_provider import PollinationsProvider
-    from app.core.config import settings
-
-    # 1. Managed provider prioritizes server GEMINI_API_KEY
-    with patch.object(settings, "GEMINI_API_KEY", "real-gemini-server-key"):
-        prov = _get_managed_provider()
-        assert prov.__class__.__name__ == "GeminiProvider"
-
-    # 2. PollinationsProvider generate_video forwards start_frame & end_frame
-    poll_prov = PollinationsProvider()
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.content = b"fake-video-bytes"
-        mock_get.return_value = mock_resp
-
-        with patch("app.services.security_service.is_safe_public_url", return_value=True):
-            res = await poll_prov.generate_video(
-                prompt="running athlete",
-                start_frame="https://example.com/start.png",
-                end_frame="https://example.com/end.png"
-            )
-        assert res["media_type"] == "video"
-        called_url = mock_get.call_args[0][0]
-        assert "image=https" in called_url
-        assert "end_image=https" in called_url
-
-    # 3. PollinationsProvider generate_image forwards reference_images
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get_img:
-        mock_resp_img = MagicMock()
-        mock_resp_img.status_code = 200
-        mock_resp_img.content = b"fake-img-bytes"
-        mock_get_img.return_value = mock_resp_img
-
-        with patch.object(poll_prov, "_clean_watermark", return_value=b"cleaned-bytes"):
-            with patch("app.services.security_service.is_safe_public_url", return_value=True):
-                res_img = await poll_prov.generate_image(
-                    prompt="portrait",
-                    reference_images=["https://example.com/ref.jpg"]
-                )
-            assert res_img["media_type"] == "image"
-            called_img_url = mock_get_img.call_args[0][0]
-            assert "image=https" in called_img_url
 
 
-@pytest.mark.asyncio
-async def test_media_generation_canceled_and_failure_handling():
-    """F40 & F82: Media generation respects cancellation and handles provider failures cleanly."""
-    from app.services.media_service import gemini_generate_media_task
-
-    async with worker_session_maker() as db:
-        test_uid = f"usr_p6_{uuid.uuid4().hex[:8]}"
-        test_oid = f"org_p6_{uuid.uuid4().hex[:8]}"
-        u = User(id=test_uid, email=f"{test_uid}@example.com", password_hash="pw", role="member")
-        o = Organization(id=test_oid, name="P6 Org", owner_id=test_uid, plan="growth", credit_balance=100.0)
-        db.add(u)
-        await db.flush()
-        db.add(o)
-        await db.commit()
-        await _grant_workspace(db, o, u, _PHASE6_FLAGS)
-
-        # 1. Job canceled prior to start (F40)
-        job_canceled = MediaGenerationJob(
-            id=f"med_{uuid.uuid4().hex[:8]}",
-            org_id=test_oid,
-            user_id=test_uid,
-            prompt="test prompt",
-            provider="helix_managed",
-            status="canceled"
-        )
-        db.add(job_canceled)
-        await db.commit()
-
-        await gemini_generate_media_task(job_canceled.id, test_uid, test_oid)
-
-        # Status must remain canceled and not overwritten to running or completed
-        await db.refresh(job_canceled)
-        assert job_canceled.status == "canceled"
-
-        # 2. Provider resolution failure (F82)
-        job_fail = MediaGenerationJob(
-            id=f"med_{uuid.uuid4().hex[:8]}",
-            org_id=test_oid,
-            user_id=test_uid,
-            prompt="test fail prompt",
-            provider="helix_managed",
-            status="pending"
-        )
-        db.add(job_fail)
-        await db.commit()
-
-        with patch("app.services.media_service.resolve_image_provider", side_effect=RuntimeError("Provider config crashed")):
-            await gemini_generate_media_task(job_fail.id, test_uid, test_oid)
-
-        await db.refresh(job_fail)
-        assert job_fail.status == "failed"
-        assert job_fail.failure_kind == "error"
-        assert "Provider config crashed" in job_fail.error_message
 
 
 @pytest.mark.asyncio

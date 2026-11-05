@@ -36,12 +36,10 @@ from app.models.ai_insight import AIInsight
 from app.models.scout import ScoutJob, ScoutMapsJob
 from app.models.leadgen import LeadGenJob
 from app.models.api_usage import ExternalApiUsage
-from app.models.media_job import MediaGenerationJob
 from app.services.billing_service import (
     charge,
     refund,
     get_idempotent_operation,
-    assert_can_generate_image,
     assert_can_spend,
 )
 from app.services.ai.ai_router import AIRouter, MultiTierAIProvider, TRIAL_DAILY_REQUEST_LIMIT
@@ -340,70 +338,6 @@ def test_f10_http_js_restricts_mutation_retries():
 # ---------------------------------------------------------------------------
 # F11 & F55: In-Flight Concurrency Reservation & Daily Media Limits
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f11_f55_inflight_concurrency_and_per_plan_quotas():
-    now = datetime.datetime.now(datetime.timezone.utc)
-    user = User(
-        id="usr_f11",
-        email="f11@test.com",
-        role="customer",
-        trial_started_at=now,
-        trial_expires_at=now + datetime.timedelta(days=7),
-    )
-    plan_starter = Plan(
-        id="plan_starter",
-        name="Starter",
-        type="starter",
-        daily_image_limit=10,
-        daily_video_limit=2,
-    )
-    org = Organization(
-        id="org_f11",
-        name="Org F11",
-        owner_id=user.id,
-        plan="starter",
-        plan_id="plan_starter",
-        images_generated_today=8.0,
-        images_today_date=now.strftime("%Y-%m-%d"),
-        videos_generated_today=1.0,
-    )
-
-    # When in-flight jobs = 2 (8 + 2 = 10 -> limit reached)
-    class MockMediaDB:
-        def __init__(self, in_flight: int):
-            self._in_flight = in_flight
-
-        async def execute(self, q):
-            if "organization_access_grants" in str(q).lower():
-                return MockResult(item=SimpleNamespace(
-                    revoked_at=None,
-                    expires_at=None,
-                    granted_at=now,
-                    granted_by_user_id=user.id,
-                    feature_flags={"create": True, "discover": True},
-                    plan_id=plan_starter.id,
-                ))
-            return MockResult(item=plan_starter)
-
-        async def scalar(self, q):
-            return self._in_flight
-
-        async def flush(self): pass
-        async def commit(self): pass
-
-    # In-flight count of 2 pushes images used + in-flight to 10 (cap: 10)
-    db_capped = MockMediaDB(in_flight=2)
-    with pytest.raises(HTTPException) as exc_info:
-        await assert_can_generate_image(db_capped, user, org, media_type="image")
-    assert exc_info.value.status_code == 402
-    assert exc_info.value.detail["code"] == "daily_limit"
-
-    # In-flight count of 1 pushes videos used (1) + in-flight (1) to 2 (cap: 2)
-    db_video_capped = MockMediaDB(in_flight=1)
-    with pytest.raises(HTTPException) as exc_info_v:
-        await assert_can_generate_image(db_video_capped, user, org, media_type="video")
-    assert exc_info_v.value.status_code == 402
-    assert exc_info_v.value.detail["code"] == "daily_video_limit"
 
 
 # ---------------------------------------------------------------------------
