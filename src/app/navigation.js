@@ -1,5 +1,5 @@
 import { EXPERIMENTAL_FEATURES_ENABLED } from "@/lib/productFeatures"
-import { Radar, Eye } from "lucide-react"
+import { Radar, Eye, Bookmark } from "lucide-react"
 
 /**
  * The loops of the product. Single source of truth for the sidebar,
@@ -21,6 +21,14 @@ const ALL_SECTIONS = [
     label: "Monitors",
     icon: Eye,
     description: "Re-run a search on a schedule and report what changed.",
+    status: "live",
+  },
+  {
+    key: "swipeFiles",
+    path: "/swipe-files",
+    label: "Swipe Files",
+    icon: Bookmark,
+    description: "Save ads into boards and share a report.",
     status: "live",
   },
 ]
