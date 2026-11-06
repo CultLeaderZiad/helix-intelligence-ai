@@ -1,9 +1,9 @@
-import { EXPERIMENTAL_FEATURES_ENABLED } from "@/lib/productFeatures"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { NAV_SECTIONS } from "./navigation"
+import { visibleSections } from "./navigation"
+import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { KeyHint } from "@/components/ui/KeyHint"
 
@@ -13,6 +13,8 @@ import { KeyHint } from "@/components/ui/KeyHint"
  */
 export function CommandBar({ open, onClose }) {
   const { t } = useLanguage()
+  const { user } = useAuth()
+  const flags = user?.feature_flags
   const navigate = useNavigate()
   const inputRef = useRef(null)
   const [query, setQuery] = useState("")
@@ -20,16 +22,14 @@ export function CommandBar({ open, onClose }) {
 
   const commands = useMemo(
     () => [
-      ...NAV_SECTIONS.map((s) => ({
+      ...visibleSections(flags).map((s) => ({
         id: s.key,
         label: t("goToSurface").replace("{name}", t(s.key, s.label)),
         hint: t("workspaceNavigation"),
         run: () => navigate(s.path),
       })),
-      ...(EXPERIMENTAL_FEATURES_ENABLED ? [
-      ] : []),
     ],
-    [navigate, t],
+    [navigate, t, flags],
   )
 
   const matches = useMemo(() => {

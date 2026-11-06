@@ -6,9 +6,9 @@ describe("W5 product boundaries", () => {
   it("shows only Discover by default and hides billing administration", async () => {
     vi.stubEnv("VITE_ENABLE_EXPERIMENTAL_FEATURES", "false")
     vi.resetModules()
-    const { NAV_SECTIONS } = await import("../navigation")
+    const { visibleSections } = await import("../navigation")
     const { ADMIN_NAV_GROUPS } = await import("../admin/adminNavigation")
-    expect(NAV_SECTIONS.map((section) => section.path)).toEqual(["/discover"])
+    expect(visibleSections({}).map((section) => section.path)).toEqual(["/discover"])
     const paths = ADMIN_NAV_GROUPS.flatMap((group) => group.items.map((item) => item.path))
     expect(paths).not.toContain("/admin/subscriptions")
     expect(paths).not.toContain("/admin/usage")
@@ -16,10 +16,13 @@ describe("W5 product boundaries", () => {
     expect(paths).toContain("/admin/access-requests")
   })
 
-  it("requires an explicit opt-in for experimental navigation", async () => {
+  it("W8: Monitors and Boards follow workspace flags, not the experimental build switch", async () => {
     vi.stubEnv("VITE_ENABLE_EXPERIMENTAL_FEATURES", "true")
     vi.resetModules()
-    const { NAV_SECTIONS } = await import("../navigation")
-    expect(NAV_SECTIONS.map((section) => section.path)).toEqual(["/discover", "/monitors", "/swipe-files"])
+    const { visibleSections } = await import("../navigation")
+    expect(visibleSections({}).map((section) => section.path)).toEqual(["/discover"])
+    expect(visibleSections({ monitors: true }).map((section) => section.path)).toEqual(["/discover", "/monitors"])
+    expect(visibleSections({ monitors: true, swipe_files: true, team_accounts: true }).map((section) => section.path))
+      .toEqual(["/discover", "/monitors", "/swipe-files"])
   })
 })

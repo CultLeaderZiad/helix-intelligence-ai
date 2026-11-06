@@ -4,9 +4,9 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
 import { AppShell } from "@/app/AppShell"
 import { ProtectedRoute } from "@/app/ProtectedRoute"
 import { TelemetryProvider } from "@/app/TelemetryContext"
-import { NAV_SECTIONS } from "@/app/navigation"
+import { NAV_SECTIONS, hasFeature } from "@/app/navigation"
 import { ADMIN_NAV_ITEMS } from "@/app/admin/adminNavigation"
-import { AuthProvider } from "@/context/AuthContext"
+import { AuthProvider, useAuth } from "@/context/AuthContext"
 import { SearchProvider } from "@/context/SearchContext"
 import { LanguageProvider } from "@/context/LanguageContext"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
@@ -51,6 +51,13 @@ const ForgotPasswordPage = safeLazy(() => import("@/pages/auth/ForgotPasswordPag
 const ResetPasswordPage = safeLazy(() => import("@/pages/auth/ResetPasswordPage").then(m => ({ default: m.ResetPasswordPage })))
 const DiscoverPage = safeLazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
 const optionalPage = (page) => EXPERIMENTAL_FEATURES_ENABLED ? page : <Navigate to="/discover" replace />
+
+/* Monitors and Boards follow the workspace's own flags (the same ones the
+   API enforces), not a build-time switch. Team stays experimental. */
+function FeaturePage({ feature, children }) {
+  const { user } = useAuth()
+  return hasFeature(feature, user?.feature_flags) ? children : <Navigate to="/discover" replace />
+}
 
 const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
 const SwipeFilesPage = safeLazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
@@ -213,8 +220,8 @@ export default function App() {
                   <Route element={<ProtectedRoute />}>
                     <Route element={<AuthenticatedShell />}>
                       <Route path="/discover" element={<DiscoverPage />} />
-                      <Route path="/monitors" element={optionalPage(<MonitorsPage />)} />
-                      <Route path="/swipe-files" element={optionalPage(<SwipeFilesPage />)} />
+                      <Route path="/monitors" element={<FeaturePage feature="monitors"><MonitorsPage /></FeaturePage>} />
+                      <Route path="/swipe-files" element={<FeaturePage feature="swipe_files"><SwipeFilesPage /></FeaturePage>} />
                       <Route path="/access" element={<BillingPage />} />
                       <Route path="/billing" element={<Navigate to="/access" replace />} />
                       <Route path="/team" element={optionalPage(<TeamPage />)} />

@@ -7,10 +7,10 @@ features:
   background job, and browse the resulting ads (sorted by days active by
   default). Live.
 - **Monitors** — saved Discover searches that re-run on a schedule and report
-  new, stopped and rewritten ads. Built; hidden behind
-  `VITE_ENABLE_EXPERIMENTAL_FEATURES` until Discover is proven end to end.
+  new, stopped and rewritten ads. Shown when the workspace is granted the
+  `monitors` flag.
 - **Boards and share links** — save ads into boards and produce a report
-  link. Built; hidden behind the same flag.
+  link. Shown when the workspace is granted the `swipe_files` flag.
 
 Access is granted manually by a platform administrator; there is no trial,
 pricing or checkout. W8 removed Create, Intelligence, Performance, the

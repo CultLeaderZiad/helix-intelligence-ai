@@ -7,12 +7,15 @@ Helix Intelligence has three features, each its own route:
 | Feature | Route | Status | What it does |
 |---|---|---|---|
 | Discover | `/discover` | **Live** | Query competitor ad libraries through a durable background job, browse/filter/sort the resulting creatives, inspect one in detail |
-| Monitors | `/monitors` | Built, flag-hidden | Re-run a saved search on a schedule and report what changed |
-| Boards | `/swipe-files` | Built, flag-hidden | Save creatives into boards and create a report link |
+| Monitors | `/monitors` | Per-workspace flag `monitors` | Re-run a saved search on a schedule and report what changed |
+| Boards | `/swipe-files` | Per-workspace flag `swipe_files` | Save creatives into boards and create a report link |
 
 The navigation list lives in `src/app/navigation.js` (`NAV_SECTIONS`); the
-sidebar and the `⌘K` palette derive from it. Routes for flag-hidden features
-redirect to `/discover` unless `VITE_ENABLE_EXPERIMENTAL_FEATURES=true`.
+sidebar and the `⌘K` palette derive from it through `visibleSections(flags)`.
+Monitors and Boards appear when the workspace is granted `monitors` /
+`swipe_files` (the same flags the API enforces with `require_feature`);
+otherwise their routes redirect to `/discover`. Team and the experimental
+admin pages still need `VITE_ENABLE_EXPERIMENTAL_FEATURES=true`.
 
 ## 2. Frontend stack
 

@@ -385,7 +385,8 @@ removed feature keeps its tables and ORM models, so `alembic check` stays clean.
 7. Unused i18n strings from removed pages remain in `LanguageContext.jsx`.
 8. Commit `8cc85fd` accidentally carries part of R7 and does not build on its
    own; fixing it needs a history rewrite (force-push), not done.
-9. Monitors and Boards stay behind `VITE_ENABLE_EXPERIMENTAL_FEATURES`.
+9. Monitors and Boards were behind `VITE_ENABLE_EXPERIMENTAL_FEATURES`; after
+   Phase 3 they follow the per-workspace `monitors` / `swipe_files` flags.
 
 ### Production needs added by Phase 3
 
