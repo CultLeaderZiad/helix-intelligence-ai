@@ -60,8 +60,8 @@ describe("W4 marketing and legal disclosures", () => {
 
     expect(marketing).toContain("لا يقدم Helix حالياً خططاً عامة")
     expect(marketing).toContain("يجب أن يمنح المشرف صلاحية الوصول")
-    expect(marketing).toContain("ابحث في الإعلانات. وطوّر أفكاراً إبداعية.")
-    expect(marketing).toContain("البحث الإعلاني")
+    expect(marketing).toContain("اعرف ما يعرضه منافسوك من إعلانات.")
+    expect(marketing).toContain("مكتبات الإعلانات")
     expect(legal).toContain("هذه الإفصاحات غير معتمدة")
     expect(legal).toContain("لا يُنشر عنوان تواصل هنا")
     expect(legal).toContain("localStorage")
