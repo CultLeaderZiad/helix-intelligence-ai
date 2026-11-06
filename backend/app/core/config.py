@@ -130,7 +130,6 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_TEXT_MODEL: str = os.getenv("GEMINI_TEXT_MODEL", "gemini-flash-latest")
-    GEMINI_IMAGE_MODEL: str = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
     SCRAPEGRAPH_API_KEY: str = os.getenv("SCRAPEGRAPH_API_KEY", "")
     META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
     BRIGHTDATA_API_KEY: str = os.getenv("BRIGHTDATA_API_KEY", "")
@@ -359,7 +358,7 @@ def validate_boot_invariants(cfg) -> None:
             errors.append("RESEND_API_KEY and RESEND_FROM must be set in production")
         if getattr(cfg, "APIFY_ENABLED", False) and not getattr(cfg, "APIFY_API_TOKEN", ""):
             errors.append("APIFY_API_TOKEN must be set when APIFY_ENABLED=true in production")
-        for name in ("GROQ_MODEL", "GEMINI_TEXT_MODEL", "GEMINI_IMAGE_MODEL"):
+        for name in ("GROQ_MODEL", "GEMINI_TEXT_MODEL"):
             if not getattr(cfg, name, ""):
                 errors.append(f"{name} must be set in production")
 

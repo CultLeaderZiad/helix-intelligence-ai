@@ -108,7 +108,6 @@ def test_production_boot_requires_explicit_app_and_cors_origins():
         APIFY_ENABLED=False,
         GROQ_MODEL="test-model",
         GEMINI_TEXT_MODEL="test-model",
-        GEMINI_IMAGE_MODEL="test-model",
     )
     validate_boot_invariants(config)
 

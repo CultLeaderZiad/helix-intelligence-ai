@@ -55,7 +55,6 @@ const optionalPage = (page) => EXPERIMENTAL_FEATURES_ENABLED ? page : <Navigate 
 const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
 const SwipeFilesPage = safeLazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
 const BillingPage = safeLazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
-const ApiKeysPage = safeLazy(() => import("@/pages/ApiKeysPage").then(m => ({ default: m.ApiKeysPage })))
 const TeamPage = safeLazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamPage })))
 const TeamAcceptPage = safeLazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamAcceptPage })))
 const PendingLoopPage = safeLazy(() => import("@/pages/PendingLoopPage").then(m => ({ default: m.PendingLoopPage })))
@@ -95,7 +94,6 @@ const PUBLIC_TITLES = {
   "/reset-password": "Set a new password",
   "/swipe-files": "Swipe Files",
   "/billing": "Billing & Usage",
-  "/api-keys": "API Keys",
   "/team": "Team Members",
   "/settings": "Profile & Settings",
   "/support": "Support & Feedback",
@@ -219,7 +217,6 @@ export default function App() {
                       <Route path="/swipe-files" element={optionalPage(<SwipeFilesPage />)} />
                       <Route path="/access" element={<BillingPage />} />
                       <Route path="/billing" element={<Navigate to="/access" replace />} />
-                      <Route path="/api-keys" element={optionalPage(<ApiKeysPage />)} />
                       <Route path="/team" element={optionalPage(<TeamPage />)} />
                       <Route path="/team/accept" element={optionalPage(<TeamAcceptPage />)} />
                       <Route path="/settings" element={<ProfileSettingsPage />} />

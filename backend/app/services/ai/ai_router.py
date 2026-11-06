@@ -6,7 +6,6 @@ from app.services.ai.base import AIProvider
 from app.services.ai.groq_provider import GroqProvider
 from app.services.ai.openrouter_provider import OpenRouterProvider
 from app.services.ai.gemini_provider import GeminiProvider
-from app.services.ai.byok_provider import BYOKProvider
 
 
 class MultiTierAIProvider(AIProvider):
@@ -50,10 +49,7 @@ class MultiTierAIProvider(AIProvider):
 
 class AIRouter:
     @staticmethod
-    async def get_provider_for_user(db: AsyncSession, user: User, byok_key: str = None, byok_provider: str = None) -> AIProvider:
-        # 1. Check if BYOK is provided
-        if byok_key and byok_provider:
-            return BYOKProvider(api_key=byok_key, provider_choice=byok_provider)
+    async def get_provider_for_user(db: AsyncSession, user: User) -> AIProvider:
             
         # Access, feature flags and credits are enforced before the AI layer
         # (assert_can_spend); there is no separate trial gate here.

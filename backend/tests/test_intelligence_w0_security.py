@@ -245,7 +245,6 @@ async def test_production_reset_flag_is_forbidden_and_response_has_no_link():
         APIFY_API_TOKEN = ""
         GROQ_MODEL = "llama"
         GEMINI_TEXT_MODEL = "gemini"
-        GEMINI_IMAGE_MODEL = "gemini-image"
 
     with pytest.raises(RuntimeError, match="AUTH_DEV_RESET_RETURN"):
         validate_boot_invariants(Cfg())
@@ -330,5 +329,5 @@ async def test_two_tenants_cannot_read_null_job_patterns_or_anonymous_playbooks(
 
         from app.core.deps import get_current_user
         with pytest.raises(HTTPException) as missing:
-            await get_current_user(db=db, token=None, x_api_key=None)
+            await get_current_user(db=db, token=None)
         assert missing.value.status_code == 401

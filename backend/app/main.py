@@ -20,7 +20,6 @@ from app.api.routers import (
     account,
     notifications,
     updates,
-    providers,
     support,
     playbooks,
     uploads,
@@ -98,7 +97,6 @@ app.include_router(account.router, prefix=f"{settings.API_V1_STR}/account", tags
 app.include_router(notifications.router, prefix=f"{settings.API_V1_STR}/notifications", tags=["notifications"])
 app.include_router(discover.router, prefix=f"{settings.API_V1_STR}/discovery", tags=["discovery"])
 app.include_router(creatives.router, prefix=f"{settings.API_V1_STR}/creatives", tags=["creatives"])
-app.include_router(providers.router, prefix=f"{settings.API_V1_STR}", tags=["providers"])
 app.include_router(updates.router, prefix=f"{settings.API_V1_STR}/updates", tags=["updates"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
 app.include_router(support.router, prefix=f"{settings.API_V1_STR}/support", tags=["support"])

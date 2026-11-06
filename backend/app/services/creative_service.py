@@ -264,8 +264,6 @@ async def generate_patterns_for_recent_creatives(
     db: AsyncSession,
     user: User,
     job_id: Optional[str] = None,
-    byok_key: Optional[str] = None,
-    byok_provider: Optional[str] = None,
     user_org_ids: Optional[List[str]] = None
 ) -> List[PatternSchema]:
     # 1. Scope and fetch creatives (F53)
@@ -292,7 +290,7 @@ async def generate_patterns_for_recent_creatives(
 
     # 2. Server-side credit & feature gate (F53)
     from app.services.billing_service import assert_can_spend, ANALYSIS_PATTERN_CREDIT_COST
-    cost = 0.0 if (byok_key and byok_provider) else ANALYSIS_PATTERN_CREDIT_COST
+    cost = ANALYSIS_PATTERN_CREDIT_COST
     org, plan = await assert_can_spend(
         db,
         user=user,
@@ -300,7 +298,7 @@ async def generate_patterns_for_recent_creatives(
         feature_name="intelligence",
         lock_row=False
     )
-    provider = await AIRouter.get_provider_for_user(db, user, byok_key, byok_provider)
+    provider = await AIRouter.get_provider_for_user(db, user)
     
     # Map to schema
     from app.schemas.creative import Creative as CreativeSchema, Scores, CreativeMetrics

@@ -10,13 +10,11 @@ from app.core.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.usage_log import UsageLog
 from app.models.organization import Organization
-from app.services import billing_service, api_key_service, team_service, storage_service
+from app.services import billing_service, team_service, storage_service
 from app.core.security import get_password_hash, verify_password
 
 router = APIRouter()
 
-class CreateApiKeyRequest(BaseModel):
-    name: str = "Default API Key"
 
 class InviteMemberRequest(BaseModel):
     email: str
@@ -325,29 +323,6 @@ async def billing_provider_events(
     from app.services.billing_contract import refuse_billing_provider_event
     refuse_billing_provider_event(None)
 
-# --- Public API Keys (Gated by 'public_api') ---
-@router.get("/api-keys")
-async def list_api_keys(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    return await api_key_service.list_api_keys(db, current_user)
-
-@router.post("/api-keys")
-async def create_api_key(
-    req: CreateApiKeyRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    return await api_key_service.generate_api_key(db, current_user, req.name)
-
-@router.delete("/api-keys/{key_id}")
-async def revoke_api_key(
-    key_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    return await api_key_service.revoke_api_key(db, current_user, key_id)
 
 # --- Team Multi-Seat (Gated by 'team_accounts') ---
 @router.get("/team")

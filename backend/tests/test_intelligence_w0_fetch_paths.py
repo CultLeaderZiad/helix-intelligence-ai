@@ -239,26 +239,6 @@ async def test_query_translator_rejects_redirect_and_private_ip():
         assert calls == []
 
 
-@pytest.mark.asyncio
-async def test_byok_rejects_redirect_and_private_ip():
-    from app.services.ai.byok_provider import BYOKProvider
-
-    provider = BYOKProvider("sk-test", provider_choice="openai")
-    calls = []
-    with patch("app.services.safe_fetch._resolve", _public_resolve), patch(
-        "app.services.safe_fetch._exchange",
-        side_effect=lambda *a, **k: calls.append(a) or _redirect_exchange(),
-    ):
-        with pytest.raises(Exception):
-            await provider._call_api([{"role": "user", "content": "hi"}])
-        assert len(calls) == 1
-    calls.clear()
-    with patch("app.services.safe_fetch._resolve", _private_resolve), patch(
-        "app.services.safe_fetch._exchange", side_effect=lambda *a, **k: calls.append(a)
-    ):
-        with pytest.raises(Exception):
-            await provider._call_api([{"role": "user", "content": "hi"}])
-        assert calls == []
 
 
 
