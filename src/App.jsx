@@ -79,6 +79,7 @@ const ScrapeJobsPage = safeLazy(() => import("@/pages/admin/ScrapeJobsPage").the
 const DataSourcesPage = safeLazy(() => import("@/pages/admin/DataSourcesPage").then(m => ({ default: m.DataSourcesPage })))
 const SystemHealthPage = safeLazy(() => import("@/pages/admin/SystemHealthPage").then(m => ({ default: m.SystemHealthPage })))
 const AuditLogPage = safeLazy(() => import("@/pages/admin/AuditLogPage").then(m => ({ default: m.AuditLogPage })))
+const GuestBoardPage = safeLazy(() => import("@/pages/GuestBoardPage").then(m => ({ default: m.GuestBoardPage })))
 const PublicPlaybookPage = safeLazy(() => import("@/pages/PublicPlaybookPage").then(m => ({ default: m.PublicPlaybookPage })))
 const PublicUpdatesPage = safeLazy(() => import("@/pages/PublicUpdatesPage").then(m => ({ default: m.PublicUpdatesPage })))
 const ProfileSettingsPage = safeLazy(() => import("@/pages/ProfileSettingsPage").then(m => ({ default: m.ProfileSettingsPage })))
@@ -179,6 +180,7 @@ export default function App() {
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/playbook/:publicId" element={<PublicPlaybookPage />} />
+                  <Route path="/b/:token" element={<GuestBoardPage />} />
                   <Route path="/updates" element={<PublicUpdatesPage />} />
                   <Route path="/legal" element={<LegalPage />} />
                   <Route path="/legal/:section" element={<LegalPage />} />

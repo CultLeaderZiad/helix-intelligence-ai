@@ -23,6 +23,7 @@ from .simulation_report import SimulationReport
 from .monitor import Monitor, MonitorRun, MonitorCreative, MonitorEvent
 from .scout import ScoutJob, ScoutLead, ScoutMapsJob, ScoutMapsLead
 from .leadgen import LeadGenJob, LeadGenLead, LeadGenWorkerHeartbeat
+from .board_share_link import BoardShareLink
 
 __all__ = [
     "Base",
@@ -60,4 +61,5 @@ __all__ = [
     "LeadGenJob",
     "LeadGenLead",
     "LeadGenWorkerHeartbeat",
+    "BoardShareLink",
 ]

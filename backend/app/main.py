@@ -24,6 +24,7 @@ from app.api.routers import (
     playbooks,
     uploads,
     monitors,
+    boards,
 )
 
 @asynccontextmanager
@@ -103,6 +104,8 @@ app.include_router(support.router, prefix=f"{settings.API_V1_STR}/support", tags
 app.include_router(playbooks.router, prefix=f"{settings.API_V1_STR}/playbooks", tags=["playbooks"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", tags=["monitors"])
+app.include_router(boards.router, prefix=f"{settings.API_V1_STR}/boards", tags=["boards"])
+app.include_router(boards.guest_router, prefix=f"{settings.API_V1_STR}/public/boards", tags=["boards"])
 
 # Locally stored media. This is served by a router rather than a StaticFiles
 # mount so that access is checked: the old mount handed any file to anyone who

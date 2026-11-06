@@ -61,6 +61,10 @@ every other source; spend, CTR and engagement are `null` unless Meta reports the
 | POST | `/api/creatives/custom` | `discover` + `swipe_files` | Add a custom reference to a board. |
 | GET / POST | `/api/playbooks` | `swipe_files` | List / create a shareable board report. |
 | GET | `/api/playbooks/public/{public_id}` | signed-in owner org | Read a shared report. |
+| GET | `/api/boards` | `swipe_files` | The caller's boards (saved-ad collections) with counts. |
+| GET / POST | `/api/boards/share-links` | `swipe_files` | List / create guest links. Body `{collection, expires_in_days ∈ {1, 7, 30}}`; at most 5 active links per board (`409`). |
+| DELETE | `/api/boards/share-links/{id}` | `swipe_files` | Revoke (creator only; sets `revoked_at`, nothing is deleted). |
+| GET | `/api/public/boards/{token}` | none (token is the capability) | Read-only board view. Token = base64url `{l, o, e}` + HMAC-SHA256 with a key derived from `SECRET_KEY`. The MAC and expiry are checked before any query; RLS is then bound to the token's workspace only, and the link row must be unrevoked with the same expiry. Any failure is `404`. `Cache-Control: no-store`, `X-Robots-Tag: noindex`. Display fields only; `impressions_est` only for Meta-official rows; `days_active` stays `null` when unknown. Rotating `SECRET_KEY` invalidates every guest link. |
 
 ## 5. Monitors — `/api/monitors` (flag `monitors`)
 
