@@ -210,6 +210,11 @@ class Settings(BaseSettings):
     # A tick dispatches at most this many monitors, so a backlog cannot bury
     # the single web instance under concurrent scrapes.
     MONITOR_MAX_PER_TICK: int = int(os.getenv("MONITOR_MAX_PER_TICK", "3"))
+    # The jobs worker ticks the monitor scheduler itself every N seconds, so
+    # monitors run without an external cron. 0 turns the in-worker tick off.
+    MONITOR_SCHEDULER_INTERVAL_S: int = int(os.getenv("MONITOR_SCHEDULER_INTERVAL_S", "300"))
+    # At most one rolled-up monitor digest per user and workspace per window.
+    MONITOR_DIGEST_INTERVAL_H: int = int(os.getenv("MONITOR_DIGEST_INTERVAL_H", "24"))
     # Consecutive absences before an ad is reported killed. See
     # creative_fingerprint: one absence is usually a flaky scrape.
     MONITOR_MISS_THRESHOLD: int = int(os.getenv("MONITOR_MISS_THRESHOLD", "2"))

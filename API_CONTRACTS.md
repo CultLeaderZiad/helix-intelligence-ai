@@ -94,6 +94,18 @@ CRUD on saved competitor watches, `POST /{id}/run`, `GET /events`, and
 `POST /tick` for the scheduler (requires `X-Cron-Secret`; `503` while
 `CRON_SECRET` is unset). See DEVELOPMENT.md → Monitors.
 
+### Continuous runs and the daily digest
+
+The jobs worker ticks the monitor scheduler every
+`MONITOR_SCHEDULER_INTERVAL_S` (default 300; `0` disables it), so monitors
+run without an external cron. `POST /api/monitors/tick` with
+`X-Cron-Secret` still works; the claim is `FOR UPDATE SKIP LOCKED`, so both
+can run. After a run with changes, the owner gets at most one digest per
+`MONITOR_DIGEST_INTERVAL_H` (default 24) per workspace that rolls up every
+monitor's new / copy-changed / stopped ads since the last digest: always as
+an in-app notification (`type = monitor_digest`), and by email only when
+Resend is configured and email is on for at least one of those monitors.
+
 ## 6. Account, team, support, notifications
 
 - `/api/account`: `profile` (GET/PATCH), `avatar`, `access`, `access-requests`,

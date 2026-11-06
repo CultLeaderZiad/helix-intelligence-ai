@@ -418,6 +418,9 @@ export function MonitorsPage() {
               <PanelHeader>
                 <PanelTitle>Monitors</PanelTitle>
               </PanelHeader>
+              {monitors.length > 0 ? (
+                <p className="border-b border-border px-4 py-2 text-[11px] leading-relaxed text-text-faint">{w8.monitorsDigestNote}</p>
+              ) : null}
               {monitors.length === 0 ? (
                 <EmptyState
                   icon={Eye}

@@ -78,6 +78,7 @@ export const en = {
   guestFooter: "Shared from Helix Intelligence. Run length comes from the Meta Ad Library start date; the rubric scores the ad text only.",
   archivedWithMedia: (d) => `Archived copy kept since ${d} (text and media)`,
   archivedTextOnly: (d) => `Archived copy kept since ${d} (text only)`,
+  monitorsDigestNote: "Monitors re-run on their schedule. Besides each run's alert, you get one daily digest of all your monitors in Notifications, and by email for monitors with email turned on.",
 }
 
 export const ar = {
@@ -150,6 +151,7 @@ export const ar = {
   guestFooter: "تمت المشاركة من Helix Intelligence. مدة التشغيل مأخوذة من تاريخ البدء في مكتبة إعلانات Meta؛ والتقييم يخص نص الإعلان فقط.",
   archivedWithMedia: (d) => `نسخة مؤرشفة محفوظة منذ ${d} (النص والوسائط)`,
   archivedTextOnly: (d) => `نسخة مؤرشفة محفوظة منذ ${d} (النص فقط)`,
+  monitorsDigestNote: "تُعاد عمليات المراقبة وفق جدولها. إلى جانب تنبيه كل تشغيل، تصلك خلاصة يومية واحدة لكل عمليات المراقبة في الإشعارات، وبالبريد للمراقبات التي فعّلت فيها البريد.",
 }
 
 const copy = { en, ar }

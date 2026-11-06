@@ -45,12 +45,38 @@ async def _check_rls_role() -> None:
         await assert_rls_role(conn)
 
 
+async def _monitor_scheduler_loop() -> None:
+    """Enqueue due monitors on a timer; the claim is SKIP LOCKED, so an
+    external cron calling /api/monitors/tick as well is harmless."""
+    from app.core.config import settings
+    from app.services.monitor_service import tick
+
+    interval = int(settings.MONITOR_SCHEDULER_INTERVAL_S)
+    if interval <= 0:
+        logger.info("in-worker monitor scheduler disabled")
+        return
+    while not _stop.is_set():
+        try:
+            result = await tick()
+            if result.get("dispatched"):
+                logger.info("monitor scheduler dispatched %s", result["dispatched"])
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.exception("monitor scheduler tick failed: %s", exc)
+        try:
+            await asyncio.wait_for(_stop.wait(), timeout=interval)
+        except asyncio.TimeoutError:
+            pass
+
+
 async def _worker_loop() -> None:
     from app.services.job_reconciliation import reconcile_once, reconciliation_loop
     from app.services.work_outbox import claim_next_work_item, execute_work_item
 
     await reconcile_once()
     reconciler = asyncio.create_task(reconciliation_loop())
+    scheduler = asyncio.create_task(_monitor_scheduler_loop())
     try:
         while not _stop.is_set():
             try:
@@ -68,7 +94,8 @@ async def _worker_loop() -> None:
                 await asyncio.sleep(POLL_INTERVAL_S)
     finally:
         reconciler.cancel()
-        await asyncio.gather(reconciler, return_exceptions=True)
+        scheduler.cancel()
+        await asyncio.gather(reconciler, scheduler, return_exceptions=True)
 
 
 async def _main() -> None:
