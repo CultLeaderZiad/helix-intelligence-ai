@@ -20,6 +20,9 @@ class SearchParams(BaseModel):
 
 class Job(BaseModel):
     job_id: str
+    # The searched text, so a client can list and re-open past searches
+    # from the server instead of only from browser storage.
+    query: Optional[str] = None
     status: str
     progress: float
     stage: str

@@ -132,6 +132,7 @@ def _job_response(job: ScrapeJob) -> Job:
     # Coalesce so a legacy/partial row serializes instead of 500ing.
     return Job(
         job_id=job.id,
+        query=getattr(job, "query", None),
         status=job.status or "running",
         progress=float(job.progress or 0.0),
         stage=job.stage or "",

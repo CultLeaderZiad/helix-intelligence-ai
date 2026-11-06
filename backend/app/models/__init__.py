@@ -24,6 +24,7 @@ from .monitor import Monitor, MonitorRun, MonitorCreative, MonitorEvent
 from .scout import ScoutJob, ScoutLead, ScoutMapsJob, ScoutMapsLead
 from .leadgen import LeadGenJob, LeadGenLead, LeadGenWorkerHeartbeat
 from .board_share_link import BoardShareLink
+from .search_draft import SearchDraft
 from .ad_archive import AdArchiveEntry
 
 __all__ = [
@@ -64,4 +65,5 @@ __all__ = [
     "LeadGenWorkerHeartbeat",
     "BoardShareLink",
     "AdArchiveEntry",
+    "SearchDraft",
 ]

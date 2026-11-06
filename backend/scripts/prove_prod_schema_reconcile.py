@@ -154,8 +154,8 @@ def _assert_rls_policy_state(database: str, *, deny_by_default: bool) -> None:
         WHERE p.schemaname = 'public' AND p.policyname LIKE '%_tenant_isolation'
         """,
     )[0]
-    # W8 added board_share_links and ad_archive, each with one tenant policy.
-    expected = 36
+    # W8 added board_share_links, ad_archive and search_drafts, each with one tenant policy.
+    expected = 37
     if int(policies[0]) != expected or int(rls_counts[0]) != expected:
         raise SystemExit(
             f"expected {expected} enabled tenant policies, found policies={policies}, rls={rls_counts}"

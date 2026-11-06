@@ -41,7 +41,10 @@ no API-key or third-party-token login (W8).
 | Method | Path | Notes |
 |---|---|---|
 | POST | `/jobs` | Start a search (`query`, `filters`, `query_language`). Runs through the durable `work_items` outbox and the jobs worker. |
-| GET | `/jobs` | Recent jobs. |
+| GET | `/jobs` | Recent jobs, newest first; each row includes its `query`, so clients build search history from the server. |
+| GET | `/drafts` | The caller's saved search drafts in the active workspace (`{items: [{id, title, query, notes, filters, created_at}]}`), newest first, at most 50. |
+| POST | `/drafts` | Save a draft (`title`, `query` required, `notes`, `filters`). Only `country`, `min_days_active`, `min_score` are kept from `filters`. `201`; empty query `422`; over 50 drafts `409`. |
+| DELETE | `/drafts/{id}` | Delete one of the caller's own drafts; anyone else's is `404`. |
 | GET | `/jobs/{job_id}` | Status, stage, deadline, `failure_kind`. |
 | POST | `/jobs/{job_id}/cancel` | Tenant-checked cancellation. |
 | GET | `/jobs/{job_id}/results` | Paginated creatives. `sort` = `days_active_desc` (default), `first_seen_desc`, `composite_desc`, `hook_desc`, `impressions_desc`; anything else is `422`. Nulls sort last. Optional view filters on stored rows: `min_days` ∈ {30, 60, 90} (ads with an unknown run length are excluded and counted in `hidden_unknown_run_length`, never treated as 0) and `min_score` 0–10 (text-rubric minimum); other values are `422`. |

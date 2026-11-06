@@ -53,10 +53,9 @@ import { useSearchParams } from "react-router-dom"
 
 export function DiscoverPage() {
   const [searchParams] = useSearchParams()
-  const { latestSearch, saveCompletedSearch, selectActiveCreative, selectSearchSession } = useSearchContext()
+  const { latestSearch, saveCompletedSearch, selectActiveCreative, openSearchSession } = useSearchContext()
   const persistCompletedSearch = /** @type {(search: Record<string, unknown>) => void} */ (saveCompletedSearch)
   const setActiveCreative = /** @type {(creative: object) => void} */ (selectActiveCreative)
-  const setSearchSession = /** @type {(session: object) => void} */ (selectSearchSession)
   const { t, lang } = useLanguage()
   const copy = w5Discover[lang] ?? w5Discover.en
   const w8 = useW8Copy()
@@ -357,7 +356,31 @@ export function DiscoverPage() {
             className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden"
             aria-label={t("discoveryResults")}
           >
-            {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile ? (
+            {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile && latestSearch?.query ? (
+              <EmptyState
+                icon={SearchX}
+                size="lg"
+                status={w8.discoverLastEmptyStatus}
+                title={w8.discoverLastEmptyTitle(latestSearch.query)}
+                description={w8.discoverLastEmptyBody}
+                action={
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => {
+                      const again = query.trim() || latestSearch.query
+                      setQuery(again)
+                      setAppliedFilters(draftFilters)
+                      submit({ query: again, filters: draftFilters, sort, query_language: queryLanguage })
+                    }}
+                  >
+                    {w8.discoverLastEmptyCta}
+                  </Button>
+                }
+              />
+            ) : null}
+
+            {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile && !latestSearch?.query ? (
               <EmptyState
                 icon={Radar}
                 size="lg"
@@ -545,12 +568,22 @@ export function DiscoverPage() {
         isOpen={showDraftsModal}
         onClose={() => setShowDraftsModal(false)}
         currentQuery={query}
-        onSelectSearch={(item) => {
-          setSearchSession(item)
+        currentFilters={draftFilters}
+        onSelectSearch={async (item) => {
           setQuery(item.query)
+          setSelectedId(null)
+          const opened = await openSearchSession(item).catch(() => false)
+          // Nothing stored to show (failed or empty): run it again.
+          if (!opened) {
+            setAppliedFilters(draftFilters)
+            submit({ query: item.query, filters: draftFilters, sort, query_language: queryLanguage })
+          }
         }}
         onSelectDraft={(draft) => {
           setQuery(draft.query || draft.title)
+          const next = { ...EMPTY_FILTERS, ...(draft.filters || {}) }
+          setDraftFilters(next)
+          setAppliedFilters(next)
         }}
       />
     </div>

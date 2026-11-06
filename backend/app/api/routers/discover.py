@@ -124,3 +124,46 @@ async def list_jobs(
 ):
     return await discover_service.list_recent_jobs(db, current_user.id, page, page_size)
 
+
+
+# ---------------------------------------------------------------------------
+# Saved search drafts: stored per user per workspace so they follow the user
+# across browsers and devices.
+# ---------------------------------------------------------------------------
+from typing import Any, Dict, Optional  # noqa: E402
+
+from pydantic import BaseModel, Field  # noqa: E402
+
+from app.services import search_draft_service  # noqa: E402
+
+
+class SearchDraftCreate(BaseModel):
+    title: str = Field(default="", max_length=200)
+    query: str = Field(min_length=1, max_length=500)
+    notes: str = Field(default="", max_length=2000)
+    filters: Optional[Dict[str, Any]] = None
+
+
+@router.get("/drafts")
+async def list_search_drafts(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return {"items": await search_draft_service.list_drafts(db, current_user)}
+
+
+@router.post("/drafts", status_code=201)
+async def save_search_draft(
+    body: SearchDraftCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await search_draft_service.save_draft(
+        db, current_user, title=body.title, query=body.query, notes=body.notes, filters=body.filters
+    )
+
+
+@router.delete("/drafts/{draft_id}")
+async def delete_search_draft(
+    draft_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await search_draft_service.delete_draft(db, current_user, draft_id)

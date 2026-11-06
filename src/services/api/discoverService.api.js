@@ -50,8 +50,24 @@ const discoverService = {
     return request(`/discovery/jobs/${encodeURIComponent(jobId)}/results`, { signal, params })
   },
 
-  listRecentJobs() {
-    return request("/discovery/jobs", { params: { page: 1, page_size: 8 } })
+  /** Recent searches recorded on the server (each row carries its query). */
+  listRecentJobs({ page_size = 15 } = {}) {
+    return request("/discovery/jobs", { params: { page: 1, page_size } })
+  },
+
+  /** Saved search drafts, stored per user per workspace on the server. */
+  listDrafts() {
+    return request("/discovery/drafts")
+  },
+
+  /** @param {{title?: string, query: string, notes?: string, filters?: Record<string, unknown>}} draft */
+  saveDraft({ title = "", query, notes = "", filters = {} }) {
+    return request("/discovery/drafts", { method: "POST", body: { title, query, notes, filters } })
+  },
+
+  /** @param {string} draftId */
+  deleteDraft(draftId) {
+    return request(`/discovery/drafts/${encodeURIComponent(draftId)}`, { method: "DELETE" })
   },
 }
 
