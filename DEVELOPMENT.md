@@ -61,6 +61,7 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `SECRET_KEY` | ✅ | JWT signing key. Generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `DATABASE_URL` | ✅ | Neon Postgres connection string (with asyncpg driver) |
 | `BACKEND_CORS_ORIGINS` | ✅ | Comma-separated origins, **must include the Vercel URL exactly** (scheme + host, no trailing slash): `https://helix-intelligence-ai-six.vercel.app,http://localhost:5173,http://localhost:3000` |
+| `BACKEND_CORS_ORIGIN_REGEX` | Optional | Lets Vercel **preview** URLs call the API. Must start with `^https://`, end with an escaped domain and `$`, and must not use `.*`/`.+`. For this project: `^https://helix-intelligenc[a-z0-9-]*-flutterdevelopers25-6172s-projects\.vercel\.app$` |
 | `PUBLIC_API_BASE_URL` | ✅ (prod) | Public API base for webhooks, e.g. `https://helix-intelligence-ai.onrender.com/api` |
 | `R2_ACCOUNT_ID` | ✅ (prod) | Cloudflare R2 account id — see "Media storage" below |
 | `R2_ACCESS_KEY_ID` | ✅ (prod) | R2 API token access key id |
@@ -86,19 +87,71 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 
 ### Frontend (Vercel)
 
-The frontend builds on Vercel. **This env var must be set at build time** (Vercel → Settings → Environment Variables):
+The frontend (Vercel) and the API (Render) are on **different origins**, and
+`vercel.json` sends every unknown path to `index.html`. A relative `/api` in a
+deployed build therefore returns the SPA's HTML instead of FastAPI, and
+sign-up shows "Unable to create account". Deployed builds must call the
+absolute Render URL.
+
+`.env.production` (committed, not a secret) already sets:
 
 ```
+VITE_DATA_SOURCE=api
 VITE_API_BASE_URL=https://helix-intelligence-ai.onrender.com/api
 ```
 
-The URL **must be absolute** — a relative `/api` path will 404 because the frontend and backend live on different origins.
+so production **and** preview builds reach the real API even with no Vercel
+variable. Vercel → Settings → Environment Variables overrides it per scope:
+
+| Variable | Production | Preview | Notes |
+|---|---|---|---|
+| `VITE_API_BASE_URL` | `https://helix-intelligence-ai.onrender.com/api` | same, or a staging API's HTTPS URL | Build-time. Must be `https://` on a DNS host; no trailing slash. Redeploy after changing it |
+| `VITE_ENVIRONMENT` | `production` (or unset) | `preview` (or unset) | Optional. `preview`/`staging` builds may use a public HTTPS API; `development`/`test` stay loopback-only (`src/services/origin.js`) |
+| `VITE_NEON_AUTH_URL` | unset | unset | Not used. Auth is FastAPI JWT |
+
+Note: a preview build talks to whatever API it points at. Pointing previews at
+the production Render API means preview sign-ups create production accounts
+and preview-only backend routes (newer than what Render runs) return 404.
+
+#### CORS on Render (must match the Vercel origins)
+
+Set on the Render web service → Environment (no secret values here):
+
+```
+BACKEND_CORS_ORIGINS=https://helix-intelligence-ai-six.vercel.app,http://localhost:5173,http://localhost:3000
+BACKEND_CORS_ORIGIN_REGEX=^https://helix-intelligenc[a-z0-9-]*-flutterdevelopers25-6172s-projects\.vercel\.app$
+```
+
+Vercel preview hosts look like
+`helix-intelligenc-git-<branch-hash>-flutterdevelopers25-6172s-projects.vercel.app`.
+`BACKEND_CORS_ORIGIN_REGEX` only takes effect once the backend running on
+Render includes it (W8). Until then, add the branch's exact preview origin to
+`BACKEND_CORS_ORIGINS`. A rejected preflight returns **400** with no
+`access-control-allow-origin` header; the browser then reports a network error.
+
+#### Region
+
+Render and Neon should be in the same region. Prefer **Ohio (us-east-2)** for
+both: Neon's AWS `us-east-2` and Render's `ohio`. A cross-region hop adds
+latency to every query and makes cold-start timeouts more likely. Render's
+region cannot be changed in place: create the service in Ohio, copy the
+environment, switch the Vercel `VITE_API_BASE_URL` if the hostname changes,
+then retire the old one.
+
+#### Verify sign-up against a deployment
+
+1. Preflight (read-only):
+   `curl -si -X OPTIONS https://helix-intelligence-ai.onrender.com/api/auth/sign-up -H "Origin: <vercel origin>" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type"`
+   → expect `200` and `access-control-allow-origin: <vercel origin>`.
+2. Bundle check: open the deployment, DevTools → Network, submit sign-up.
+   The request must go to `https://helix-intelligence-ai.onrender.com/api/auth/sign-up`,
+   not `<vercel host>/api/...`.
+3. Sign up with a real inbox you own, then sign in. Expect `201`/`200` and a redirect into the app.
+4. If it shows "Starting Helix services…", Render is cold-starting; retry after ~30 s.
 
 ### ⚠️ Production frontend ↔ backend connectivity
 
 The Vite dev proxy in `vite.config.js` (`/api → http://127.0.0.1:8000`) **only works during local development**. It has no effect in a production build.
-
-Without the env var above, sign-up/sign-in and all other API calls will fail with network errors in production while working fine locally. This is the single most common "it works on my machine" deployment issue.
 
 ## Media storage
 

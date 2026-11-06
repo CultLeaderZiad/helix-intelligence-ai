@@ -23,7 +23,9 @@ services:
     # Production CORS (REQUIRED when frontend is on a different origin)
     # ────────────────────────────────────────────────────────
     # BACKEND_CORS_ORIGINS – Comma-separated list of allowed frontend origins.
-    #   Example: "https://helix-frontend.vercel.app"
+    #   Example: "https://helix-intelligence-ai-six.vercel.app"
+    # BACKEND_CORS_ORIGIN_REGEX – Optional anchored regex for Vercel preview
+    #   origins; see DEVELOPMENT.md "CORS on Render" for the exact value.
     #   Without this, cross-origin sign-up/sign-in from Vercel will fail
     #   with a network error (CORS block).
     #

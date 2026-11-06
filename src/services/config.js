@@ -1,7 +1,9 @@
 /**
  * API location and client polling limits.
  *
- * Local and preview builds use the same-origin API proxy. Unclassified
+ * Local development uses the same-origin Vite proxy (/api -> 127.0.0.1:8000).
+ * Deployed builds (Vercel production and previews) call the Render API by its
+ * absolute HTTPS URL from .env.production or the Vercel env. Unclassified
  * production-mode builds use production origin rules. There is no mock data
  * source: every service talks to the FastAPI backend.
  */

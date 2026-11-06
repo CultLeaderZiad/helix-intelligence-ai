@@ -54,12 +54,20 @@ export function resolveApiBaseUrl(value, environment = "", productionBuild = fal
   }
 
   const loopback = isLoopbackHostname(url.hostname)
-  if (env !== "production" && !loopback) {
-    throw new Error("VITE_API_BASE_URL must use a loopback host outside production.")
+  // Deployed builds (production, and production-mode preview/staging builds
+  // such as Vercel previews) live on a different origin from the API, so they
+  // may use a public HTTPS API host. Local development and tests stay on
+  // loopback hosts.
+  const deployedBuild = env === "production" || (productionBuild === true && (env === "preview" || env === "staging"))
+  if (!deployedBuild && !loopback) {
+    throw new Error("VITE_API_BASE_URL must use a loopback host outside deployed builds.")
   }
   const dnsHost = /\.[a-z][a-z\d-]*\.?$/i.test(url.hostname)
   if (env === "production" && (loopback || !dnsHost || url.protocol !== "https:")) {
     throw new Error("VITE_API_BASE_URL must use a public HTTPS DNS host in production.")
+  }
+  if (deployedBuild && !loopback && (!dnsHost || url.protocol !== "https:")) {
+    throw new Error("VITE_API_BASE_URL must use a public HTTPS DNS host in deployed builds.")
   }
 
   return base.replace(/\/+$/, "")

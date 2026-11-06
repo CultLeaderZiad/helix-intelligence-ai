@@ -13,9 +13,23 @@ describe("API origin configuration", () => {
     )
   })
 
-  it("rejects remote API origins outside production, including production-mode previews", () => {
-    for (const environment of ["development", "test", "staging", "preview"]) {
+  it("rejects remote API origins in local development and test builds", () => {
+    for (const environment of ["development", "test"]) {
       expect(() => resolveApiBaseUrl("https://api.example.invalid", environment, true)).toThrow()
+    }
+    for (const environment of ["staging", "preview"]) {
+      expect(() => resolveApiBaseUrl("https://api.example.invalid", environment, false)).toThrow()
+    }
+  })
+
+  it("lets production-mode preview and staging builds reach a public HTTPS API", () => {
+    for (const environment of ["staging", "preview"]) {
+      expect(resolveApiBaseUrl("https://api.example.invalid/api/", environment, true)).toBe(
+        "https://api.example.invalid/api"
+      )
+      expect(() => resolveApiBaseUrl("http://api.example.invalid", environment, true)).toThrow()
+      expect(() => resolveApiBaseUrl("https://10.0.0.1", environment, true)).toThrow()
+      expect(() => resolveApiBaseUrl("https://8.8.8.8", environment, true)).toThrow()
     }
   })
 

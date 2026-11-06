@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import settings, cors_origins
+from app.core.config import settings, cors_origins, cors_origin_regex
 from app.db.session import engine
 from app.core.observability import log_event, request_id_context
 from app.middleware.rate_limit import RateLimitMiddleware
@@ -42,10 +42,11 @@ app = FastAPI(
 )
 
 # Set all CORS enabled origins
-if cors_origins:
+if cors_origins or cors_origin_regex:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
+        allow_origin_regex=cors_origin_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
@@ -50,6 +51,9 @@ class Settings(BaseSettings):
     ).rstrip("/")
 
     BACKEND_CORS_ORIGINS: str = ""
+    # Optional anchored regex for deployment-generated frontend origins such as
+    # Vercel preview URLs. See validate_cors_origin_regex for the rules.
+    BACKEND_CORS_ORIGIN_REGEX: str = ""
 
     # DATABASE
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
@@ -273,6 +277,35 @@ def _parse_cors_origins(raw: str | None = None, environment: str = "development"
     return [item.strip().rstrip("/") for item in values if item.strip()]
 
 
+_REGEX_HOST_SUFFIX = re.compile(r"(\\\.[a-z0-9-]+){2,}\$$")
+_REGEX_DOT_WILDCARD = re.compile(r"(?<!\\)\.[*+?{]")
+
+
+def validate_cors_origin_regex(pattern: str) -> str:
+    """Return a safe CORS origin regex, or "" when unset.
+
+    The regex must be anchored, HTTPS-only, end in an escaped literal domain
+    with at least two labels (e.g. ``\\.vercel\\.app$``), and must not use an
+    unescaped ``.`` wildcard, so it cannot match an arbitrary host.
+    """
+    value = (pattern or "").strip()
+    if not value:
+        return ""
+    if not value.startswith("^https://") or not value.endswith("$"):
+        raise ValueError("BACKEND_CORS_ORIGIN_REGEX must start with ^https:// and end with $")
+    if not _REGEX_HOST_SUFFIX.search(value):
+        raise ValueError(
+            "BACKEND_CORS_ORIGIN_REGEX must end with an escaped literal domain such as \\.vercel\\.app$"
+        )
+    if _REGEX_DOT_WILDCARD.search(value):
+        raise ValueError("BACKEND_CORS_ORIGIN_REGEX must not use an unescaped . wildcard")
+    try:
+        re.compile(value)
+    except re.error:
+        raise ValueError("BACKEND_CORS_ORIGIN_REGEX is not a valid regular expression") from None
+    return value
+
+
 _ENVIRONMENT_ALIASES = {
     "production": "production",
     "prod": "production",
@@ -351,6 +384,11 @@ def validate_boot_invariants(cfg) -> None:
         except ValueError as exc:
             errors.append(str(exc))
 
+    try:
+        validate_cors_origin_regex(getattr(cfg, "BACKEND_CORS_ORIGIN_REGEX", "") or "")
+    except ValueError as exc:
+        errors.append(str(exc))
+
     if env == "production":
         for name in ("PUBLIC_APP_BASE_URL", "APP_BASE_URL"):
             parsed = parsed_targets.get(name)
@@ -390,3 +428,13 @@ settings = Settings()
 # Module-level list used by main.py CORS middleware.
 # Import as:  from app.core.config import cors_origins
 cors_origins: List[str] = _parse_cors_origins()
+
+
+def _cors_origin_regex_or_none() -> str | None:
+    try:
+        return validate_cors_origin_regex(os.getenv("BACKEND_CORS_ORIGIN_REGEX", "")) or None
+    except ValueError:
+        return None  # validate_boot_invariants refuses to boot with the reason
+
+
+cors_origin_regex: str | None = _cors_origin_regex_or_none()
