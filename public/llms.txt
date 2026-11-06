@@ -1,0 +1,32 @@
+# Helix Intelligence
+
+> Competitor ad research for Meta. Search the Meta Ad Library for a brand,
+> see which of its ads have run the longest, watch a search for changes, and
+> save ads into boards. Invite-only: an administrator grants access per
+> workspace. There is no pricing page, trial or checkout.
+
+## What exists
+
+- Discover: search the Meta Ad Library for a brand or domain. Results are
+  sorted by how many days each ad has been running. Run length is "unknown"
+  when the source does not report a start date; it is never shown as 0.
+  Longevity presets (30, 60, 90+ days) filter stored results. The score shown
+  is a rubric of the ad text only, not a performance prediction. Reach is
+  shown only when it comes from Meta's official Ad Library API.
+- Monitors: re-run a saved Discover search on a schedule and list new,
+  stopped and rewritten ads since the previous run.
+- Boards: save ads into named boards inside a workspace.
+
+## What does not exist
+
+- No Google, TikTok or other ad libraries. Meta only.
+- No AI-generated ads or creative generation.
+- No access to your own ad accounts or their performance.
+- No public write API. Nothing outside the signed-in web app can create,
+  change or delete data.
+
+## Pages
+
+- [Home](https://helix-intelligence-ai-six.vercel.app/)
+- [Request access](https://helix-intelligence-ai-six.vercel.app/sign-up)
+- [Notes for AI agents](https://helix-intelligence-ai-six.vercel.app/agents.md)
