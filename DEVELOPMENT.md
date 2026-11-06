@@ -32,7 +32,7 @@ The backend runs on Render (free tier). Configuration is in `render.yaml`.
 
 **Cold starts expected; first request after idle 10–30s:**
 The Render free web tier spins down instances after 15 minutes of inactivity, and Neon Postgres free compute also suspends when idle. As a result:
-- **First request after idle**: Takes ~10–30s (occasionally up to ~45s) while Render boots the container and Neon re-attaches Postgres.
+- **First request after idle**: Takes ~10–90s (74s measured on 2026-11-06) while Render boots the container and Neon re-attaches Postgres.
 - **Frontend handling**: The UI automatically handles cold-start latency:
   - `ProtectedRoute` shows a clean `"Starting Helix services…"` waking hold instead of a blank screen.
   - Auth bootstrap automatically retries once on network/gateway timeouts.
@@ -125,18 +125,32 @@ BACKEND_CORS_ORIGIN_REGEX=^https://helix-intelligenc[a-z0-9-]*-flutterdevelopers
 Vercel preview hosts look like
 `helix-intelligenc-git-<branch-hash>-flutterdevelopers25-6172s-projects.vercel.app`.
 `BACKEND_CORS_ORIGIN_REGEX` only takes effect once the backend running on
-Render includes it (W8). Until then, add the branch's exact preview origin to
+Render includes it (W8; Render deploys `main` only). Until then, add the branch's exact preview origin to
 `BACKEND_CORS_ORIGINS`. A rejected preflight returns **400** with no
 `access-control-allow-origin` header; the browser then reports a network error.
 
-#### Region
+#### Region and cold starts (verified 2026-11-06)
 
-Render and Neon should be in the same region. Prefer **Ohio (us-east-2)** for
-both: Neon's AWS `us-east-2` and Render's `ohio`. A cross-region hop adds
-latency to every query and makes cold-start timeouts more likely. Render's
-region cannot be changed in place: create the service in Ohio, copy the
-environment, switch the Vercel `VITE_API_BASE_URL` if the hostname changes,
-then retire the old one.
+Already colocated, so nothing to move: the Render web service
+`helix-intelligence-ai` runs in **Ohio** and the Neon project
+`helix-intelligence` is in **aws-us-east-2 (Ohio)**. Keep any new service or
+database there.
+
+The service is on Render's **free** plan, so it sleeps when idle. The first
+request after sleep took **~74 s** (`GET /health`); once awake,
+`GET /api/health` answers in ~0.3 s with `{"db":"connected"}`. A sign-up
+submitted during that wake-up can look broken. Optional ways to fix it, each
+a dashboard decision for the owner:
+
+- Keep-warm ping (free): an uptime monitor hitting `/health` every 5–10 min
+  (see "Health Check & Keep-Warm Options" above).
+- Set the service's **Health Check Path** to `/health` (currently empty).
+- Move to a paid instance type that does not sleep. Not done: the owner
+  prefers free/cheap plans until there are paying customers.
+
+Render deploys **`main` only** (auto-deploy on commit, PR previews off). Code
+on a feature branch, including `BACKEND_CORS_ORIGIN_REGEX` support, is not
+live on Render until it is merged to `main`.
 
 #### Verify sign-up against a deployment
 
