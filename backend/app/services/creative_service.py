@@ -642,10 +642,12 @@ async def create_custom_swipe_reference(db: AsyncSession, user: "User", data: di
         format=format_type,
         headline=headline,
         body=body,
-        cta=data.get("cta", "Learn More"),
+        # A manual reference has no Ad Library start date and no known CTA:
+        # leave both unknown instead of inventing "1 day" / "Learn More".
+        cta=(data.get("cta") or None),
         landing_domain=url[:100] if url else None,
         thumbnail_ratio="1:1" if format_type == "image" else "9:16",
-        days_active=1,
+        days_active=None,
         variant_count=1,
         impressions_est=None,
         is_estimated=False,
