@@ -64,6 +64,8 @@ every other source; spend, CTR and engagement are `null` unless Meta reports the
 | GET | `/api/boards` | `swipe_files` | The caller's boards (saved-ad collections) with counts. |
 | GET / POST | `/api/boards/share-links` | `swipe_files` | List / create guest links. Body `{collection, expires_in_days ∈ {1, 7, 30}}`; at most 5 active links per board (`409`). |
 | DELETE | `/api/boards/share-links/{id}` | `swipe_files` | Revoke (creator only; sets `revoked_at`, nothing is deleted). |
+| GET | `/api/boards/team` | `swipe_files` + `team_accounts` | Boards saved by current members (owner + `organization_members`) of the active workspace, with owner display name. Former members' boards are not listed. |
+| GET | `/api/boards/team/items?owner_id=&collection=` | `swipe_files` + `team_accounts` | Read-only items of one teammate's board (`404` for non-members or other workspaces). Writes stay with the owner. |
 | GET | `/api/public/boards/{token}` | none (token is the capability) | Read-only board view. Token = base64url `{l, o, e}` + HMAC-SHA256 with a key derived from `SECRET_KEY`. The MAC and expiry are checked before any query; RLS is then bound to the token's workspace only, and the link row must be unrevoked with the same expiry. Any failure is `404`. `Cache-Control: no-store`, `X-Robots-Tag: noindex`. Display fields only; `impressions_est` only for Meta-official rows; `days_active` stays `null` when unknown. Rotating `SECRET_KEY` invalidates every guest link. |
 
 ### Permanent ad archive — `/api/archive` (flag `discover`)

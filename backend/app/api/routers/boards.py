@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user, get_db, require_feature
 from app.models.user import User
-from app.services import board_share_service
+from app.services import board_share_service, team_board_service
 
 router = APIRouter(dependencies=[Depends(require_feature("swipe_files"))])
 guest_router = APIRouter()
@@ -51,6 +51,28 @@ async def revoke_share_link(
     current_user: User = Depends(get_current_user),
 ):
     return await board_share_service.revoke_link(db, current_user, link_id)
+
+
+# Team boards: readable by every current member, only with `team_accounts`.
+_team = [Depends(require_feature("team_accounts"))]
+
+
+@router.get("/team", dependencies=_team)
+async def list_team_boards(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return {"items": await team_board_service.list_team_boards(db, current_user)}
+
+
+@router.get("/team/items", dependencies=_team)
+async def get_team_board(
+    owner_id: str,
+    collection: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await team_board_service.get_team_board(db, current_user, owner_id, collection)
 
 
 @guest_router.get("/{token}")

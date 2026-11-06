@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useW8Copy } from "@/i18n/w8Product"
 import { BoardSharePanel } from "@/features/boards/BoardSharePanel"
+import { TeamBoardsPanel } from "@/features/boards/TeamBoardsPanel"
 import { creativeService } from "@/services"
 import { useAuth } from "@/context/AuthContext"
 import { useSearchContext } from "@/context/SearchContext"
@@ -402,6 +403,7 @@ export function SwipeFilesPage() {
       )}
 
       {!loading && creatives.length > 0 ? <BoardSharePanel /> : null}
+      {user?.feature_flags?.team_accounts === true ? <TeamBoardsPanel /> : null}
 
       {/* Grid of Saved Creatives */}
       {loading ? (

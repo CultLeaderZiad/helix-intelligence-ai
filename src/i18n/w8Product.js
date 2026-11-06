@@ -79,6 +79,12 @@ export const en = {
   archivedWithMedia: (d) => `Archived copy kept since ${d} (text and media)`,
   archivedTextOnly: (d) => `Archived copy kept since ${d} (text only)`,
   monitorsDigestNote: "Monitors re-run on their schedule. Besides each run's alert, you get one daily digest of all your monitors in Notifications, and by email for monitors with email turned on.",
+  teamBoardsTitle: "Team boards",
+  teamBoardsBody: "Boards saved by other people in this workspace. You can view them; only the owner can change or share a board.",
+  teamBoardsNone: "Nobody else in this workspace has saved a board yet.",
+  teamBoardsBy: (name, n) => `by ${name} · ${n} ${n === 1 ? "ad" : "ads"}`,
+  teamBoardsView: "View",
+  teamBoardsHide: "Hide",
 }
 
 export const ar = {
@@ -152,6 +158,12 @@ export const ar = {
   archivedWithMedia: (d) => `نسخة مؤرشفة محفوظة منذ ${d} (النص والوسائط)`,
   archivedTextOnly: (d) => `نسخة مؤرشفة محفوظة منذ ${d} (النص فقط)`,
   monitorsDigestNote: "تُعاد عمليات المراقبة وفق جدولها. إلى جانب تنبيه كل تشغيل، تصلك خلاصة يومية واحدة لكل عمليات المراقبة في الإشعارات، وبالبريد للمراقبات التي فعّلت فيها البريد.",
+  teamBoardsTitle: "لوحات الفريق",
+  teamBoardsBody: "لوحات حفظها أشخاص آخرون في مساحة العمل هذه. يمكنك عرضها؛ ولا يغيّرها أو يشاركها إلا مالكها.",
+  teamBoardsNone: "لم يحفظ أحد غيرك في مساحة العمل هذه لوحة بعد.",
+  teamBoardsBy: (name, n) => `بواسطة ${name} · ${n} إعلان`,
+  teamBoardsView: "عرض",
+  teamBoardsHide: "إخفاء",
 }
 
 const copy = { en, ar }

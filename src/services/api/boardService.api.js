@@ -21,6 +21,15 @@ const boardService = {
     return request(`/boards/share-links/${encodeURIComponent(linkId)}`, { method: "DELETE" })
   },
 
+  listTeamBoards() {
+    return request("/boards/team")
+  },
+
+  /** @param {string} ownerId @param {string} collection */
+  getTeamBoard(ownerId, collection) {
+    return request("/boards/team/items", { params: { owner_id: ownerId, collection } })
+  },
+
   /** Guest read: no sign-in needed; the token is the capability. @param {string} token */
   getGuestBoard(token) {
     return request(`/public/boards/${encodeURIComponent(token)}`)
