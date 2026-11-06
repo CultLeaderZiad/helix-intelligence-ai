@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from app.core import markdown
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from app.schemas.creative import Creative
@@ -62,9 +63,14 @@ async def unsave_creative_from_swipe_file(
 @router.get("/{creative_id}", response_model=Creative)
 async def get_creative(
     creative_id: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     from app.core.tenancy import get_user_org_ids
+    creative_id, as_md = markdown.split_md(creative_id)
     scope = await get_user_org_ids(db, current_user)
-    return await creative_service.get_creative_by_id(db, creative_id, user_org_ids=scope)
+    creative = await creative_service.get_creative_by_id(db, creative_id, user_org_ids=scope)
+    if markdown.wants_markdown(request, as_md):
+        return markdown.response(markdown.ad_document(creative))
+    return creative

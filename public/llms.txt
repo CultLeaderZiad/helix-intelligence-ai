@@ -23,7 +23,15 @@
 - No AI-generated ads or creative generation.
 - No access to your own ad accounts or their performance.
 - No public write API. Nothing outside the signed-in web app can create,
-  change or delete data.
+  change or delete data, or start a search.
+
+## For agents (read-only)
+
+- Read routes answer in Markdown with `Accept: text/markdown`, `?format=md`
+  or a `.md` suffix: stored search results, one ad, boards, monitor changes,
+  and guest board links. They use the signed-in user's session.
+- A read-only MCP server offers `search_ads`, `get_board`,
+  `list_monitor_changes` and `get_ad` over the same routes.
 
 ## Pages
 

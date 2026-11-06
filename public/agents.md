@@ -24,15 +24,31 @@ exists.
   carry no reach or spend.
 - Every provider is Meta-only. There is no Google, TikTok or LinkedIn data.
 
-## Access for agents
+## Competitor ads your agents can read
+
+- **Markdown views.** These read routes answer in Markdown when you send
+  `Accept: text/markdown`, add `?format=md`, or use the `.md` form:
+  stored search results (`/api/discovery/jobs/{id}/results.md`, or
+  `/api/discovery/stored-results?query=` for the latest finished search),
+  one ad (`/api/creatives/{id}.md`), your boards
+  (`/api/boards/items?collection=`), monitor changes
+  (`/api/monitors/events.md`) and guest board links
+  (`/api/public/boards/{token}.md`).
+- **Read-only MCP server** (`agents/mcp` in the repository) with four tools:
+  `search_ads`, `get_board`, `list_monitor_changes`, `get_ad`. It only reads
+  searches your workspace already ran; it never starts a search or spends
+  credits.
+- Both use the signed-in user's own session and the same workspace
+  row-level security and feature flags as the web app. Guest board links
+  need no sign-in but are read-only, expire, and can be revoked.
+
+## What agents cannot do
 
 - There is **no public write API**. Agents cannot create, change or delete
-  anything in Helix.
-- The HTTP API behind the web app requires a signed-in user of an approved
-  workspace and enforces row-level security per workspace. It is not a
-  public or stable integration surface.
+  anything in Helix, and cannot start searches.
 - There are no API keys. An earlier unrestricted API-key path was removed
-  and will not come back in that form.
+  and will not come back in that form; a read-only, single-workspace token
+  design is documented for if keys return.
 
 ## Contact
 

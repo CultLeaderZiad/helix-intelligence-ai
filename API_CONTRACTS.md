@@ -108,6 +108,22 @@ monitor's new / copy-changed / stopped ads since the last digest: always as
 an in-app notification (`type = monitor_digest`), and by email only when
 Resend is configured and email is on for at least one of those monitors.
 
+### Agent surface (read-only Markdown + MCP)
+
+Markdown (`text/markdown; charset=utf-8`, `Vary: Accept`) is returned when
+the request sends `Accept: text/markdown`, adds `?format=md`, or uses the
+`.md` form: `GET /api/discovery/jobs/{id}/results(.md)`,
+`GET /api/discovery/stored-results?query=` (latest finished search for that
+query in the caller's workspace; never starts a search; `404` if none),
+`GET /api/creatives/{id}(.md)`, `GET /api/boards/items?collection=`
+(caller's own board; JSON or Markdown), `GET /api/monitors/events(.md)`,
+`GET /api/public/boards/{token}(.md)`. Labels match the UI: run length
+`unknown` when null, text rubric (not a prediction), reach only for
+Meta-official rows. The read-only MCP server in `agents/mcp` (tools
+`search_ads`, `get_board`, `list_monitor_changes`, `get_ad`) calls only these
+GET routes with the user's own session token. No API keys exist; the design
+for read-only single-workspace tokens is in `agents/mcp/README.md`.
+
 ## 6. Account, team, support, notifications
 
 - `/api/account`: `profile` (GET/PATCH), `avatar`, `access`, `access-requests`,

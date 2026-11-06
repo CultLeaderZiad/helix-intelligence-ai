@@ -1,7 +1,8 @@
 """Board share links (owner side) and the guest read (no sign-in)."""
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
+from app.core import markdown
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +25,21 @@ async def list_boards(
     current_user: User = Depends(get_current_user),
 ):
     return {"items": await board_share_service.list_boards(db, current_user)}
+
+
+@router.get("/items")
+async def get_my_board(
+    collection: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """One of the caller's own boards (JSON, or Markdown for agents)."""
+    collection, as_md = markdown.split_md(collection)
+    board = await team_board_service.get_team_board(db, current_user, current_user.id, collection)
+    if markdown.wants_markdown(request, as_md):
+        return markdown.response(markdown.ads_document(f"Board: {board['board']}", board["items"]))
+    return board
 
 
 @router.post("/share-links")
@@ -76,8 +92,16 @@ async def get_team_board(
 
 
 @guest_router.get("/{token}")
-async def read_guest_board(token: str, response: Response, db: AsyncSession = Depends(get_db)):
+async def read_guest_board(token: str, request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    token, as_md = markdown.split_md(token)
     board = await board_share_service.read_guest_board(db, token)
+    if markdown.wants_markdown(request, as_md):
+        md = markdown.response(markdown.ads_document(
+            f"Board: {board['board']}", board["items"], meta=[f"Read-only guest link · expires {board['expires_at']}"]
+        ))
+        md.headers["Cache-Control"] = "no-store"
+        md.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return md
     # A capability URL: never cache it, never index it, never leak it onward.
     response.headers["Cache-Control"] = "no-store"
     response.headers["X-Robots-Tag"] = "noindex, nofollow"
