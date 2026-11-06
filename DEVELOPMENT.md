@@ -163,6 +163,20 @@ live on Render until it is merged to `main`.
 3. Sign up with a real inbox you own, then sign in. Expect `201`/`200` and a redirect into the app.
 4. If it shows "Starting Helix services…", Render is cold-starting; retry after ~30 s.
 
+#### Local frontend against the live API (http://localhost:3000)
+
+```bash
+pnpm dev:live
+```
+
+Runs the normal dev server on http://localhost:3000 in mode `live`.
+`.env.live` sets `HELIX_DEV_API_TARGET=https://helix-intelligence-ai.onrender.com`,
+so the Vite proxy forwards `/api` and `/uploads` to Render instead of a local
+FastAPI on :8000. The browser still calls same-origin `/api`, so `origin.js`
+and CORS are unchanged. `HELIX_DEV_API_TARGET` is not `VITE_`-prefixed and
+never reaches the bundle. Anything you do here (sign-ups, searches) is real
+production data. `pnpm dev` keeps using the local backend.
+
 ### ⚠️ Production frontend ↔ backend connectivity
 
 The Vite dev proxy in `vite.config.js` (`/api → http://127.0.0.1:8000`) **only works during local development**. It has no effect in a production build.

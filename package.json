@@ -6,6 +6,7 @@
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "dev": "vite",
+    "dev:live": "vite --mode live",
     "build": "node scripts/generate_docs_git_meta.js && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p jsconfig.json --pretty false",
