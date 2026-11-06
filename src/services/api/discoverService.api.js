@@ -16,7 +16,7 @@ const discoverService = {
    * @param {{signal?: AbortSignal}} [options]
    */
   search(params = {}, { signal } = {}) {
-    const { query = "", filters = {}, sort = "composite_desc", query_language = "en" } = params
+    const { query = "", filters = {}, sort = "days_active_desc", query_language = "en" } = params
     const finalQuery = query.trim() || "*"
     return request("/discovery/jobs", {
       method: "POST",

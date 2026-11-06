@@ -52,10 +52,10 @@ export function ResultsTable({ items, selectedId, onSelect }) {
               Platform
             </th>
             <th scope="col" className="label-mono w-[112px] px-2 py-2 font-normal">
-              Composite
+              Text rubric
             </th>
-            <th scope="col" className="label-mono w-[80px] px-2 py-2 text-right font-normal" title="Estimated impressions from engagement proxy metrics">
-              Impr. (Est.)
+            <th scope="col" className="label-mono w-[80px] px-2 py-2 text-right font-normal" title="Upper bound of the impression range Meta reports. Shown only for ads from Meta's official Ad Library API.">
+              Meta reach ≤
             </th>
             <th scope="col" className="label-mono w-[52px] px-2 py-2 text-right font-normal">
               ER
@@ -126,9 +126,10 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                     <ScoreBar value={c.scores.composite} />
                   )}
                 </td>
-                <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted" title="Estimated impressions">
-                  ~{formatCompact(c.metrics?.impressions_est)}
-                  {c.metrics?.is_impression_estimate && <span className="ml-1 text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
+                <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted">
+                  {c.metrics?.impressions_est === null || c.metrics?.impressions_est === undefined
+                    ? "—"
+                    : `≤ ${formatCompact(c.metrics.impressions_est)}`}
                 </td>
                 <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted">
                   {c.metrics?.engagement_rate === null ||

@@ -37,13 +37,14 @@ async def get_job_results(
     job_id: str,
     page: int = 1,
     page_size: int = 20,
+    sort: str = creative_service.DEFAULT_CREATIVE_SORT,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     from app.core.tenancy import get_user_org_ids
     scope = await get_user_org_ids(db, current_user)
     return await creative_service.list_creatives(
-        db, job_id=job_id, page=page, page_size=page_size, user_org_ids=scope
+        db, job_id=job_id, page=page, page_size=page_size, user_org_ids=scope, sort=sort
     )
 
 @router.get("/jobs", response_model=Paginated[Job])

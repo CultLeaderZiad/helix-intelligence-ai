@@ -18,15 +18,31 @@ from app.core.observability import log_event
 
 logger = logging.getLogger(__name__)
 
+# Result orderings offered by Discover. Rubric sorts are a text rubric, not
+# measured performance; impressions_desc uses Meta's reported upper bound and
+# is null for every other source. Nulls always sort last; id breaks ties.
+CREATIVE_SORTS = {
+    "days_active_desc": lambda: Creative.days_active.desc().nulls_last(),
+    "first_seen_desc": lambda: Creative.first_seen.desc().nulls_last(),
+    "composite_desc": lambda: CreativeScore.composite.desc().nulls_last(),
+    "hook_desc": lambda: CreativeScore.hook.desc().nulls_last(),
+    "impressions_desc": lambda: Creative.impressions_est.desc().nulls_last(),
+}
+DEFAULT_CREATIVE_SORT = "days_active_desc"
+
+
 async def list_creatives(
     db: AsyncSession,
     job_id: Optional[str] = None,
     brand_id: Optional[str] = None,
     page: int = 1,
     page_size: int = 20,
-    user_org_ids: Optional[List[str]] = None
+    user_org_ids: Optional[List[str]] = None,
+    sort: Optional[str] = None,
 ) -> Paginated[CreativeSchema]:
     offset, page_size = pagination_bounds(page, page_size)
+    if sort is not None and sort not in CREATIVE_SORTS:
+        raise HTTPException(status_code=422, detail={"code": "invalid_sort", "message": "Unsupported sort order."})
     # Build filters dynamically
     filters = []
     if job_id:
@@ -50,7 +66,8 @@ async def list_creatives(
     )
     if filters:
         query = query.where(*filters)
-    query = query.order_by(Creative.id).offset(offset).limit(page_size)
+    ordering = [CREATIVE_SORTS[sort]()] if sort else []
+    query = query.order_by(*ordering, Creative.id).offset(offset).limit(page_size)
     
     result = await db.execute(query)
     rows = result.all()

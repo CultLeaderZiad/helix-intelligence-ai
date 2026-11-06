@@ -33,11 +33,11 @@ export const SPEND_BANDS = [
 ]
 
 export const SORT_OPTIONS = [
-  { value: "composite_desc", label: "Composite score" },
-  { value: "hook_desc", label: "Hook score" },
   { value: "days_active_desc", label: "Days active" },
   { value: "first_seen_desc", label: "Newest" },
-  { value: "impressions_desc", label: "Est. impressions" },
+  { value: "composite_desc", label: "Text rubric (0–10)" },
+  { value: "hook_desc", label: "Hook rubric (0–10)" },
+  { value: "impressions_desc", label: "Meta reach (upper bound)" },
 ]
 
 /** Score thresholds drive accent usage — accent means "notable", not "exists". */

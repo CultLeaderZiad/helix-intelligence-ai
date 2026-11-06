@@ -330,14 +330,13 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
               <StatBlock
                 label={
                   <span className="flex items-center gap-1">
-                    Impressions
-                    {data.metrics?.is_impression_estimate && <span className="text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
+                    Meta reach (upper bound)
                   </span>
                 }
                 value={
                   data.metrics?.impressions_est === null || data.metrics?.impressions_est === undefined
                     ? t("unavailable")
-                    : formatCompact(data.metrics.impressions_est)
+                    : `≤ ${formatCompact(data.metrics.impressions_est)}`
                 }
               />
               <StatBlock

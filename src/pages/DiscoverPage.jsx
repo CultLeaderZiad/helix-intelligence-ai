@@ -66,7 +66,7 @@ export function DiscoverPage() {
       return "en"
     }
   })
-  const [sort, setSort] = useState("composite_desc")
+  const [sort, setSort] = useState("days_active_desc")
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS)
   const [filtersOpen, setFiltersOpen] = useState(false)
