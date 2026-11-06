@@ -69,3 +69,15 @@ async def test_members_read_each_others_boards_but_former_members_and_strangers_
         with pytest.raises(HTTPException) as outside:
             await svc.get_team_board(db, stranger, owner.id, "Hooks")
         assert outside.value.status_code == 404
+
+
+def test_team_list_owner_row_does_not_read_a_missing_organization_column():
+    """GET /account/team returned 500 (AttributeError) when the workspace owner
+    was not in organization_members: it read Organization.created_at, which
+    does not exist. The owner row now uses the owner's account date."""
+    from app.services import team_service
+
+    assert not hasattr(Organization, "created_at")
+    source = inspect.getsource(team_service.list_team)
+    assert "org.created_at" not in source
+    assert 'getattr(owner_user, "created_at", None)' in source

@@ -58,7 +58,7 @@ async def list_team(db: AsyncSession, user: User) -> Dict[str, Any]:
             "user_id": owner_user.id,
             "email": owner_user.email,
             "role": "owner",
-            "joined_at": _format_utc_iso(org.created_at) or ""
+            "joined_at": _format_utc_iso(getattr(owner_user, "created_at", None)) or ""
         })
 
     # Fetch pending invites
