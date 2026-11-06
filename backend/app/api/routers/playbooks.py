@@ -7,7 +7,7 @@ from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 from app.services import playbook_service
 
-router = APIRouter(dependencies=[Depends(require_feature("intelligence"))])
+router = APIRouter(dependencies=[Depends(require_feature("swipe_files"))])
 
 class PlaybookCompileRequest(BaseModel):
     brand_name: str

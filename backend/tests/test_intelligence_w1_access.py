@@ -91,15 +91,15 @@ async def test_request_approval_enables_only_granted_flags_and_revoke_keeps_the_
     suffix = _suffix()
     async with worker_session_maker() as db:
         admin, owner, org, plan = await _people(db, suffix)
-        request = await submit_access_request(db, owner, org.id, ["discover", "intelligence"], "Need search")
+        request = await submit_access_request(db, owner, org.id, ["discover", "monitors"], "Need search")
         assert request["status"] == "pending"
         approved = await approve_access_request(
-            db, admin, request["id"], plan.id, {"discover": True, "intelligence": False},
+            db, admin, request["id"], plan.id, {"discover": True, "monitors": False},
         )
         assert approved["status"] == "approved"
         await assert_can_spend(db, owner, required_credits=0, feature_name="discover", lock_row=False)
         with pytest.raises(HTTPException) as blocked:
-            await assert_can_spend(db, owner, required_credits=0, feature_name="intelligence", lock_row=False)
+            await assert_can_spend(db, owner, required_credits=0, feature_name="monitors", lock_row=False)
         assert blocked.value.detail["code"] == "feature_disabled"
         revoked = await revoke_organization_access(db, admin, org.id, "stop")
         assert revoked["data_retained"] is True

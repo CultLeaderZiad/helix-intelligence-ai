@@ -59,12 +59,9 @@ class PlanCreate(BaseModel):
     price_per_credit: Optional[float] = 0.01
     feature_flags: Dict[str, bool] = {
         "discover": True,
-        "intelligence": True,
-        "create": True,
-        "performance": True,
         "swipe_files": True,
-        "team_accounts": True,
-        "public_api": False
+        "monitors": True,
+        "team_accounts": False,
     }
 
 class PlanUpdate(BaseModel):

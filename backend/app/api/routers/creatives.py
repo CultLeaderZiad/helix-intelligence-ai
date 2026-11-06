@@ -7,7 +7,7 @@ from app.services import creative_service
 from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 
-router = APIRouter(dependencies=[Depends(require_feature("intelligence"))])
+router = APIRouter(dependencies=[Depends(require_feature("discover"))])
 
 @router.get("", response_model=Paginated[Creative])
 @router.get("/", response_model=Paginated[Creative])

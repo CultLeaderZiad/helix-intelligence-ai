@@ -6,12 +6,8 @@ import { adminAccessLabel, adminMessage } from "@/i18n/adminMessages"
 
 const FEATURES = [
   { key: "discover", label: "Discover Search" },
-  { key: "intelligence", label: "Brand Intelligence" },
-  { key: "create", label: "Creative Generation" },
-  { key: "performance", label: "Performance Analytics" },
   { key: "swipe_files", label: "Swipe Files" },
   { key: "team_accounts", label: "Team Accounts" },
-  { key: "public_api", label: "Public API" },
   { key: "monitors", label: "Monitors" },
 ]
 

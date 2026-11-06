@@ -68,20 +68,9 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     if platform_admin:
         effective_flags = {
             "discover": True,
-            "intelligence": True,
-            "create": True,
-            "performance": True,
             "swipe_files": True,
             "team_accounts": True,
-            "public_api": True,
-            "scout": True,
-            "leadgen": True,
             "monitors": True,
-            "ai_insights": True,
-            "create_media": True,
-            "advanced_scoring": True,
-            "bulk_export": True,
-            "custom_webhooks": True,
         }
         daily_limit = None
         daily_remaining = 999999.0

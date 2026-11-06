@@ -207,10 +207,6 @@ export function SupportFeedbackModal({ isOpen, onClose, onSuccess, initialContex
                 className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 text-xs focus:outline-none focus:border-teal-500/60"
               >
                 <option value="discover">{text("featureDiscover")}</option>
-                <option value="intelligence">{text("featureIntelligence")}</option>
-                <option value="create">{text("featureCreate")}</option>
-                <option value="performance">{text("featurePerformance")}</option>
-                <option value="billing">{text("featureBilling")}</option>
                 <option value="general">{text("featureGeneral")}</option>
               </select>
             </div>

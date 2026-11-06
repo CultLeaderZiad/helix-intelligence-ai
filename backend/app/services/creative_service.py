@@ -295,7 +295,7 @@ async def generate_patterns_for_recent_creatives(
         db,
         user=user,
         required_credits=cost,
-        feature_name="intelligence",
+        feature_name="discover",
         lock_row=False
     )
     provider = await AIRouter.get_provider_for_user(db, user)

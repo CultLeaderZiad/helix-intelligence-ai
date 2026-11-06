@@ -90,15 +90,9 @@ async def _organization_access_status(db: AsyncSession, org_id: Optional[str]) -
 
 GRANTABLE_FEATURES = frozenset({
     "discover",
-    "intelligence",
-    "create",
-    "performance",
     "swipe_files",
-    "team_accounts",
-    "public_api",
-    "scout",
-    "leadgen",
     "monitors",
+    "team_accounts",
 })
 
 # Credential-bearing keys live in organizations.custom_feature_flags (Hunter

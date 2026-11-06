@@ -436,21 +436,10 @@ async def assert_can_spend(
             price_per_credit=0.0,
             feature_flags={
                 "discover": True,
-                "intelligence": True,
-                "create": True,
-                "performance": True,
                 "swipe_files": True,
                 "team_accounts": True,
-                "public_api": True,
-                "scout": True,
-                "leadgen": True,
                 "monitors": True,
-                "ai_insights": True,
-                "create_media": True,
                 "deep_search": True,
-                "advanced_scoring": True,
-                "bulk_export": True,
-                "custom_webhooks": True,
             }
         )
         return org, admin_plan
