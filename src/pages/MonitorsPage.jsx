@@ -23,6 +23,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { useMonitors } from "@/hooks/useMonitors"
 import { useSearchContext } from "@/context/SearchContext"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
+import { useW8Copy } from "@/i18n/w8Product"
 
 const CADENCES = [
   { value: "every_6h", label: "Every 6 hours" },
@@ -254,6 +255,7 @@ function EventRow({ event }) {
 
 export function MonitorsPage() {
   const navigate = useNavigate()
+  const w8 = useW8Copy()
   const [searchParams] = useSearchParams()
   const focusId = searchParams.get("id")
   const { latestSearch } = useSearchContext()
@@ -419,13 +421,15 @@ export function MonitorsPage() {
               {monitors.length === 0 ? (
                 <EmptyState
                   icon={Eye}
-                  status="nothing watched"
-                  title="No monitors yet"
-                  description="A monitor re-runs a Discover search on a schedule and tells you what changed since last time — new ads, copy edits, and ads that stopped running."
+                  status={w8.monitorsEmptyStatus}
+                  title={w8.monitorsEmptyTitle}
+                  description={latestSearch?.query ? w8.monitorsEmptyBodyWithSearch : w8.monitorsEmptyBody}
                   action={
-                    <Button size="sm" variant="outline" onClick={() => navigate("/discover")}>
-                      Explore in Discover first
-                    </Button>
+                    latestSearch?.query ? null : (
+                      <Button size="sm" variant="primary" onClick={() => navigate("/discover")}>
+                        {w8.monitorsEmptyCta}
+                      </Button>
+                    )
                   }
                 />
               ) : (

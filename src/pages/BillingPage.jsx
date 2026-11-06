@@ -2,9 +2,20 @@ import { useState } from "react"
 import { useLanguage } from "@/context/LanguageContext"
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess"
 import { Button } from "@/components/ui/Button"
+import { useAuth } from "@/context/AuthContext"
+import { useW8Copy } from "@/i18n/w8Product"
+
+const FEATURES = [
+  { flag: "discover", copy: "featureDiscover" },
+  { flag: "monitors", copy: "featureMonitors" },
+  { flag: "swipe_files", copy: "featureBoards" },
+]
 
 export function BillingPage() {
   const { t } = useLanguage()
+  const w8 = useW8Copy()
+  const { user } = useAuth()
+  const flags = user?.feature_flags ?? {}
   const { access, usage, loading, error, submitting, refresh, requestAccess } = useWorkspaceAccess()
   const [note, setNote] = useState("")
   const [requestError, setRequestError] = useState(false)
@@ -26,7 +37,7 @@ export function BillingPage() {
         <h1 className="text-xl font-semibold text-text">{t("accessUsage")}</h1>
         <Button onClick={refresh} disabled={loading}>{t("refresh")}</Button>
       </div>
-      <p className="text-sm leading-relaxed text-text-muted">{t("accessDescription")}</p>
+      <p className="text-sm leading-relaxed text-text-muted">{w8.accessIntro}</p>
       {loading ? <p role="status">{t("loading")}</p> : error ? <p role="alert" className="text-danger">{t("requestFailed")}</p> : (
         <>
           <p className="border border-border bg-surface p-4" role="status">{t("accessStatusLabel")}: {statusKeys[status] ? t(statusKeys[status]) : t("unknownValue")}</p>
@@ -38,6 +49,25 @@ export function BillingPage() {
               {requestError && <p role="alert" className="text-sm text-danger">{t("requestFailed")}</p>}
               {sent && <p role="status" className="text-sm">{t("accessRequestSent")}</p>}
             </form>
+          )}
+          <div className="space-y-2 border border-border bg-surface p-4 text-sm">
+            <h2 className="font-semibold">{w8.accessFeaturesTitle}</h2>
+            <ul className="space-y-1.5">
+              {FEATURES.map(({ flag, copy }) => (
+                <li key={flag} className="flex items-baseline gap-3">
+                  <span className={flags[flag] === true ? "label-mono w-14 shrink-0 text-success" : "label-mono w-14 shrink-0 text-text-faint"}>
+                    {flags[flag] === true ? w8.accessGranted : w8.accessNotGranted}
+                  </span>
+                  <span className="text-text-muted">{w8[copy]}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          {status !== "approved" && (
+            <div className="space-y-1 border border-border bg-surface p-4 text-sm">
+              <h2 className="font-semibold">{w8.accessNextTitle}</h2>
+              <p className="text-text-muted">{w8.accessNextBody}</p>
+            </div>
           )}
           <div className="space-y-2 border border-border bg-surface p-4 text-sm">
             <h2 className="font-semibold">{t("recordedUsage")}</h2>

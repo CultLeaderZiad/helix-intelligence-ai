@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import { useW8Copy } from "@/i18n/w8Product"
 import { creativeService } from "@/services"
 import { useAuth } from "@/context/AuthContext"
 import { useSearchContext } from "@/context/SearchContext"
@@ -27,6 +28,8 @@ export function SwipeFilesPage() {
   const { user } = useAuth()
   const { latestSearch } = useSearchContext()
   const { t } = useLanguage()
+  const w8 = useW8Copy()
+  const navigate = useNavigate()
 
   const [creatives, setCreatives] = useState([])
   const [loading, setLoading] = useState(true)
@@ -183,11 +186,9 @@ export function SwipeFilesPage() {
     return (
       <div className="p-12 max-w-4xl mx-auto text-center space-y-4 font-sans">
         <Bookmark className="w-12 h-12 text-slate-500 mx-auto" />
-        <h2 className="text-xl font-bold text-text">Swipe Files Feature Locked</h2>
-        <p className="text-sm text-text-muted max-w-md mx-auto">
-          Swipe files stay off until a platform admin grants that feature for this workspace.
-        </p>
-        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">{t("requestAccess")}</Link>
+        <h2 className="text-xl font-bold text-text">{w8.boardsLockedTitle}</h2>
+        <p className="text-sm text-text-muted max-w-md mx-auto">{w8.boardsLockedBody}</p>
+        <Link to="/access" className="text-sm text-accent hover:underline">{w8.requestAccess}</Link>
       </div>
     )
   }
@@ -407,10 +408,9 @@ export function SwipeFilesPage() {
       ) : creatives.length === 0 ? (
         <div className="py-16 text-center bg-surface border border-border rounded-xl space-y-3">
           <SearchX className="w-10 h-10 text-text-faint mx-auto" />
-          <h3 className="text-base font-bold text-text">{t("swipeEmpty", "Your swipe file is empty")}</h3>
-          <p className="text-xs text-text-muted max-w-sm mx-auto">
-            {t("swipeEmptyDesc", "Bookmark winning creatives while researching on Discover or click 'Add Ad Link' above to build your collection.")}
-          </p>
+          <h3 className="text-base font-bold text-text">{w8.boardsEmptyTitle}</h3>
+          <p className="text-xs text-text-muted max-w-sm mx-auto">{w8.boardsEmptyBody}</p>
+          <Button size="sm" variant="primary" onClick={() => navigate("/discover")}>{w8.boardsEmptyCta}</Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

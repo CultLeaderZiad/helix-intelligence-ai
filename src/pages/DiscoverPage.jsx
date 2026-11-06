@@ -21,6 +21,7 @@ import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 import w5Discover from "@/i18n/w5Discover"
+import { useW8Copy } from "@/i18n/w8Product"
 
 /* Country is sent with the search; run length and the text-rubric minimum
    filter the stored results. Platform, format and spend-band controls were
@@ -58,6 +59,7 @@ export function DiscoverPage() {
   const setSearchSession = /** @type {(session: object) => void} */ (selectSearchSession)
   const { t, lang } = useLanguage()
   const copy = w5Discover[lang] ?? w5Discover.en
+  const w8 = useW8Copy()
   const [query, setQuery] = useState(() => searchParams.get("q") || latestSearch?.query || "")
   const [queryLanguage, setQueryLanguage] = useState(() => {
     try {
@@ -358,16 +360,17 @@ export function DiscoverPage() {
             {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile ? (
               <EmptyState
                 icon={Radar}
-                title={t("noRunYet")}
-                description={t("noRunYetDesc")}
+                size="lg"
+                status={w8.discoverEmptyStatus}
+                title={w8.discoverEmptyTitle}
+                description={w8.discoverEmptyBody}
                 action={
                   <Button
                     size="sm"
                     variant="primary"
-                    onClick={runDiscovery}
-                    disabled={!query.trim()}
-                   className="">
-                    {copy.runSearch}
+                    onClick={() => (query.trim() ? runDiscovery() : document.getElementById("tour-search-input")?.focus())}
+                    className="">
+                    {w8.discoverEmptyCta}
                   </Button>
                 }
                className=""/>
