@@ -1074,6 +1074,16 @@ async def _run_discovery_pipeline(
                 job.record_count = saved_creatives
                 job.elapsed_ms = int((time.time() - start_time) * 1000)
                 await db.commit()
+                if saved_creatives and settings.ARCHIVE_ENABLED:
+                    # Permanent copy runs as its own work item so media
+                    # downloads never hold up the search result.
+                    try:
+                        from app.services.work_outbox import enqueue_work
+                        await enqueue_work(db, kind="archive", job_id=job_id, org_id=org_id,
+                                           idempotency_key=f"archive:{job_id}")
+                    except Exception as archive_err:
+                        log_event(logger, "discover_archive_enqueue_failed", error=archive_err,
+                                  job_id=job_id, tenant_id=org_id)
             
             if usage_log_id:
                 await mark_api_usage_status(db, usage_log_id, "success" if completed else "failed")

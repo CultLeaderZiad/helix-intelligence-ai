@@ -183,6 +183,16 @@ class Settings(BaseSettings):
     WORK_LEASE_S: int = int(os.getenv("WORK_LEASE_S", "120"))
     WORK_MAX_ATTEMPTS: int = int(os.getenv("WORK_MAX_ATTEMPTS", "3"))
     DISCOVER_JOB_DEADLINE_S: int = int(os.getenv("DISCOVER_JOB_DEADLINE_S", "600"))
+    # Permanent ad archive (see archive_service). The per-workspace cap bounds
+    # storage; media larger than the byte cap keeps its text only.
+    ARCHIVE_ENABLED: bool = os.getenv("ARCHIVE_ENABLED", "true").lower() == "true"
+    ARCHIVE_MAX_ENTRIES_PER_ORG: int = int(os.getenv("ARCHIVE_MAX_ENTRIES_PER_ORG", "5000"))
+    ARCHIVE_MAX_MEDIA_BYTES: int = int(os.getenv("ARCHIVE_MAX_MEDIA_BYTES", str(15 * 1024 * 1024)))
+    ARCHIVE_MEDIA_HOST_SUFFIXES: tuple = tuple(
+        h.strip().lower() for h in os.getenv(
+            "ARCHIVE_MEDIA_HOST_SUFFIXES", "fbcdn.net,fbsbx.com,cdninstagram.com,facebook.com"
+        ).split(",") if h.strip()
+    )
     AI_MAX_OUTPUT_TOKENS: int = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "1024"))
     AI_CALL_TIMEOUT_S: float = float(os.getenv("AI_CALL_TIMEOUT_S", "20"))
     AI_CALL_DEADLINE_S: float = float(os.getenv("AI_CALL_DEADLINE_S", "45"))

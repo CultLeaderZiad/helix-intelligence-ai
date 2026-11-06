@@ -25,6 +25,7 @@ from app.api.routers import (
     uploads,
     monitors,
     boards,
+    archive,
 )
 
 @asynccontextmanager
@@ -105,6 +106,7 @@ app.include_router(playbooks.router, prefix=f"{settings.API_V1_STR}/playbooks", 
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", tags=["monitors"])
 app.include_router(boards.router, prefix=f"{settings.API_V1_STR}/boards", tags=["boards"])
+app.include_router(archive.router, prefix=f"{settings.API_V1_STR}/archive", tags=["archive"])
 app.include_router(boards.guest_router, prefix=f"{settings.API_V1_STR}/public/boards", tags=["boards"])
 
 # Locally stored media. This is served by a router rather than a StaticFiles

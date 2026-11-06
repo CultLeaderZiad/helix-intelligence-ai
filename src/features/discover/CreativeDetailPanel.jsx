@@ -1,7 +1,7 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { X, ExternalLink, Play, Image as ImageIcon, Layers, Bookmark, Check } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
-import { creativeService } from "@/services"
+import { archiveService, creativeService } from "@/services"
 import { useAsync } from "@/hooks/useAsync"
 import { Button } from "@/components/ui/Button"
 import { Tag } from "@/components/ui/Tag"
@@ -177,6 +177,18 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
   const showSwipeOption = user?.feature_flags?.swipe_files === true
 
+  /* The permanent copy is made in the background after a search; until it
+     exists (404) nothing is shown rather than a promise. */
+  const [archived, setArchived] = useState(null)
+  useEffect(() => {
+    let live = true
+    setArchived(null)
+    if (creativeId) {
+      archiveService.forCreative(creativeId).then((entry) => live && setArchived(entry)).catch(() => {})
+    }
+    return () => { live = false }
+  }, [creativeId])
+
   const handleToggleSave = async () => {
     if (!creativeId || saving) return
     setSaving(true)
@@ -294,6 +306,11 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
               <StatBlock label="First seen" value={formatDate(data.first_seen)} />
               <StatBlock label="Last seen" value={formatDate(data.last_seen)} />
             </div>
+            {archived ? (
+              <p className="font-mono text-[11px] text-text-faint" role="note">
+                {(archived.media_status === "stored" ? w8.archivedWithMedia : w8.archivedTextOnly)(formatDate(archived.archived_at))}
+              </p>
+            ) : null}
 
             <InsightBlock creative={data} />
 

@@ -276,7 +276,9 @@ async def retries_remaining(job_id: str) -> bool:
         item = (
             await db.execute(
                 select(WorkItem)
-                .where(WorkItem.job_id == job_id)
+                # Follow-up work (the archive copy) shares the job id; only
+                # the search's own item decides whether the search retries.
+                .where(WorkItem.job_id == job_id, WorkItem.kind == "discover")
                 .order_by(WorkItem.created_at.desc())
             )
         ).scalars().first()
@@ -478,5 +480,10 @@ async def _dispatch(kind, job_id, payload, org_id, user_id, item_id, owner, atte
     if kind == "monitor":
         from app.services.monitor_service import run_monitor
         await run_monitor(job_id)
+        return
+    if kind == "archive":
+        from app.services.archive_service import archive_job
+        async with async_session_maker() as db:
+            await archive_job(db, job_id, org_id)
         return
     raise RuntimeError(f"unknown work kind {kind}")

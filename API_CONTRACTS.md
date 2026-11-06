@@ -66,6 +66,28 @@ every other source; spend, CTR and engagement are `null` unless Meta reports the
 | DELETE | `/api/boards/share-links/{id}` | `swipe_files` | Revoke (creator only; sets `revoked_at`, nothing is deleted). |
 | GET | `/api/public/boards/{token}` | none (token is the capability) | Read-only board view. Token = base64url `{l, o, e}` + HMAC-SHA256 with a key derived from `SECRET_KEY`. The MAC and expiry are checked before any query; RLS is then bound to the token's workspace only, and the link row must be unrevoked with the same expiry. Any failure is `404`. `Cache-Control: no-store`, `X-Robots-Tag: noindex`. Display fields only; `impressions_est` only for Meta-official rows; `days_active` stays `null` when unknown. Rotating `SECRET_KEY` invalidates every guest link. |
 
+### Permanent ad archive — `/api/archive` (flag `discover`)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/archive` | Paginated archive entries for the caller's workspace (`brand` filter optional). Includes `cap_per_workspace`. |
+| GET | `/api/archive/by-creative/{creative_id}` | The archived copy of one creative, or `404` until the background copy exists. |
+
+After a Discover search succeeds with results, an `archive` work item copies
+every ad into `ad_archive`: text always; media only over https from Meta CDN
+hosts (`ARCHIVE_MEDIA_HOST_SUFFIXES`, default `fbcdn.net, fbsbx.com,
+cdninstagram.com, facebook.com`) through `safe_fetch`, up to
+`ARCHIVE_MAX_MEDIA_BYTES` (default 15 MB) per file. Media goes to private R2
+when `R2_*` is configured, else the guarded `/uploads` directory, and is read
+back through short-lived signed URLs. `media_status` is one of `stored`,
+`too_large`, `not_allowed`, `failed`, `none`.
+
+**Per-workspace cap:** `ARCHIVE_MAX_ENTRIES_PER_ORG` (default 5000). Past the
+cap new ads are not archived (logged as `ad archive cap reached`); existing
+entries keep being refreshed. Entries are keyed by Ad Library id (or a text
+hash) per workspace, so re-running a search does not duplicate them.
+`ARCHIVE_ENABLED=false` turns the copy off.
+
 ## 5. Monitors — `/api/monitors` (flag `monitors`)
 
 CRUD on saved competitor watches, `POST /{id}/run`, `GET /events`, and

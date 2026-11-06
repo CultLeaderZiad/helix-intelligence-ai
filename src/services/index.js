@@ -13,6 +13,7 @@ import playbookApi from "./api/playbookService.api"
 import { updatesApi } from "./api/updatesService.api"
 import monitorApi from "./api/monitorService.api"
 import boardApi from "./api/boardService.api"
+import archiveApi from "./api/archiveService.api"
 
 export const discoverService = discoverApi
 export const creativeService = creativeApi
@@ -25,5 +26,6 @@ export const playbookService = playbookApi
 export const updatesService = updatesApi
 export const monitorService = monitorApi
 export const boardService = boardApi
+export const archiveService = archiveApi
 
 export { ServiceError } from "./http"

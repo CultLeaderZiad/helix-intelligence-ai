@@ -76,6 +76,8 @@ export const en = {
   guestRubric: "Text rubric",
   guestOpenSource: "View in Ad Library",
   guestFooter: "Shared from Helix Intelligence. Run length comes from the Meta Ad Library start date; the rubric scores the ad text only.",
+  archivedWithMedia: (d) => `Archived copy kept since ${d} (text and media)`,
+  archivedTextOnly: (d) => `Archived copy kept since ${d} (text only)`,
 }
 
 export const ar = {
@@ -146,6 +148,8 @@ export const ar = {
   guestRubric: "تقييم النص",
   guestOpenSource: "عرض في مكتبة الإعلانات",
   guestFooter: "تمت المشاركة من Helix Intelligence. مدة التشغيل مأخوذة من تاريخ البدء في مكتبة إعلانات Meta؛ والتقييم يخص نص الإعلان فقط.",
+  archivedWithMedia: (d) => `نسخة مؤرشفة محفوظة منذ ${d} (النص والوسائط)`,
+  archivedTextOnly: (d) => `نسخة مؤرشفة محفوظة منذ ${d} (النص فقط)`,
 }
 
 const copy = { en, ar }
