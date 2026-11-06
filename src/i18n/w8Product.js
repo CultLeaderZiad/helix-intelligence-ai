@@ -124,6 +124,21 @@ export const en = {
   cardAgentsMarkdown: "Read routes answer in Markdown",
   cardAgentsMcp: "Read-only MCP tools",
   cardAgentsFooter: "Uses the signed-in user's session, workspace and access rules.",
+  footerTagline: "Competitor ad research for Meta: see which ads have run the longest, watch for changes, and keep the ones worth studying.",
+  footerProduct: "Product",
+  footerChangelog: "Changelog & Updates",
+  footerCompany: "Company",
+  footerAbout: "About",
+  footerApiReference: "API reference",
+  footerRequestAccess: "Request access",
+  footerAgents: "Notes for AI agents",
+  footerLegalTitle: "Legal",
+  footerTerms: "Terms of Service",
+  footerPrivacy: "Privacy Policy",
+  footerSubprocessors: "Sub-processors & Security",
+  footerCookies: "Cookie Policy",
+  footerCopyright: "© 2026 Helix. All rights reserved.",
+  footerStatus: "Beta preview · Invite-only",
 }
 
 export const ar = {
@@ -242,6 +257,21 @@ export const ar = {
   cardAgentsMarkdown: "تجيب مسارات القراءة بصيغة Markdown",
   cardAgentsMcp: "أدوات MCP للقراءة فقط",
   cardAgentsFooter: "تستخدم جلسة المستخدم المسجّل ومساحة عمله وقواعد وصوله.",
+  footerTagline: "بحث في إعلانات المنافسين على Meta: اعرف أي الإعلانات استمرت أطول، وراقب التغييرات، واحتفظ بما يستحق الدراسة.",
+  footerProduct: "المنتج",
+  footerChangelog: "سجل التغييرات والتحديثات",
+  footerCompany: "الشركة",
+  footerAbout: "نبذة",
+  footerApiReference: "مرجع الواجهة البرمجية",
+  footerRequestAccess: "اطلب الوصول",
+  footerAgents: "ملاحظات لوكلاء الذكاء الاصطناعي",
+  footerLegalTitle: "قانوني",
+  footerTerms: "شروط الخدمة",
+  footerPrivacy: "سياسة الخصوصية",
+  footerSubprocessors: "المعالِجون الفرعيون والأمان",
+  footerCookies: "سياسة ملفات تعريف الارتباط",
+  footerCopyright: "© 2026 Helix. جميع الحقوق محفوظة.",
+  footerStatus: "نسخة تجريبية · بالدعوة فقط",
 }
 
 const copy = { en, ar }
