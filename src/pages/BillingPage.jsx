@@ -71,7 +71,7 @@ export function BillingPage() {
           )}
           <div className="space-y-2 border border-border bg-surface p-4 text-sm">
             <h2 className="font-semibold">{t("recordedUsage")}</h2>
-            <p>{t("searchesLabel")}: {typeof usage?.searches_today === "number" ? usage.searches_today : t("unknownValue")}</p>
+            <p>{t("searchesLabel")}: {typeof usage?.searches_run_today === "number" ? usage.searches_run_today : t("unknownValue")}</p>
             <p>{t("usageDisclosure")}</p>
           </div>
         </>

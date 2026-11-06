@@ -18,12 +18,15 @@ export function useWorkspaceAccess() {
     setUsage(null)
     setLoading(true)
     setError(false)
-    Promise.all([accountService.getAccess(), accountService.getTodayUsage()])
-      .then(([nextAccess, nextUsage]) => {
-        if (active) { setAccess(nextAccess); setUsage(nextUsage) }
-      })
+    // Access decides what the page shows; usage is secondary, so it loads on
+    // its own and never holds the access status behind a slower query.
+    accountService.getAccess()
+      .then((nextAccess) => { if (active) setAccess(nextAccess) })
       .catch(() => { if (active) setError(true) })
       .finally(() => { if (active) setLoading(false) })
+    accountService.getTodayUsage()
+      .then((nextUsage) => { if (active) setUsage(nextUsage) })
+      .catch(() => { if (active) setUsage(null) })
     return () => { active = false }
   }, [scope, version])
 
