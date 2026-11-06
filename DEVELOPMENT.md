@@ -82,8 +82,6 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `SCRAPEGRAPH_API_KEY` | Optional | ScrapeGraph AI landing page enrichment |
 | `GROQ_API_KEY` | Optional | Groq primary LLM inference (Llama 3.3 70B) |
 | `OPENROUTER_API_KEY` | Optional | OpenRouter secondary LLM inference |
-| `AIHUBMIX_API_KEY` | Optional | AIHubMix tertiary LLM inference |
-| `TOKENHARBOR_API_KEY` | Optional | Token Harbor quaternary LLM inference |
 | `GEMINI_API_KEY` | Optional | Google Gemini final LLM inference fallback |
 
 ### Frontend (Vercel)
