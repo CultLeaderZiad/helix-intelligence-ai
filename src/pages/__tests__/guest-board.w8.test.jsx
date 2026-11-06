@@ -35,8 +35,8 @@ describe("W8 guest board page", () => {
     expect(screen.getByText("Read-only board")).toBeTruthy()
     expect(screen.getByText("unknown")).toBeTruthy()
     expect(screen.queryByRole("button")).toBeNull()
-    expect(document.head.querySelector('meta[name="referrer"]').content).toBe("no-referrer")
-    expect(document.head.querySelector('meta[name="robots"]').content).toContain("noindex")
+    expect(document.head.querySelector('meta[name="referrer"]')?.getAttribute("content")).toBe("no-referrer")
+    expect(document.head.querySelector('meta[name="robots"]')?.getAttribute("content")).toContain("noindex")
   })
 
   it("explains a revoked or expired link in Arabic", async () => {
