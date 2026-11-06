@@ -2,23 +2,17 @@
 
 ## 1. What Helix is
 
-Helix Intelligence is organized around four "loops," each its own route
-under the sidebar:
+Helix Intelligence has three features, each its own route:
 
-| Loop | Route | Status | What it does |
+| Feature | Route | Status | What it does |
 |---|---|---|---|
-| Discover | `/discover` | **Live** | Query competitor ad libraries, run an async scrape job, browse/filter/sort the resulting creatives, inspect one in detail |
-| Intelligence | `/intelligence` | PLANNED | Mine recurring creative patterns across a discovered corpus |
-| Create | `/create` | **Live** | Draft new creative briefed on the patterns that win, using Gemini media generation via webhook/polling |
-| Performance | `/performance` | PLANNED | Feed live performance data back into the scoring model |
+| Discover | `/discover` | **Live** | Query competitor ad libraries through a durable background job, browse/filter/sort the resulting creatives, inspect one in detail |
+| Monitors | `/monitors` | Built, flag-hidden | Re-run a saved search on a schedule and report what changed |
+| Boards | `/swipe-files` | Built, flag-hidden | Save creatives into boards and create a report link |
 
-The single source of truth for this list is `src/app/navigation.js`
-(`NAV_SECTIONS`). The sidebar, the `⌘K` command palette, and the document
-`<title>` all derive from it, and routes are generated from it in
-`src/App.jsx` — a loop cannot appear in one navigation surface and be
-missing from another. Loops with `status: "pending"` render
-`PendingLoopPage`, an honest "not wired up yet" screen, instead of a route
-that 404s or a screen faking data.
+The navigation list lives in `src/app/navigation.js` (`NAV_SECTIONS`); the
+sidebar and the `⌘K` palette derive from it. Routes for flag-hidden features
+redirect to `/discover` unless `VITE_ENABLE_EXPERIMENTAL_FEATURES=true`.
 
 ## 2. Frontend stack
 
@@ -55,7 +49,6 @@ src/
 
   pages/               Routed top-level screens
     DiscoverPage.jsx       Composition root for the Discover loop
-    PendingLoopPage.jsx    Placeholder for Intelligence/Create/Performance
     NotFoundPage.jsx       404
 
   features/discover/   Discover-loop presentational components
@@ -139,8 +132,8 @@ Concretely, for Discover:
   from `@/services`, or — more commonly — only receive already-fetched
   data as props from a hook.
 
-**Why this matters for future work:** when Intelligence/Create/Performance
-get built, or when Discover grows new capability, follow the same shape —
+**Why this matters for future work:** when Discover grows new capability
+or a new feature is built, follow the same shape —
 a page owns intent, a dedicated hook owns the async lifecycle for one
 service domain, and the hook is the only caller of `@/services`. This is
 what lets the FastAPI cutover (see `API_CONTRACTS.md`) touch zero
@@ -225,18 +218,6 @@ endpoint mapping.
 8. On `status === "failed"`, the hook sets `phase: "error"` and
    `JobProgress` renders the failed stage inline; `retry()` resubmits the
    last params.
-
-## 8. Current Create flow (Gemini Integration)
-
-1. User selects a Source Creative (from Discover) or provides a custom brief.
-2. The UI drafts a `CreativeBrief` using the AI Router (falling back across Groq, OpenRouter, Gemini, AIHubMix, Token Harbor).
-3. The user initiates generation by selecting a media capability (e.g., `IMAGE_FAST`).
-4. The `mediaService.generateMedia` call creates a `MediaGenerationJob` in the backend.
-5. The backend (`GeminiProvider`) submits a generation request to the Gemini API. It includes a `webhook` payload pointing to the backend's `/api/v1/webhooks/gemini` endpoint.
-6. The frontend uses `useMediaGeneration` to poll `mediaService.getJobStatus(jobId)` while waiting.
-7. Gemini processes the request. Upon completion (success or failure), it POSTs to the webhook endpoint.
-8. The backend's webhook handler dedupes the event, updates the job status, and if successful, downloads the generated artifact to persistent storage.
-9. The polling frontend receives the updated status (`succeeded`) and artifact URL, rendering the result with full lineage intact.
 
 ## 9. Backend integration
 

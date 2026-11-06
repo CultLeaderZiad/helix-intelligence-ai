@@ -328,3 +328,70 @@ See `docs/w8/login-latency-and-production-db.md`:
 - API `DATABASE_URL` on `helix_api_login` (pooler, `sslmode=require`), worker on `helix_worker_login`;
 - Render in the same region as Neon (us-east-2);
 - an authorized **non-production provider key** to prove Discover end to end. Still the P0.
+
+---
+
+## 10. Phase 3 outcome (approved and executed on `fix/core-W8`)
+
+Kept: **Discover, Monitors, Boards with share links.** Team stays flag-hidden.
+No branch was deleted, nothing was merged, and no table was dropped: every
+removed feature keeps its tables and ORM models, so `alembic check` stays clean.
+
+| Item | Commit | Notes |
+|---|---|---|
+| R8 mock layer, `USE_MOCKS` | `d962837` | Mock fixtures (incl. real clinic contacts) gone from the bundle |
+| Security + index | `d16300f` | Uniform sign-up `202`; auth limiter fails closed; `organizations.owner_id` index (migration `a3e5c7d9f1b2`) |
+| R9 dead code, Neon Auth path | `ec5391c`, `8cc85fd` | Bearer sessions only; webhook removed |
+| R10 libraries | `edef767` | `gsap`, `jest-dom`, `user-event` removed; `aiosqlite` → `requirements-dev.txt` |
+| R11 repository junk | `d37f414` | `dist/`, `helix-audit/`, uploads, root one-offs; probe moved to `backend/scripts/` |
+| R7 trial and pricing | `12ed3d7` (+ part in `8cc85fd`) | Trial gate, fields, emails, pages and docs |
+| R2 audience simulation, Performance | `d13f2b7` | |
+| R3 Dashboard | `118dd45` | |
+| R1 Create | `8040047` | Media generation, providers, image quotas |
+| R4 Scout, Lead generation | `ad92ba1` | Worker replaced by `backend/workers/jobs` (no browser stack) |
+| R5 Intelligence loop | `56b0f94` | LLM chain Groq → OpenRouter → Gemini; AI-router trial gate removed |
+| R6 API keys, BYOK | `1d8b9eb` | `X-API-Key` login path and provider-credentials router removed |
+| Flags | `fc97be8` | Kept features gated by `discover` / `swipe_files` / `monitors` (the `intelligence` flag blocked creative details for Discover-only grants) |
+| Broken dev scripts | `e3a9b06` | Ten scripts that imported removed code |
+| Discover honesty | `85da79d` | Sort was ignored server-side (fixed, default days active); "Text rubric (0–10)"; "Meta reach (upper bound)"; landing docs teaser removed |
+
+### Corrections to this audit
+
+- **S4 was wrong.** Password length (8–128) was already enforced by the Pydantic
+  schemas; W8 added a regression test.
+- **`@types/punycode` is needed**, not unused: without it `tsc` type-checks
+  punycode's JavaScript and fails. Kept.
+- **R5 was narrower than written.** Discover itself uses the LLM chain (query
+  translation, entity dossier, pattern generation), so only the separate loop,
+  its endpoints and the two never-configured tiers were removed.
+- **New findings while cutting:** the Discover sort control never worked; the
+  `intelligence` flag gated kept features; the AI router had its own 7-day
+  trial gate; the landing page advertised a public API and webhooks.
+
+### Follow-ups (not done)
+
+1. Prove Discover end to end with an authorized non-production provider key
+   (the standing P0).
+2. Playbook "share links" are readable only by signed-in members of the owner's
+   workspace (anonymous `401`, other workspaces `404`); a real public link is
+   not built.
+3. Unrouted query helpers kept for their tenancy/bounds tests:
+   `list_patterns`, `list_brands`, `list_insights`, `get_creative_insight`.
+4. `_scoped_org_id` branches (from API keys) remain in tenancy and billing but
+   are never set.
+5. The stored plan id `plan_trial_default` and grant JSON keep old names; a
+   rename needs a data migration.
+6. `backend/scripts/` still holds dozens of one-off scripts with lint noise.
+7. Unused i18n strings from removed pages remain in `LanguageContext.jsx`.
+8. Commit `8cc85fd` accidentally carries part of R7 and does not build on its
+   own; fixing it needs a history rewrite (force-push), not done.
+9. Monitors and Boards stay behind `VITE_ENABLE_EXPERIMENTAL_FEATURES`.
+
+### Production needs added by Phase 3
+
+- Point the Render Background Worker at `backend/workers/jobs/Dockerfile`.
+- Migration `a3e5c7d9f1b2` (additive index) runs with the rest of the stack.
+- `USE_MOCKS`, `NEON_*`, `SCRAPLING_*`, `AIHUBMIX_API_KEY`,
+  `TOKENHARBOR_API_KEY`, `POLLINATIONS_API_KEY`, `GEMINI_IMAGE_MODEL`,
+  `TRIAL_*` and `PAID_IMAGES_PER_DAY` are no longer read and can be removed
+  from the Render and Vercel environments.

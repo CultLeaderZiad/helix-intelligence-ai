@@ -1,215 +1,93 @@
-# HELIX Intelligence — API Contracts & Entitlements
+# API contracts
 
-## 1. 7-Day Free Trial & Image Generation Entitlements
+The frontend talks only to the FastAPI backend through `src/services/api/*.api.js`
+and `request()` in `src/services/http.js`, which throws a normalized
+`ServiceError`. JSDoc shapes live in `src/services/contracts.js`. The live,
+authoritative schema is `GET /api/openapi.json`.
 
-HELIX offers a 7-day full access free trial with daily image creation allowances:
+All authenticated routes take `Authorization: Bearer <session token>`. There is
+no API-key or third-party-token login (W8).
 
-- **Trial Duration**: 7 days from signup (`trial_started_at` to `trial_expires_at`).
-- **Trial Daily Image Limit**: 5 images per UTC day (resets daily at 00:00 UTC).
-- **Trial Total Image Cap**: 25 total images across the trial window.
-- **Paid Plans Allowance**: 50+ images per day.
-- **Admin Users**: Unlimited bypass across all media generation and features.
-- **Video Generation on Trial**: Strictly disabled during trial; available exclusively on paid plans.
+## 1. Access model
 
----
+- Access is granted by a platform administrator. There are no plans for sale, no
+  trial and no checkout.
+- A new workspace is **pending**: every feature flag is off until a grant.
+- Grantable flags: `discover`, `swipe_files` (boards and share links),
+  `monitors`, `team_accounts`.
+- Credit and daily limits are enforced server-side by `assert_can_spend`.
 
-## 2. Server-Side Entitlement Error Contract (HTTP 402 / 429)
+| Status | `detail.code` | Meaning |
+|---|---|---|
+| 403 | `feature_disabled` | The workspace has no grant for that feature |
+| 402 | `insufficient_credits` | Not enough credits; ask a workspace administrator |
+| 429 | `daily_limit_reached` | Daily credit limit reached; resets 00:00 UTC |
+| 429 | `rate_limited` | Too many requests from this client |
+| 503 | `auth_rate_limiter_unavailable` | Auth limiter fault; auth fails closed |
 
-All generation and entitlement gatekeeper failures return machine-readable JSON envelopes with HTTP 402 / 429 status codes:
+## 2. Auth — `/api/auth`
 
-### Daily Image Limit Exceeded (HTTP 402)
-```json
-{
-  "code": "daily_limit",
-  "message": "You've reached today's limit of 5 images. Your quota resets at 00:00 UTC.",
-  "images_used_today": 5,
-  "images_daily_limit": 5,
-  "images_remaining_today": 0,
-  "trial_days_remaining": 4
-}
-```
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/sign-up` | Always `202 {"ok": true, "message": ...}`, no token, whether or not the email was registered. The client signs in next. Password 8–128 chars. |
+| POST | `/sign-in` | Session response with `access_token`; wrong email or password is the same generic `401`. |
+| GET | `/session` | Current user, workspace, `access_status`, effective `feature_flags`, credit fields. |
+| POST | `/sign-out` (`/logout`) | Revokes all sessions for the user server-side. |
+| POST | `/forgot-password`, `/reset-password` | Same public response for any email; single-use 30-minute token. |
+| POST | `/session/onboarding/complete`, `/session/onboarding/restart` | Onboarding tour state. |
 
-### Total Trial Cap Exceeded (HTTP 402)
-```json
-{
-  "code": "trial_total_limit",
-  "message": "You've reached your total trial allowance of 25 images. Upgrade to continue creating.",
-  "images_used_today": 5,
-  "images_daily_limit": 5,
-  "images_remaining_today": 0,
-  "trial_days_remaining": 3
-}
-```
+## 3. Discover — `/api/discovery` (flag `discover`)
 
-### Trial Expired (HTTP 402)
-```json
-{
-  "code": "trial_expired",
-  "message": "Your 7-day free trial has ended. Select a plan to continue creating AI ads.",
-  "images_used_today": 5,
-  "images_daily_limit": 5,
-  "images_remaining_today": 0,
-  "trial_days_remaining": 0
-}
-```
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/jobs` | Start a search (`query`, `filters`, `query_language`). Runs through the durable `work_items` outbox and the jobs worker. |
+| GET | `/jobs` | Recent jobs. |
+| GET | `/jobs/{job_id}` | Status, stage, deadline, `failure_kind`. |
+| POST | `/jobs/{job_id}/cancel` | Tenant-checked cancellation. |
+| GET | `/jobs/{job_id}/results` | Paginated creatives. `sort` = `days_active_desc` (default), `first_seen_desc`, `composite_desc`, `hook_desc`, `impressions_desc`; anything else is `422`. Nulls sort last. |
 
-### Video Generation Attempt on Trial (HTTP 402)
-```json
-{
-  "code": "video_not_allowed",
-  "message": "Video generation is available exclusively on paid plans. Upgrade to unlock AI video creation.",
-  "trial_days_remaining": 5
-}
-```
+Scores (`hook`, `clarity`, `retention`, `composite`) are a **text rubric on a
+0–10 scale**, not measured performance. `metrics.impressions_est` is the upper
+bound of the range Meta's official Ad Library API reports and is `null` for
+every other source; spend, CTR and engagement are `null` unless Meta reports them.
 
-### BYOK Key Error / Quota Exhausted (No Silent Fallback) (HTTP 400 / 502)
-```json
-{
-  "code": "byok_provider_unavailable",
-  "message": "Your connected Gemini account is unavailable. Check your API key or Google quota."
-}
-```
+## 4. Creatives and boards
 
----
+| Method | Path | Flag | Notes |
+|---|---|---|---|
+| GET | `/api/creatives/{id}` | `discover` | Creative detail (tenant-scoped through its job). |
+| GET | `/api/creatives/saved` | `discover` + `swipe_files` | Saved creatives (boards). |
+| POST / DELETE | `/api/creatives/{id}/save` | `discover` + `swipe_files` | Save to / remove from a board. |
+| POST | `/api/creatives/custom` | `discover` + `swipe_files` | Add a custom reference to a board. |
+| GET / POST | `/api/playbooks` | `swipe_files` | List / create a shareable board report. |
+| GET | `/api/playbooks/public/{public_id}` | signed-in owner org | Read a shared report. |
 
-## 3. Media Creation Endpoints
+## 5. Monitors — `/api/monitors` (flag `monitors`)
 
-### Create Media Job
-`POST /api/media/jobs` (or `/api/v1/media/jobs`)
+CRUD on saved competitor watches, `POST /{id}/run`, `GET /events`, and
+`POST /tick` for the scheduler (requires `X-Cron-Secret`; `503` while
+`CRON_SECRET` is unset). See DEVELOPMENT.md → Monitors.
 
-**Headers:**
-- `Authorization: Bearer <jwt_token>`
-- `Content-Type: application/json`
+## 6. Account, team, support, notifications
 
-**Request Body:**
-```json
-{
-  "prompt": "Commercial studio shot of organic energy drink on slate rock...",
-  "provider": "gemini",
-  "mode": "premium_ad",
-  "parameters": {
-    "aspect_ratio": "1:1",
-    "kind": "image",
-    "source_creative_id": "c_123",
-    "reference_images": ["https://example.com/ref.jpg"]
-  }
-}
-```
+- `/api/account`: `profile` (GET/PATCH), `avatar`, `access`, `access-requests`,
+  `access-grants`, `usage/today`, `workspace`, `onboarding-complete`, and team
+  invites/members (`team_accounts`, flag-hidden in the UI).
+- `/api/support/tickets`, `/api/notifications`, `/api/updates` (banner and
+  public updates).
 
-**Response (200 OK):**
-```json
-{
-  "id": "job_uuid",
-  "job_id": "job_uuid",
-  "status": "pending",
-  "prompt": "Commercial studio shot...",
-  "provider": "gemini",
-  "created_at": "2026-08-31T04:00:00Z",
-  "updated_at": "2026-08-31T04:00:00Z",
-  "parameters": { "credential_mode": "managed", "model": "gemini-3.1-flash-image" }
-}
-```
+## 7. Admin — `/api/admin`
 
-### Get Media Job Status
-`GET /api/media/jobs/{job_id}`
+Platform-admin only: access requests (approve/reject), organization access
+grant/revoke and flags, credit grants, users (role, status, ban, impersonate),
+support tickets, usage, system health, plans, broadcast and updates.
 
-**Response (200 OK):**
-```json
-{
-  "id": "job_uuid",
-  "job_id": "job_uuid",
-  "status": "completed",
-  "result_url": "/uploads/job_uuid_abc123.png",
-  "error_message": null
-}
-```
+## 8. Frontend request cancellation
 
----
-
-## 4. Workspace BYOK Endpoints (Google Gemini)
-
-### Get Workspace Providers
-`GET /api/workspaces/providers`
-
-**Response (200 OK):**
-```json
-{
-  "workspace_id": "org_uuid",
-  "workspace_name": "Acme Agency's Workspace",
-  "providers": [
-    {
-      "provider": "google_gemini",
-      "name": "Google Gemini",
-      "supported_models": ["gemini-3.1-flash-image", "gemini-flash-latest"],
-      "default_image_model": "gemini-3.1-flash-image",
-      "credential_mode": "byok",
-      "is_byok_configured": true,
-      "status": "connected",
-      "masked_key": "••••••••9988",
-      "last_tested_at": "2026-08-31T04:20:00Z"
-    }
-  ]
-}
-```
-
-### Connect / Encrypt Gemini BYOK Key
-`POST /api/workspaces/provider-credentials/google-gemini`
-
-**Request Body:**
-```json
-{
-  "api_key": "AIzaSy...",
-  "credential_mode": "byok"
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "status": "connected",
-  "provider": "google_gemini",
-  "credential_mode": "byok",
-  "masked_key": "••••••••1234",
-  "message": "Gemini API key encrypted and connected successfully"
-}
-```
-
-### Remove BYOK Key
-`DELETE /api/workspaces/provider-credentials/google-gemini`
-
-**Response (200 OK):**
-```json
-{
-  "status": "deleted",
-  "provider": "google_gemini",
-  "credential_mode": "managed",
-  "message": "Gemini BYOK key removed. Workspace restored to HELIX Managed provider."
-}
-```
-
----
-
-## 5. Security & Provider Resolution Guarantees
-
-1. **Server-Side Encryption**: All customer BYOK keys are encrypted at rest using AES / Fernet ciphers derived from the server's `SECRET_KEY`.
-2. **Never Exposed**: Plaintext keys are NEVER returned in API responses, logs, or stored in frontend state. Responses only display masked suffixes (`••••••••abcd`).
-3. **Trial Isolation**: Trial users always use HELIX Managed Gemini.
-4. **No Silent Fallback**: If a paid workspace configures BYOK and the customer's Google project fails or runs out of quota, HELIX returns an explicit notice and never silently bills HELIX infrastructure.
-
-## 6. Frontend Job Request Cancellation
-
-Discovery and media job services accept an optional final `{ signal: AbortSignal }`
-argument. In particular, discovery result reads use
-`getJobResults(jobId, pagination, { signal })`; media generation, status, result,
-and cancellation calls use `(paramsOrJobId, { signal })`.
-
-`useDiscoverySearch` and `useMediaGenerate` own a controller for each submission
-(and each discovery refinement). Unmounting, route navigation, explicit cancel,
-or resubmission aborts outstanding fetches and HTTP retry waits, in addition to
-fencing stale state updates. Media's best-effort server-cancel request is also
-aborted on unmount or resubmission.
-
-Aborting a client request is **not** proof that a submitted backend job stopped:
-media's explicit cancel action calls the cancellation endpoint, while discovery
-navigation only stops client work. HTTP requests retain their bounded transport
-deadline and the hooks retain their overall job deadline.
+`discoverService` calls accept a final `{ signal: AbortSignal }`.
+`useDiscoverySearch` owns a controller per submission and per refinement;
+unmount, navigation, cancel or resubmission aborts outstanding fetches and
+retry waits and fences stale state updates. Aborting a client request is
+**not** proof that the backend job stopped: only `POST /jobs/{id}/cancel` asks
+the server to stop. Requests keep their bounded transport deadline and the hook
+keeps its overall job deadline.

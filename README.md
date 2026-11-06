@@ -1,14 +1,20 @@
 # Helix Intelligence
 
-Helix Intelligence is a competitive-ad-intelligence workstation. It lets a
-user query competitor ad libraries ("Discover"), and — in loops that are
-planned but not yet built — mine recurring creative patterns
-("Intelligence"), draft new creative briefed on those patterns ("Create"),
-and feed live performance back into the scoring model ("Performance").
+Helix Intelligence is a competitive-ad-intelligence workstation with three
+features:
 
-This repository currently implements **one loop end-to-end: Discover.**
-Features that are not built are not shown: their routes redirect to
-`/discover` unless `VITE_ENABLE_EXPERIMENTAL_FEATURES=true`. There is no
+- **Discover** — search competitor ad libraries, run the search as a durable
+  background job, and browse the resulting ads (sorted by days active by
+  default). Live.
+- **Monitors** — saved Discover searches that re-run on a schedule and report
+  new, stopped and rewritten ads. Built; hidden behind
+  `VITE_ENABLE_EXPERIMENTAL_FEATURES` until Discover is proven end to end.
+- **Boards and share links** — save ads into boards and produce a report
+  link. Built; hidden behind the same flag.
+
+Access is granted manually by a platform administrator; there is no trial,
+pricing or checkout. W8 removed Create, Intelligence, Performance, the
+dashboard, Scout/Lead generation and API keys (see `AUDIT-W8.md`). There is no
 faked data or fake UI standing in for unbuilt product.
 
 Read this file first, then follow the links below for the area you're

@@ -102,12 +102,12 @@ Without the env var above, sign-up/sign-in and all other API calls will fail wit
 
 ## Media storage
 
-Generated media is written to **Cloudflare R2** over the S3-compatible API
+Uploaded files (avatars) are written to **Cloudflare R2** over the S3-compatible API
 (`backend/app/services/storage_service.py`).
 
 Render's filesystem is ephemeral: anything written locally is destroyed on the
 next restart or deploy, while the database keeps pointing at a URL that now
-404s. R2 is what makes generated media survive.
+404s. R2 is what makes stored files survive.
 
 **All five `R2_*` variables must be set together.** A partial configuration
 disables R2, logs an error, and falls back to local disk. `R2_PUBLIC_BASE_URL`
@@ -165,10 +165,10 @@ it. Failed scrape refund recovery considers only the last 24 hours using
 Monitor cleanup resolves the parent organization while the stale run is still
 `running`, then marks it failed and retains that org for tenant-scoped notices.
 
-The UI distinguishes the two failure causes. `failure_kind` is surfaced on both
-the discover `Job` and the media job response, and Discover and Create render
-"interrupted by a service restart" separately from a genuine error, so a user
-is never told to fix a query or prompt that was fine.
+The UI distinguishes the two failure causes. `failure_kind` is surfaced on the
+discover `Job`, and Discover renders "interrupted by a service restart"
+separately from a genuine error, so a user is never told to fix a query that
+was fine.
 
 ### Known limit of the current approach
 
