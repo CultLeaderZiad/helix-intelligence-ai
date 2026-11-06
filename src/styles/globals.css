@@ -5,15 +5,19 @@
 
 /* Navigation uses compositor-only CSS instead of loading GSAP in the shell.
    Logical insets keep both labels aligned in RTL without layout measurements. */
+/* The hover fill is the React Bits arc: a circle sized from each pill's
+   measured width/height (CSS vars set by PillNav) that grows up from below. */
 .pill-nav-native .pill .hover-circle {
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
-  transform: scaleY(0);
-  transform-origin: center bottom;
+  left: 50%;
+  bottom: calc(-1 * var(--circle-delta, 0px));
+  width: var(--circle-d, 100%);
+  height: var(--circle-d, 100%);
+  border-radius: 50%;
+  transform: translateX(-50%) scale(0);
+  transform-origin: 50% var(--circle-origin-y, 100%);
   transition: transform 350ms cubic-bezier(.22, 1, .36, 1);
 }
+[dir="rtl"] .pill-nav-native .pill .hover-circle { left: 50%; right: auto; }
 .pill-nav-native .pill .pill-label,
 .pill-nav-native .pill .pill-label-hover {
   transition: transform 350ms cubic-bezier(.22, 1, .36, 1), opacity 350ms;
@@ -25,7 +29,7 @@
   opacity: 0;
 }
 .pill-nav-native .pill:is(:hover, :focus-visible) .hover-circle {
-  transform: scaleY(1);
+  transform: translateX(-50%) scale(1.2);
 }
 .pill-nav-native .pill:is(:hover, :focus-visible) .pill-label {
   transform: translateY(-160%);

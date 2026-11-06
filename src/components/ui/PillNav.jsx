@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './PillNav.css';
 import { useLanguage } from '@/context/LanguageContext';
@@ -21,6 +21,32 @@ export const PillNav = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const menuId = useId();
   const menuButtonRef = useRef(null);
+  const navItemsRef = useRef(null);
+
+  // Size each pill's hover circle like the React Bits PillNav: a circle whose
+  // arc spans the pill's width and rises from below. Measured once per layout
+  // (and on resize / font load); the animation itself is pure CSS.
+  useLayoutEffect(() => {
+    const root = navItemsRef.current;
+    if (!root) return undefined;
+    const layout = () => {
+      root.querySelectorAll('.pill').forEach((pill) => {
+        const { width: w, height: h } = pill.getBoundingClientRect();
+        if (!w || !h) return;
+        const r = ((w * w) / 4 + h * h) / (2 * h);
+        const d = Math.ceil(2 * r) + 2;
+        const delta = Math.ceil(r - Math.sqrt(Math.max(0, r * r - (w * w) / 4))) + 1;
+        pill.style.setProperty('--circle-d', `${d}px`);
+        pill.style.setProperty('--circle-delta', `${delta}px`);
+        pill.style.setProperty('--circle-origin-y', `${d - delta}px`);
+      });
+    };
+    layout();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(layout);
+    observer?.observe(root);
+    document.fonts?.ready?.then(layout).catch(() => {});
+    return () => observer?.disconnect();
+  }, [items]);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -76,7 +102,7 @@ export const PillNav = ({
         <Link className="pill-logo" to="/" aria-label={t("homeLink")}>
           <img src={logo} alt={logoAlt} />
         </Link>
-        <div className="pill-nav-items desktop-only">
+        <div className="pill-nav-items desktop-only" ref={navItemsRef}>
           <ul className="pill-list">
             {items.map(item => <li key={item.href}>{renderLink(item)}</li>)}
           </ul>

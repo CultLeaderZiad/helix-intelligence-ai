@@ -396,3 +396,21 @@ removed feature keeps its tables and ORM models, so `alembic check` stays clean.
   `TOKENHARBOR_API_KEY`, `POLLINATIONS_API_KEY`, `GEMINI_IMAGE_MODEL`,
   `TRIAL_*` and `PAID_IMAGES_PER_DAY` are no longer read and can be removed
   from the Render and Vercel environments.
+
+## Landing motion restored (after R10)
+
+R10 removed `gsap` together with the unused `CardSwap`. The live landing page
+(main) still uses both, so W8's landing had lost its stacked "Four loops"
+cards and its centered floating pill nav. Restored:
+
+- `components/ui/CardSwap.jsx` + `gsap` again, imported **only** by
+  `features/marketing/LoopsSection.jsx`, so GSAP ships in the lazy
+  `LandingPage` chunk and never in the app shell. Auto-swap pauses off-screen,
+  on hover/focus and under `prefers-reduced-motion`.
+- The four cards describe only shipped loops (Discover longevity, Monitors
+  changes + digest, Boards guest links, agent read access). No sample brands,
+  scores, reach or counts, and no Intelligence/Create/Performance cards.
+- `PillNav` keeps its CSS-only motion; the hover fill is the React Bits arc
+  again (circle size measured per pill into CSS variables).
+- `PublicHeader` is sticky with the pill nav centered and the language
+  switcher at the inline end, as on the live site.

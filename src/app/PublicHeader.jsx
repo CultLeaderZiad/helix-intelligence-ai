@@ -20,9 +20,15 @@ export function PublicHeader() {
   return (
     <>
       <UpdatesBanner />
-      <header className="relative z-40 flex items-center justify-between gap-3 border-b border-border bg-bg px-4 py-3 sm:px-6">
-        <PillNav logo="/brand/helix-mark.svg" logoAlt="Helix" items={items} activeHref={location.pathname} />
-        <LanguageSwitcher />
+      {/* Centered floating pill nav, as on the live landing page. The language
+          switcher sits at the inline end on desktop and beside the menu on mobile. */}
+      <header className="sticky top-0 z-50 flex w-full items-center gap-3 px-4 md:justify-center">
+        <div className="min-w-0 flex-1 md:flex md:flex-none md:justify-center">
+          <PillNav logo="/brand/helix-mark.svg" logoAlt="Helix" items={items} activeHref={location.pathname} />
+        </div>
+        <div className="shrink-0 md:absolute md:end-6 md:top-1/2 md:-translate-y-1/2">
+          <LanguageSwitcher />
+        </div>
       </header>
     </>
   )
