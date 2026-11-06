@@ -141,7 +141,7 @@ export function EmptyState({
   )
 }
 
-export function ErrorState({ error, onRetry, className = "", description = undefined }) {
+export function ErrorState({ error, onRetry, className = "", description = undefined, action = undefined }) {
   const status = error?.code === "network_error" ? "connection error" : "request failed"
   const statusTone = "text-danger"
   const title = error?.message || "Unable to complete the request."
@@ -156,11 +156,11 @@ export function ErrorState({ error, onRetry, className = "", description = undef
       title={title}
       description={description ?? defaultDesc}
       action={
-        onRetry ? (
+        action ?? (onRetry ? (
           <Button size="sm" variant="primary" onClick={onRetry}>
             Retry
           </Button>
-        ) : null
+        ) : null)
       }
       className={className}
     />

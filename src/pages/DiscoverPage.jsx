@@ -49,7 +49,7 @@ const EMPTY_FILTERS = {
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 
 export function DiscoverPage() {
   const [searchParams] = useSearchParams()
@@ -430,6 +430,9 @@ export function DiscoverPage() {
                 error={error}
                 onRetry={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
                 description={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? t("discoverNeedsAccess") : undefined}
+                action={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? (
+                  <Button as={Link} to="/access" size="sm" variant="primary">{w8.discoverOpenAccess}</Button>
+                ) : undefined}
                 className=""
               />
             ) : null}
