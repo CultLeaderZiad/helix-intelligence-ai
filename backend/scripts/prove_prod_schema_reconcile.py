@@ -154,14 +154,18 @@ def _assert_rls_policy_state(database: str, *, deny_by_default: bool) -> None:
         WHERE p.schemaname = 'public' AND p.policyname LIKE '%_tenant_isolation'
         """,
     )[0]
-    if int(policies[0]) != 34 or int(rls_counts[0]) != 34:
-        raise SystemExit(f"expected 34 enabled tenant policies, found policies={policies}, rls={rls_counts}")
+    # W8 added board_share_links and ad_archive, each with one tenant policy.
+    expected = 36
+    if int(policies[0]) != expected or int(rls_counts[0]) != expected:
+        raise SystemExit(
+            f"expected {expected} enabled tenant policies, found policies={policies}, rls={rls_counts}"
+        )
     if deny_by_default:
         if int(policies[1]) != 0 or int(rls_counts[1]) != 0:
             raise SystemExit(
                 f"deny-by-default RLS state mismatch: policies={policies}, rls={rls_counts}"
             )
-    elif int(policies[1]) != 34 or int(rls_counts[1]) != 34:
+    elif int(policies[1]) != expected or int(rls_counts[1]) != expected:
         raise SystemExit(
             f"legacy RLS state was not restored: policies={policies}, rls={rls_counts}"
         )

@@ -29,7 +29,8 @@ class Creative(Base):
     
     first_seen = Column(String, nullable=True)
     last_seen = Column(String, nullable=True)
-    days_active = Column(Integer, default=1, server_default="1")
+    # Unknown run length stays NULL. A default of 1 made "no start date" look like one day.
+    days_active = Column(Integer, nullable=True)
     variant_count = Column(Integer, default=1, server_default="1")
     # the metrics can be linked or stored here (stored directly as columns for simplicity)
     impressions_est = Column(Integer, nullable=True)
