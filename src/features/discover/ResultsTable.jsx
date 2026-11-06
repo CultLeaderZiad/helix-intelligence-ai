@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils"
+import { useW8Copy } from "@/i18n/w8Product"
 import { Tag } from "@/components/ui/Tag"
 import { ScoreBar } from "@/components/ui/Metric"
 import {
@@ -7,7 +8,6 @@ import {
   formatInt,
   formatPercent,
   formatSpendBand,
-  formatRelative,
 } from "@/lib/format"
 
 const PLATFORM_LABEL = {
@@ -24,6 +24,7 @@ const PLATFORM_LABEL = {
  * is sticky so the column meaning never scrolls away.
  */
 export function ResultsTable({ items, selectedId, onSelect }) {
+  const w8 = useW8Copy()
   function handleKeyDown(event, index) {
     if (event.key === "ArrowDown") {
       event.preventDefault()
@@ -141,7 +142,7 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                   {formatSpendBand(c.metrics?.spend_band)}
                 </td>
                 <td className="tnum px-3 py-2 text-right font-mono text-[11px] text-text-faint">
-                  {c.days_active ? formatDays(c.days_active) : formatRelative(c.first_seen)}
+                  {c.days_active != null ? formatDays(c.days_active) : w8.runLengthUnknown}
                 </td>
               </tr>
             )

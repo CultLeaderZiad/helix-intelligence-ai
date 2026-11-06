@@ -8,6 +8,7 @@ import { Tag } from "@/components/ui/Tag"
 import { ScoreBar, StatBlock, MetricValue } from "@/components/ui/Metric"
 import { InfoTip } from "@/components/ui/InfoTip"
 import { useLanguage } from "@/context/LanguageContext"
+import { useW8Copy } from "@/i18n/w8Product"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { deriveInsight } from "@/lib/insight"
 import {
@@ -162,6 +163,7 @@ function PatternFindings({ patterns }) {
  * split FastAPI will have.
  */
 export function CreativeDetailPanel({ creativeId, onClose }) {
+  const w8 = useW8Copy()
   const { user } = useAuth()
   const { t } = useLanguage()
   const [saved, setSaved] = useState(false)
@@ -288,7 +290,7 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
             {/* Active duration — position 4 in the hierarchy */}
             <div className="flex items-center gap-3 border-y border-border py-2">
-              <StatBlock label="Active" value={formatDays(data.days_active)} />
+              <StatBlock label="Active" value={data.days_active != null ? formatDays(data.days_active) : w8.runLengthUnknown} />
               <StatBlock label="First seen" value={formatDate(data.first_seen)} />
               <StatBlock label="Last seen" value={formatDate(data.last_seen)} />
             </div>

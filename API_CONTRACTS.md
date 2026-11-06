@@ -44,7 +44,7 @@ no API-key or third-party-token login (W8).
 | GET | `/jobs` | Recent jobs. |
 | GET | `/jobs/{job_id}` | Status, stage, deadline, `failure_kind`. |
 | POST | `/jobs/{job_id}/cancel` | Tenant-checked cancellation. |
-| GET | `/jobs/{job_id}/results` | Paginated creatives. `sort` = `days_active_desc` (default), `first_seen_desc`, `composite_desc`, `hook_desc`, `impressions_desc`; anything else is `422`. Nulls sort last. |
+| GET | `/jobs/{job_id}/results` | Paginated creatives. `sort` = `days_active_desc` (default), `first_seen_desc`, `composite_desc`, `hook_desc`, `impressions_desc`; anything else is `422`. Nulls sort last. Optional view filters on stored rows: `min_days` ∈ {30, 60, 90} (ads with an unknown run length are excluded and counted in `hidden_unknown_run_length`, never treated as 0) and `min_score` 0–10 (text-rubric minimum); other values are `422`. |
 
 Scores (`hook`, `clarity`, `retention`, `composite`) are a **text rubric on a
 0–10 scale**, not measured performance. `metrics.impressions_est` is the upper

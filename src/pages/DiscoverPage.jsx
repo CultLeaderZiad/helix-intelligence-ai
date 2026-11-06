@@ -3,7 +3,7 @@ import { Radar, SearchX, Clock, RotateCcw, MessageSquarePlus } from "lucide-reac
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useTelemetry } from "@/app/TelemetryContext"
 import { SearchQueryBar } from "@/features/discover/SearchQueryBar"
-import { FilterRail } from "@/features/discover/FilterRail"
+import { FilterRail, countActiveFilters } from "@/features/discover/FilterRail"
 import { JobProgress } from "@/features/discover/JobProgress"
 import { ResultSummary } from "@/features/discover/ResultSummary"
 import { ResultsTable } from "@/features/discover/ResultsTable"
@@ -22,11 +22,11 @@ import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 import w5Discover from "@/i18n/w5Discover"
 
+/* Country is sent with the search; run length and the text-rubric minimum
+   filter the stored results. Platform, format and spend-band controls were
+   removed: every provider is Meta-only and none of them was ever applied. */
 const EMPTY_FILTERS = {
   country: "ALL",
-  platforms: [],
-  formats: [],
-  spend_bands: [],
   min_score: 0,
   min_days_active: 0,
 }
@@ -103,20 +103,10 @@ export function DiscoverPage() {
     }
   }, [queryLanguage])
 
-  const dirty = useMemo(
-    () => JSON.stringify(draftFilters) !== JSON.stringify(appliedFilters),
-    [draftFilters, appliedFilters],
-  )
+  /* Only the search-time filter (country) needs a re-run to apply. */
+  const dirty = (draftFilters.country ?? "ALL") !== (appliedFilters.country ?? "ALL")
 
-  const activeFilterCount = useMemo(
-    () =>
-      (draftFilters.platforms?.length ?? 0) +
-      (draftFilters.formats?.length ?? 0) +
-      (draftFilters.spend_bands?.length ?? 0) +
-      (draftFilters.min_score > 0 ? 1 : 0) +
-      (draftFilters.min_days_active > 0 ? 1 : 0),
-    [draftFilters],
-  )
+  const activeFilterCount = useMemo(() => countActiveFilters(draftFilters), [draftFilters])
 
   /* Sync completed search results with SearchContext across tabs */
   useEffect(() => {
@@ -210,8 +200,22 @@ export function DiscoverPage() {
     if (phase === PHASE.READY) refine({ page: 1, sort: next })
   }
 
+  /* Run length and rubric minimum apply instantly to stored results. */
+  function handleFiltersChange(next) {
+    setDraftFilters(next)
+    const viewChanged =
+      (next.min_days_active ?? 0) !== (appliedFilters.min_days_active ?? 0) ||
+      (next.min_score ?? 0) !== (appliedFilters.min_score ?? 0)
+    if (!viewChanged) return
+    setAppliedFilters((prev) => ({ ...prev, min_days_active: next.min_days_active ?? 0, min_score: next.min_score ?? 0 }))
+    if (phase === PHASE.READY) {
+      setSelectedId(null)
+      refine({ page: 1, view: { min_days: next.min_days_active ?? 0, min_score: next.min_score ?? 0 } })
+    }
+  }
+
   function clearFilters() {
-    setDraftFilters(EMPTY_FILTERS)
+    handleFiltersChange(EMPTY_FILTERS)
   }
 
   const displayResults = results || (phase === PHASE.IDLE && latestSearch?.items?.length ? {
@@ -234,13 +238,7 @@ export function DiscoverPage() {
      nothing — the backend's zero_results stage_label says exactly why. */
   const scrapedNothing =
     phase === PHASE.READY && items.length === 0 && (job?.records_found ?? 0) === 0
-  const filtersWereApplied =
-    appliedFilters.country !== "ALL" ||
-    (appliedFilters.platforms?.length ?? 0) > 0 ||
-    (appliedFilters.formats?.length ?? 0) > 0 ||
-    (appliedFilters.spend_bands?.length ?? 0) > 0 ||
-    (appliedFilters.min_score ?? 0) > 0 ||
-    (appliedFilters.min_days_active ?? 0) > 0
+  const filtersWereApplied = countActiveFilters(appliedFilters) > 0
   const showProgress = Boolean(job) && phase !== PHASE.READY && phase !== PHASE.IDLE
   const inspectorOpen = Boolean(selectedId)
 
@@ -313,6 +311,7 @@ export function DiscoverPage() {
           results={displayResults}
           sort={sort}
           filterCount={activeFilterCount}
+          hiddenUnknown={displayResults?.hidden_unknown_run_length ?? null}
           selectedId={selectedId}
         />
       ) : null}
@@ -322,7 +321,7 @@ export function DiscoverPage() {
         {filtersOpen && !isBelowLg ? (
           <FilterRail
             filters={draftFilters}
-            onChange={setDraftFilters}
+            onChange={handleFiltersChange}
             onClear={clearFilters}
             dirty={dirty}
           />
@@ -339,7 +338,7 @@ export function DiscoverPage() {
             <div className="relative ml-auto flex h-full">
               <FilterRail
                 filters={draftFilters}
-                onChange={setDraftFilters}
+                onChange={handleFiltersChange}
                 onClear={clearFilters}
                 dirty={dirty}
               />

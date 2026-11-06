@@ -39,14 +39,15 @@ const discoverService = {
 
   /**
    * @param {string} jobId
-   * @param {{page?: number, page_size?: number, sort?: string}} [params]
+   * @param {{page?: number, page_size?: number, sort?: string, min_days?: number, min_score?: number}} [params]
    * @param {{signal?: AbortSignal}} [options]
    */
-  getJobResults(jobId, { page = 1, page_size = 20, sort } = {}, { signal } = {}) {
-    return request(`/discovery/jobs/${encodeURIComponent(jobId)}/results`, {
-      signal,
-      params: { page, page_size, sort },
-    })
+  getJobResults(jobId, { page = 1, page_size = 20, sort, min_days = 0, min_score = 0 } = {}, { signal } = {}) {
+    // View filters apply to stored results; 0 means "not set" and is omitted.
+    const params = { page, page_size, sort }
+    if (min_days > 0) params.min_days = min_days
+    if (min_score > 0) params.min_score = min_score
+    return request(`/discovery/jobs/${encodeURIComponent(jobId)}/results`, { signal, params })
   },
 
   listRecentJobs() {

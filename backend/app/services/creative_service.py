@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from app.schemas.creative import Creative as CreativeSchema, Scores, CreativeMetrics
+from app.schemas.creative import Creative as CreativeSchema, CreativeResults, Scores, CreativeMetrics
 from app.schemas.common import Paginated
 from app.models.creative import Creative
 from app.models.creative_score import CreativeScore
@@ -29,6 +29,8 @@ CREATIVE_SORTS = {
     "impressions_desc": lambda: Creative.impressions_est.desc().nulls_last(),
 }
 DEFAULT_CREATIVE_SORT = "days_active_desc"
+# Longevity presets offered by Discover ("running N+ days").
+LONGEVITY_PRESETS = (30, 60, 90)
 
 
 async def list_creatives(
@@ -39,10 +41,16 @@ async def list_creatives(
     page_size: int = 20,
     user_org_ids: Optional[List[str]] = None,
     sort: Optional[str] = None,
+    min_days: int = 0,
+    min_score: float = 0.0,
 ) -> Paginated[CreativeSchema]:
     offset, page_size = pagination_bounds(page, page_size)
     if sort is not None and sort not in CREATIVE_SORTS:
         raise HTTPException(status_code=422, detail={"code": "invalid_sort", "message": "Unsupported sort order."})
+    if min_days and min_days not in LONGEVITY_PRESETS:
+        raise HTTPException(status_code=422, detail={"code": "invalid_longevity", "message": "Longevity must be 30, 60 or 90 days."})
+    if not 0 <= float(min_score) <= 10:
+        raise HTTPException(status_code=422, detail={"code": "invalid_min_score", "message": "Text rubric minimum must be between 0 and 10."})
     # Build filters dynamically
     filters = []
     if job_id:
@@ -54,8 +62,23 @@ async def list_creatives(
         scoped_job_ids = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
         filters.append(Creative.job_id.in_(scoped_job_ids))
 
+    # View filters. Unknown run length never counts as 0: it is excluded from
+    # a longevity filter and reported as hidden_unknown_run_length instead.
+    hidden_unknown = None
+    if min_days:
+        hidden_unknown = await db.scalar(
+            select(func.count(Creative.id)).where(*filters, Creative.days_active.is_(None))
+        ) or 0
+        filters.append(Creative.days_active >= min_days)
+    score_join = False
+    if min_score:
+        filters.append(CreativeScore.composite >= float(min_score))
+        score_join = True
+
     # Count total
     count_query = select(func.count(Creative.id))
+    if score_join:
+        count_query = count_query.select_from(Creative).join(CreativeScore, Creative.id == CreativeScore.creative_id)
     if filters:
         count_query = count_query.where(*filters)
     total = await db.scalar(count_query) or 0
@@ -115,12 +138,13 @@ async def list_creatives(
             pattern_ids=[]  # Omitted for simplicity unless creative_patterns mapping exists
         ))
 
-    return Paginated(
+    return CreativeResults(
         items=items,
         total=total,
         page=page,
         page_size=page_size,
-        has_more=(offset + page_size) < total
+        has_more=(offset + page_size) < total,
+        hidden_unknown_run_length=hidden_unknown,
     )
 
 async def get_creative_by_id(

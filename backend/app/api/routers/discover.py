@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.discover import SearchParams, Job
-from app.schemas.creative import Creative
+from app.schemas.creative import CreativeResults
 from app.schemas.common import Paginated
 from app.services import discover_service, creative_service
 from app.core.deps import get_db, get_current_user, require_feature
@@ -32,19 +32,22 @@ async def cancel_job(job_id: str, db: AsyncSession = Depends(get_db), current_us
     scope = await get_user_org_ids(db, current_user)
     return await discover_service.cancel_search(db, job_id, user_org_ids=scope)
 
-@router.get("/jobs/{job_id}/results", response_model=Paginated[Creative])
+@router.get("/jobs/{job_id}/results", response_model=CreativeResults)
 async def get_job_results(
     job_id: str,
     page: int = 1,
     page_size: int = 20,
     sort: str = creative_service.DEFAULT_CREATIVE_SORT,
+    min_days: int = 0,
+    min_score: float = 0.0,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     from app.core.tenancy import get_user_org_ids
     scope = await get_user_org_ids(db, current_user)
     return await creative_service.list_creatives(
-        db, job_id=job_id, page=page, page_size=page_size, user_org_ids=scope, sort=sort
+        db, job_id=job_id, page=page, page_size=page_size, user_org_ids=scope, sort=sort,
+        min_days=min_days, min_score=min_score,
     )
 
 @router.get("/jobs", response_model=Paginated[Job])

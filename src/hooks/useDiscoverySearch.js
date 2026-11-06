@@ -41,6 +41,18 @@ function jobFromResponse(response) {
   return typeof job.status === "string" ? job : null
 }
 
+/**
+ * Result-view filters (longevity preset, text-rubric minimum) are applied by
+ * the results endpoint to stored rows, unlike country which is search-time.
+ * @param {{filters?: {min_days_active?: number, min_score?: number}} | null | undefined} params
+ */
+export function viewFilters(params) {
+  return {
+    min_days: Number(params?.filters?.min_days_active ?? 0) || 0,
+    min_score: Number(params?.filters?.min_score ?? 0) || 0,
+  }
+}
+
 /** The hook owns submission, sequential polling and result/refinement state. */
 export function useDiscoverySearch() {
   const [phase, setPhase] = useState(PHASE.IDLE)
@@ -60,15 +72,16 @@ export function useDiscoverySearch() {
   /**
    * @param {{signal: AbortSignal}} run
    * @param {string} jobId
-   * @param {{page?: number, sort?: string}} [options]
+   * @param {{page?: number, sort?: string, view?: {min_days?: number, min_score?: number}}} [options]
    */
   const fetchResults = useCallback(async (run, jobId, options = {}) => {
-    const { page = 1, sort } = options
+    const { page = 1, sort, view = {} } = options
     if (!lifecycle.isCurrent(run)) return
     setPhase(PHASE.FETCHING_RESULTS)
     try {
       const payload = await discoverService.getJobResults(jobId, {
         page, page_size: PAGE_SIZE, sort,
+        min_days: view.min_days ?? 0, min_score: view.min_score ?? 0,
       }, { signal: run.signal })
       if (!lifecycle.isCurrent(run)) return
       setResults(payload)
@@ -133,7 +146,7 @@ export function useDiscoverySearch() {
     setError(null)
 
     if (next.status === "succeeded") {
-      void fetchResults(run, context.jobId, { page: 1, sort: params.sort })
+      void fetchResults(run, context.jobId, { page: 1, sort: params.sort, view: viewFilters(params) })
       return
     }
 
@@ -411,18 +424,29 @@ export function useDiscoverySearch() {
     })()
   }
 
-  /** @param {{page?: number, sort?: string}} options */
-  function refine({ page, sort }) {
+  /**
+   * Re-read stored results with a new page, sort or view filter. Never
+   * starts a new search, so it never spends credits.
+   * @param {{page?: number, sort?: string, view?: {min_days?: number, min_score?: number}}} options
+   */
+  function refine({ page, sort, view }) {
     const jobId = activeJobId.current
     if (!jobId) return
     const context = activeJobRef.current
     if (!context || context.status !== "succeeded") return
     const run = lifecycle.begin(() => onJobDeadline(context.operationId))
     if (!run) return
-    const nextParams = { ...(lastParams ?? {}), sort: sort ?? lastParams?.sort }
+    const base = lastParams ?? {}
+    const nextParams = {
+      ...base,
+      sort: sort ?? base.sort,
+      filters: view
+        ? { ...(base.filters ?? {}), min_days_active: view.min_days ?? 0, min_score: view.min_score ?? 0 }
+        : base.filters,
+    }
     setLastParams(nextParams)
     setError(null)
-    void fetchResults(run, jobId, { page, sort: nextParams.sort })
+    void fetchResults(run, jobId, { page, sort: nextParams.sort, view: viewFilters(nextParams) })
   }
 
   function cancel() {
@@ -472,6 +496,7 @@ export function useDiscoverySearch() {
       void fetchResults(run, activeJobId.current, {
         page: 1,
         sort: lastParams?.sort,
+        view: viewFilters(lastParams),
       })
       return
     }

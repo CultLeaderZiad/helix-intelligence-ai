@@ -43,7 +43,8 @@ def test_meta_official_keeps_its_reported_upper_bound():
 
 
 @pytest.mark.asyncio
-async def test_unknown_sort_is_rejected_before_any_query():
+@pytest.mark.parametrize("kwargs", [{"sort": "random"}, {"min_days": 14}, {"min_days": 45}, {"min_score": 11}, {"min_score": -1}])
+async def test_unknown_sort_is_rejected_before_any_query(kwargs):
     class NoDB:
         async def scalar(self, *_):
             raise AssertionError("query ran")
@@ -52,7 +53,7 @@ async def test_unknown_sort_is_rejected_before_any_query():
             raise AssertionError("query ran")
 
     with pytest.raises(HTTPException) as error:
-        await creative_service.list_creatives(NoDB(), job_id="j", sort="random")
+        await creative_service.list_creatives(NoDB(), job_id="j", **kwargs)
     assert error.value.status_code == 422
 
 
@@ -91,3 +92,13 @@ async def test_results_follow_the_requested_sort_with_nulls_last():
         assert await order("composite_desc") == ["a", "c", "b"]
         assert await order("impressions_desc") == ["b", "c", "a"]
         assert creative_service.DEFAULT_CREATIVE_SORT == "days_active_desc"
+
+        # Longevity presets: unknown run length is excluded and counted, never 0.
+        thirty = await creative_service.list_creatives(db, job_id=job.id, min_days=30, user_org_ids=[org.id])
+        assert [item.id.rsplit("_", 1)[1] for item in thirty.items] == ["b"]
+        assert thirty.total == 1 and thirty.hidden_unknown_run_length == 1
+        assert (await creative_service.list_creatives(db, job_id=job.id, min_days=90, user_org_ids=[org.id])).total == 0
+        unfiltered = await creative_service.list_creatives(db, job_id=job.id, user_org_ids=[org.id])
+        assert unfiltered.hidden_unknown_run_length is None and unfiltered.total == 3
+        rubric = await creative_service.list_creatives(db, job_id=job.id, min_score=5, user_org_ids=[org.id])
+        assert [item.id.rsplit("_", 1)[1] for item in rubric.items] == ["a"]
