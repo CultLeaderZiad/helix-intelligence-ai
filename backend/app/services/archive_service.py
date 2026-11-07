@@ -103,10 +103,23 @@ async def archive_job(db: AsyncSession, job_id: str, org_id: str) -> dict:
         entry = (await db.execute(select(AdArchiveEntry).where(
             AdArchiveEntry.org_id == org_id, AdArchiveEntry.archive_key == key
         ))).scalar_one_or_none()
-        if entry is None:
-            if count >= cap:
-                skipped_cap += 1
-                continue
+        is_new = entry is None
+        if is_new and count >= cap:
+            skipped_cap += 1
+            continue
+
+        # Download before writing anything, with no transaction open: an
+        # archive row insert locks the parent workspace row (FK KEY SHARE), and
+        # holding that across slow media downloads made searches wait.
+        media = None
+        if is_new or entry.media_status != "stored":
+            await db.commit()
+            media = (
+                await _copy_media(job_id, creative.media_url),
+                await _copy_media(job_id, creative.thumbnail_url),
+            )
+
+        if is_new:
             entry = AdArchiveEntry(org_id=org_id, archive_key=key, platform=creative.platform or "meta")
             db.add(entry)
             count += 1
@@ -127,11 +140,10 @@ async def archive_job(db: AsyncSession, job_id: str, org_id: str) -> dict:
         entry.last_seen = creative.last_seen
         entry.days_active = creative.days_active
         entry.updated_at = now
-        if entry.media_status != "stored":
+        if media is not None:
+            (media_ref, media_status, media_bytes), (thumb_ref, thumb_status, thumb_bytes) = media
             entry.original_media_url = creative.media_url
             entry.original_thumbnail_url = creative.thumbnail_url
-            media_ref, media_status, media_bytes = await _copy_media(job_id, creative.media_url)
-            thumb_ref, thumb_status, thumb_bytes = await _copy_media(job_id, creative.thumbnail_url)
             entry.media_ref = media_ref
             entry.thumbnail_ref = thumb_ref
             entry.media_bytes = media_bytes + thumb_bytes
@@ -139,7 +151,8 @@ async def archive_job(db: AsyncSession, job_id: str, org_id: str) -> dict:
                 media_status if media_status != "none" else thumb_status
             )
         await db.flush()
-    await db.commit()
+        # One short transaction per ad keeps the workspace row lock brief.
+        await db.commit()
     if skipped_cap:
         logger.warning("ad archive cap reached for org %s: %s ads not archived", org_id, skipped_cap)
     return {"archived": archived, "refreshed": refreshed, "skipped_cap": skipped_cap}

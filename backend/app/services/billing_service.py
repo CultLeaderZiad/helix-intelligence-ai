@@ -340,7 +340,7 @@ async def get_or_create_default_org(
                 await db.execute(
                     select(Organization)
                     .where(Organization.id == resolved.id)
-                    .with_for_update()
+                    .with_for_update(key_share=True)
                     .execution_options(populate_existing=True)
                 )
             ).scalar_one()
@@ -350,7 +350,7 @@ async def get_or_create_default_org(
 
     query = select(Organization).where(Organization.owner_id == user.id)
     if lock_row:
-        query = query.with_for_update().execution_options(populate_existing=True)
+        query = query.with_for_update(key_share=True).execution_options(populate_existing=True)
 
     result = await db.execute(query)
     org = result.scalar_one_or_none()
@@ -393,7 +393,7 @@ async def get_or_create_default_org(
             # Another concurrent request already created the org
             query = select(Organization).where(Organization.owner_id == user.id)
             if lock_row:
-                query = query.with_for_update().execution_options(populate_existing=True)
+                query = query.with_for_update(key_share=True).execution_options(populate_existing=True)
             result = await db.execute(query)
             org = result.scalar_one()
 
@@ -612,10 +612,15 @@ async def charge(
     meta["payload_hash"] = payload_hash
 
     # 1. Row-lock the org before the idempotency read so concurrent retries serialize.
+    # FOR NO KEY UPDATE (key_share=True) on every workspace-row lock: credit
+    # changes still serialize, but the lock no longer waits on transactions that
+    # only insert rows referencing the workspace (FK inserts take KEY SHARE),
+    # such as the worker archiving media. Plain FOR UPDATE made a search wait
+    # for the whole archive copy and fail after the 30 s command timeout.
     lock_query = (
         select(Organization)
         .where(Organization.id == org.id)
-        .with_for_update()
+        .with_for_update(key_share=True)
         .execution_options(populate_existing=True)
     )
     locked_org = (await db.execute(lock_query)).scalar_one_or_none() or org
@@ -750,7 +755,7 @@ async def refund(
     result = await db.execute(
         select(Organization)
         .where(Organization.id == org_id)
-        .with_for_update()
+        .with_for_update(key_share=True)
         .execution_options(populate_existing=True)
     )
     org = result.scalar_one_or_none()
@@ -864,7 +869,7 @@ async def reserve_credits(
         await db.execute(
             select(Organization)
             .where(Organization.id == org_id)
-            .with_for_update()
+            .with_for_update(key_share=True)
             .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none() or org
@@ -1050,7 +1055,7 @@ async def release_reservation(db: AsyncSession, reservation_id: str, reason: str
         await db.execute(
             select(Organization)
             .where(Organization.id == peek.org_id)
-            .with_for_update()
+            .with_for_update(key_share=True)
             .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none()
@@ -1123,7 +1128,7 @@ async def meter_and_deduct(
     Compatibility function for older callers.
     """
     org_result = await db.execute(
-        select(Organization).where(Organization.id == org_id).with_for_update()
+        select(Organization).where(Organization.id == org_id).with_for_update(key_share=True)
     )
     org = org_result.scalar_one_or_none()
     if not org:
