@@ -578,3 +578,23 @@ the same command: it skips the promotion and retries only the grant.
 - **Everything:** restore from `pre-admin-bootstrap`, or use Neon's
   point-in-time restore to just before step 3. This also discards anything
   written after that point.
+
+## Sign-in protection
+
+Two independent limits protect sign-in:
+
+- **Per client IP** (`RateLimitMiddleware`, in memory): `AUTH_RATE_LIMIT`
+  requests per `AUTH_RATE_LIMIT_WINDOW_S` on each auth route. Behind Render the
+  TCP peer is Render's proxy. Set `TRUSTED_PROXY_CIDRS` to the proxy's private
+  range so the real client address is used; otherwise every client shares one
+  bucket. The API logs `Rate limiting keys on proxy address <ip>` once per
+  process when this is misconfigured.
+- **Per account** (stored on the user row, so it holds across processes):
+  after `SIGN_IN_FAILURE_LIMIT` wrong passwords (default 10) within
+  `SIGN_IN_FAILURE_WINDOW_S` (900 s), sign-in for that email returns
+  `429 too_many_sign_in_attempts` for `SIGN_IN_LOCK_S` (900 s), even with the
+  right password. A successful sign-in clears the count; a completed password
+  reset ends the lock. Unknown emails are counted in memory and get the same
+  answer on the same attempt, so the lock does not reveal which emails exist.
+  Anyone can lock an account for 15 minutes by guessing; the reset link is the
+  way back in.

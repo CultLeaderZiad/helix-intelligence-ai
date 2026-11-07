@@ -81,6 +81,13 @@ class Settings(BaseSettings):
     # Empty means forwarding headers are ignored and the TCP peer is used.
     TRUSTED_PROXY_CIDRS: str = os.getenv("TRUSTED_PROXY_CIDRS", "")
 
+    # Per-account sign-in throttle (independent of client IP): after
+    # SIGN_IN_FAILURE_LIMIT wrong passwords within SIGN_IN_FAILURE_WINDOW_S the
+    # account refuses sign-in for SIGN_IN_LOCK_S. A password reset ends the lock.
+    SIGN_IN_FAILURE_LIMIT: int = max(3, int(os.getenv("SIGN_IN_FAILURE_LIMIT", "10")))
+    SIGN_IN_FAILURE_WINDOW_S: int = max(60, int(os.getenv("SIGN_IN_FAILURE_WINDOW_S", "900")))
+    SIGN_IN_LOCK_S: int = max(60, int(os.getenv("SIGN_IN_LOCK_S", "900")))
+
     # Emit a Server-Timing header (connect/ping/db/rls/hash/app/total) on every
     # response. Off by default: it exposes internal timing to clients.
     SERVER_TIMING_ENABLED: bool = os.getenv("SERVER_TIMING_ENABLED", "False").lower() in ("true", "1", "yes")

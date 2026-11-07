@@ -1,4 +1,6 @@
 import asyncio
+import collections
+import time
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,16 +43,122 @@ async def authenticate_user(db: AsyncSession, user_in: UserLogin) -> str:
     return token
 
 
+# --- Failed sign-in throttle -------------------------------------------------
+# Per account, stored on the user row so it holds across processes and is not
+# keyed on a client IP (which a proxy can hide and an attacker can rotate).
+# Unknown emails are counted in process memory so they get the same answer as
+# real accounts and do not reveal which emails are registered.
+_FAILED_KEY = "failed_sign_ins"
+_FAILED_SINCE_KEY = "failed_sign_ins_since"
+_LOCKED_UNTIL_KEY = "sign_in_locked_until"
+_UNKNOWN_FAILURES: "collections.OrderedDict[str, list[float]]" = collections.OrderedDict()
+_UNKNOWN_FAILURES_MAX = 10_000
+
+
+def _throttle_exception(retry_after_s: int) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail={
+            "code": "too_many_sign_in_attempts",
+            "message": "Too many sign-in attempts. Wait a few minutes, or reset your password.",
+        },
+        headers={"Retry-After": str(max(1, int(retry_after_s)))},
+    )
+
+
+def _parse_iso(value) -> Optional[datetime.datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=datetime.timezone.utc)
+
+
+def _locked_for(user: User, now: datetime.datetime) -> int:
+    """Seconds left on this account's sign-in lock, 0 when unlocked."""
+    until = _parse_iso((user.signup_metadata or {}).get(_LOCKED_UNTIL_KEY))
+    if until is None or until <= now:
+        return 0
+    return int((until - now).total_seconds()) + 1
+
+
+def _unknown_email_failure(email: str) -> bool:
+    """Count a failure for an email with no account; True once it is throttled."""
+    now = time.monotonic()
+    window = settings.SIGN_IN_FAILURE_WINDOW_S
+    hits = [t for t in _UNKNOWN_FAILURES.pop(email, []) if now - t < window]
+    hits.append(now)
+    _UNKNOWN_FAILURES[email] = hits
+    while len(_UNKNOWN_FAILURES) > _UNKNOWN_FAILURES_MAX:
+        _UNKNOWN_FAILURES.popitem(last=False)
+    return len(hits) >= settings.SIGN_IN_FAILURE_LIMIT
+
+
+def _unknown_email_throttled(email: str) -> bool:
+    now = time.monotonic()
+    hits = [t for t in _UNKNOWN_FAILURES.get(email, []) if now - t < settings.SIGN_IN_FAILURE_WINDOW_S]
+    return len(hits) >= settings.SIGN_IN_FAILURE_LIMIT
+
+
+async def _record_failed_sign_in(db: AsyncSession, user_id: str, now: datetime.datetime) -> int:
+    """Count one failure under a row lock. Returns seconds locked (0 if not locked)."""
+    locked = (
+        await db.execute(
+            select(User).where(User.id == user_id).with_for_update().execution_options(populate_existing=True)
+        )
+    ).scalar_one()
+    metadata = dict(locked.signup_metadata or {})
+    since = _parse_iso(metadata.get(_FAILED_SINCE_KEY))
+    window = datetime.timedelta(seconds=settings.SIGN_IN_FAILURE_WINDOW_S)
+    if since is None or now - since > window:
+        metadata[_FAILED_SINCE_KEY] = now.isoformat()
+        metadata[_FAILED_KEY] = 0
+    metadata[_FAILED_KEY] = int(metadata.get(_FAILED_KEY) or 0) + 1
+    lock_s = 0
+    if metadata[_FAILED_KEY] >= settings.SIGN_IN_FAILURE_LIMIT:
+        lock_s = settings.SIGN_IN_LOCK_S
+        metadata[_LOCKED_UNTIL_KEY] = (now + datetime.timedelta(seconds=lock_s)).isoformat()
+        metadata[_FAILED_KEY] = 0
+        metadata[_FAILED_SINCE_KEY] = None
+    locked.signup_metadata = metadata
+    await db.commit()
+    return lock_s
+
+
+def _clear_throttle(metadata: dict) -> dict:
+    for key in (_FAILED_KEY, _FAILED_SINCE_KEY, _LOCKED_UNTIL_KEY):
+        metadata.pop(key, None)
+    return metadata
+
+
 async def authenticate_user_and_load(db: AsyncSession, user_in: UserLogin) -> tuple[str, Optional[User]]:
     """Verify credentials and return the token with the user row already loaded,
-    so callers do not query the same user a second time."""
+    so callers do not query the same user a second time.
+
+    An account locked by repeated failures is refused before its password is
+    checked, so guessing makes no progress while the lock lasts.
+    """
     email = _normalize_email(user_in.email)
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     user = result.scalar_one_or_none()
+    now = datetime.datetime.now(datetime.timezone.utc)
 
     if not user:
+        if _unknown_email_throttled(email):
+            raise _throttle_exception(settings.SIGN_IN_LOCK_S)
+        if _unknown_email_failure(email):
+            raise _throttle_exception(settings.SIGN_IN_LOCK_S)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+    remaining = _locked_for(user, now)
+    if remaining:
+        raise _throttle_exception(remaining)
     if not await verify_password(user_in.password, user.password_hash):
+        lock_s = await _record_failed_sign_in(db, user.id, now)
+        if lock_s:
+            logger.warning("Sign-in locked after repeated failures: user=%s", user.id)
+            raise _throttle_exception(lock_s)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
     if getattr(user, "is_banned", False):
@@ -65,6 +173,11 @@ async def authenticate_user_and_load(db: AsyncSession, user_in: UserLogin) -> tu
         )
 
     metadata = getattr(user, "signup_metadata", None) or {}
+    if any(key in metadata for key in (_FAILED_KEY, _FAILED_SINCE_KEY, _LOCKED_UNTIL_KEY)):
+        user.signup_metadata = _clear_throttle(dict(metadata))
+        await db.commit()
+        await db.refresh(user)
+        metadata = user.signup_metadata or {}
     token_version = metadata.get("token_version", 1)
     return create_access_token(subject=user.id, role=user.role, token_version=token_version), user
 
@@ -256,7 +369,8 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Use
     metadata["token_version"] = int(metadata.get("token_version", 1)) + 1
     metadata["password_reset_at"] = now.isoformat()
     metadata["sessions_revoked_at"] = now.isoformat()
-    user.signup_metadata = metadata
+    # A completed reset proves control of the inbox, so it ends any sign-in lock.
+    user.signup_metadata = _clear_throttle(metadata)
 
     await db.commit()
     await db.refresh(user)

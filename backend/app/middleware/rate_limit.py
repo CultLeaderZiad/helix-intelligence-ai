@@ -104,6 +104,34 @@ def _is_trusted_proxy(value: str) -> bool:
     return any(ip in network for network in _trusted_networks())
 
 
+_proxy_warning_logged = False
+
+
+def warn_if_untrusted_proxy(request: Request) -> bool:
+    """Log once when a private peer forwards client IPs we are told not to trust.
+
+    Behind a hosting proxy (Render, a load balancer) every client then shares
+    the proxy's address, so one IP bucket covers all users. Returns True when
+    the warning applies (for tests); never raises.
+    """
+    global _proxy_warning_logged
+    peer = request.client.host if request.client and request.client.host else ""
+    forwarded = request.headers.get("x-forwarded-for") or request.headers.get("cf-connecting-ip")
+    if not peer or not forwarded or not _is_ip(peer) or _is_trusted_proxy(peer):
+        return False
+    if _is_valid_public_ip(peer):
+        return False
+    if not _proxy_warning_logged:
+        _proxy_warning_logged = True
+        logger.warning(
+            "Rate limiting keys on proxy address %s: forwarding headers are present but "
+            "TRUSTED_PROXY_CIDRS does not include it, so all clients share one bucket. "
+            "Add the proxy range to TRUSTED_PROXY_CIDRS.",
+            peer,
+        )
+    return True
+
+
 def client_ip(request: Request) -> str:
     """Return the client IP from the TCP peer unless that peer is a trusted proxy."""
     peer = request.client.host if request.client and request.client.host else ""
@@ -148,6 +176,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         try:
+            warn_if_untrusted_proxy(request)
             client_ip = self._client_ip(request)
             key = f"{bucket}:{client_ip}"
             now = time.monotonic()

@@ -23,6 +23,7 @@ no API-key or third-party-token login (W8).
 | 402 | `insufficient_credits` | Not enough credits; ask a workspace administrator |
 | 429 | `daily_limit_reached` | Daily credit limit reached; resets 00:00 UTC |
 | 429 | `rate_limited` | Too many requests from this client |
+| 429 | `too_many_sign_in_attempts` | Sign-in for this email is locked after repeated wrong passwords (`Retry-After` set). Unknown emails get the same answer on the same attempt. A password reset ends the lock |
 | 503 | `auth_rate_limiter_unavailable` | Auth limiter fault; auth fails closed |
 
 ## 2. Auth — `/api/auth`

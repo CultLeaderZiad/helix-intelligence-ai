@@ -77,10 +77,15 @@ export function SignInPage() {
       navigate(finalRedirect, { replace: true })
     } catch (err) {
       const isCold = err?.code === "network_error" || err?.code === "server_waking" || (err?.status >= 502 && err?.status <= 504)
+      const isLocked = err?.status === 429
       setAuthError({
-        status: isCold ? "server waking" : "auth failed",
+        status: isCold ? "server waking" : isLocked ? "locked" : "auth failed",
         tone: isCold ? "warning" : "danger",
-        message: isCold ? t("authBackendWaking", "The service is starting. Retry to complete sign in.") : t("authSignInFailed", "Sign in failed. Check your details and try again."),
+        message: isCold
+          ? t("authBackendWaking", "The service is starting. Retry to complete sign in.")
+          : isLocked
+            ? t("authSignInLocked", "Too many sign-in attempts. Wait 15 minutes, or reset your password to sign in now.")
+            : t("authSignInFailed", "Sign in failed. Check your details and try again."),
         isColdStart: isCold,
       })
       setSubmitting(false)
