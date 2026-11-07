@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import settings, cors_origins
+from app.core.config import settings, cors_origins, cors_origin_regex
 from app.db.session import engine
 from app.core.observability import log_event, request_id_context
 from app.middleware.rate_limit import RateLimitMiddleware
@@ -15,22 +15,17 @@ from app.api.routers import (
     auth,
     discover,
     creatives,
-    analysis,
     admin,
     health,
     account,
     notifications,
-    media,
     updates,
-    providers,
     support,
     playbooks,
-    dashboard,
-    simulation,
     uploads,
     monitors,
-    scout,
-    leadgen,
+    boards,
+    archive,
 )
 
 @asynccontextmanager
@@ -47,10 +42,11 @@ app = FastAPI(
 )
 
 # Set all CORS enabled origins
-if cors_origins:
+if cors_origins or cors_origin_regex:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
+        allow_origin_regex=cors_origin_regex,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -91,29 +87,28 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
 
+# Opt-in latency breakdown (Server-Timing header). Registered last so it is the
+# outermost middleware and its total covers every other layer.
+if settings.SERVER_TIMING_ENABLED:
+    from app.core import timing as request_timing
+    from app.db.session import worker_engine
+    request_timing.install(app, (engine, worker_engine))
+
 # Include routers
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["auth"])
 app.include_router(account.router, prefix=f"{settings.API_V1_STR}/account", tags=["account"])
 app.include_router(notifications.router, prefix=f"{settings.API_V1_STR}/notifications", tags=["notifications"])
 app.include_router(discover.router, prefix=f"{settings.API_V1_STR}/discovery", tags=["discovery"])
 app.include_router(creatives.router, prefix=f"{settings.API_V1_STR}/creatives", tags=["creatives"])
-app.include_router(creatives.brands_router, prefix=f"{settings.API_V1_STR}/brands", tags=["brands"])
-app.include_router(creatives.patterns_router, prefix=f"{settings.API_V1_STR}/patterns", tags=["patterns"])
-app.include_router(analysis.insights_router, prefix=f"{settings.API_V1_STR}/insights", tags=["insights"])
-app.include_router(media.router, prefix=f"{settings.API_V1_STR}/media", tags=["media"])
-app.include_router(providers.router, prefix=f"{settings.API_V1_STR}", tags=["providers"])
 app.include_router(updates.router, prefix=f"{settings.API_V1_STR}/updates", tags=["updates"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
 app.include_router(support.router, prefix=f"{settings.API_V1_STR}/support", tags=["support"])
 app.include_router(playbooks.router, prefix=f"{settings.API_V1_STR}/playbooks", tags=["playbooks"])
-app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["dashboard"])
-app.include_router(simulation.router, prefix=f"{settings.API_V1_STR}/simulation", tags=["simulation"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["health"])
 app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", tags=["monitors"])
-app.include_router(scout.router, prefix=f"{settings.API_V1_STR}/scout", tags=["scout"])
-app.include_router(scout.router, prefix="/api/v1/scout", tags=["scout"])
-# Scout · Lead Generation (scrapling_engine worker) — separate router so Social/Atlas stays untouched
-app.include_router(leadgen.router, prefix=f"{settings.API_V1_STR}/scout/leadgen", tags=["leadgen"])
+app.include_router(boards.router, prefix=f"{settings.API_V1_STR}/boards", tags=["boards"])
+app.include_router(archive.router, prefix=f"{settings.API_V1_STR}/archive", tags=["archive"])
+app.include_router(boards.guest_router, prefix=f"{settings.API_V1_STR}/public/boards", tags=["boards"])
 
 # Locally stored media. This is served by a router rather than a StaticFiles
 # mount so that access is checked: the old mount handed any file to anyone who

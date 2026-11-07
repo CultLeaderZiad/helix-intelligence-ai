@@ -1,23 +1,14 @@
-"""Customer lifecycle emails (welcome, trial-expiry) on top of email_service.
+"""Customer lifecycle email: the welcome message sent after sign-up.
 
-These are the conversion levers for a 7-day free trial: a user who gets a
-welcome nudge activates more often, and a user warned before the trial lapses
-converts instead of silently churning. Everything here is best-effort — email
-is never a hard failure (see email_service), and every send is guarded by
-``email_enabled()``.
-
-Scheduling: there is no separate worker, so trial-expiry is sent from the
-existing authenticated cron tick (``POST /api/monitors/tick``) via
-``send_due_trial_reminders``. Welcome is sent inline at sign-up.
+Best-effort only: email is never a hard failure (see email_service) and every
+send is guarded by ``email_enabled()``. Access is granted by a platform admin,
+so the welcome message explains that instead of promising credits or a trial.
 """
 
 from __future__ import annotations
 
 import logging
-import datetime
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.user import User
@@ -61,70 +52,10 @@ async def send_welcome_email(email_or_user: User | str, name: str = "") -> None:
 
     html = _wrap(
         f"Welcome to Helix, {clean_name}",
-        "Your workspace is live with <strong>25 free credits</strong> and a 7-day trial. "
-        "Run your first competitor discovery to see the ads winning in your market right now.",
-        "Run your first discovery",
-        "/discover",
+        "Your account is created. A Helix administrator grants workspace access; "
+        "you can request it from the Access page, and you will see the status there.",
+        "Request access",
+        "/access",
     )
-    result = await send_email(to=target_email, subject="Welcome to Helix Intelligence — your trial is live", html=html)
-    logger.info("Welcome email to %s: %s", target_email, "sent" if result else getattr(result, "error", "failed"))
-
-
-
-def _days_remaining(user: User) -> int | None:
-    if not user.trial_expires_at:
-        return None
-    exp = user.trial_expires_at
-    if exp.tzinfo is None:
-        exp = exp.replace(tzinfo=datetime.timezone.utc)
-    now = datetime.datetime.now(datetime.timezone.utc)
-    return (exp - now).days
-
-
-async def send_due_trial_reminders(db: AsyncSession) -> int:
-    """Email users whose trial expires in ~2 days or ~0 days. Returns count sent.
-
-    Idempotent within a day via the per-user ``admin_permissions`` JSON marker
-    (``trial_reminder_sent_for``), avoiding a new column. Safe to call on every
-    cron tick.
-    """
-    if not email_enabled():
-        return 0
-
-    result = await db.execute(
-        select(User).where(User.trial_expires_at.isnot(None), User.role == "customer")
-    )
-    users = result.scalars().all()
-    sent = 0
-    today = datetime.date.today().isoformat()
-
-    for user in users:
-        days = _days_remaining(user)
-        if days not in (0, 1, 2):
-            continue
-        perms = dict(user.admin_permissions or {})
-        if perms.get("trial_reminder_sent_for") == today:
-            continue
-
-        label = "today" if days == 0 else f"in {days} day{'s' if days != 1 else ''}"
-        html = _wrap(
-            f"Your Helix trial ends {label}",
-            "Your free trial and remaining credits expire soon. Upgrade to keep running "
-            "discoveries, monitors, and creative generation without interruption.",
-            "Keep my access",
-            "/billing",
-        )
-        result_send = await send_email(
-            to=user.email,
-            subject=f"Your Helix trial ends {label}",
-            html=html,
-        )
-        if result_send:
-            perms["trial_reminder_sent_for"] = today
-            user.admin_permissions = perms
-            sent += 1
-
-    if sent:
-        await db.commit()
-    logger.info("Trial reminders sent: %d", sent)
-    return sent
+    result = await send_email(to=target_email, subject="Welcome to Helix Intelligence", html=html)
+    logger.info("Welcome email: %s", "sent" if result else getattr(result, "error", "failed"))

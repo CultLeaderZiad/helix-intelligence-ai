@@ -1,9 +1,6 @@
 import os
-import re
-import httpx
-import base64
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from app.services.ai.base import AIProvider
 from app.core.config import settings
 
@@ -14,39 +11,12 @@ class GeminiProvider(AIProvider):
         raw_key = api_key or getattr(settings, "GEMINI_API_KEY", None) or os.getenv("GEMINI_API_KEY", "")
         self.api_key = raw_key.strip().strip('"\'') if raw_key else ""
         self.model = getattr(settings, "GEMINI_TEXT_MODEL", None) or "gemini-flash-latest"
-        self.image_model = getattr(settings, "GEMINI_IMAGE_MODEL", None) or "gemini-2.0-flash-lite-preview-02-05"
         self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
         
     @property
     def is_configured(self) -> bool:
         return bool(self.api_key)
 
-    async def test_connection(self) -> Dict[str, Any]:
-        """
-        Lightweight connection and authentication test for Gemini API.
-        Does NOT generate an expensive image.
-        Never logs or exposes the API key.
-        """
-        if not self.is_configured:
-            raise ValueError("No Gemini API key provided")
-            
-        test_url = "https://generativelanguage.googleapis.com/v1beta/models"
-        headers = {"x-goog-api-key": self.api_key}
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resp = await client.get(test_url, headers=headers)
-            if resp.status_code == 200:
-                return {
-                    "status": "connected",
-                    "provider": "google_gemini",
-                    "model": self.image_model,
-                    "message": "Successfully authenticated with Google Gemini"
-                }
-            elif resp.status_code in (401, 403):
-                raise ValueError("Authentication failed: invalid or unauthorized Gemini API key")
-            elif resp.status_code == 429:
-                raise ValueError("Gemini API rate limit exceeded or quota exhausted")
-            else:
-                raise ValueError(f"Gemini API returned error {resp.status_code}")
 
     async def _call_api(self, messages: List[dict]) -> str:
         if not self.is_configured:
@@ -104,176 +74,3 @@ class GeminiProvider(AIProvider):
         ))
         return text
 
-    async def generate_image(
-        self,
-        prompt: str,
-        reference_images: Optional[List[str]] = None,
-        aspect_ratio: str = "1:1",
-        image_size: Optional[str] = None,
-        seed: Optional[int] = None,
-        **kwargs: Any,
-    ) -> Dict[str, Any]:
-        """
-        Generate image using Google's official Gemini/Imagen API.
-        Never logs or leaks GEMINI_API_KEY.
-        Returns normalized provider dictionary with raw binary bytes in ['data'].
-        """
-        if not self.is_configured:
-            raise ValueError("Missing required integration key: GEMINI_API_KEY")
-
-        aspect_ratio_map = {
-            "1:1": "1:1",
-            "4:5": "4:5",
-            "9:16": "9:16",
-            "16:9": "16:9",
-            "3:4": "3:4",
-            "4:3": "4:3",
-        }
-        target_ratio = aspect_ratio_map.get(aspect_ratio, "1:1")
-
-        # Multimodal request payload construction
-        parts: List[Dict[str, Any]] = [{"text": prompt}]
-
-        # Add reference images if provided (URLs or base64)
-        if reference_images:
-            for ref_url in reference_images[:2]: # Capped to at most 2 references
-                if ref_url.startswith("data:"):
-                    try:
-                        from app.services.safe_fetch import MAX_INLINE_IMAGE_BYTES, decode_image_data_url
-                        raw, mime = decode_image_data_url(ref_url, max_bytes=MAX_INLINE_IMAGE_BYTES)
-                        parts.append({
-                            "inline_data": {
-                                "mime_type": mime,
-                                "data": base64.b64encode(raw).decode("utf-8")
-                            }
-                        })
-                    except Exception as err:
-                        logger.warning("Rejected inline reference image: %s", err)
-                elif ref_url.startswith("http://") or ref_url.startswith("https://"):
-                    try:
-                        from app.services.safe_fetch import MAX_INLINE_IMAGE_BYTES, safe_http_get_async
-                        img_resp = await safe_http_get_async(ref_url, timeout=10.0, max_bytes=MAX_INLINE_IMAGE_BYTES)
-                        if img_resp.status_code == 200:
-                            mime = img_resp.headers.get("content-type", "image/jpeg").split(";")[0]
-                            if mime not in {"image/png", "image/jpeg", "image/webp", "image/gif"}:
-                                logger.warning("Rejected reference image with content type %s", mime)
-                            else:
-                                parts.append({
-                                    "inline_data": {
-                                        "mime_type": mime,
-                                        "data": base64.b64encode(img_resp.content).decode("utf-8")
-                                    }
-                                })
-                    except Exception as err:
-                        logger.warning("Failed to fetch reference image: %s", err)
-
-        # Primary attempt using Imagen endpoint (:predict) if the model is an imagen model
-        predict_payload = {
-            "instances": [{"prompt": prompt}],
-            "parameters": {
-                "aspectRatio": target_ratio,
-                "sampleCount": 1,
-                "outputMimeType": "image/png"
-            }
-        }
-
-        # Models to try for image generation
-        candidate_models = [self.image_model]
-        for fallback in ["gemini-2.5-flash-image", "gemini-2.0-flash-lite-preview-02-05", "gemini-3-pro-image"]:
-            if fallback not in candidate_models:
-                candidate_models.append(fallback)
-
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            last_error = None
-            for model_name in candidate_models:
-                is_imagen = "imagen" in model_name.lower()
-                
-                if is_imagen:
-                    generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:predict"
-                    generate_payload_data = predict_payload
-                else:
-                    generate_url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
-                    generate_payload_data = {
-                        "contents": [{"parts": parts}]
-                    }
-
-                try:
-                    resp = await client.post(
-                        generate_url,
-                        headers={
-                            "Content-Type": "application/json",
-                            "x-goog-api-key": self.api_key
-                        },
-                        json=generate_payload_data
-                    )
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        
-                        if is_imagen:
-                            # Imagen response structure
-                            predictions = data.get("predictions", [])
-                            if predictions and predictions[0].get("bytesBase64Encoded"):
-                                mime_type = predictions[0].get("mimeType", "image/png")
-                                image_bytes = base64.b64decode(predictions[0]["bytesBase64Encoded"])
-                                return {
-                                    "provider": "gemini",
-                                    "model": model_name,
-                                    "media_type": "image",
-                                    "mime_type": mime_type,
-                                    "data": image_bytes,
-                                    "metadata": {
-                                        "prompt": prompt,
-                                        "aspect_ratio": target_ratio,
-                                        "model": model_name
-                                    }
-                                }
-                        else:
-                            # Gemini generateContent response structure
-                            candidates = data.get("candidates", [])
-                            if candidates:
-                                for part in candidates[0].get("content", {}).get("parts", []):
-                                    inline = part.get("inlineData") or part.get("inline_data")
-                                    if inline and inline.get("data"):
-                                        mime_type = inline.get("mimeType") or inline.get("mime_type") or "image/png"
-                                        image_bytes = base64.b64decode(inline["data"])
-                                        if len(image_bytes) > 15 * 1024 * 1024:
-                                            raise ValueError("Gemini image exceeded the 15MB output cap")
-                                        return {
-                                            "provider": "gemini",
-                                            "model": model_name,
-                                            "media_type": "image",
-                                            "mime_type": mime_type,
-                                            "data": image_bytes,
-                                            "metadata": {
-                                                "prompt": prompt,
-                                                "aspect_ratio": target_ratio,
-                                                "model": model_name
-                                            }
-                                        }
-                    elif resp.status_code == 429:
-                        last_error = "Gemini API quota exceeded or rate limit reached. Please check your Google AI Studio quota."
-                        continue
-                    elif resp.status_code == 400:
-                        err_msg = resp.json().get("error", {}).get("message", resp.text[:120])
-                        last_error = f"Gemini API 400 Bad Request: {err_msg}"
-                        continue
-                    elif resp.status_code in (401, 403):
-                        raise ValueError("Gemini API key is invalid or unauthorized")
-                    else:
-                        last_error = f"Gemini API returned HTTP {resp.status_code}"
-                except Exception as e:
-                    clean_err = re.sub(r'([?&]key=)[^&\s]+', r'\1[REDACTED]', str(e))
-                    if self.api_key:
-                        clean_err = clean_err.replace(self.api_key, "[REDACTED]")
-                    if "unauthorized" in clean_err.lower() or "invalid" in clean_err.lower():
-                        raise ValueError("Gemini API key is invalid or unauthorized")
-                    last_error = clean_err
-                    logger.warning("Error with model %s: %s", model_name, clean_err)
-
-            if last_error:
-                clean_last = re.sub(r'([?&]key=)[^&\s]+', r'\1[REDACTED]', str(last_error))
-                if self.api_key:
-                    clean_last = clean_last.replace(self.api_key, "[REDACTED]")
-                raise ValueError(clean_last)
-
-        raise ValueError("Gemini image generation did not return image data")

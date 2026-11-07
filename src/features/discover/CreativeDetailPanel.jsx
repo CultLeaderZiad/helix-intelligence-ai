@@ -1,13 +1,14 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { X, ExternalLink, Play, Image as ImageIcon, Layers, Bookmark, Check } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
-import { creativeService } from "@/services"
+import { archiveService, creativeService } from "@/services"
 import { useAsync } from "@/hooks/useAsync"
 import { Button } from "@/components/ui/Button"
 import { Tag } from "@/components/ui/Tag"
 import { ScoreBar, StatBlock, MetricValue } from "@/components/ui/Metric"
 import { InfoTip } from "@/components/ui/InfoTip"
 import { useLanguage } from "@/context/LanguageContext"
+import { useW8Copy } from "@/i18n/w8Product"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { deriveInsight } from "@/lib/insight"
 import {
@@ -162,6 +163,7 @@ function PatternFindings({ patterns }) {
  * split FastAPI will have.
  */
 export function CreativeDetailPanel({ creativeId, onClose }) {
+  const w8 = useW8Copy()
   const { user } = useAuth()
   const { t } = useLanguage()
   const [saved, setSaved] = useState(false)
@@ -174,6 +176,18 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
   )
 
   const showSwipeOption = user?.feature_flags?.swipe_files === true
+
+  /* The permanent copy is made in the background after a search; until it
+     exists (404) nothing is shown rather than a promise. */
+  const [archived, setArchived] = useState(null)
+  useEffect(() => {
+    let live = true
+    setArchived(null)
+    if (creativeId) {
+      archiveService.forCreative(creativeId).then((entry) => live && setArchived(entry)).catch(() => {})
+    }
+    return () => { live = false }
+  }, [creativeId])
 
   const handleToggleSave = async () => {
     if (!creativeId || saving) return
@@ -219,16 +233,6 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
             </Button>
           ) : null}
           <div className="h-4 w-px bg-border mx-1"></div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-xs text-text hover:text-accent"
-            onClick={() => {
-              window.location.href = `/create?sourceId=${creativeId}`
-            }}
-          >
-            Remix
-          </Button>
           <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close inspector">
             <X className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
@@ -298,10 +302,15 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
             {/* Active duration — position 4 in the hierarchy */}
             <div className="flex items-center gap-3 border-y border-border py-2">
-              <StatBlock label="Active" value={formatDays(data.days_active)} />
+              <StatBlock label="Active" value={data.days_active != null ? formatDays(data.days_active) : w8.runLengthUnknown} />
               <StatBlock label="First seen" value={formatDate(data.first_seen)} />
               <StatBlock label="Last seen" value={formatDate(data.last_seen)} />
             </div>
+            {archived ? (
+              <p className="font-mono text-[11px] text-text-faint" role="note">
+                {(archived.media_status === "stored" ? w8.archivedWithMedia : w8.archivedTextOnly)(formatDate(archived.archived_at))}
+              </p>
+            ) : null}
 
             <InsightBlock creative={data} />
 
@@ -340,14 +349,13 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
               <StatBlock
                 label={
                   <span className="flex items-center gap-1">
-                    Impressions
-                    {data.metrics?.is_impression_estimate && <span className="text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
+                    Meta reach (upper bound)
                   </span>
                 }
                 value={
                   data.metrics?.impressions_est === null || data.metrics?.impressions_est === undefined
                     ? t("unavailable")
-                    : formatCompact(data.metrics.impressions_est)
+                    : `≤ ${formatCompact(data.metrics.impressions_est)}`
                 }
               />
               <StatBlock

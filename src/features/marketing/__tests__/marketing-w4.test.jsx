@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it } from "vitest"
 import { Hero } from "../Hero"
 import { LoopsSection } from "../LoopsSection"
-import { PricingSection } from "../PricingSection"
+import { AccessSection } from "../AccessSection"
 import { LegalPage } from "../../../pages/LegalPage"
 import { LanguageProvider } from "../../../context/LanguageContext"
 
@@ -25,13 +25,13 @@ describe("W4 marketing and legal disclosures", () => {
       <>
         <Hero />
         <LoopsSection />
-        <PricingSection />
+        <AccessSection />
       </>
     ))
 
     expect(markup).not.toMatch(/Nike|Gymshark|Alo Yoga|\b94\s*\/\s*100|free trial|\$\s*\d/i)
     expect(markup).toContain('id="product"')
-    expect(markup).toContain('id="pricing"')
+    expect(markup).toContain('id="access"')
     expect(markup).toContain('href="#product"')
     expect(markup).toContain("Access is granted by an administrator")
     expect(markup).toContain("Checkout and payment-provider routes are unavailable")
@@ -53,15 +53,15 @@ describe("W4 marketing and legal disclosures", () => {
       <>
         <Hero />
         <LoopsSection />
-        <PricingSection />
+        <AccessSection />
       </>
     ))
     const legal = renderInLanguage("ar", <LegalPage />)
 
     expect(marketing).toContain("لا يقدم Helix حالياً خططاً عامة")
     expect(marketing).toContain("يجب أن يمنح المشرف صلاحية الوصول")
-    expect(marketing).toContain("ابحث في الإعلانات. وطوّر أفكاراً إبداعية.")
-    expect(marketing).toContain("البحث الإعلاني")
+    expect(marketing).toContain("اعرف ما يعرضه منافسوك من إعلانات.")
+    expect(marketing).toContain("مكتبات الإعلانات")
     expect(legal).toContain("هذه الإفصاحات غير معتمدة")
     expect(legal).toContain("لا يُنشر عنوان تواصل هنا")
     expect(legal).toContain("localStorage")

@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 afterEach(() => { act(() => root.unmount()); container.remove(); });
 
-describe('native PillNav', () => {
+describe('GSAP PillNav (live landing behaviour)', () => {
   it('keeps mobile visibility and aria state consistent across rapid toggles and link clicks', () => {
     const onMobileMenuClick = vi.fn();
     render({ onMobileMenuClick });

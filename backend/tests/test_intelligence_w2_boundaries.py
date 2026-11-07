@@ -19,18 +19,15 @@ from unittest.mock import AsyncMock, patch
 from app.db.session import worker_session_maker
 from app.models.organization import Organization
 from app.models.scrape_job import ScrapeJob
-from app.models.scout import ScoutMapsJob, ScoutMapsLead
 from app.models.user import User
 from app.models.work_item import WorkItem
 from app.services.ai.base import AIProvider
-from app.services.ai.structured import InvalidModelOutput, parse_insight, parse_translation
 from app.services.billing_service import (
     DISCOVER_SEARCH_CREDIT_COST,
     charge,
     release_reservation,
     reserve_credits,
 )
-from app.services.maps_scout_service import _optional_float, _optional_int
 from app.services.safe_fetch import UnsafeFetch, safe_http_get
 from app.services.work_outbox import claim_next_work_item, enqueue_work, requeue_expired_leases
 from app.schemas.creative import Creative as CreativeSchema
@@ -67,18 +64,6 @@ def test_mock_transport_redirect_is_rechecked():
         )
 
 
-def test_incomplete_insight_and_canned_translation_are_rejected():
-    with pytest.raises(InvalidModelOutput):
-        parse_insight({}, creative_id="creative-1", model_version="groq/test:insight-v2")
-    with pytest.raises(InvalidModelOutput):
-        parse_translation(
-            {
-                "detected_lang": "es",
-                "translated_text": "Naturia Parasite Cleansing Drops eliminate the biofilm",
-                "breakdown": {"hook": "a", "problem": "b", "solution": "c", "cta": "d"},
-            },
-            target_lang="en",
-        )
 
 
 @pytest.mark.asyncio
@@ -101,9 +86,9 @@ async def test_provider_http_exception_is_not_unbound_local():
         pattern_ids=[],
     )
     with pytest.raises(HTTPException) as exc:
-        await Boom().generate_insight(creative)
+        await Boom().generate_patterns([creative])
     assert exc.value.status_code == 503
-    assert exc.value.detail == "AI insight generation is temporarily unavailable."
+    assert exc.value.detail["code"] == "analysis_unavailable"
     assert "provider down" not in str(exc.value.detail)
 
 
@@ -131,37 +116,6 @@ async def test_meta_http_failure_is_not_counted_as_success():
     assert provider.successful_queries_count == 0
 
 
-@pytest.mark.asyncio
-async def test_missing_rating_persists_as_null():
-    suffix = uuid.uuid4().hex[:8]
-    async with worker_session_maker() as db:
-        user = User(id=f"u_{suffix}", email=f"{suffix}@example.com", password_hash="x", role="member")
-        org = Organization(id=f"o_{suffix}", name="Org", owner_id=user.id, plan="pro", credit_balance=10)
-        db.add(user)
-        await db.flush()
-        db.add(org)
-        job = ScoutMapsJob(id=f"mj_{suffix}", org_id=org.id, user_id=user.id, keyword="clinics", city="Cairo")
-        db.add(job)
-        await db.flush()
-        lead = ScoutMapsLead(
-            id=f"ml_{suffix}",
-            job_id=job.id,
-            org_id=org.id,
-            title="Clinic with no rating",
-            metadata_raw={
-                "rating": {"value": None, "provider": "overpass", "source_url": "https://overpass-api.de/api/interpreter", "fetched_at": "2026-10-18T00:00:00+00:00"},
-                "reviews_count": {"value": None, "provider": "overpass", "source_url": "https://overpass-api.de/api/interpreter", "fetched_at": "2026-10-18T00:00:00+00:00"},
-            },
-        )
-        lead.rating = _optional_float(None)
-        lead.reviews_count = _optional_int(None)
-        db.add(lead)
-        await db.commit()
-        stored = await db.get(ScoutMapsLead, lead.id)
-        assert stored.rating is None
-        assert stored.reviews_count is None
-        assert stored.metadata_raw["rating"]["value"] is None
-        assert stored.metadata_raw["reviews_count"]["source_url"]
 
 
 @pytest.mark.asyncio

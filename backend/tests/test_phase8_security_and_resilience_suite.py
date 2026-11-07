@@ -12,15 +12,6 @@ from fastapi import HTTPException
 
 from app.core.config import settings
 from app.middleware.rate_limit import RateLimitMiddleware, _rules, _is_valid_public_ip
-from app.services.scrapling_engine import robots_allowed
-from app.services.leadgen_pipeline import parse_sitemap
-from app.services.ai.pollinations_provider import (
-    PollinationsProvider,
-    MAX_IMAGE_BYTES,
-    MAX_VIDEO_BYTES,
-)
-from app.api.routers.scout import sanitize_csv_cell as scout_sanitize_csv
-from app.api.routers.leadgen import sanitize_csv_cell as leadgen_sanitize_csv
 
 
 # ============================================================================
@@ -87,7 +78,6 @@ def test_f58_client_ip_precedence():
 
 def test_f58_rate_limit_rules_and_normalization():
     rule_paths = [r[0] for r in _rules()]
-    assert "/api/leadgen/jobs" in rule_paths
     assert "/api/discovery/jobs" in rule_paths
     assert "/api/auth/sign-in" in rule_paths
 
@@ -96,100 +86,13 @@ def test_f58_rate_limit_rules_and_normalization():
 # F66: Unbounded Network / Memory Ceilings
 # ============================================================================
 
-def test_f66_robots_allowed_ssrf_and_timeout():
-    # Unavailable robots rules on private/internal origins must fail closed.
-    # Real 404/410 responses remain covered by test_intelligence_w3_robots.py.
-    assert robots_allowed("http://127.0.0.1:8000/some-path") is False
-    assert robots_allowed("http://169.254.169.254/latest/meta-data") is False
 
 
-def test_f66_parse_sitemap_recursion_and_visited_guards():
-    # If sitemap points to itself, visited set prevents recursion loop
-    fake_sitemap_xml = """<?xml version="1.0" encoding="UTF-8"?>
-    <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-       <sitemap>
-          <loc>https://example.com/sitemap.xml</loc>
-       </sitemap>
-    </sitemapindex>"""
-
-    with patch("app.services.security_service.safe_http_get") as mock_get:
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.text = fake_sitemap_xml
-        mock_get.return_value = mock_resp
-
-        # Should terminate cleanly with 0 URLs returned, not an infinite loop / RecursionError
-        result = parse_sitemap("https://example.com/sitemap.xml", limit=10, max_depth=2)
-        assert isinstance(result, list)
 
 
-@pytest.mark.asyncio
-async def test_f66_pollinations_streaming_chunk_limits():
-    provider = PollinationsProvider()
-
-    # Mock client stream exceeding MAX_IMAGE_BYTES
-    async def fake_aiter_bytes(chunk_size):
-        # Yield chunks that sum to more than 15MB
-        chunk = b"X" * (5 * 1024 * 1024)
-        for _ in range(4):  # 20MB total > 15MB
-            yield chunk
-
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.aiter_bytes = fake_aiter_bytes
-
-    class FakeStreamContext:
-        async def __aenter__(self):
-            return mock_resp
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-    class FakeClient:
-        def stream(self, *args, **kwargs):
-            return FakeStreamContext()
-        async def __aenter__(self):
-            return self
-        async def __aexit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-    with patch("httpx.AsyncClient", return_value=FakeClient()):
-        with pytest.raises(ValueError, match="exceeds maximum allowed size of 15MB"):
-            await provider.generate_image(prompt="test image")
 
 
 # ============================================================================
 # F67: CSV Formula Injection Sanitization (OWASP CWE-1236)
 # ============================================================================
 
-def test_f67_csv_formula_injection_defense():
-    dangerous_inputs = [
-        "=SUM(A1:A10)",
-        "+cmd|' /C calc'!A0",
-        "-2+3*cmd",
-        "@evil_lookup()",
-        "\tmalicious_tab",
-        "\rmalicious_cr",
-    ]
-
-    safe_inputs = [
-        "Normal Company Name",
-        "hello@example.com",  # @ is inside string, not at start
-        "123 Main Street",
-        12345,
-        0,
-        None,
-    ]
-
-    for val in dangerous_inputs:
-        sanitized_scout = scout_sanitize_csv(val)
-        sanitized_leadgen = leadgen_sanitize_csv(val)
-        assert sanitized_scout.startswith("'"), f"Scout failed on: {val}"
-        assert sanitized_leadgen.startswith("'"), f"Leadgen failed on: {val}"
-
-    for val in safe_inputs:
-        if val is None:
-            assert scout_sanitize_csv(val) == ""
-            assert leadgen_sanitize_csv(val) == ""
-        else:
-            assert scout_sanitize_csv(val) == val
-            assert leadgen_sanitize_csv(val) == val

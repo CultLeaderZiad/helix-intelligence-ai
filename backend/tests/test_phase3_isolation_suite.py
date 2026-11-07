@@ -41,10 +41,7 @@ from app.core.tenancy import get_user_org_ids
 from app.core.deps import require_admin_permission
 from app.services.creative_service import save_creative, generate_patterns_for_recent_creatives
 from app.services.playbook_service import compile_playbook
-from app.services.analysis_service import generate_insight_for_creative
-from app.services.simulation_service import simulate_creative_for_audiences
 from app.services.team_service import _check_team_management_permission, invite_member, accept_invite
-from app.services.api_key_service import authenticate_api_key, hash_key
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -190,50 +187,9 @@ def test_f05_brands_and_patterns_tenant_scoping():
 
 
 # ---------------------------------------------------------------------------
-# F06: Insights & Simulation Cross-Tenant Isolation
+# F06: Insights Cross-Tenant Isolation
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f06_insights_and_simulation_cross_tenant_isolation():
-    user_b = User(id="usr_b", email="user_b@tenant-b.com", role="customer")
-    org_b = Organization(id="org_b", name="Tenant B Org", owner_id=user_b.id)
-    creative_a = Creative(id="cr_foreign", job_id="job_foreign", brand_id="foreign_brand")
 
-    class MockDB:
-        async def execute(self, stmt):
-            stmt_str = str(stmt)
-            class Res:
-                def __init__(self, data):
-                    self._data = data
-                def scalar_one_or_none(self):
-                    return self._data
-            if "creatives.id =" in stmt_str or "WHERE creatives.id" in stmt_str:
-                return Res(creative_a)
-            if "scrape_jobs.org_id" in stmt_str:
-                return Res("org_a_foreign")
-            return Res(None)
-
-    db = MockDB()
-
-    # generate_insight_for_creative on foreign creative -> 404
-    with pytest.raises(HTTPException) as exc_insight:
-        await generate_insight_for_creative(
-            db=db,
-            creative_id=creative_a.id,
-            user=user_b,
-            user_org_ids=[org_b.id]
-        )
-    assert exc_insight.value.status_code == 404
-
-    # simulate_creative_for_audiences on foreign creative -> 404
-    with pytest.raises(HTTPException) as exc_sim:
-        await simulate_creative_for_audiences(
-            db=db,
-            creative_id=creative_a.id,
-            segment_ids=["gen_z_gamers"],
-            user=user_b,
-            user_org_ids=[org_b.id]
-        )
-    assert exc_sim.value.status_code == 404
 
 
 # ---------------------------------------------------------------------------
@@ -384,87 +340,6 @@ async def test_f53_generate_patterns_validation_and_credit():
 # ---------------------------------------------------------------------------
 # F61: API Key Entitlement & Scoping
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f61_api_key_entitlement_and_scoping():
-    user = User(id="u_api", email="api@test.com", role="customer")
-    org_no_api = Organization(id="org_no_api", name="No API Org", owner_id=user.id, plan_id="plan_basic")
-    plan_basic = Plan(id="plan_basic", name="Basic", feature_flags={"public_api": False})
-
-    raw_key = "hlx_live_testsecretkey123"
-    api_key_record = ApiKey(
-        id="key_1",
-        org_id=org_no_api.id,
-        user_id=user.id,
-        key_hash=hash_key(raw_key),
-        is_active=True
-    )
-
-    class MockDB:
-        def __init__(self, org, plan):
-            self.org = org
-            self.plan = plan
-
-        async def execute(self, stmt):
-            stmt_str = str(stmt)
-            class Res:
-                def __init__(self, data):
-                    self._data = data
-                def first(self):
-                    return self._data
-                def scalar_one_or_none(self):
-                    return self._data
-                def scalars(self):
-                    return self
-                def all(self):
-                    return self._data if isinstance(self._data, list) else []
-
-            if "organization_access_grants" in stmt_str:
-                if self.org.id != "org_api_ok":
-                    return Res(None)
-                return Res(type("Grant", (), {
-                    "revoked_at": None,
-                    "expires_at": None,
-                    "granted_at": datetime.datetime.now(datetime.timezone.utc),
-                    "granted_by_user_id": "admin",
-                    "plan_id": "plan_pro",
-                    "feature_flags": {"public_api": True},
-                })())
-            if "access_requests" in stmt_str:
-                return Res(None)
-            if "api_keys" in stmt_str:
-                api_key_record.org_id = self.org.id
-                return Res(api_key_record)
-            if "users" in stmt_str:
-                return Res(user)
-            if "organizations" in stmt_str:
-                return Res(self.org)
-            if "plans" in stmt_str:
-                return Res(self.plan)
-            return Res(None)
-
-        async def commit(self):
-            pass
-
-    # 1. Organization lacking public_api feature entitlement -> 403
-    db_no_entitlement = MockDB(org=org_no_api, plan=plan_basic)
-    with pytest.raises(HTTPException) as exc:
-        await authenticate_api_key(db_no_entitlement, raw_key)
-    assert exc.value.status_code == 403
-    assert exc.value.detail["code"] == "access_pending_approval"
-
-    # 2. Organization with public_api feature flag enabled -> succeeds
-    org_with_api = Organization(id="org_api_ok", name="API Org", owner_id=user.id, plan_id="plan_pro")
-    plan_pro = Plan(id="plan_pro", name="Pro", feature_flags={"public_api": True})
-    db_entitled = MockDB(org=org_with_api, plan=plan_pro)
-
-    auth_user, auth_org = await authenticate_api_key(db_entitled, raw_key)
-    assert auth_user.id == user.id
-    assert auth_org.id == org_with_api.id
-
-    # 3. Verify tenancy scoping respects _scoped_org_id
-    auth_user._scoped_org_id = org_with_api.id
-    scoped_org_ids = await get_user_org_ids(db_entitled, auth_user)
-    assert scoped_org_ids == [org_with_api.id]
 
 
 # ---------------------------------------------------------------------------

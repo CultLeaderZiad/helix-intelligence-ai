@@ -90,15 +90,9 @@ async def _organization_access_status(db: AsyncSession, org_id: Optional[str]) -
 
 GRANTABLE_FEATURES = frozenset({
     "discover",
-    "intelligence",
-    "create",
-    "performance",
     "swipe_files",
-    "team_accounts",
-    "public_api",
-    "scout",
-    "leadgen",
     "monitors",
+    "team_accounts",
 })
 
 # Credential-bearing keys live in organizations.custom_feature_flags (Hunter
@@ -115,23 +109,10 @@ def _redact_flags(flags) -> dict:
     }
 
 async def get_overview(db: AsyncSession) -> AdminOverviewStats:
-    if settings.USE_MOCKS:
-        return AdminOverviewStats(
-            organizations=10,
-            active_scrape_jobs=2,
-            system_health="operational",
-            api_error_rate=0.01,
-            window_label="Last 24h",
-            total_credits_consumed=142.5,
-            total_provider_cost_usd=1.42,
-            active_trials=8
-        )
-    
     org_count = await db.scalar(select(func.count(Organization.id))) or 0
     active_jobs = await db.scalar(select(func.count(ScrapeJob.id)).where(ScrapeJob.status == "running")) or 0
     total_credits = await db.scalar(select(func.sum(UsageLog.credits_deducted))) or 0.0
     total_cost = await db.scalar(select(func.sum(UsageLog.cost_usd))) or 0.0
-    active_trials = await db.scalar(select(func.count(Organization.id)).where(Organization.plan_id == "plan_trial_default")) or 0
 
     now = datetime.datetime.now(datetime.timezone.utc)
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -146,7 +127,6 @@ async def get_overview(db: AsyncSession) -> AdminOverviewStats:
         window_label="All Time",
         total_credits_consumed=round(float(total_credits), 2),
         total_provider_cost_usd=round(float(total_cost), 4),
-        active_trials=active_trials,
         today_api_calls=today_api_calls,
         today_api_spend=round(float(today_api_spend), 4)
     )
@@ -263,29 +243,6 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
             status="unknown", detail="No scrape requests in the last 24h",
             latency_ms=None, last_checked=checked_at,
         ))
-
-    # --- Media generation providers: MediaGenerationJob outcomes ---
-    from app.models.media_job import MediaGenerationJob
-    media_rows = (await db.execute(
-        select(MediaGenerationJob.provider, MediaGenerationJob.status)
-        .where(MediaGenerationJob.created_at >= window)
-    )).all()
-    media_stats: Dict[str, Dict[str, int]] = {}
-    for provider, status in media_rows:
-        stats = media_stats.setdefault(provider or "unknown", {"success": 0, "failed": 0})
-        if status == "completed":
-            stats["success"] += 1
-        elif status == "failed":
-            stats["failed"] += 1
-    if media_stats:
-        for provider, stats in sorted(media_stats.items()):
-            services.append(AdminServiceHealth(
-                id=f"media-{provider}",
-                name=f"Media Generation — {provider}",
-                status=_row_status(stats["success"], stats["failed"]),
-                detail=f"{stats['success']} completed, {stats['failed']} failed in last 24h",
-                latency_ms=None, last_checked=checked_at,
-            ))
 
     has_danger = any(s.status == "danger" for s in services)
     state = "degraded" if has_danger else "operational"
@@ -445,7 +402,6 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
             effective_feature_flags=_redact_flags(effective_flags),
             status=org.status or "active",
             access_status=await _organization_access_status(db, org.id),
-            trial_expires_at=_iso_utc(owner.trial_expires_at) if owner else None,
             total_jobs=job_counts.get(org.id, 0)
         ))
     return orgs
@@ -673,8 +629,6 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
             plan_id=org.plan_id if org else None,
             plan_name=plan.name if plan else None,
             access_status=await _organization_access_status(db, org.id if org else None),
-            trial_started_at=_iso_utc(user.trial_started_at),
-            trial_expires_at=_iso_utc(user.trial_expires_at),
             created_at=_iso_utc(user.created_at) or "",
             is_suspended=bool(getattr(user, "is_suspended", False) or False),
             is_banned=bool(getattr(user, "is_banned", False) or False),

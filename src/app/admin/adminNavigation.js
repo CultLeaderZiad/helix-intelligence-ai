@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Building2,
   Users,
-  CreditCard,
   Gauge,
   Database,
   ListChecks,
@@ -11,7 +10,6 @@ import {
   Flag,
   ScrollText,
   Bell,
-  BookOpen,
   MessageSquareCheck,
   ShieldCheck,
 } from "lucide-react"
@@ -32,13 +30,6 @@ const ALL_ADMIN_NAV_GROUPS = [
         label: "Dashboard",
         icon: LayoutDashboard,
         end: true,
-        built: true,
-      },
-      {
-        key: "admin-guide",
-        path: "/admin/guide",
-        label: "Operating Playbook",
-        icon: BookOpen,
         built: true,
       },
     ],
@@ -79,13 +70,6 @@ const ALL_ADMIN_NAV_GROUPS = [
   {
     label: "Billing",
     items: [
-      {
-        key: "subscriptions",
-        path: "/admin/subscriptions",
-        label: "Subscriptions & Plans",
-        icon: CreditCard,
-        built: true,
-      },
       {
         key: "usage",
         path: "/admin/usage",

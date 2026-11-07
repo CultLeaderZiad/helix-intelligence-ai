@@ -9,7 +9,6 @@ import { FormBanner } from "@/features/auth/FormBanner"
 import { formatAuthFieldError, validateSignIn } from "@/features/auth/validation"
 import { Input, PasswordInput } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
-import { DATA_SOURCE } from "@/services/config"
 import { useLanguage } from "@/context/LanguageContext"
 import { getMemberMessage } from "@/i18n/memberMessages"
 
@@ -196,26 +195,6 @@ export function SignInPage() {
           )}
         </Button>
       </form>
-
-      {/* Mock backend ships seeded accounts so both roles are reachable
-          without a signup. Hidden in API/production mode. */}
-      {DATA_SOURCE !== "api" && (
-        <details className="mt-4 border-t border-border pt-3">
-          <summary className="label-mono cursor-pointer select-none list-none text-text-faint transition-colors hover:text-text-muted">
-            {t("authDemoCredentials", "Demo credentials")}
-          </summary>
-          <dl className="mt-2 flex flex-col gap-1.5 font-mono text-[11px] text-text-muted">
-            <div className="flex items-center justify-between gap-3">
-              <dt className="text-text-faint">{t("authAdmin", "Admin")}</dt>
-              <dd className="tnum">admin@helix.io · helix-admin</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <dt className="text-text-faint">{t("authCustomer", "Customer")}</dt>
-              <dd className="tnum">analyst@helix.io · helix-analyst</dd>
-            </div>
-          </dl>
-        </details>
-      )}
     </AuthLayout>
   )
 }

@@ -212,7 +212,7 @@ const arabicMessages = {
   "Warning (Amber)": "تحذير (كهرماني)",
   "Critical (Red)": "حرج (أحمر)",
   "e.g. 🚀 AI Image Generation Engine & Multi-Platform Profiles Live": "مثال: 🚀 تحديث جديد لميزات المنصة",
-  "e.g. /docs/api-reference/authentication or https://docs.helix.io": "مثال: /docs/api-reference أو https://docs.helix.io",
+  "e.g. /docs/api-reference/authentication": "مثال: /docs/api-reference/authentication",
   "Write an announcement with clear details, links, and guidance…": "اكتب إعلانًا يتضمن تفاصيل واضحة وروابط وإرشادات…",
   "Failed to load updates.": "تعذّر تحميل التحديثات.",
   "Failed to save update.": "تعذّر حفظ التحديث.",

@@ -15,7 +15,7 @@ cd backend
 python -m venv venv
 venv\Scripts\activate      # Windows
 # source venv/bin/activate # Mac/Linux
-pip install -r requirements.txt
+pip install -r requirements.txt        # add -dev.txt to run tests: pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
 ```
 The backend API runs at `http://localhost:8000/api`.
@@ -32,7 +32,7 @@ The backend runs on Render (free tier). Configuration is in `render.yaml`.
 
 **Cold starts expected; first request after idle 10–30s:**
 The Render free web tier spins down instances after 15 minutes of inactivity, and Neon Postgres free compute also suspends when idle. As a result:
-- **First request after idle**: Takes ~10–30s (occasionally up to ~45s) while Render boots the container and Neon re-attaches Postgres.
+- **First request after idle**: Takes ~10–90s (74s measured on 2026-11-06) while Render boots the container and Neon re-attaches Postgres.
 - **Frontend handling**: The UI automatically handles cold-start latency:
   - `ProtectedRoute` shows a clean `"Starting Helix services…"` waking hold instead of a blank screen.
   - Auth bootstrap automatically retries once on network/gateway timeouts.
@@ -61,10 +61,8 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `SECRET_KEY` | ✅ | JWT signing key. Generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `DATABASE_URL` | ✅ | Neon Postgres connection string (with asyncpg driver) |
 | `BACKEND_CORS_ORIGINS` | ✅ | Comma-separated origins, **must include the Vercel URL exactly** (scheme + host, no trailing slash): `https://helix-intelligence-ai-six.vercel.app,http://localhost:5173,http://localhost:3000` |
-| `USE_MOCKS` | ✅ | **Must be `false` in production.** When `true`, sign-in always returns a fake admin token regardless of credentials. |
+| `BACKEND_CORS_ORIGIN_REGEX` | Optional | Lets Vercel **preview** URLs call the API. Must start with `^https://`, end with an escaped domain and `$`, and must not use `.*`/`.+`. For this project: `^https://helix-intelligenc[a-z0-9-]*-flutterdevelopers25-6172s-projects\.vercel\.app$` |
 | `PUBLIC_API_BASE_URL` | ✅ (prod) | Public API base for webhooks, e.g. `https://helix-intelligence-ai.onrender.com/api` |
-| `HF_API_KEY_ID` | ✅ (for Create) | Gemini API Key ID |
-| `HF_API_KEY_SECRET` | ✅ (for Create) | Gemini API Key Secret |
 | `R2_ACCOUNT_ID` | ✅ (prod) | Cloudflare R2 account id — see "Media storage" below |
 | `R2_ACCESS_KEY_ID` | ✅ (prod) | R2 API token access key id |
 | `R2_SECRET_ACCESS_KEY` | ✅ (prod) | R2 API token secret |
@@ -85,35 +83,112 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `SCRAPEGRAPH_API_KEY` | Optional | ScrapeGraph AI landing page enrichment |
 | `GROQ_API_KEY` | Optional | Groq primary LLM inference (Llama 3.3 70B) |
 | `OPENROUTER_API_KEY` | Optional | OpenRouter secondary LLM inference |
-| `AIHUBMIX_API_KEY` | Optional | AIHubMix tertiary LLM inference |
-| `TOKENHARBOR_API_KEY` | Optional | Token Harbor quaternary LLM inference |
 | `GEMINI_API_KEY` | Optional | Google Gemini final LLM inference fallback |
 
 ### Frontend (Vercel)
 
-The frontend builds on Vercel. **Two env vars must be set at build time** (Vercel → Settings → Environment Variables):
+The frontend (Vercel) and the API (Render) are on **different origins**, and
+`vercel.json` sends every unknown path to `index.html`. A relative `/api` in a
+deployed build therefore returns the SPA's HTML instead of FastAPI, and
+sign-up shows "Unable to create account". Deployed builds must call the
+absolute Render URL.
+
+`.env.production` (committed, not a secret) already sets:
 
 ```
 VITE_DATA_SOURCE=api
 VITE_API_BASE_URL=https://helix-intelligence-ai.onrender.com/api
 ```
 
-The URL **must be absolute** — a relative `/api` path will 404 because the frontend and backend live on different origins.
+so production **and** preview builds reach the real API even with no Vercel
+variable. Vercel → Settings → Environment Variables overrides it per scope:
+
+| Variable | Production | Preview | Notes |
+|---|---|---|---|
+| `VITE_API_BASE_URL` | `https://helix-intelligence-ai.onrender.com/api` | same, or a staging API's HTTPS URL | Build-time. Must be `https://` on a DNS host; no trailing slash. Redeploy after changing it |
+| `VITE_ENVIRONMENT` | `production` (or unset) | `preview` (or unset) | Optional. `preview`/`staging` builds may use a public HTTPS API; `development`/`test` stay loopback-only (`src/services/origin.js`) |
+| `VITE_NEON_AUTH_URL` | unset | unset | Not used. Auth is FastAPI JWT |
+
+Note: a preview build talks to whatever API it points at. Pointing previews at
+the production Render API means preview sign-ups create production accounts
+and preview-only backend routes (newer than what Render runs) return 404.
+
+#### CORS on Render (must match the Vercel origins)
+
+Set on the Render web service → Environment (no secret values here):
+
+```
+BACKEND_CORS_ORIGINS=https://helix-intelligence-ai-six.vercel.app,http://localhost:5173,http://localhost:3000
+BACKEND_CORS_ORIGIN_REGEX=^https://helix-intelligenc[a-z0-9-]*-flutterdevelopers25-6172s-projects\.vercel\.app$
+```
+
+Vercel preview hosts look like
+`helix-intelligenc-git-<branch-hash>-flutterdevelopers25-6172s-projects.vercel.app`.
+`BACKEND_CORS_ORIGIN_REGEX` only takes effect once the backend running on
+Render includes it (W8; Render deploys `main` only). Until then, add the branch's exact preview origin to
+`BACKEND_CORS_ORIGINS`. A rejected preflight returns **400** with no
+`access-control-allow-origin` header; the browser then reports a network error.
+
+#### Region and cold starts (verified 2026-11-06)
+
+Already colocated, so nothing to move: the Render web service
+`helix-intelligence-ai` runs in **Ohio** and the Neon project
+`helix-intelligence` is in **aws-us-east-2 (Ohio)**. Keep any new service or
+database there.
+
+The service is on Render's **free** plan, so it sleeps when idle. The first
+request after sleep took **~74 s** (`GET /health`); once awake,
+`GET /api/health` answers in ~0.3 s with `{"db":"connected"}`. A sign-up
+submitted during that wake-up can look broken. Optional ways to fix it, each
+a dashboard decision for the owner:
+
+- Keep-warm ping (free): an uptime monitor hitting `/health` every 5–10 min
+  (see "Health Check & Keep-Warm Options" above).
+- Set the service's **Health Check Path** to `/health` (currently empty).
+- Move to a paid instance type that does not sleep. Not done: the owner
+  prefers free/cheap plans until there are paying customers.
+
+Render deploys **`main` only** (auto-deploy on commit, PR previews off). Code
+on a feature branch, including `BACKEND_CORS_ORIGIN_REGEX` support, is not
+live on Render until it is merged to `main`.
+
+#### Verify sign-up against a deployment
+
+1. Preflight (read-only):
+   `curl -si -X OPTIONS https://helix-intelligence-ai.onrender.com/api/auth/sign-up -H "Origin: <vercel origin>" -H "Access-Control-Request-Method: POST" -H "Access-Control-Request-Headers: content-type"`
+   → expect `200` and `access-control-allow-origin: <vercel origin>`.
+2. Bundle check: open the deployment, DevTools → Network, submit sign-up.
+   The request must go to `https://helix-intelligence-ai.onrender.com/api/auth/sign-up`,
+   not `<vercel host>/api/...`.
+3. Sign up with a real inbox you own, then sign in. Expect `201`/`200` and a redirect into the app.
+4. If it shows "Starting Helix services…", Render is cold-starting; retry after ~30 s.
+
+#### Local frontend against the live API (http://localhost:3000)
+
+```bash
+pnpm dev:live
+```
+
+Runs the normal dev server on http://localhost:3000 in mode `live`.
+`.env.live` sets `HELIX_DEV_API_TARGET=https://helix-intelligence-ai.onrender.com`,
+so the Vite proxy forwards `/api` and `/uploads` to Render instead of a local
+FastAPI on :8000. The browser still calls same-origin `/api`, so `origin.js`
+and CORS are unchanged. `HELIX_DEV_API_TARGET` is not `VITE_`-prefixed and
+never reaches the bundle. Anything you do here (sign-ups, searches) is real
+production data. `pnpm dev` keeps using the local backend.
 
 ### ⚠️ Production frontend ↔ backend connectivity
 
 The Vite dev proxy in `vite.config.js` (`/api → http://127.0.0.1:8000`) **only works during local development**. It has no effect in a production build.
 
-Without the two env vars above, sign-up/sign-in and all other API calls will fail with network errors in production while working fine locally. This is the single most common "it works on my machine" deployment issue.
-
 ## Media storage
 
-Generated media is written to **Cloudflare R2** over the S3-compatible API
+Uploaded files (avatars) are written to **Cloudflare R2** over the S3-compatible API
 (`backend/app/services/storage_service.py`).
 
 Render's filesystem is ephemeral: anything written locally is destroyed on the
 next restart or deploy, while the database keeps pointing at a URL that now
-404s. R2 is what makes generated media survive.
+404s. R2 is what makes stored files survive.
 
 **All five `R2_*` variables must be set together.** A partial configuration
 disables R2, logs an error, and falls back to local disk. `R2_PUBLIC_BASE_URL`
@@ -160,7 +235,7 @@ this app reach 5.3 minutes at p95, so an age-based rule would have to wait out
 the slowest legitimate job — roughly ten minutes — before it could call
 anything dead.
 
-The durable scrapling worker runs the sweep at startup **and** on a 60s timer,
+The jobs worker (`backend/workers/jobs`) runs the sweep at startup **and** on a 60s timer,
 using `worker_session_maker` for maintenance and refunds. The API does not run
 startup sweeps or periodic maintenance; keep the worker service running for
 recovery. Startup alone is not enough: a restart that comes back in seconds
@@ -171,10 +246,10 @@ it. Failed scrape refund recovery considers only the last 24 hours using
 Monitor cleanup resolves the parent organization while the stale run is still
 `running`, then marks it failed and retains that org for tenant-scoped notices.
 
-The UI distinguishes the two failure causes. `failure_kind` is surfaced on both
-the discover `Job` and the media job response, and Discover and Create render
-"interrupted by a service restart" separately from a genuine error, so a user
-is never told to fix a query or prompt that was fine.
+The UI distinguishes the two failure causes. `failure_kind` is surfaced on the
+discover `Job`, and Discover renders "interrupted by a service restart"
+separately from a genuine error, so a user is never told to fix a query that
+was fine.
 
 ### Known limit of the current approach
 
@@ -230,7 +305,7 @@ same gatekeeper (`assert_can_spend`) against the **monitor owner's** plan, with
 `feature_name="monitors"`. Feature flags fail closed. A platform admin grant
 is what turns a feature on. There is no separate paid tier.
 
-Blocked runs do not retry forever. A trial expiry, disabled feature or exhausted
+Blocked runs do not retry forever. A disabled feature or exhausted
 balance pauses the monitor and notifies the owner once; a daily cap only defers
 it to the next cadence, since that clears on its own.
 
@@ -297,7 +372,7 @@ There is **no** Neon Auth / Better Auth dependency on the login path.
 Do **not** set `VITE_NEON_AUTH_URL` — it is no longer used and was the cause of the "Invalid origin" error in production.
 
 Auth is always backed by the FastAPI service — the frontend never signs in
-against the mock (`authService` is the API client in every data-source mode,
+against a mock (`authService` is always the API client,
 so a real account always works).
 
 ### Password reset ("auth failed" recovery)
@@ -329,23 +404,19 @@ python scripts/reset_admin_password.py --email you@gmail.com --password 'NewPass
 
 Helix enforces strict server-side credit caps with database row-level locking (`with_for_update()`) on organizations to prevent race conditions and protect external provider quotas.
 
-### Credit Cost Table
-| Action | Credits | Description |
-|---|---|---|
-| `discover_job` | 2.0 | Base ad library search & creative scraping |
-| `discover_deep_fallback` | +3.0 | Bright Data deep search surcharge (only if prior sources return 0) |
-| `create_image` | 3.0 | Gemini or AI image generation |
-| `create_video` | 8.0 | Gemini video/motion generation |
-| `ai_insight` | 1.0 | Single creative deep LLM insight |
-| `pattern_pack` | 1.0 | Pattern synthesis across scraped ads |
-| `ai_chat` | 0.5 | Interactive creative AI chat query |
+### Credit costs
 
-### Trial Defaults
-- **Plan ID**: `plan_trial_default` (7-Day Free Trial)
-- **Initial Credit Balance**: `25.0` credits
-- **Daily Credit Limit**: `3.5` credits/day (resets daily at `00:00:00 UTC`)
-- **Trial Duration**: 7 days from user registration (`trial_expires_at`)
-- **Admin Role**: Bypasses all quota and credit limits (`role="admin"`).
+Charged server-side by `assert_can_spend`; the values live in
+`backend/app/services/billing_service.py` and are the source of truth.
+
+| Action | Credits |
+|---|---|
+| Discover search | 1.0 |
+| Discover deep search surcharge | 2.0 |
+
+Access is granted by a platform administrator; there is no trial, plan
+purchase or checkout. A new workspace starts on the default plan with every
+feature off until an admin grants access.
 
 ### Standardized Error Responses
 - `402 Payment Required` (Insufficient credits):
@@ -353,10 +424,10 @@ Helix enforces strict server-side credit caps with database row-level locking (`
   {
     "detail": {
       "code": "insufficient_credits",
-      "message": "Not enough credits for this action (1.0 available, 3.0 required). Upgrade or wait for trial reset.",
+      "message": "Not enough credits for this action (1.0 available, 3.0 required). Ask a workspace administrator for more credits.",
       "credit_balance": 1.0,
       "required": 3.0,
-      "plan_name": "7-Day Free Trial"
+      "plan_name": "Granted"
     }
   }
   ```
@@ -373,7 +444,7 @@ Helix enforces strict server-side credit caps with database row-level locking (`
     }
   }
   ```
-- `403 Forbidden` (`trial_expired` or `feature_disabled`).
+- `403 Forbidden` (`feature_disabled`, or access not granted).
 
 ---
 
@@ -393,67 +464,9 @@ Discover uses an ordered, cost-aware canonical chain to avoid unnecessary API co
 ```
 
 - **Query Caching**: Succeeded queries are cached for **12 hours** per organization. Duplicate searches within 12 hours return cached jobs instantly with 0 credits deducted.
-- **Honest Zero-Results**: Never fakes mock creatives in production (`USE_MOCKS=false`). Returns clear report of all attempted sources.
+- **Honest Zero-Results**: Never fakes creatives; there is no mock mode. Returns clear report of all attempted sources.
 
 ---
-
-## Gemini Create Integration
-
-### Official Authentication Format
-Gemini requires API Key credentials formatted with `Key` (never `Bearer`):
-
-- **Header**: `Authorization: Key {HF_API_KEY_ID}:{HF_API_KEY_SECRET}`
-- **Base URL**: `https://api.gemini.ai`
-- **Default Image Endpoint**: `https://api.gemini.ai/gemini-ai/soul/v2/standard`
-- **Webhook Param**: `?hf_webhook={URL_ENCODED_PUBLIC_API_URL}/webhooks/gemini`
-
-### Operator Proof Curl
-```bash
-export HF_API_KEY_ID="your_key_id"
-export HF_API_KEY_SECRET="your_key_secret"
-curl -s -w "\nHTTP %{http_code}\n" -X POST \
-  "https://api.gemini.ai/gemini-ai/soul/v2/standard" \
-  -H "Authorization: Key ${HF_API_KEY_ID}:${HF_API_KEY_SECRET}" \
-  -H "Content-Type: application/json" \
-  -d '{"prompt":"A quiet alpine lake at sunrise, editorial photography"}'
-```
-
----
-
-## 7-Day Trial & Gemini Image Generation
-
-HELIX provides a 7-day free trial with daily image creation powered by the existing `GEMINI_API_KEY`:
-
-### Entitlement Rules:
-- **Trial Duration**: 7 days from signup (`trial_started_at` to `trial_expires_at`).
-- **Trial Daily Quota**: 5 image generations per UTC day (resets at 00:00 UTC).
-- **Trial Total Cap**: 25 total image generations across the entire trial.
-- **Video Generation**: Disabled during trial; available exclusively on paid plans.
-- **Paid Plans**: 50+ images per day.
-- **Admin Users**: Unlimited bypass across all features.
-
-### Environment Configuration:
-- `GEMINI_API_KEY`: *(Required server-side only)* Google Gemini API key. Never exposed to browser or client.
-- `GEMINI_IMAGE_MODEL`: `gemini-3.1-flash-image` (default stable image model).
-- `TRIAL_DAYS`: `7`
-- `TRIAL_IMAGES_PER_DAY`: `5`
-- `TRIAL_IMAGES_TOTAL`: `25`
-- `PAID_IMAGES_PER_DAY`: `50`
-
-### Running the Gemini Image Live Smoke Test:
-To execute a real development smoke test against Google Gemini's image API:
-```bash
-ENABLE_GEMINI_LIVE_TEST=true python backend/scripts/test_gemini_image_live.py
-```
-
-### Running the Test Suites:
-```bash
-# Run Gemini Trial & Entitlement suite
-python backend/tests/test_gemini_trial_suite.py
-
-# Run Gemini Diagnostic suite
-python backend/tests/test_gemini_suite.py
-```
 
 ## Row-level security roles
 
@@ -484,9 +497,84 @@ worker-only, so API logins must not inherit `helix_worker`.
 
 Then set each password out of band (`ALTER ROLE ... PASSWORD` from a secret
 store) and point `DATABASE_URL` at that login. The API uses
-`helix_api_login`. The scrapling worker uses `helix_worker_login`. Both
+`helix_api_login`. The jobs worker uses `helix_worker_login`. Both
 inherit `SELECT, INSERT, UPDATE, DELETE` on public tables and `USAGE, SELECT`
 on sequences. Migration `d4f6a8c0e2b1` grants those privileges again and sets
 default privileges for tables created later by the migration role.
 
 
+## First platform admin
+
+A new database has no platform admin, so nobody can open the admin pages to
+grant access. `backend/scripts/bootstrap_platform_admin.py` promotes one named
+account and grants its own workspace access, using the same services as the
+admin API (`update_user_role`, `grant_organization_access`). Every change is
+written to the audit log (`admin_user_role_updated`, `access_granted`,
+`platform_admin_bootstrap`).
+
+- It selects the account by `users.id` only, never by email.
+- It refuses to run unless `--expect-branch` equals the Neon branch id the
+  server reports. Use `local` for a non-Neon Postgres.
+- Without `--apply` it is a dry run.
+- Re-running it changes nothing. Features granted earlier are kept.
+- It never prints passwords, emails or connection strings.
+- It runs as the API login (`helix_api_login`) or the owner. It sets the
+  platform-admin RLS scope itself.
+
+Rehearsed on the production copy `w8-rehearsal` on 2026-11-07, as a restricted
+`helix_app` login, with a disposable account. The account was promoted, its
+workspace got Discover, and a second run changed nothing. An ordinary account
+still gets `403` on `/admin/*`, `access-grant` and `/account/access-grants`.
+
+### Production procedure (needs Ziad's approval; not run yet)
+
+1. **Rollback point.** Create a Neon branch from `production`, for example
+   `pre-admin-bootstrap`.
+2. **Account.** Ziad signs up on the live app with his own email. In the Neon
+   SQL editor (production), he looks up his id and confirms it is his account:
+   ```sql
+   SELECT id, created_at FROM users WHERE lower(email) = lower('<his email>');
+   ```
+3. **Login roles.** As the owner, check both role memberships. Grant only the
+   ones that are missing:
+   ```sql
+   SELECT pg_has_role('helix_api_login', 'helix_app', 'MEMBER'),
+          pg_has_role('helix_worker_login', 'helix_worker', 'MEMBER');
+   GRANT helix_app TO helix_api_login;          -- only if false
+   GRANT helix_worker TO helix_worker_login;    -- only if false
+   ```
+4. **Dry run.** Render's free plan has no shell, so Ziad runs this from his own
+   machine, in a fresh terminal, with two variables set for that terminal only:
+   - `DATABASE_URL`: the `helix_api_login` connection string from the Neon
+     console.
+   - `ALLOWED_REMOTE_DATABASE_HOST`: that string's host.
+
+   Don't save either variable to a file. The production branch id is
+   `br-soft-mode-ax44ab32`. Check the printed `user_id`, `org_id` and flags.
+   ```bash
+   cd backend
+   python scripts/bootstrap_platform_admin.py --user-id <id> --expect-branch br-soft-mode-ax44ab32
+   ```
+5. **Apply.** Run the same command again with `--apply`. Add
+   `--features discover,swipe_files,monitors` if those should be on too. Note
+   the printed `grant_id`.
+6. **Verify.** Sign in. `/admin` should load and Access & Usage should show
+   approved. `GET /api/auth/session` should return `is_platform_admin: true`
+   and `feature_flags.discover: true`.
+
+The promotion is committed before the grant. If the grant step fails, re-run
+the same command: it skips the promotion and retries only the grant.
+
+### Rollback
+
+- **Access only:** in Admin → Access requests, revoke the workspace, or call
+  `POST /api/admin/organizations/<org_id>/access-revoke`. The grant row stays,
+  marked revoked.
+- **Admin rights:** as the owner, run
+  `UPDATE users SET role = 'customer', is_platform_admin = false WHERE id = '<id>';`.
+  This leaves the app with no admin until the procedure is run again.
+- **Login roles:** do not revoke them unless the whole release is rolled back.
+  Without them the API and worker cannot read any table.
+- **Everything:** restore from `pre-admin-bootstrap`, or use Neon's
+  point-in-time restore to just before step 3. This also discards anything
+  written after that point.

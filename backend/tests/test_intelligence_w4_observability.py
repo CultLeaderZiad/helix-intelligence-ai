@@ -33,18 +33,17 @@ async def test_ai_provider_failure_is_sanitized():
             raise RuntimeError("CANARY_PROVIDER_KEY prompt customer data")
 
     with pytest.raises(HTTPException) as caught:
-        await BrokenProvider().generate_insight(SimpleNamespace(
+        await BrokenProvider().generate_patterns([SimpleNamespace(
             id="creative-id", headline="Synthetic", body="Synthetic copy",
             format="image", platform="meta", cta=None, days_active=1,
-        ))
+        )])
     assert caught.value.status_code == 503
-    assert caught.value.detail == "AI insight generation is temporarily unavailable."
-    assert caught.value.headers["X-Error-Code"] == "analysis_unavailable"
+    assert caught.value.detail["code"] == "analysis_unavailable"
     assert "CANARY_PROVIDER_KEY" not in str(caught.value.detail)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["insight", "patterns", "simulation"])
+@pytest.mark.parametrize("operation", ["patterns"])
 async def test_provider_http_failures_never_echo_upstream_payload(operation, caplog):
     class BrokenProvider(AIProvider):
         async def _call_api(self, messages):
@@ -53,9 +52,7 @@ async def test_provider_http_failures_never_echo_upstream_payload(operation, cap
     provider = BrokenProvider()
     creative = SimpleNamespace(id="creative-1", headline="Synthetic", body="Copy",
                                platform="meta", format="image", cta=None, days_active=1)
-    call = {"insight": lambda: provider.generate_insight(creative),
-            "patterns": lambda: provider.generate_patterns([creative]),
-            "simulation": lambda: provider.simulate_audience_reactions(creative, [])}[operation]
+    call = {"patterns": lambda: provider.generate_patterns([creative])}[operation]
     with pytest.raises(HTTPException) as caught:
         await call()
     assert caught.value.status_code == 503
@@ -67,7 +64,7 @@ async def test_provider_http_failures_never_echo_upstream_payload(operation, cap
 async def test_logout_revocation_failure_is_not_success(monkeypatch, caplog):
     from app.core import security
 
-    monkeypatch.setattr(security, "verify_neon_token", AsyncMock(return_value={"sub": "actor-1"}))
+    monkeypatch.setattr(security, "verify_session_token", AsyncMock(return_value={"sub": "actor-1"}))
     db = SimpleNamespace(execute=AsyncMock(side_effect=RuntimeError("CANARY_DB_PASSWORD")))
     with pytest.raises(HTTPException) as caught:
         await auth.signout(db=db, token="CANARY_BEARER")
@@ -154,7 +151,7 @@ async def test_health_diagnostics_do_not_accept_signing_key(monkeypatch):
 
 
 def _load_runtime_probe():
-    path = Path(__file__).parents[2] / "helix-audit/probes/runtime-probes.py"
+    path = Path(__file__).parents[1] / "scripts/runtime-probes.py"
     spec = importlib.util.spec_from_file_location("w4_runtime_probe", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

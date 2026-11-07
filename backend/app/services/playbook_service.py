@@ -87,7 +87,7 @@ async def compile_playbook(
     # 3. Collect top patterns or use pre-provided
     formatted_patterns = []
     if pre_patterns and len(pre_patterns) > 0:
-        from app.schemas.media import strip_secret_fields
+        from app.core.redaction import strip_secret_fields
         formatted_patterns = strip_secret_fields(pre_patterns)
     else:
         patterns_stmt = select(Pattern).where(Pattern.org_id.is_not(None), Pattern.job_id.is_not(None))

@@ -608,7 +608,7 @@ export function UpdatesPage() {
                     </label>
                     <Input
                       className=""
-                      placeholder={adminMessage(lang, "e.g. /docs/api-reference/authentication or https://docs.helix.io")}
+                      placeholder={adminMessage(lang, "e.g. /docs/api-reference/authentication")}
                       value={formData.link_url}
                       onChange={(e) => setFormData({ ...formData, link_url: e.target.value })}
                     />

@@ -17,7 +17,7 @@ from app.models.api_key import ApiKey
 from app.models.organization import Organization
 from app.models.organization_member import OrganizationInvite, OrganizationMember
 from app.models.user import User
-from app.services import admin_service, api_key_service, storage_service, support_service, team_service
+from app.services import admin_service, storage_service, support_service, team_service
 
 
 class Result:
@@ -34,43 +34,6 @@ class Result:
         return self.value if isinstance(self.value, list) else ([] if self.value is None else [self.value])
 
 
-@pytest.mark.asyncio
-async def test_removed_member_api_key_is_revoked_and_rejected():
-    user = User(id="former-member", email="former@example.test", role="customer")
-    org = Organization(id="private-org", name="Private", owner_id="org-owner", status="active")
-    key = ApiKey(
-        id="former-key",
-        org_id=org.id,
-        user_id=user.id,
-        key_hash=api_key_service.hash_key("hlx_live_former-member"),
-        is_active=True,
-    )
-
-    class FakeDB:
-        commits = 0
-
-        async def execute(self, statement):
-            source = str(statement)
-            if "api_keys" in source:
-                return Result(key)
-            if "users" in source:
-                return Result(user)
-            if "organizations" in source:
-                return Result(org)
-            if "organization_members" in source:
-                return Result(None)
-            return Result(None)
-
-        async def commit(self):
-            self.commits += 1
-
-    db = FakeDB()
-    with pytest.raises(HTTPException) as denied:
-        await api_key_service.authenticate_api_key(db, "hlx_live_former-member")
-
-    assert denied.value.status_code == 401
-    assert key.is_active is False
-    assert db.commits == 1
 
 
 @pytest.mark.asyncio

@@ -32,7 +32,6 @@ export function useAdminOverview() {
       window_label: "Live",
       total_credits_consumed: 0,
       total_provider_cost_usd: 0,
-      active_trials: 0,
     }
     const jobs = jobsRes.status === "fulfilled" ? jobsRes.value : { items: [] }
     const health = healthRes.status === "fulfilled" ? healthRes.value : { state: "operational", services: [] }

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { authService } from "@/services"
-import { NAV_SECTIONS } from "./navigation"
+import { visibleSections } from "./navigation"
 import { NotificationBell } from "@/components/NotificationBell"
 import { ONBOARDING_TOUR_RESTART_EVENT } from "@/i18n/w5Onboarding"
 
@@ -16,7 +16,7 @@ export function Sidebar({ className = "", onOpenCommand = null, onNavigate = nul
   const [busy, setBusy] = useState(false)
   const [tourError, setTourError] = useState(false)
   const links = [
-    ...NAV_SECTIONS.map((section) => ({ ...section, text: t(section.key, section.label) })),
+    ...visibleSections(user?.feature_flags).map((section) => ({ ...section, text: t(section.key, section.label) })),
     { path: "/access", text: t("accessUsage"), icon: KeyRound },
     { path: "/docs", text: t("docsNavigation"), icon: BookOpen },
     { path: "/support", text: t("supportNavigation"), icon: MessageSquare },

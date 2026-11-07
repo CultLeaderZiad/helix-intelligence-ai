@@ -95,12 +95,8 @@ export function OrganizationsPage() {
 
   const ALL_FEATURES = [
     { key: "discover", label: "Discover Search" },
-    { key: "intelligence", label: "Brand Intelligence" },
-    { key: "create", label: "Creative Generation" },
-    { key: "performance", label: "Performance Analytics" },
     { key: "swipe_files", label: "Swipe Files & Boards" },
     { key: "team_accounts", label: "Team Accounts" },
-    { key: "public_api", label: "Public API Access" },
   ]
 
   return (

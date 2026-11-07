@@ -241,13 +241,10 @@ VENDOR_HOSTS = {
     "api.openai.com": "OpenAI chat completions",
     "api.anthropic.com": "Anthropic messages API",
     "api.hunter.io": "Hunter domain search",
-    "gen.pollinations.ai": "Pollinations authenticated media",
-    "image.pollinations.ai": "Pollinations anonymous images",
     "nominatim.openstreetmap.org": "OpenStreetMap Nominatim",
     "overpass-api.de": "OpenStreetMap Overpass",
     "lz4.overpass-api.de": "OpenStreetMap Overpass mirror",
     "overpass.kumi.systems": "OpenStreetMap Overpass mirror",
-    "api.github.com": "GitHub public API used by Scout",
 }
 
 

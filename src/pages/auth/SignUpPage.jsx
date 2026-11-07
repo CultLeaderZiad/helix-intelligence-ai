@@ -110,18 +110,16 @@ export function SignUpPage() {
       navigate(APP_HOME, { replace: true })
     } catch (err) {
       const isCold = err?.code === "network_error" || err?.code === "server_waking" || (err?.status >= 502 && err?.status <= 504)
-      const errLower = (err?.message || "").toLowerCase()
-      const isDuplicate = err?.status === 400 && (
-        errLower.includes("already registered") ||
-        errLower.includes("already exists")
-      )
+      // Sign-up never says whether an email is taken. When the follow-up
+      // sign-in is refused, the account may already exist with another
+      // password, so point to sign-in and reset without confirming it.
+      const isDuplicate = err?.status === 401
 
       if (isDuplicate) {
-        setErrors((prev) => ({ ...prev, email: "already registered" }))
         setAuthError({
-          status: t("authAccountExistsStatus", "Account already exists"),
+          status: t("authAccountExistsStatus", "Could not sign you in"),
           tone: "info",
-          message: t("authAccountExistsMessage", "An account with this email already exists. Sign in instead."),
+          message: t("authAccountExistsMessage", "These details did not open an account. If you already have one, sign in or reset your password."),
           isDuplicate: true,
         })
       } else if (isCold) {

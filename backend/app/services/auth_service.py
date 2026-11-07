@@ -1,3 +1,6 @@
+import asyncio
+from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from fastapi import HTTPException, status
@@ -11,7 +14,6 @@ from app.core.security import (
     decode_password_reset_token,
 )
 from app.core.config import settings
-import uuid
 import datetime
 import hashlib
 import secrets
@@ -35,9 +37,13 @@ def _hash_reset_token(token: str) -> str:
 
 
 async def authenticate_user(db: AsyncSession, user_in: UserLogin) -> str:
-    if settings.USE_MOCKS:
-        return create_access_token(subject="mock-admin-id", role="admin" if "admin" in user_in.email else "customer")
+    token, _user = await authenticate_user_and_load(db, user_in)
+    return token
 
+
+async def authenticate_user_and_load(db: AsyncSession, user_in: UserLogin) -> tuple[str, Optional[User]]:
+    """Verify credentials and return the token with the user row already loaded,
+    so callers do not query the same user a second time."""
     email = _normalize_email(user_in.email)
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     user = result.scalar_one_or_none()
@@ -60,7 +66,7 @@ async def authenticate_user(db: AsyncSession, user_in: UserLogin) -> str:
 
     metadata = getattr(user, "signup_metadata", None) or {}
     token_version = metadata.get("token_version", 1)
-    return create_access_token(subject=user.id, role=user.role, token_version=token_version)
+    return create_access_token(subject=user.id, role=user.role, token_version=token_version), user
 
 async def revoke_user_sessions(db: AsyncSession, user: User, *, commit: bool = True) -> int:
     """Increment the user's token version to immediately invalidate all existing sessions."""
@@ -76,17 +82,21 @@ async def revoke_user_sessions(db: AsyncSession, user: User, *, commit: bool = T
         await db.refresh(user)
     return new_version
 
+class EmailAlreadyRegistered(Exception):
+    """Internal signal only. The sign-up route answers identically either way."""
+
+
 async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     raw_name = (user_in.name or "").strip()
     full_name = raw_name if raw_name else None
 
-    if settings.USE_MOCKS:
-        return User(id=str(uuid.uuid4()), email=_normalize_email(user_in.email), password_hash="mock", role="customer", full_name=full_name)
-
     email = _normalize_email(user_in.email)
+    # PBKDF2 runs off the event loop, and also for an existing email, so the
+    # duplicate path costs the same time as a real registration.
+    password_hash = await asyncio.to_thread(get_password_hash, user_in.password)
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
+        raise EmailAlreadyRegistered()
 
     # Collect UTM and referral source attribution if present, sanitizing PII (F71)
     signup_metadata = {"token_version": 1}
@@ -106,15 +116,12 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         # F71: Log anonymized attribution metadata without logging plain email alongside it
         logger.info("Attribution captured for signup: fields=%s", [k for k in signup_metadata if k != "token_version"])
 
-    now = datetime.datetime.now(datetime.timezone.utc)
     user = User(
         email=email,
-        password_hash=get_password_hash(user_in.password),
+        password_hash=password_hash,
         full_name=full_name,
         role="customer",
-        signup_metadata=signup_metadata,
-        trial_started_at=now,
-        trial_expires_at=now + datetime.timedelta(days=7)
+        signup_metadata=signup_metadata
     )
     db.add(user)
     try:
@@ -123,7 +130,7 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         await db.rollback()
         err_msg = str(e).lower()
         if "unique" in err_msg or "integrity" in err_msg or "already exists" in err_msg:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
+            raise EmailAlreadyRegistered() from None
         logger.exception("Failed to flush new user record: %s", e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not create user account. Please try again.")
 
@@ -133,7 +140,8 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     bind_tenant([], user.id, platform_admin=False, enforce=True)
     await apply_tenant_context(db)
 
-    # Auto-create a personal org for every new user with 25 trial credits and default trial plan
+    # Every new user gets a personal workspace on the default plan. It stays
+    # pending (all features off) until a platform admin grants access.
     from app.models.organization import Organization
     org_name = full_name or user_in.email.split("@")[0]
     org = Organization(
@@ -156,7 +164,7 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         await db.rollback()
         err_msg = str(e).lower()
         if "unique" in err_msg or "integrity" in err_msg or "already exists" in err_msg:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="An account with this email already exists.")
+            raise EmailAlreadyRegistered() from None
         logger.exception("Failed to commit new user organization: %s", e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not initialize user workspace. Please try again.")
     bind_tenant([org.id], user.id, platform_admin=False, enforce=True)

@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
@@ -50,22 +51,19 @@ class Settings(BaseSettings):
     ).rstrip("/")
 
     BACKEND_CORS_ORIGINS: str = ""
-
-    # MOCKS
-    USE_MOCKS: bool = os.getenv("USE_MOCKS", "False").lower() in ("true", "1")
+    # Optional anchored regex for deployment-generated frontend origins such as
+    # Vercel preview URLs. See validate_cors_origin_regex for the rules.
+    BACKEND_CORS_ORIGIN_REGEX: str = ""
 
     # DATABASE
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    # Outside production, DATABASE_URL must be loopback unless its host exactly
+    # equals ALLOWED_REMOTE_DATABASE_HOST (e.g. a Neon dev/staging branch
+    # endpoint) and the URL requires TLS. PRODUCTION_DATABASE_HOST must also be
+    # set; that endpoint is always refused. Ignored when ENVIRONMENT=production.
+    ALLOWED_REMOTE_DATABASE_HOST: str = os.getenv("ALLOWED_REMOTE_DATABASE_HOST", "")
+    PRODUCTION_DATABASE_HOST: str = os.getenv("PRODUCTION_DATABASE_HOST", "")
     
-    # NEON AUTH
-    NEON_JWKS_URL: str = os.getenv("NEON_JWKS_URL", os.getenv("NEON_AUTH_JWKS_URL", "")).rstrip("/")
-    NEON_AUTH_URL: str = os.getenv("NEON_AUTH_BASE_URL", os.getenv("NEON_AUTH_URL", "")).rstrip("/")
-    NEON_JWT_ISSUER: str = os.getenv("NEON_JWT_ISSUER", os.getenv("NEON_AUTH_BASE_URL", "")).rstrip("/")
-    NEON_JWT_AUDIENCE: str = os.getenv("NEON_JWT_AUDIENCE", os.getenv("NEON_AUTH_BASE_URL", "")).rstrip("/")
-
-    NEON_WEBHOOK_SECRET: str = os.getenv("NEON_WEBHOOK_SECRET", "")
-    JWKS_REFRESH_LIMIT: int = int(os.getenv("JWKS_REFRESH_LIMIT", "8"))
-    JWKS_REFRESH_WINDOW_S: int = int(os.getenv("JWKS_REFRESH_WINDOW_S", "60"))
 
     # RATE LIMITING (in-memory, per-process token buckets)
     # Protects credential endpoints (brute force / account enumeration) and
@@ -82,6 +80,10 @@ class Settings(BaseSettings):
     # Comma-separated IPs or CIDRs of reverse proxies allowed to supply a client IP.
     # Empty means forwarding headers are ignored and the TCP peer is used.
     TRUSTED_PROXY_CIDRS: str = os.getenv("TRUSTED_PROXY_CIDRS", "")
+
+    # Emit a Server-Timing header (connect/ping/db/rls/hash/app/total) on every
+    # response. Off by default: it exposes internal timing to clients.
+    SERVER_TIMING_ENABLED: bool = os.getenv("SERVER_TIMING_ENABLED", "False").lower() in ("true", "1", "yes")
 
 
     def __init__(self, **values):
@@ -132,8 +134,6 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
     GEMINI_TEXT_MODEL: str = os.getenv("GEMINI_TEXT_MODEL", "gemini-flash-latest")
-    POLLINATIONS_API_KEY: str = os.getenv("POLLINATIONS_API_KEY", "")
-    GEMINI_IMAGE_MODEL: str = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
     SCRAPEGRAPH_API_KEY: str = os.getenv("SCRAPEGRAPH_API_KEY", "")
     META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
     BRIGHTDATA_API_KEY: str = os.getenv("BRIGHTDATA_API_KEY", "")
@@ -144,8 +144,6 @@ class Settings(BaseSettings):
         if os.getenv("APIFY_ENABLED", "").strip()
         else bool((os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")).strip())
     )
-    AIHUBMIX_API_KEY: str = os.getenv("AIHUBMIX_API_KEY", "")
-    TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
     METAPI_API_KEY: str = (
 
         os.getenv("METAPI_API_KEY", "")
@@ -189,6 +187,16 @@ class Settings(BaseSettings):
     WORK_LEASE_S: int = int(os.getenv("WORK_LEASE_S", "120"))
     WORK_MAX_ATTEMPTS: int = int(os.getenv("WORK_MAX_ATTEMPTS", "3"))
     DISCOVER_JOB_DEADLINE_S: int = int(os.getenv("DISCOVER_JOB_DEADLINE_S", "600"))
+    # Permanent ad archive (see archive_service). The per-workspace cap bounds
+    # storage; media larger than the byte cap keeps its text only.
+    ARCHIVE_ENABLED: bool = os.getenv("ARCHIVE_ENABLED", "true").lower() == "true"
+    ARCHIVE_MAX_ENTRIES_PER_ORG: int = int(os.getenv("ARCHIVE_MAX_ENTRIES_PER_ORG", "5000"))
+    ARCHIVE_MAX_MEDIA_BYTES: int = int(os.getenv("ARCHIVE_MAX_MEDIA_BYTES", str(15 * 1024 * 1024)))
+    ARCHIVE_MEDIA_HOST_SUFFIXES: tuple = tuple(
+        h.strip().lower() for h in os.getenv(
+            "ARCHIVE_MEDIA_HOST_SUFFIXES", "fbcdn.net,fbsbx.com,cdninstagram.com,facebook.com"
+        ).split(",") if h.strip()
+    )
     AI_MAX_OUTPUT_TOKENS: int = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "1024"))
     AI_CALL_TIMEOUT_S: float = float(os.getenv("AI_CALL_TIMEOUT_S", "20"))
     AI_CALL_DEADLINE_S: float = float(os.getenv("AI_CALL_DEADLINE_S", "45"))
@@ -196,8 +204,6 @@ class Settings(BaseSettings):
     MEDIA_GENERATION_DEADLINE_S: float = float(os.getenv("MEDIA_GENERATION_DEADLINE_S", "120"))
     # Managed image/video calls may fall back to Pollinations only when this is set.
     # BYOK failures never use it.
-    MEDIA_MANAGED_FALLBACK: bool = os.getenv("MEDIA_MANAGED_FALLBACK", "false").lower() in ("true", "1", "yes")
-    SCRAPLING_MIN_INTERVAL_S: float = float(os.getenv("SCRAPLING_MIN_INTERVAL_S", "1.0"))
 
     # MONITORS (scheduled competitor watches)
     # The scheduler is whatever calls POST /api/monitors/tick with this secret
@@ -208,6 +214,11 @@ class Settings(BaseSettings):
     # A tick dispatches at most this many monitors, so a backlog cannot bury
     # the single web instance under concurrent scrapes.
     MONITOR_MAX_PER_TICK: int = int(os.getenv("MONITOR_MAX_PER_TICK", "3"))
+    # The jobs worker ticks the monitor scheduler itself every N seconds, so
+    # monitors run without an external cron. 0 turns the in-worker tick off.
+    MONITOR_SCHEDULER_INTERVAL_S: int = int(os.getenv("MONITOR_SCHEDULER_INTERVAL_S", "300"))
+    # At most one rolled-up monitor digest per user and workspace per window.
+    MONITOR_DIGEST_INTERVAL_H: int = int(os.getenv("MONITOR_DIGEST_INTERVAL_H", "24"))
     # Consecutive absences before an ad is reported killed. See
     # creative_fingerprint: one absence is usually a flaky scrape.
     MONITOR_MISS_THRESHOLD: int = int(os.getenv("MONITOR_MISS_THRESHOLD", "2"))
@@ -224,33 +235,6 @@ class Settings(BaseSettings):
     # Origin used to build links in emails and notifications.
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:3000").rstrip("/")
 
-    # 7-DAY TRIAL & MEDIA GENERATION LIMITS
-    TRIAL_DAYS: int = int(os.getenv("TRIAL_DAYS", "7"))
-    TRIAL_IMAGES_PER_DAY: int = int(os.getenv("TRIAL_IMAGES_PER_DAY", "5"))
-    TRIAL_IMAGES_TOTAL: int = int(os.getenv("TRIAL_IMAGES_TOTAL", "25"))
-    PAID_IMAGES_PER_DAY: int = int(os.getenv("PAID_IMAGES_PER_DAY", "50"))
-
-    # SCRAPLING LEAD GENERATION (Scout · Lead Generation sub-product)
-    # Worker-gated: when disabled, POST /scout/leadgen/jobs refuses with an
-    # honest worker_offline error instead of queueing work nothing will claim.
-    SCRAPLING_WORKER_ENABLED: bool = os.getenv("SCRAPLING_WORKER_ENABLED", "False").lower() in ("true", "1", "yes")
-    # Dev-only single-process fallback: runs the pipeline as an in-API
-    # background task (Scrapling is lazily imported, so uvicorn still boots
-    # without browsers). Prefer the Docker worker in production.
-    SCRAPLING_INLINE_WORKER: bool = os.getenv("SCRAPLING_INLINE_WORKER", "False").lower() in ("true", "1", "yes")
-    SCRAPLING_DEFAULT_ENGINE: str = os.getenv("SCRAPLING_DEFAULT_ENGINE", "stealth")   # http | stealth | dynamic
-    SCRAPLING_ROBOTS_OBEY: bool = os.getenv("SCRAPLING_ROBOTS_OBEY", "True").lower() in ("true", "1", "yes")
-    SCRAPLING_MAX_CONCURRENCY: int = int(os.getenv("SCRAPLING_MAX_CONCURRENCY", "4"))
-    SCRAPLING_PROXY_LIST: str = os.getenv("SCRAPLING_PROXY_LIST", "")   # newline or comma separated proxy URLs
-    SCRAPLING_CHECKPOINT_DIR: str = os.getenv("SCRAPLING_CHECKPOINT_DIR", "/tmp/helix-leadgen-checkpoints")
-    SCRAPLING_CREDIT_PER_PAGE: float = float(os.getenv("SCRAPLING_CREDIT_PER_PAGE", "0.15"))
-    SCRAPLING_CREDIT_BASE: float = float(os.getenv("SCRAPLING_CREDIT_BASE", "1.0"))
-    SCRAPLING_DOCKER_IMAGE: str = os.getenv("SCRAPLING_DOCKER_IMAGE", "ghcr.io/d4vinci/scrapling:latest")
-    SCRAPLING_WORKER_URL: str = os.getenv("SCRAPLING_WORKER_URL", "")   # optional health ping
-    # How recently the worker must have heartbeat before /worker/health says online.
-    SCRAPLING_HEARTBEAT_FRESH_S: int = int(os.getenv("SCRAPLING_HEARTBEAT_FRESH_S", "90"))
-    # Max log lines persisted on the job (FIFO); UI renders the tail.
-    SCRAPLING_MAX_LOG_LINES: int = int(os.getenv("SCRAPLING_MAX_LOG_LINES", "400"))
 
 
     model_config = SettingsConfigDict(
@@ -293,6 +277,35 @@ def _parse_cors_origins(raw: str | None = None, environment: str = "development"
     return [item.strip().rstrip("/") for item in values if item.strip()]
 
 
+_REGEX_HOST_SUFFIX = re.compile(r"(\\\.[a-z0-9-]+){2,}\$$")
+_REGEX_DOT_WILDCARD = re.compile(r"(?<!\\)\.[*+?{]")
+
+
+def validate_cors_origin_regex(pattern: str) -> str:
+    """Return a safe CORS origin regex, or "" when unset.
+
+    The regex must be anchored, HTTPS-only, end in an escaped literal domain
+    with at least two labels (e.g. ``\\.vercel\\.app$``), and must not use an
+    unescaped ``.`` wildcard, so it cannot match an arbitrary host.
+    """
+    value = (pattern or "").strip()
+    if not value:
+        return ""
+    if not value.startswith("^https://") or not value.endswith("$"):
+        raise ValueError("BACKEND_CORS_ORIGIN_REGEX must start with ^https:// and end with $")
+    if not _REGEX_HOST_SUFFIX.search(value):
+        raise ValueError(
+            "BACKEND_CORS_ORIGIN_REGEX must end with an escaped literal domain such as \\.vercel\\.app$"
+        )
+    if _REGEX_DOT_WILDCARD.search(value):
+        raise ValueError("BACKEND_CORS_ORIGIN_REGEX must not use an unescaped . wildcard")
+    try:
+        re.compile(value)
+    except re.error:
+        raise ValueError("BACKEND_CORS_ORIGIN_REGEX is not a valid regular expression") from None
+    return value
+
+
 _ENVIRONMENT_ALIASES = {
     "production": "production",
     "prod": "production",
@@ -332,11 +345,8 @@ def validate_boot_invariants(cfg) -> None:
         ("PUBLIC_APP_BASE_URL", False),
         ("PUBLIC_API_BASE_URL", True),
         ("APP_BASE_URL", False),
-        ("NEON_JWKS_URL", False),
-        ("NEON_AUTH_URL", False),
         ("R2_PUBLIC_BASE_URL", False),
         ("R2_ENDPOINT_URL", False),
-        ("SCRAPLING_WORKER_URL", False),
     )
     parsed_targets = {}
     for name, allow_relative in url_settings:
@@ -350,17 +360,14 @@ def validate_boot_invariants(cfg) -> None:
             parsed_targets[name] = None
 
     try:
-        validate_database_target(getattr(cfg, "DATABASE_URL", "") or "", environment=env)
+        validate_database_target(
+            getattr(cfg, "DATABASE_URL", "") or "",
+            environment=env,
+            allowed_remote_host=getattr(cfg, "ALLOWED_REMOTE_DATABASE_HOST", "") or "",
+            production_host=getattr(cfg, "PRODUCTION_DATABASE_HOST", "") or "",
+        )
     except ValueError as exc:
         errors.append(str(exc))
-
-    for name in ("NEON_JWT_ISSUER", "NEON_JWT_AUDIENCE"):
-        value = (getattr(cfg, name, "") or "").strip()
-        if value.startswith(("http://", "https://", "//")):
-            try:
-                validate_http_target(value, name=name, environment=env)
-            except ValueError as exc:
-                errors.append(str(exc))
 
     raw_cors = getattr(cfg, "BACKEND_CORS_ORIGINS", "") or ""
     try:
@@ -377,6 +384,11 @@ def validate_boot_invariants(cfg) -> None:
         except ValueError as exc:
             errors.append(str(exc))
 
+    try:
+        validate_cors_origin_regex(getattr(cfg, "BACKEND_CORS_ORIGIN_REGEX", "") or "")
+    except ValueError as exc:
+        errors.append(str(exc))
+
     if env == "production":
         for name in ("PUBLIC_APP_BASE_URL", "APP_BASE_URL"):
             parsed = parsed_targets.get(name)
@@ -385,8 +397,6 @@ def validate_boot_invariants(cfg) -> None:
         if not raw_cors.strip() or not origins:
             errors.append("BACKEND_CORS_ORIGINS must be explicitly configured in production")
 
-        if getattr(cfg, "USE_MOCKS", False):
-            errors.append("USE_MOCKS must be false when ENVIRONMENT=production")
         if getattr(cfg, "HELIX_DISPATCH_INLINE", False):
             errors.append("HELIX_DISPATCH_INLINE must be false when ENVIRONMENT=production")
         if getattr(cfg, "AUTH_DEV_RESET_RETURN", False):
@@ -401,7 +411,7 @@ def validate_boot_invariants(cfg) -> None:
             errors.append("RESEND_API_KEY and RESEND_FROM must be set in production")
         if getattr(cfg, "APIFY_ENABLED", False) and not getattr(cfg, "APIFY_API_TOKEN", ""):
             errors.append("APIFY_API_TOKEN must be set when APIFY_ENABLED=true in production")
-        for name in ("GROQ_MODEL", "GEMINI_TEXT_MODEL", "GEMINI_IMAGE_MODEL"):
+        for name in ("GROQ_MODEL", "GEMINI_TEXT_MODEL"):
             if not getattr(cfg, name, ""):
                 errors.append(f"{name} must be set in production")
 
@@ -418,3 +428,13 @@ settings = Settings()
 # Module-level list used by main.py CORS middleware.
 # Import as:  from app.core.config import cors_origins
 cors_origins: List[str] = _parse_cors_origins()
+
+
+def _cors_origin_regex_or_none() -> str | None:
+    try:
+        return validate_cors_origin_regex(os.getenv("BACKEND_CORS_ORIGIN_REGEX", "")) or None
+    except ValueError:
+        return None  # validate_boot_invariants refuses to boot with the reason
+
+
+cors_origin_regex: str | None = _cors_origin_regex_or_none()

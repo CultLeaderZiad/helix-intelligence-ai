@@ -27,9 +27,6 @@ function assertCurrentSessionOperation(version) {
  *
  * All auth goes to the Helix FastAPI backend (Render).
  * Zero dependency on better-auth / Neon Auth / VITE_NEON_AUTH_URL.
- *
- * Interface is identical to authService.mock.js so AuthContext and
- * every page works unchanged regardless of VITE_DATA_SOURCE.
  */
 
 export function getStoredToken() {
@@ -87,7 +84,6 @@ function sessionToUser(session, fallbackName) {
     name: displayName,
     full_name: session.full_name ?? null,
     credit_balance: session.credit_balance ?? 0,
-    trial_days_remaining: session.trial_days_remaining ?? null,
     daily_credit_limit: session.daily_credit_limit ?? null,
     daily_credits_used: session.daily_credits_used ?? 0,
     daily_credits_remaining: session.daily_credits_remaining ?? null,
@@ -170,8 +166,12 @@ const authService = {
   },
 
   /**
-   * Register a new account.
-   * Stores the returned JWT and returns the user shape.
+   * Register a new account, then sign in with the same credentials.
+   *
+   * The server answers sign-up identically whether or not the email was
+   * already registered (no token, same body), so the session comes from the
+   * sign-in that follows. An existing account with a different password
+   * therefore surfaces as the usual generic sign-in error.
    */
   /** @param {{ name?: string, email?: string, password?: string, utm_source?: string, utm_medium?: string, utm_campaign?: string, utm_term?: string, utm_content?: string, referrer?: string }} [params] */
   async signUp({ name, email, password, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer } = {}) {
@@ -179,7 +179,7 @@ const authService = {
     const cleanName = name ? String(name).trim() : undefined
     const cleanEmail = String(email ?? "").trim().toLowerCase()
 
-    const session = await request("/auth/sign-up", {
+    await request("/auth/sign-up", {
       method: "POST",
       body: {
         name: cleanName,
@@ -193,9 +193,15 @@ const authService = {
         referrer,
       },
     })
+    assertCurrentSessionOperation(operationVersion)
+
+    const session = await request("/auth/sign-in", {
+      method: "POST",
+      body: { email: cleanEmail, password },
+    })
 
     if (!session?.access_token) {
-      throw new ServiceError("Sign-up succeeded but no access token returned", {
+      throw new ServiceError("Sign-in succeeded but no access token returned", {
         code: "no_token",
       })
     }

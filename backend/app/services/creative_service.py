@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from app.schemas.creative import Creative as CreativeSchema, Scores, CreativeMetrics
+from app.schemas.creative import Creative as CreativeSchema, CreativeResults, Scores, CreativeMetrics
 from app.schemas.common import Paginated
 from app.models.creative import Creative
 from app.models.creative_score import CreativeScore
@@ -18,15 +18,39 @@ from app.core.observability import log_event
 
 logger = logging.getLogger(__name__)
 
+# Result orderings offered by Discover. Rubric sorts are a text rubric, not
+# measured performance; impressions_desc uses Meta's reported upper bound and
+# is null for every other source. Nulls always sort last; id breaks ties.
+CREATIVE_SORTS = {
+    "days_active_desc": lambda: Creative.days_active.desc().nulls_last(),
+    "first_seen_desc": lambda: Creative.first_seen.desc().nulls_last(),
+    "composite_desc": lambda: CreativeScore.composite.desc().nulls_last(),
+    "hook_desc": lambda: CreativeScore.hook.desc().nulls_last(),
+    "impressions_desc": lambda: Creative.impressions_est.desc().nulls_last(),
+}
+DEFAULT_CREATIVE_SORT = "days_active_desc"
+# Longevity presets offered by Discover ("running N+ days").
+LONGEVITY_PRESETS = (30, 60, 90)
+
+
 async def list_creatives(
     db: AsyncSession,
     job_id: Optional[str] = None,
     brand_id: Optional[str] = None,
     page: int = 1,
     page_size: int = 20,
-    user_org_ids: Optional[List[str]] = None
+    user_org_ids: Optional[List[str]] = None,
+    sort: Optional[str] = None,
+    min_days: int = 0,
+    min_score: float = 0.0,
 ) -> Paginated[CreativeSchema]:
     offset, page_size = pagination_bounds(page, page_size)
+    if sort is not None and sort not in CREATIVE_SORTS:
+        raise HTTPException(status_code=422, detail={"code": "invalid_sort", "message": "Unsupported sort order."})
+    if min_days and min_days not in LONGEVITY_PRESETS:
+        raise HTTPException(status_code=422, detail={"code": "invalid_longevity", "message": "Longevity must be 30, 60 or 90 days."})
+    if not 0 <= float(min_score) <= 10:
+        raise HTTPException(status_code=422, detail={"code": "invalid_min_score", "message": "Text rubric minimum must be between 0 and 10."})
     # Build filters dynamically
     filters = []
     if job_id:
@@ -38,8 +62,23 @@ async def list_creatives(
         scoped_job_ids = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
         filters.append(Creative.job_id.in_(scoped_job_ids))
 
+    # View filters. Unknown run length never counts as 0: it is excluded from
+    # a longevity filter and reported as hidden_unknown_run_length instead.
+    hidden_unknown = None
+    if min_days:
+        hidden_unknown = await db.scalar(
+            select(func.count(Creative.id)).where(*filters, Creative.days_active.is_(None))
+        ) or 0
+        filters.append(Creative.days_active >= min_days)
+    score_join = False
+    if min_score:
+        filters.append(CreativeScore.composite >= float(min_score))
+        score_join = True
+
     # Count total
     count_query = select(func.count(Creative.id))
+    if score_join:
+        count_query = count_query.select_from(Creative).join(CreativeScore, Creative.id == CreativeScore.creative_id)
     if filters:
         count_query = count_query.where(*filters)
     total = await db.scalar(count_query) or 0
@@ -50,7 +89,8 @@ async def list_creatives(
     )
     if filters:
         query = query.where(*filters)
-    query = query.order_by(Creative.id).offset(offset).limit(page_size)
+    ordering = [CREATIVE_SORTS[sort]()] if sort else []
+    query = query.order_by(*ordering, Creative.id).offset(offset).limit(page_size)
     
     result = await db.execute(query)
     rows = result.all()
@@ -98,12 +138,13 @@ async def list_creatives(
             pattern_ids=[]  # Omitted for simplicity unless creative_patterns mapping exists
         ))
 
-    return Paginated(
+    return CreativeResults(
         items=items,
         total=total,
         page=page,
         page_size=page_size,
-        has_more=(offset + page_size) < total
+        has_more=(offset + page_size) < total,
+        hidden_unknown_run_length=hidden_unknown,
     )
 
 async def get_creative_by_id(
@@ -264,8 +305,6 @@ async def generate_patterns_for_recent_creatives(
     db: AsyncSession,
     user: User,
     job_id: Optional[str] = None,
-    byok_key: Optional[str] = None,
-    byok_provider: Optional[str] = None,
     user_org_ids: Optional[List[str]] = None
 ) -> List[PatternSchema]:
     # 1. Scope and fetch creatives (F53)
@@ -292,15 +331,15 @@ async def generate_patterns_for_recent_creatives(
 
     # 2. Server-side credit & feature gate (F53)
     from app.services.billing_service import assert_can_spend, ANALYSIS_PATTERN_CREDIT_COST
-    cost = 0.0 if (byok_key and byok_provider) else ANALYSIS_PATTERN_CREDIT_COST
+    cost = ANALYSIS_PATTERN_CREDIT_COST
     org, plan = await assert_can_spend(
         db,
         user=user,
         required_credits=cost,
-        feature_name="intelligence",
+        feature_name="discover",
         lock_row=False
     )
-    provider = await AIRouter.get_provider_for_user(db, user, byok_key, byok_provider)
+    provider = await AIRouter.get_provider_for_user(db, user)
     
     # Map to schema
     from app.schemas.creative import Creative as CreativeSchema, Scores, CreativeMetrics
@@ -603,10 +642,12 @@ async def create_custom_swipe_reference(db: AsyncSession, user: "User", data: di
         format=format_type,
         headline=headline,
         body=body,
-        cta=data.get("cta", "Learn More"),
+        # A manual reference has no Ad Library start date and no known CTA:
+        # leave both unknown instead of inventing "1 day" / "Learn More".
+        cta=(data.get("cta") or None),
         landing_domain=url[:100] if url else None,
         thumbnail_ratio="1:1" if format_type == "image" else "9:16",
-        days_active=1,
+        days_active=None,
         variant_count=1,
         impressions_est=None,
         is_estimated=False,
@@ -652,89 +693,5 @@ def _translation_unavailable(target_lang: str, message: str) -> dict:
     }
 
 
-async def translate_ad_copy(
-    text: str,
-    target_lang: str = "en",
-    breakdown: bool = True,
-    db=None,
-    user=None,
-) -> dict:
-    """Translate ad copy with a real provider. Failure returns unavailable and does not charge."""
-    del breakdown
-    clean_text = (text or "").strip()
-    if not clean_text:
-        return _translation_unavailable(target_lang, "No copy was provided.")
-
-    lang_map = {"en": "English", "es": "Spanish", "zh": "Chinese", "nl": "Dutch", "ar": "Arabic"}
-    target_name = lang_map.get((target_lang or "en").lower(), target_lang or "English")
-    reservation = None
-    org = None
-    if user is not None and db is not None:
-        from app.services.billing_service import assert_can_spend, AI_CHAT_CREDIT_COST, reserve_credits
-        org, _plan = await assert_can_spend(
-            db, user=user, required_credits=AI_CHAT_CREDIT_COST, feature_name="intelligence", lock_row=False
-        )
-        import uuid as _uuid
-        reservation = await reserve_credits(
-            db,
-            org=org,
-            user_id=user.id,
-            amount=AI_CHAT_CREDIT_COST,
-            operation="copy_translation",
-            idempotency_key=f"copy_translation:{_uuid.uuid4().hex}",
-            metadata={"target_lang": target_lang},
-        )
-
-    from app.core.config import settings as _settings
-    from app.core.credentials import env_secret
-    from app.services.ai.call_policy import complete_chat
-    from app.services.ai.prompts import PROMPT_TRANSLATION, translation_messages
-    from app.services.ai.structured import parse_translation
-    import json
-
-    api_key = env_secret("GROQ_API_KEY", fallback=_settings.GROQ_API_KEY)
-    if not api_key:
-        if reservation is not None:
-            from app.services.billing_service import release_reservation
-            await release_reservation(db, reservation.id, "translation_unavailable")
-        return _translation_unavailable(target_lang, "Translation is unavailable because no model provider is configured.")
-
-    try:
-        result = await complete_chat(
-            provider_name="groq",
-            url="https://api.groq.com/openai/v1/chat/completions",
-            api_key=api_key,
-            model=getattr(_settings, "GROQ_MODEL", None) or "llama-3.3-70b-versatile",
-            fallback_models=["llama-3.1-8b-instant"],
-            messages=translation_messages(clean_text, target_name),
-            allowed_hosts={"api.groq.com"},
-            response_format={"type": "json_object"},
-        )
-        parsed = parse_translation(json.loads(result.text), target_lang=target_lang)
-    except Exception as exc:
-        if reservation is not None:
-            from app.services.billing_service import release_reservation
-            await release_reservation(db, reservation.id, "translation_unavailable")
-        log_event(logger, "copy_translation_failed", error=exc, actor_id=getattr(user, "id", None), tenant_id=getattr(org, "id", None))
-        return _translation_unavailable(target_lang, "Translation is temporarily unavailable. No credits were charged.")
-
-    parsed["model"] = result.model
-    parsed["prompt_version"] = PROMPT_TRANSLATION
-    parsed["provider"] = result.provider
-    parsed["charged"] = reservation is not None
-    if reservation is not None:
-        from app.services.ai.call_policy import usage_metadata
-        from app.services.billing_service import settle_reservation
-        await settle_reservation(
-            db,
-            reservation.id,
-            provider=result.provider,
-            model=result.model,
-            tokens=result.total_tokens,
-            cost_usd=result.cost_usd,
-            latency_ms=result.latency_ms,
-            metadata=usage_metadata(result, prompt_version=PROMPT_TRANSLATION),
-        )
-    return parsed
 
 

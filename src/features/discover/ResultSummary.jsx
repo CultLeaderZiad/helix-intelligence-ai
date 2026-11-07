@@ -2,6 +2,7 @@ import { useMemo } from "react"
 import { formatDuration, formatInt } from "@/lib/format"
 import { SORT_OPTIONS } from "@/lib/constants"
 import { useLanguage } from "@/context/LanguageContext"
+import { useW8Copy } from "@/i18n/w8Product"
 
 /**
  * Result-set readout. A completed query is a research artefact, so its
@@ -21,8 +22,9 @@ function Cell({ label, children }) {
   )
 }
 
-export function ResultSummary({ query, results, sort, filterCount, selectedId }) {
+export function ResultSummary({ query, results, sort, filterCount, hiddenUnknown = null, selectedId }) {
   const { t } = useLanguage()
+  const w8 = useW8Copy()
   const sortLabel =
     SORT_OPTIONS.find((o) => o.value === sort)?.label?.toLowerCase() ?? sort
 
@@ -51,6 +53,11 @@ export function ResultSummary({ query, results, sort, filterCount, selectedId })
       </Cell>
       <Cell label={t("filtersLabel", "filters")}>{formatInt(filterCount)}</Cell>
       <Cell label={t("sortLabel", "sort")}>{sortLabel}</Cell>
+      {hiddenUnknown ? (
+        <span className="font-mono text-[11px] text-text-muted" role="note">
+          {w8.hiddenUnknown(hiddenUnknown)}
+        </span>
+      ) : null}
       {selectedId ? (
         <span className="flex items-baseline gap-1.5">
           <span className="label-mono">selected</span>

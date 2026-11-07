@@ -52,3 +52,13 @@ class Brand(BaseModel):
     ad_count: int
     first_seen: str
 
+
+
+from app.schemas.common import Paginated  # noqa: E402
+
+
+class CreativeResults(Paginated[Creative]):
+    """Discover results. When a longevity filter is active, ads whose run
+    length is unknown cannot be shown as "running N+ days"; their count is
+    reported instead of silently treating them as 0."""
+    hidden_unknown_run_length: Optional[int] = None

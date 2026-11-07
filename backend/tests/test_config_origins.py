@@ -95,15 +95,10 @@ def test_production_boot_requires_explicit_app_and_cors_origins():
         PUBLIC_APP_BASE_URL="https://app.example.invalid",
         PUBLIC_API_BASE_URL="/api",
         APP_BASE_URL="https://app.example.invalid",
-        NEON_JWKS_URL="",
-        NEON_AUTH_URL="",
-        NEON_JWT_ISSUER="",
-        NEON_JWT_AUDIENCE="",
         R2_PUBLIC_BASE_URL="",
         R2_ENDPOINT_URL="",
         DATABASE_URL="postgresql+asyncpg://test:test@db.example.invalid:5432/helix",
         BACKEND_CORS_ORIGINS="https://app.example.invalid",
-        USE_MOCKS=False,
         HELIX_DISPATCH_INLINE=False,
         AUTH_DEV_RESET_RETURN=False,
         SECRET_KEY="s" * 40,
@@ -113,10 +108,44 @@ def test_production_boot_requires_explicit_app_and_cors_origins():
         APIFY_ENABLED=False,
         GROQ_MODEL="test-model",
         GEMINI_TEXT_MODEL="test-model",
-        GEMINI_IMAGE_MODEL="test-model",
     )
     validate_boot_invariants(config)
 
     config.APP_BASE_URL = "http://localhost:3000"
     with pytest.raises(RuntimeError, match="APP_BASE_URL"):
         validate_boot_invariants(config)
+
+
+def test_cors_origin_regex_accepts_only_anchored_https_patterns_with_a_literal_domain():
+    from app.core.config import validate_cors_origin_regex
+
+    preview = r"^https://helix-intelligenc[a-z0-9-]*-team-slug\.vercel\.app$"
+    assert validate_cors_origin_regex(preview) == preview
+    assert validate_cors_origin_regex("") == ""
+    for bad in (
+        r"^https://.*\.vercel\.app$",
+        r"^https://.+\.vercel\.app$",
+        r"https://x\.vercel\.app$",
+        r"^https://x\.vercel\.app",
+        r"^http://x\.vercel\.app$",
+        r"^https://x\.app$",
+        r"^https://x.vercel.app$",
+        r"^https://([a-z\.vercel\.app$",
+    ):
+        with pytest.raises(ValueError, match="BACKEND_CORS_ORIGIN_REGEX"):
+            validate_cors_origin_regex(bad)
+
+
+def test_cors_origin_regex_matches_preview_hosts_but_not_lookalikes():
+    import re
+
+    pattern = re.compile(r"^https://helix-intelligenc[a-z0-9-]*-team-slug\.vercel\.app$")
+    assert pattern.fullmatch("https://helix-intelligenc-git-a3057f-team-slug.vercel.app")
+    assert pattern.fullmatch("https://helix-intelligence-ai-k2j4-team-slug.vercel.app")
+    for origin in (
+        "https://helix-intelligenc.evil.com-team-slug.vercel.app",
+        "https://evil.com/helix-intelligenc-team-slug.vercel.app",
+        "http://helix-intelligenc-git-x-team-slug.vercel.app",
+        "https://helix-intelligenc-git-x-team-slug.vercel.app.evil.com",
+    ):
+        assert not pattern.fullmatch(origin)

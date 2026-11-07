@@ -1,4 +1,4 @@
-"""Postgres outbox for long discovery, media, scout, maps, and monitor work.
+"""Postgres outbox for long discovery and monitor work.
 
 A claim takes a short lease. The network call happens after the lease
 transaction commits. Restarting a worker releases the lease; it does not
@@ -276,7 +276,9 @@ async def retries_remaining(job_id: str) -> bool:
         item = (
             await db.execute(
                 select(WorkItem)
-                .where(WorkItem.job_id == job_id)
+                # Follow-up work (the archive copy) shares the job id; only
+                # the search's own item decides whether the search retries.
+                .where(WorkItem.job_id == job_id, WorkItem.kind == "discover")
                 .order_by(WorkItem.created_at.desc())
             )
         ).scalars().first()
@@ -475,31 +477,13 @@ async def _dispatch(kind, job_id, payload, org_id, user_id, item_id, owner, atte
             lease_generation=attempt_count,
         )
         return
-    if kind == "media":
-        from app.services.media_service import gemini_generate_media_task
-        custom_api_key = None
-        token = payload.get("encrypted_byok")
-        if token:
-            from app.services.security_service import decrypt_secret
-            custom_api_key = decrypt_secret(token)
-        await gemini_generate_media_task(
-            job_id,
-            user_id,
-            org_id,
-            custom_api_key=custom_api_key,
-            work_item_id=item_id,
-        )
-        return
-    if kind == "scout":
-        from app.services.scout_service import execute_scout_job
-        await execute_scout_job(job_id)
-        return
-    if kind == "maps":
-        from app.services.maps_scout_service import execute_maps_scout
-        await execute_maps_scout(job_id)
-        return
     if kind == "monitor":
         from app.services.monitor_service import run_monitor
         await run_monitor(job_id)
+        return
+    if kind == "archive":
+        from app.services.archive_service import archive_job
+        async with async_session_maker() as db:
+            await archive_job(db, job_id, org_id)
         return
     raise RuntimeError(f"unknown work kind {kind}")

@@ -1,43 +1,22 @@
 /**
- * The single switch that decides where data comes from.
+ * API location and client polling limits.
  *
- * Keep local and preview builds on the same-origin API proxy. Unclassified
- * production-mode builds use production origin rules.
- *
- * No component or hook changes. Nothing else in the app reads these vars.
+ * Local development uses the same-origin Vite proxy (/api -> 127.0.0.1:8000).
+ * Deployed builds (Vercel production and previews) call the Render API by its
+ * absolute HTTPS URL from .env.production or the Vercel env. Unclassified
+ * production-mode builds use production origin rules. There is no mock data
+ * source: every service talks to the FastAPI backend.
  */
 
 import { resolveApiBaseUrl } from "./origin.js"
 
 const env = import.meta.env
 
-const VALID_DATA_SOURCES = ["api", "mock"]
-const rawDataSource = (env.VITE_DATA_SOURCE ?? "api").trim().toLowerCase()
-
-if (!VALID_DATA_SOURCES.includes(rawDataSource)) {
-  throw new Error(
-    `Invalid VITE_DATA_SOURCE: '${env.VITE_DATA_SOURCE}'. Allowed values are 'api' or 'mock'.`
-  )
-}
-
-if (env.PROD && rawDataSource === "mock") {
-  throw new Error(
-    "VITE_DATA_SOURCE cannot be set to 'mock' in production builds. Production must connect to real API backend."
-  )
-}
-
-/** @type {'mock'|'api'} */
-export const DATA_SOURCE = rawDataSource === "mock" ? "mock" : "api"
-
 export const API_BASE_URL = resolveApiBaseUrl(
   env.VITE_API_BASE_URL,
   env.VITE_ENVIRONMENT,
   env.PROD === true
 )
-
-/** Mock-only knobs, used to rehearse slow networks and failures. */
-export const MOCK_LATENCY_MS = [180, 520]
-export const MOCK_FAILURE_RATE = Number(env.VITE_MOCK_FAILURE_RATE ?? 0)
 
 /** How often the client polls a running job. */
 export const JOB_POLL_INTERVAL_MS = 400

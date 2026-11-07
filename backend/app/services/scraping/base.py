@@ -43,7 +43,7 @@ class RawCreative(BaseModel):
     # Optional fields for raw metrics if provided by the ad library directly
     impressions_est: Optional[int] = None
     is_estimated: bool = True
-    data_source: str = "meta_official" # 'meta_official' | 'ad_library_scrape' | 'organic_content_proxy'
+    data_source: str = "unknown"  # only an explicit "meta_official" may carry reach/spend # 'meta_official' | 'ad_library_scrape' | 'organic_content_proxy'
     spend_band: Optional[str] = None
 
 class ScraperProvider(ABC):

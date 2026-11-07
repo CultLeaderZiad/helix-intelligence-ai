@@ -5,7 +5,6 @@ import pytest
 
 from app.db.base import Base
 from app.schemas.app_update import AppUpdateResponse
-from app.schemas.media import MediaGenerationJobResponse
 from app.services import creative_service
 from app.services.scraping import adyntel_provider, metapi_provider
 
@@ -37,23 +36,6 @@ def test_declarative_base_and_response_models_use_supported_configuration():
     )
     assert update.id == "update-1"
 
-    media_job = MediaGenerationJobResponse.model_validate(
-        SimpleNamespace(
-            id="job-1",
-            job_id=None,
-            status="completed",
-            prompt="A product photo",
-            provider="gemini",
-            provider_job_id=None,
-            created_at=timestamp,
-            updated_at=timestamp,
-            parameters={},
-            result_url=None,
-            error_message=None,
-            failure_kind=None,
-        )
-    )
-    assert media_job.job_id == "job-1"
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@ import math
 from datetime import datetime, timezone
 from typing import AsyncGenerator, Optional
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -51,8 +51,7 @@ def session_is_revoked(user: User, payload: dict) -> bool:
     ``<=`` against the full boundary.
     """
     metadata = getattr(user, "signup_metadata", None) or {}
-    token_class = payload.get("_token_class")
-    local = token_class != "external"
+    local = True
     token_ver = None
     current_ver = None
     if local:
@@ -77,14 +76,14 @@ def session_is_revoked(user: User, payload: dict) -> bool:
 
 async def authenticate_bearer(db: AsyncSession, token: str) -> User:
     """The single bearer-token dependency used by routes and media access."""
-    from app.core.security import verify_neon_token
+    from app.core.security import verify_session_token
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    payload = await verify_neon_token(token)
+    payload = await verify_session_token(token)
     if not payload:
         raise credentials_exception
     user_id = payload.get("sub")
@@ -119,30 +118,11 @@ async def authenticate_bearer(db: AsyncSession, token: str) -> User:
 async def get_current_user(
     db: AsyncSession = Depends(get_db),
     token: Optional[str] = Depends(oauth2_scheme),
-    x_api_key: Optional[str] = Header(None, alias="X-API-Key")
 ) -> User:
-    # 1. Check API Key authentication
-    if isinstance(x_api_key, str) and x_api_key.strip():
-        from app.services.api_key_service import authenticate_api_key
-        user, org = await authenticate_api_key(db, x_api_key)
-        user._scoped_org_id = org.id
-        if getattr(user, "is_banned", False):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={"code": "user_banned", "message": "This account has been banned."}
-            )
-        if getattr(user, "is_suspended", False):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail={"code": "user_suspended", "message": "Account suspended"}
-            )
-        await _bind_request_tenant(db, user)
-        return user
-
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated. Provide Bearer token or X-API-Key header.",
+            detail="Not authenticated.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     return await authenticate_bearer(db, token)
@@ -172,13 +152,12 @@ async def get_current_full_admin(
 async def get_optional_user(
     db: AsyncSession = Depends(get_db),
     token: Optional[str] = Depends(oauth2_scheme),
-    x_api_key: Optional[str] = Header(None, alias="X-API-Key")
 ) -> Optional[User]:
-    """Returns the authenticated User if valid credentials are provided, else None without raising 401."""
-    if not token and not (isinstance(x_api_key, str) and x_api_key.strip()):
+    """Returns the authenticated User if a valid session token is provided, else None."""
+    if not token:
         return None
     try:
-        return await get_current_user(db=db, token=token, x_api_key=x_api_key)
+        return await get_current_user(db=db, token=token)
     except HTTPException:
         return None
 

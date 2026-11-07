@@ -11,8 +11,6 @@ from fastapi import HTTPException
 from app.db.session import worker_session_maker
 from app.models.organization import Organization
 from app.models.plan import Plan
-from app.models.leadgen import LeadGenJob
-from app.models.scout import ScoutJob, ScoutMapsJob
 from app.models.user import User
 from app.services.admin_service import (
     approve_access_request,
@@ -22,9 +20,6 @@ from app.services.admin_service import (
     submit_access_request,
 )
 from app.services.billing_service import access_status_for_org, assert_can_spend
-from app.services.leadgen_pipeline import run_leadgen_job
-from app.services.maps_scout_service import run_maps_scout_worker
-from app.services.scout_service import run_scout_job_worker
 
 
 def _suffix() -> str:
@@ -96,15 +91,15 @@ async def test_request_approval_enables_only_granted_flags_and_revoke_keeps_the_
     suffix = _suffix()
     async with worker_session_maker() as db:
         admin, owner, org, plan = await _people(db, suffix)
-        request = await submit_access_request(db, owner, org.id, ["discover", "intelligence"], "Need search")
+        request = await submit_access_request(db, owner, org.id, ["discover", "monitors"], "Need search")
         assert request["status"] == "pending"
         approved = await approve_access_request(
-            db, admin, request["id"], plan.id, {"discover": True, "intelligence": False},
+            db, admin, request["id"], plan.id, {"discover": True, "monitors": False},
         )
         assert approved["status"] == "approved"
         await assert_can_spend(db, owner, required_credits=0, feature_name="discover", lock_row=False)
         with pytest.raises(HTTPException) as blocked:
-            await assert_can_spend(db, owner, required_credits=0, feature_name="intelligence", lock_row=False)
+            await assert_can_spend(db, owner, required_credits=0, feature_name="monitors", lock_row=False)
         assert blocked.value.detail["code"] == "feature_disabled"
         revoked = await revoke_organization_access(db, admin, org.id, "stop")
         assert revoked["data_retained"] is True
@@ -133,48 +128,8 @@ async def test_expired_grant_blocks_spend():
         assert exc.value.detail["code"] == "access_expired"
 
 
-@pytest.mark.asyncio
-async def test_scout_worker_rechecks_entitlement_before_running():
-    suffix = _suffix()
-    async with worker_session_maker() as db:
-        _admin, owner, org, _plan = await _people(db, suffix)
-        job = ScoutJob(
-            id=f"job_{suffix}",
-            org_id=org.id,
-            user_id=owner.id,
-            status="queued",
-            platforms=["github"],
-            handles=["example"],
-        )
-        db.add(job)
-        await db.commit()
-        job_id = job.id
-    await run_scout_job_worker(job_id)
-    async with worker_session_maker() as db:
-        job = await db.get(ScoutJob, job_id)
-        assert job.status == "failed"
-        assert "pending approval" in (job.error_msg or "").lower()
 
 
-@pytest.mark.asyncio
-async def test_leadgen_and_maps_workers_recheck_entitlement_before_running():
-    suffix = _suffix()
-    async with worker_session_maker() as db:
-        _admin, owner, org, _plan = await _people(db, suffix)
-        lead = LeadGenJob(id=f"lg_{suffix}", org_id=org.id, user_id=owner.id, status="queued", brief={}, seeds=[])
-        maps = ScoutMapsJob(id=f"mp_{suffix}", org_id=org.id, user_id=owner.id, status="queued", keyword="clinics", city="Cairo")
-        db.add_all([lead, maps])
-        await db.commit()
-        lead_id, maps_id = lead.id, maps.id
-    await run_leadgen_job(lead_id)
-    await run_maps_scout_worker(maps_id)
-    async with worker_session_maker() as db:
-        lead = await db.get(LeadGenJob, lead_id)
-        maps = await db.get(ScoutMapsJob, maps_id)
-        assert lead.status == "failed"
-        assert maps.status == "failed"
-        assert "pending approval" in (lead.error_msg or "").lower()
-        assert "pending approval" in (maps.error_msg or "").lower()
 
 
 @pytest.mark.asyncio

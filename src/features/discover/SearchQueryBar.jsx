@@ -45,11 +45,11 @@ export function SearchQueryBar({
   }
 
   const sortOptions = [
-    { value: "composite_desc", label: t("sortComposite", "Composite score") },
-    { value: "hook_desc", label: t("sortHook", "Hook score") },
     { value: "days_active_desc", label: t("sortDays", "Days active") },
     { value: "first_seen_desc", label: t("sortNewest", "Newest") },
-    { value: "impressions_desc", label: t("sortImpr", "Est. impressions") },
+    { value: "composite_desc", label: t("sortComposite", "Text rubric (0–10)") },
+    { value: "hook_desc", label: t("sortHook", "Hook rubric (0–10)") },
+    { value: "impressions_desc", label: t("sortImpr", "Meta reach (upper bound)") },
   ]
 
   return (

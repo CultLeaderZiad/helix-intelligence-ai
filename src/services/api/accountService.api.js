@@ -50,22 +50,6 @@ const accountService = {
     })
   },
 
-  listApiKeys() {
-    return request("/account/api-keys")
-  },
-
-  createApiKey(name = "Default API Key") {
-    return request("/account/api-keys", {
-      method: "POST",
-      body: { name },
-    })
-  },
-
-  revokeApiKey(keyId) {
-    return request(`/account/api-keys/${keyId}`, {
-      method: "DELETE",
-    })
-  },
 
   getTeam() {
     return request("/account/team")

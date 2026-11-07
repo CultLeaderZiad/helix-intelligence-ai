@@ -673,6 +673,17 @@ async def _apply_diff(monitor_id: str, run_id: str, job_id: str, is_baseline: bo
 
     if result.total_events:
         await _fan_out(monitor_id, run_id, result)
+        await _send_digest_if_due(monitor_id)
+
+
+async def _send_digest_if_due(monitor_id: str) -> None:
+    """Roll this owner's monitors into the daily digest when one is due."""
+    async with async_session_maker() as db:
+        row = (await db.execute(select(Monitor.org_id, Monitor.user_id).where(Monitor.id == monitor_id))).first()
+    if row is None:
+        return
+    from app.services.monitor_digest_service import maybe_send_digest
+    await maybe_send_digest(row.org_id, row.user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -839,7 +850,7 @@ async def _handle_blocked(monitor_id: str, reason: str, message: str) -> None:
         if not monitor:
             return
         already_paused = monitor.status == "paused"
-        if reason in ("trial_expired", "feature_disabled", "insufficient_credits"):
+        if reason in ("feature_disabled", "insufficient_credits"):
             monitor.status = "paused"
             monitor.paused_reason = message
         else:

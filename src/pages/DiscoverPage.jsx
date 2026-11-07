@@ -3,7 +3,7 @@ import { Radar, SearchX, Clock, RotateCcw, MessageSquarePlus } from "lucide-reac
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useTelemetry } from "@/app/TelemetryContext"
 import { SearchQueryBar } from "@/features/discover/SearchQueryBar"
-import { FilterRail } from "@/features/discover/FilterRail"
+import { FilterRail, countActiveFilters } from "@/features/discover/FilterRail"
 import { JobProgress } from "@/features/discover/JobProgress"
 import { ResultSummary } from "@/features/discover/ResultSummary"
 import { ResultsTable } from "@/features/discover/ResultsTable"
@@ -21,12 +21,13 @@ import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
 import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 import w5Discover from "@/i18n/w5Discover"
+import { useW8Copy } from "@/i18n/w8Product"
 
+/* Country is sent with the search; run length and the text-rubric minimum
+   filter the stored results. Platform, format and spend-band controls were
+   removed: every provider is Meta-only and none of them was ever applied. */
 const EMPTY_FILTERS = {
   country: "ALL",
-  platforms: [],
-  formats: [],
-  spend_bands: [],
   min_score: 0,
   min_days_active: 0,
 }
@@ -48,16 +49,16 @@ const EMPTY_FILTERS = {
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 
-import { useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 
 export function DiscoverPage() {
   const [searchParams] = useSearchParams()
-  const { latestSearch, saveCompletedSearch, selectActiveCreative, selectSearchSession } = useSearchContext()
+  const { latestSearch, saveCompletedSearch, selectActiveCreative, openSearchSession } = useSearchContext()
   const persistCompletedSearch = /** @type {(search: Record<string, unknown>) => void} */ (saveCompletedSearch)
   const setActiveCreative = /** @type {(creative: object) => void} */ (selectActiveCreative)
-  const setSearchSession = /** @type {(session: object) => void} */ (selectSearchSession)
   const { t, lang } = useLanguage()
   const copy = w5Discover[lang] ?? w5Discover.en
+  const w8 = useW8Copy()
   const [query, setQuery] = useState(() => searchParams.get("q") || latestSearch?.query || "")
   const [queryLanguage, setQueryLanguage] = useState(() => {
     try {
@@ -66,7 +67,7 @@ export function DiscoverPage() {
       return "en"
     }
   })
-  const [sort, setSort] = useState("composite_desc")
+  const [sort, setSort] = useState("days_active_desc")
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS)
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -103,20 +104,10 @@ export function DiscoverPage() {
     }
   }, [queryLanguage])
 
-  const dirty = useMemo(
-    () => JSON.stringify(draftFilters) !== JSON.stringify(appliedFilters),
-    [draftFilters, appliedFilters],
-  )
+  /* Only the search-time filter (country) needs a re-run to apply. */
+  const dirty = (draftFilters.country ?? "ALL") !== (appliedFilters.country ?? "ALL")
 
-  const activeFilterCount = useMemo(
-    () =>
-      (draftFilters.platforms?.length ?? 0) +
-      (draftFilters.formats?.length ?? 0) +
-      (draftFilters.spend_bands?.length ?? 0) +
-      (draftFilters.min_score > 0 ? 1 : 0) +
-      (draftFilters.min_days_active > 0 ? 1 : 0),
-    [draftFilters],
-  )
+  const activeFilterCount = useMemo(() => countActiveFilters(draftFilters), [draftFilters])
 
   /* Sync completed search results with SearchContext across tabs */
   useEffect(() => {
@@ -210,8 +201,22 @@ export function DiscoverPage() {
     if (phase === PHASE.READY) refine({ page: 1, sort: next })
   }
 
+  /* Run length and rubric minimum apply instantly to stored results. */
+  function handleFiltersChange(next) {
+    setDraftFilters(next)
+    const viewChanged =
+      (next.min_days_active ?? 0) !== (appliedFilters.min_days_active ?? 0) ||
+      (next.min_score ?? 0) !== (appliedFilters.min_score ?? 0)
+    if (!viewChanged) return
+    setAppliedFilters((prev) => ({ ...prev, min_days_active: next.min_days_active ?? 0, min_score: next.min_score ?? 0 }))
+    if (phase === PHASE.READY) {
+      setSelectedId(null)
+      refine({ page: 1, view: { min_days: next.min_days_active ?? 0, min_score: next.min_score ?? 0 } })
+    }
+  }
+
   function clearFilters() {
-    setDraftFilters(EMPTY_FILTERS)
+    handleFiltersChange(EMPTY_FILTERS)
   }
 
   const displayResults = results || (phase === PHASE.IDLE && latestSearch?.items?.length ? {
@@ -234,13 +239,7 @@ export function DiscoverPage() {
      nothing — the backend's zero_results stage_label says exactly why. */
   const scrapedNothing =
     phase === PHASE.READY && items.length === 0 && (job?.records_found ?? 0) === 0
-  const filtersWereApplied =
-    appliedFilters.country !== "ALL" ||
-    (appliedFilters.platforms?.length ?? 0) > 0 ||
-    (appliedFilters.formats?.length ?? 0) > 0 ||
-    (appliedFilters.spend_bands?.length ?? 0) > 0 ||
-    (appliedFilters.min_score ?? 0) > 0 ||
-    (appliedFilters.min_days_active ?? 0) > 0
+  const filtersWereApplied = countActiveFilters(appliedFilters) > 0
   const showProgress = Boolean(job) && phase !== PHASE.READY && phase !== PHASE.IDLE
   const inspectorOpen = Boolean(selectedId)
 
@@ -313,6 +312,7 @@ export function DiscoverPage() {
           results={displayResults}
           sort={sort}
           filterCount={activeFilterCount}
+          hiddenUnknown={displayResults?.hidden_unknown_run_length ?? null}
           selectedId={selectedId}
         />
       ) : null}
@@ -322,7 +322,7 @@ export function DiscoverPage() {
         {filtersOpen && !isBelowLg ? (
           <FilterRail
             filters={draftFilters}
-            onChange={setDraftFilters}
+            onChange={handleFiltersChange}
             onClear={clearFilters}
             dirty={dirty}
           />
@@ -339,7 +339,7 @@ export function DiscoverPage() {
             <div className="relative ml-auto flex h-full">
               <FilterRail
                 filters={draftFilters}
-                onChange={setDraftFilters}
+                onChange={handleFiltersChange}
                 onClear={clearFilters}
                 dirty={dirty}
               />
@@ -356,19 +356,44 @@ export function DiscoverPage() {
             className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden"
             aria-label={t("discoveryResults")}
           >
-            {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile ? (
+            {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile && latestSearch?.query ? (
               <EmptyState
-                icon={Radar}
-                title={t("noRunYet")}
-                description={t("noRunYetDesc")}
+                icon={SearchX}
+                size="lg"
+                status={w8.discoverLastEmptyStatus}
+                title={w8.discoverLastEmptyTitle(latestSearch.query)}
+                description={w8.discoverLastEmptyBody}
                 action={
                   <Button
                     size="sm"
                     variant="primary"
-                    onClick={runDiscovery}
-                    disabled={!query.trim()}
-                   className="">
-                    {copy.runSearch}
+                    onClick={() => {
+                      const again = query.trim() || latestSearch.query
+                      setQuery(again)
+                      setAppliedFilters(draftFilters)
+                      submit({ query: again, filters: draftFilters, sort, query_language: queryLanguage })
+                    }}
+                  >
+                    {w8.discoverLastEmptyCta}
+                  </Button>
+                }
+              />
+            ) : null}
+
+            {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile && !latestSearch?.query ? (
+              <EmptyState
+                icon={Radar}
+                size="lg"
+                status={w8.discoverEmptyStatus}
+                title={w8.discoverEmptyTitle}
+                description={w8.discoverEmptyBody}
+                action={
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => (query.trim() ? runDiscovery() : document.getElementById("tour-search-input")?.focus())}
+                    className="">
+                    {w8.discoverEmptyCta}
                   </Button>
                 }
                className=""/>
@@ -403,8 +428,11 @@ export function DiscoverPage() {
             {phase === PHASE.ERROR && !isServiceRestart(error) ? (
               <ErrorState
                 error={error}
-                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
-                description={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? t("discoverNeedsAccess") : undefined}
+                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
+                description={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? t("discoverNeedsAccess") : undefined}
+                action={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? (
+                  <Button as={Link} to="/access" size="sm" variant="primary">{w8.discoverOpenAccess}</Button>
+                ) : undefined}
                 className=""
               />
             ) : null}
@@ -543,12 +571,22 @@ export function DiscoverPage() {
         isOpen={showDraftsModal}
         onClose={() => setShowDraftsModal(false)}
         currentQuery={query}
-        onSelectSearch={(item) => {
-          setSearchSession(item)
+        currentFilters={draftFilters}
+        onSelectSearch={async (item) => {
           setQuery(item.query)
+          setSelectedId(null)
+          const opened = await openSearchSession(item).catch(() => false)
+          // Nothing stored to show (failed or empty): run it again.
+          if (!opened) {
+            setAppliedFilters(draftFilters)
+            submit({ query: item.query, filters: draftFilters, sort, query_language: queryLanguage })
+          }
         }}
         onSelectDraft={(draft) => {
           setQuery(draft.query || draft.title)
+          const next = { ...EMPTY_FILTERS, ...(draft.filters || {}) }
+          setDraftFilters(next)
+          setAppliedFilters(next)
         }}
       />
     </div>

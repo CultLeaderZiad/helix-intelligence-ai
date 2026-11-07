@@ -4,9 +4,9 @@ import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom"
 import { AppShell } from "@/app/AppShell"
 import { ProtectedRoute } from "@/app/ProtectedRoute"
 import { TelemetryProvider } from "@/app/TelemetryContext"
-import { NAV_SECTIONS } from "@/app/navigation"
+import { NAV_SECTIONS, hasFeature } from "@/app/navigation"
 import { ADMIN_NAV_ITEMS } from "@/app/admin/adminNavigation"
-import { AuthProvider } from "@/context/AuthContext"
+import { AuthProvider, useAuth } from "@/context/AuthContext"
 import { SearchProvider } from "@/context/SearchContext"
 import { LanguageProvider } from "@/context/LanguageContext"
 import { ErrorBoundary } from "@/components/ErrorBoundary"
@@ -50,17 +50,18 @@ const SignUpPage = safeLazy(() => import("@/pages/auth/SignUpPage").then(m => ({
 const ForgotPasswordPage = safeLazy(() => import("@/pages/auth/ForgotPasswordPage").then(m => ({ default: m.ForgotPasswordPage })))
 const ResetPasswordPage = safeLazy(() => import("@/pages/auth/ResetPasswordPage").then(m => ({ default: m.ResetPasswordPage })))
 const DiscoverPage = safeLazy(() => import("@/pages/DiscoverPage").then(m => ({ default: m.DiscoverPage })))
-const IntelligencePage = safeLazy(() => import("@/pages/IntelligencePage").then(m => ({ default: m.IntelligencePage })))
-const PerformancePage = safeLazy(() => import("./pages/PerformancePage").then(m => ({ default: m.default || m.PerformancePage })))
 const optionalPage = (page) => EXPERIMENTAL_FEATURES_ENABLED ? page : <Navigate to="/discover" replace />
 
-const DashboardPage = safeLazy(() => import("./pages/DashboardPage").then(m => ({ default: m.default })))
-const CreatePage = safeLazy(() => import("@/pages/CreatePage").then(m => ({ default: m.CreatePage })))
+/* Monitors and Boards follow the workspace's own flags (the same ones the
+   API enforces), not a build-time switch. Team stays experimental. */
+function FeaturePage({ feature, children }) {
+  const { user } = useAuth()
+  return hasFeature(feature, user?.feature_flags) ? children : <Navigate to="/discover" replace />
+}
+
 const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
-const GuidePage = safeLazy(() => import("@/pages/GuidePage").then(m => ({ default: m.GuidePage })))
 const SwipeFilesPage = safeLazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
 const BillingPage = safeLazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
-const ApiKeysPage = safeLazy(() => import("@/pages/ApiKeysPage").then(m => ({ default: m.ApiKeysPage })))
 const TeamPage = safeLazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamPage })))
 const TeamAcceptPage = safeLazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamAcceptPage })))
 const PendingLoopPage = safeLazy(() => import("@/pages/PendingLoopPage").then(m => ({ default: m.PendingLoopPage })))
@@ -69,7 +70,6 @@ const OverviewPage = safeLazy(() => import("@/pages/admin/OverviewPage").then(m 
 const AdminPendingPage = safeLazy(() => import("@/pages/admin/AdminPendingPage").then(m => ({ default: m.AdminPendingPage })))
 const OrganizationsPage = safeLazy(() => import("@/pages/admin/OrganizationsPage").then(m => ({ default: m.OrganizationsPage })))
 const AccessRequestsPage = safeLazy(() => import("@/pages/admin/AccessRequestsPage").then(m => ({ default: m.AccessRequestsPage })))
-const SubscriptionsPlansPage = safeLazy(() => import("@/pages/admin/SubscriptionsPlansPage").then(m => ({ default: m.SubscriptionsPlansPage })))
 const UsagePage = safeLazy(() => import("@/pages/admin/UsagePage").then(m => ({ default: m.UsagePage })))
 const FeatureFlagsPage = safeLazy(() => import("@/pages/admin/FeatureFlagsPage").then(m => ({ default: m.FeatureFlagsPage })))
 const UsersPage = safeLazy(() => import("@/pages/admin/UsersPage").then(m => ({ default: m.UsersPage })))
@@ -79,6 +79,7 @@ const ScrapeJobsPage = safeLazy(() => import("@/pages/admin/ScrapeJobsPage").the
 const DataSourcesPage = safeLazy(() => import("@/pages/admin/DataSourcesPage").then(m => ({ default: m.DataSourcesPage })))
 const SystemHealthPage = safeLazy(() => import("@/pages/admin/SystemHealthPage").then(m => ({ default: m.SystemHealthPage })))
 const AuditLogPage = safeLazy(() => import("@/pages/admin/AuditLogPage").then(m => ({ default: m.AuditLogPage })))
+const GuestBoardPage = safeLazy(() => import("@/pages/GuestBoardPage").then(m => ({ default: m.GuestBoardPage })))
 const PublicPlaybookPage = safeLazy(() => import("@/pages/PublicPlaybookPage").then(m => ({ default: m.PublicPlaybookPage })))
 const PublicUpdatesPage = safeLazy(() => import("@/pages/PublicUpdatesPage").then(m => ({ default: m.PublicUpdatesPage })))
 const ProfileSettingsPage = safeLazy(() => import("@/pages/ProfileSettingsPage").then(m => ({ default: m.ProfileSettingsPage })))
@@ -86,9 +87,6 @@ const SupportPage = safeLazy(() => import("@/pages/SupportPage").then(m => ({ de
 const NotificationsPage = safeLazy(() => import("@/pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })))
 const DocsHomePage = safeLazy(() => import("@/pages/docs/DocsHomePage").then(m => ({ default: m.DocsHomePage })))
 const DocsDetailPage = safeLazy(() => import("@/pages/docs/DocsDetailPage").then(m => ({ default: m.DocsDetailPage })))
-const ScoutPage = safeLazy(() => import("@/pages/ScoutPage").then(m => ({ default: m.default || m.ScoutPage })))
-const ScoutCliDocsPage = safeLazy(() => import("@/pages/docs/ScoutCliDocsPage").then(m => ({ default: m.default || m.ScoutCliDocsPage })))
-const ScoutLeadGenerationPage = safeLazy(() => import("@/pages/ScoutLeadGenerationPage").then(m => ({ default: m.default || m.ScoutLeadGenerationPage })))
 const LegalPage = safeLazy(() => import("@/pages/LegalPage").then(m => ({ default: m.LegalPage })))
 
 const PUBLIC_TITLES = {
@@ -103,18 +101,11 @@ const PUBLIC_TITLES = {
   "/forgot-password": "Reset password",
   "/reset-password": "Set a new password",
   "/swipe-files": "Swipe Files",
-  "/guide": "Playbook & Guide",
-  "/scout/lead-generation": "Lead Generation",
-  "/intelligence": "Intelligence & Patterns",
-  "/performance": "Performance & Fatigue",
   "/billing": "Billing & Usage",
-  "/api-keys": "API Keys",
   "/team": "Team Members",
   "/settings": "Profile & Settings",
   "/support": "Support & Feedback",
   "/notifications": "Notifications & Announcements",
-  "/scout": "Scout · Social Lead Gen",
-  "/docs/scout-cli": "Scout CLI Reference",
 }
 
 function DocumentTitle() {
@@ -189,6 +180,7 @@ export default function App() {
                   <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/reset-password" element={<ResetPasswordPage />} />
                   <Route path="/playbook/:publicId" element={<PublicPlaybookPage />} />
+                  <Route path="/b/:token" element={<GuestBoardPage />} />
                   <Route path="/updates" element={<PublicUpdatesPage />} />
                   <Route path="/legal" element={<LegalPage />} />
                   <Route path="/legal/:section" element={<LegalPage />} />
@@ -198,7 +190,6 @@ export default function App() {
 
                   {/* Public documentation system */}
                   <Route path="/docs" element={<DocsHomePage />} />
-                  <Route path="/docs/scout-cli" element={<ScoutCliDocsPage />} />
                   <Route path="/docs/:section" element={<DocsDetailPage />} />
                   <Route path="/docs/:section/:slug" element={<DocsDetailPage />} />
 
@@ -206,10 +197,8 @@ export default function App() {
                   <Route element={<ProtectedRoute requireRole="admin" />}>
                     <Route element={<AdminShellLayout />}>
                       <Route path="/admin" element={<OverviewPage />} />
-                      <Route path="/admin/guide" element={optionalPage(<GuidePage />)} />
                       <Route path="/admin/organizations" element={<OrganizationsPage />} />
                       <Route path="/admin/access-requests" element={<AccessRequestsPage />} />
-                      <Route path="/admin/subscriptions" element={optionalPage(<SubscriptionsPlansPage />)} />
                       <Route path="/admin/usage" element={optionalPage(<UsagePage />)} />
                       <Route path="/admin/feature-flags" element={optionalPage(<FeatureFlagsPage />)} />
                       <Route path="/admin/users" element={<UsersPage />} />
@@ -233,19 +222,10 @@ export default function App() {
                   <Route element={<ProtectedRoute />}>
                     <Route element={<AuthenticatedShell />}>
                       <Route path="/discover" element={<DiscoverPage />} />
-                      <Route path="/intelligence" element={optionalPage(<IntelligencePage />)} />
-                      <Route path="/create" element={optionalPage(<CreatePage />)} />
-                      <Route path="/monitors" element={optionalPage(<MonitorsPage />)} />
-                      <Route path="/scout" element={<Navigate to={EXPERIMENTAL_FEATURES_ENABLED ? "/scout/social" : "/discover"} replace />} />
-                      <Route path="/scout/lead-generation" element={optionalPage(<ScoutLeadGenerationPage />)} />
-                      <Route path="/scout/:mode" element={optionalPage(<ScoutPage />)} />
-                      <Route path="performance" element={optionalPage(<PerformancePage />)} />
-                      <Route path="dashboard" element={optionalPage(<DashboardPage />)} />
-                      <Route path="/swipe-files" element={optionalPage(<SwipeFilesPage />)} />
-                      <Route path="/guide" element={optionalPage(<GuidePage />)} />
+                      <Route path="/monitors" element={<FeaturePage feature="monitors"><MonitorsPage /></FeaturePage>} />
+                      <Route path="/swipe-files" element={<FeaturePage feature="swipe_files"><SwipeFilesPage /></FeaturePage>} />
                       <Route path="/access" element={<BillingPage />} />
                       <Route path="/billing" element={<Navigate to="/access" replace />} />
-                      <Route path="/api-keys" element={optionalPage(<ApiKeysPage />)} />
                       <Route path="/team" element={optionalPage(<TeamPage />)} />
                       <Route path="/team/accept" element={optionalPage(<TeamAcceptPage />)} />
                       <Route path="/settings" element={<ProfileSettingsPage />} />

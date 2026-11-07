@@ -41,7 +41,6 @@ export function formatAuthFieldError(error, t = (_key, fallback) => fallback) {
   if (error === "required") return t("authFieldRequired", "Required")
   if (error === "invalid email") return t("authInvalidEmailShort", "Invalid email")
   if (error === "min 8 chars") return t("authPasswordMinShort", "8+ characters")
-  if (error === "already registered") return t("authEmailAlreadyRegistered", "Already registered")
   if (error === "passwords must match") return t("authPasswordMismatch", "Passwords do not match")
   return error
 }

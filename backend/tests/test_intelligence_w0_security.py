@@ -15,28 +15,21 @@ from unittest.mock import patch
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from fastapi import HTTPException
 from jose import jwt
 from PIL import Image
-from sqlalchemy import func, select
 
 from app.core.config import settings, validate_boot_invariants
 from app.core.deps import authenticate_bearer, session_is_revoked
-from app.core.security import create_access_token, get_jwks_keys, reset_jwks_cache, verify_neon_token
+from app.core.security import create_access_token, verify_session_token
 from app.middleware.rate_limit import client_ip
-from app.models.media_job import MediaGenerationJob
 from app.models.organization import Organization
 from app.models.pattern import Pattern
 from app.models.playbook import Playbook
 from app.models.scrape_job import ScrapeJob
 from app.models.user import User
-from app.models.webhook_event import WebhookEvent
-from app.schemas.media import MediaGenerationJobResponse
 from app.services.avatar_image import AvatarRejected, prepare_avatar_image
 from app.services.creative_service import list_patterns
-from app.services.media_service import get_media_job
-from app.services.neon_webhook import ack_for, process_auth_webhook, verify_and_parse
 from app.services.playbook_service import get_public_playbook
 from app.services.safe_fetch import (
     PublicDestination,
@@ -151,10 +144,10 @@ async def test_versionless_local_token_is_rejected_and_revocation_boundary_holds
         settings.SECRET_KEY,
         algorithm="HS256",
     )
-    assert await verify_neon_token(versionless) is None
+    assert await verify_session_token(versionless) is None
 
     current = create_access_token("user-1", token_version=2)
-    payload = await verify_neon_token(current)
+    payload = await verify_session_token(current)
     assert payload["ver"] == 2
     assert payload["iss"] == settings.JWT_ISSUER
     assert payload["aud"] == settings.JWT_AUDIENCE
@@ -164,62 +157,25 @@ async def test_versionless_local_token_is_rejected_and_revocation_boundary_holds
         "sessions_revoked_at": "2020-01-01T00:00:00+00:00",
     })
     assert session_is_revoked(revoked_user, {"_token_class": "local", "ver": 2, "iat": int(time.time())})
-    assert session_is_revoked(revoked_user, {"_token_class": "external", "iat": 10})
     assert session_is_revoked(revoked_user, {"_token_class": "local", "ver": None, "iat": int(time.time()) + 10})
-    assert not session_is_revoked(
-        revoked_user,
-        {"_token_class": "external", "iat": int(datetime(2026, 1, 1, tzinfo=timezone.utc).timestamp())},
-    )
 
 
 @pytest.mark.asyncio
-async def test_external_issuer_session_respects_audience_and_revocation(monkeypatch):
-    monkeypatch.setattr(settings, "NEON_JWT_ISSUER", "http://127.0.0.1/test-issuer")
-    monkeypatch.setattr(settings, "NEON_JWT_AUDIENCE", "helix-test-audience")
-    private = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    pem = private.private_bytes(
+async def test_externally_signed_tokens_are_rejected():
+    """Only Helix HS256 session tokens are accepted (W8 removed Neon Auth)."""
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    pem = key.private_bytes(
         serialization.Encoding.PEM,
         serialization.PrivateFormat.PKCS8,
         serialization.NoEncryption(),
     )
-    public_pem = private.public_key().public_bytes(
-        serialization.Encoding.PEM,
-        serialization.PublicFormat.SubjectPublicKeyInfo,
-    )
-    from jose import jwk
-    public_jwk = jwk.construct(public_pem, algorithm="RS256").to_dict()
-    public_jwk["kid"] = "ext-1"
-    public_jwk["alg"] = "RS256"
-    public_jwk["use"] = "sig"
     now = int(time.time())
-    token = jwt.encode(
-        {
-            "sub": "ext-user",
-            "iat": now,
-            "exp": now + 600,
-            "iss": settings.NEON_JWT_ISSUER,
-            "aud": settings.NEON_JWT_AUDIENCE,
-        },
-        pem.decode(),
-        algorithm="RS256",
-        headers={"kid": "ext-1"},
-    )
-    jwks = {"keys": [public_jwk]}
-
-    async def fake_jwks(*_args, **_kwargs):
-        return jwks
-
-    with patch("app.core.security.get_jwks_keys", fake_jwks):
-        payload = await verify_neon_token(token)
-    assert payload["_token_class"] == "external"
-    assert payload["sub"] == "ext-user"
-    user = SimpleNamespace(
-        id="ext-user",
-        is_banned=False,
-        is_suspended=False,
-        signup_metadata={"sessions_revoked_at": datetime.fromtimestamp(now + 5, timezone.utc).isoformat()},
-    )
-    assert session_is_revoked(user, payload)
+    claims = {"sub": "user-1", "iat": now, "exp": now + 600, "ver": 1,
+              "iss": settings.JWT_ISSUER, "aud": settings.JWT_AUDIENCE}
+    rs256 = jwt.encode(claims, pem, algorithm="RS256", headers={"kid": "kid-1"})
+    assert await verify_session_token(rs256) is None
+    assert await verify_session_token("not-a-jwt") is None
+    assert await verify_session_token("") is None
 
 
 @pytest.mark.asyncio
@@ -276,79 +232,9 @@ def test_impersonation_token_is_short_lived_and_carries_actor_scope():
 
 
 @pytest.mark.asyncio
-async def test_jwks_refresh_is_limited_to_unknown_kids():
-    reset_jwks_cache()
-    calls = {"n": 0}
-
-    async def fake_fetch(_url):
-        calls["n"] += 1
-        return {"keys": [{"kid": "known", "kty": "RSA"}]}
-
-    with patch("app.core.security._fetch_jwks", fake_fetch), patch.object(settings, "JWKS_REFRESH_LIMIT", 2):
-        await get_jwks_keys("https://jwks.example.test/keys")
-        await get_jwks_keys("https://jwks.example.test/keys", unknown_kid="known")
-        await get_jwks_keys("https://jwks.example.test/keys", unknown_kid="missing-1")
-        await get_jwks_keys("https://jwks.example.test/keys", unknown_kid="missing-2")
-        await get_jwks_keys("https://jwks.example.test/keys", unknown_kid="missing-3")
-    assert calls["n"] == 3
-    reset_jwks_cache()
-
-
-def _sign_neon(body: bytes, kid: str = "kid-1"):
-    private = Ed25519PrivateKey.generate()
-    raw = private.public_key().public_bytes(
-        serialization.Encoding.Raw,
-        serialization.PublicFormat.Raw,
-    )
-    jwk = {"kty": "OKP", "crv": "Ed25519", "x": _b64url(raw), "kid": kid}
-    timestamp = str(int(time.time() * 1000))
-    header = _b64url(json.dumps({"alg": "EdDSA", "kid": kid}, separators=(",", ":")).encode())
-    payload_b64 = _b64url(body)
-    signing_input = f"{header}.{_b64url(f'{timestamp}.{payload_b64}'.encode())}".encode()
-    signature = f"{header}..{_b64url(private.sign(signing_input))}"
-    return signature, timestamp, {"keys": [jwk]}
-
-
-@pytest.mark.asyncio
-async def test_neon_webhook_rejects_bad_signature_and_replays_stable_ack():
-    event_id = str(uuid.uuid4())
-    body = json.dumps({
-        "event_id": event_id,
-        "event_type": "user.before_create",
-        "user": {"id": "user-1", "email": "user@example.com"},
-    }).encode()
-    signature, timestamp, jwks = _sign_neon(body)
-    headers = {
-        "x-neon-signature": signature,
-        "x-neon-signature-kid": "kid-1",
-        "x-neon-timestamp": timestamp,
-        "x-neon-event-id": event_id,
-        "x-neon-event-type": "user.before_create",
-    }
-    parsed = await verify_and_parse(body, headers, jwks=jwks)
-    assert parsed["event_id"] == event_id
-    bad = dict(headers)
-    bad["x-neon-signature"] = signature[:-4] + "AAAA"
-    with pytest.raises(HTTPException) as exc:
-        await verify_and_parse(body, bad, jwks=jwks)
-    assert exc.value.status_code == 401
-
-    from app.db.session import worker_session_maker
-    async with worker_session_maker() as db:
-        first = await process_auth_webhook(db, parsed)
-        second = await process_auth_webhook(db, parsed)
-        assert first == second == ack_for("user.before_create", event_id)
-        count = await db.scalar(
-            select(func.count()).select_from(WebhookEvent).where(WebhookEvent.event_id == event_id)
-        )
-        assert count == 1
-
-
-@pytest.mark.asyncio
 async def test_production_reset_flag_is_forbidden_and_response_has_no_link():
     class Cfg:
         ENVIRONMENT = "production"
-        USE_MOCKS = False
         AUTH_DEV_RESET_RETURN = True
         SECRET_KEY = "x" * 40
         CREDENTIAL_ENCRYPTION_KEY = "y" * 40
@@ -359,7 +245,6 @@ async def test_production_reset_flag_is_forbidden_and_response_has_no_link():
         APIFY_API_TOKEN = ""
         GROQ_MODEL = "llama"
         GEMINI_TEXT_MODEL = "gemini"
-        GEMINI_IMAGE_MODEL = "gemini-image"
 
     with pytest.raises(RuntimeError, match="AUTH_DEV_RESET_RETURN"):
         validate_boot_invariants(Cfg())
@@ -389,33 +274,10 @@ def test_encryption_key_is_versioned_and_plaintext_is_not_returned():
     assert safe_decrypt_secret("plaintext-key") == ""
 
 
-def test_media_response_strips_legacy_secret_fields():
-    now = datetime.now(timezone.utc)
-    job = SimpleNamespace(
-        id="job-1",
-        status="completed",
-        prompt="prompt",
-        provider="gemini",
-        provider_job_id=None,
-        created_at=now,
-        updated_at=now,
-        parameters={
-            "custom_api_key": "super-secret-key",
-            "credential_mode": "byok",
-            "model": "gemini-image",
-        },
-        result_url="https://cdn.example/a.png",
-        error_message="provider failed with super-secret-key",
-        failure_kind=None,
-    )
-    payload = MediaGenerationJobResponse.model_validate(job).model_dump(mode="json")
-    assert "custom_api_key" not in payload["parameters"]
-    assert payload["parameters"]["credential_mode"] == "byok"
-    assert "super-secret-key" not in json.dumps(payload)
 
 
 @pytest.mark.asyncio
-async def test_two_tenants_cannot_read_null_job_patterns_or_cross_org_media_or_anonymous_playbooks():
+async def test_two_tenants_cannot_read_null_job_patterns_or_anonymous_playbooks():
     from app.db.session import worker_session_maker
 
     suffix = uuid.uuid4().hex[:8]
@@ -434,16 +296,6 @@ async def test_two_tenants_cannot_read_null_job_patterns_or_cross_org_media_or_a
         owned = Pattern(id=f"pat_owned_{suffix}", job_id=job_a.id, label="owned", family="copy", prevalence=0.2, lift_index=1.1)
         unowned = Pattern(id=f"pat_null_{suffix}", job_id=None, label="NULLJOB-CANARY", family="copy", prevalence=0.9, lift_index=2.0)
         db.add_all([owned, unowned])
-        media_a = MediaGenerationJob(
-            id=f"media_a_{suffix}",
-            user_id=user_a.id,
-            org_id=org_a.id,
-            prompt="secret",
-            provider="gemini",
-            status="completed",
-            parameters={"custom_api_key": "legacy-byok-canary"},
-        )
-        db.add(media_a)
         playbook = Playbook(
             id=f"pb_{suffix}",
             public_id=f"pub_{suffix}",
@@ -467,10 +319,6 @@ async def test_two_tenants_cannot_read_null_job_patterns_or_cross_org_media_or_a
         assert any(item.id == owned.id for item in own_list.items)
         assert all(item.label != "NULLJOB-CANARY" for item in own_list.items)
 
-        user_a._scoped_org_id = org_b.id
-        assert await get_media_job(db, user_a, media_a.id) is None
-        user_b._scoped_org_id = org_b.id
-        assert await get_media_job(db, user_b, media_a.id) is None
 
         with pytest.raises(HTTPException) as anon:
             await get_public_playbook(db, playbook.public_id, None)
@@ -481,5 +329,5 @@ async def test_two_tenants_cannot_read_null_job_patterns_or_cross_org_media_or_a
 
         from app.core.deps import get_current_user
         with pytest.raises(HTTPException) as missing:
-            await get_current_user(db=db, token=None, x_api_key=None)
+            await get_current_user(db=db, token=None)
         assert missing.value.status_code == 401

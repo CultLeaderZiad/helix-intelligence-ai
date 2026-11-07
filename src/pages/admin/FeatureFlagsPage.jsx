@@ -15,21 +15,6 @@ export function FeatureFlagsPage() {
       description: "Allows running searches across Meta Ad Library, Bright Data, and Apify scraper backends." 
     },
     { 
-      key: "intelligence", 
-      label: "Brand Intelligence & Competitor Tracking", 
-      description: "Aggregates multi-brand positioning, timeline velocity, and creative fatigue radar." 
-    },
-    { 
-      key: "create", 
-      label: "AI Creative Generation & Remix Engine", 
-      description: "Generates variations, ad copy hooks, and visual scripts using Groq LLM." 
-    },
-    { 
-      key: "performance", 
-      label: "Performance Analytics & Hook Scoring", 
-      description: "Calculates virality scores, estimated impression heatmaps, and format ratios." 
-    },
-    { 
       key: "swipe_files", 
       label: "Swipe Files & Moodboards", 
       description: "Enables saving creatives to custom swipe files and client presentation boards." 
@@ -38,11 +23,6 @@ export function FeatureFlagsPage() {
       key: "team_accounts", 
       label: "Multi-Seat Team Accounts", 
       description: "Allows inviting team members with role-based access control under one organization." 
-    },
-    { 
-      key: "public_api", 
-      label: "Public Developer API & Webhooks", 
-      description: "Exposes REST endpoints and webhooks for programmatic pipeline execution." 
     },
   ]
 

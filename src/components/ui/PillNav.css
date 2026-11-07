@@ -1,3 +1,4 @@
+/* PillNav - React Bits GSAP pill nav, as shipped on the live landing page. */
 .pill-nav-container {
   position: relative;
   width: 100%;
@@ -287,4 +288,16 @@
   cursor: pointer;
   background-color: #ccff00;
   color: #000000;
+}
+
+/* Helix: the menu's open state is the [hidden] attribute (GSAP fades it in). */
+.mobile-menu-popover[hidden] { display: none; }
+@media (max-width: 768px) {
+  .mobile-menu-popover:not([hidden]) { display: block; }
+}
+/* Keep the rolling label aligned in RTL. */
+.pill .pill-label-hover { left: auto; inset-inline-start: 0; }
+.pill:focus-visible, .pill-logo:focus-visible, .mobile-menu-button:focus-visible {
+  outline: 2px solid var(--hover-circle, #ccff00);
+  outline-offset: 3px;
 }

@@ -1,7 +1,8 @@
 from typing import Any, Dict, List, Optional
 import hmac
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from app.core import markdown
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -68,14 +69,31 @@ async def create_monitor(
 
 @router.get("/events", dependencies=_monitor_access)
 async def list_events(
+    request: Request,
     monitor_id: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[Dict[str, Any]]:
-    return await monitor_service.get_monitor_events(
+) -> Any:
+    events = await monitor_service.get_monitor_events(
         db, await _org_id(db, current_user), monitor_id=monitor_id, limit=limit
     )
+    if markdown.wants_markdown(request):
+        return markdown.response(markdown.events_document(events))
+    return events
+
+
+@router.get("/events.md", dependencies=_monitor_access, include_in_schema=False)
+async def list_events_markdown(
+    monitor_id: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Any:
+    events = await monitor_service.get_monitor_events(
+        db, await _org_id(db, current_user), monitor_id=monitor_id, limit=limit
+    )
+    return markdown.response(markdown.events_document(events))
 
 
 @router.patch("/{monitor_id}", dependencies=_monitor_access)
@@ -131,20 +149,5 @@ async def tick(
     if not x_cron_secret or not hmac.compare_digest(x_cron_secret, settings.CRON_SECRET):
         raise HTTPException(status_code=403, detail="Invalid cron secret.")
 
-    # Piggyback trial-expiry lifecycle emails on this authenticated tick so no
-    # separate scheduler is needed. Fire-and-forget with its own session.
-    try:
-        import asyncio
-        from app.db.session import async_session_maker
-        from app.services import lifecycle_email_service
-
-        async def _trial_reminders():
-            async with async_session_maker() as session:
-                await lifecycle_email_service.send_due_trial_reminders(session)
-
-        asyncio.create_task(_trial_reminders())
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("Trial reminder scheduling failed: %s", e)
 
     return await monitor_service.tick()

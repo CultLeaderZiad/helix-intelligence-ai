@@ -98,7 +98,6 @@ async def health_check(
             "APIFY_API_TOKEN": bool(env_secret("APIFY_API_TOKEN", "APIFY_TOKEN", fallback=settings.APIFY_API_TOKEN)),
             "APIFY_ENABLED": bool(settings.APIFY_ENABLED),
             "JWT_SECRET": bool(settings.SECRET_KEY or os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET")),
-            "USE_MOCKS": settings.USE_MOCKS,
         }
 
     return res

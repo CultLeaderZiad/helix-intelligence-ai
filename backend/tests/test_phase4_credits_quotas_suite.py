@@ -33,25 +33,18 @@ from app.models.plan import Plan
 from app.models.usage_log import UsageLog
 from app.models.creative import Creative
 from app.models.ai_insight import AIInsight
-from app.models.scout import ScoutJob, ScoutMapsJob
-from app.models.leadgen import LeadGenJob
 from app.models.api_usage import ExternalApiUsage
-from app.models.media_job import MediaGenerationJob
 from app.services.billing_service import (
     charge,
     refund,
     get_idempotent_operation,
-    assert_can_generate_image,
     assert_can_spend,
 )
-from app.services.ai.ai_router import AIRouter, MultiTierAIProvider, TRIAL_DAILY_REQUEST_LIMIT
+from app.services.ai.ai_router import AIRouter, MultiTierAIProvider
 from app.services.ai.base import AIProvider
-from app.services.analysis_service import generate_insight_for_creative
 from app.services.api_usage_service import check_global_cap_and_log_preflight, APILimitExceeded
 from app.services.job_reconciliation import _sweep_unrefunded_failed_jobs, reconcile_once
-from app.services.leadgen_pipeline import _fail_job, _finish
 from app.schemas.analysis import Insight
-from app.schemas.leadgen import LeadGenBrief, LeadGenSeeds, CreateLeadGenJobRequest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -222,104 +215,6 @@ async def test_f08_idempotent_refund_and_reconciliation_sweeper():
 # ---------------------------------------------------------------------------
 # F09: Provider Outage Honesty (No Fake 92% Confidence Teardown)
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f09_provider_outage_raises_honest_503_without_charging():
-    now = datetime.datetime.now(datetime.timezone.utc)
-    user = User(id="usr_f09", email="f09@test.com", role="customer")
-    org = Organization(
-        id="org_f09",
-        name="Org F09",
-        owner_id=user.id,
-        credit_balance=50.0,
-        daily_credits_reset_at=now,
-    )
-    creative = Creative(
-        id="cr_f09",
-        brand_id="br_f09",
-        job_id="job_f09",
-        headline="Disruptive Ad",
-        body="This is an ad body that is interesting.",
-        platform="meta",
-        format="image",
-        days_active=10,
-    )
-
-    class FailingProvider(AIProvider):
-        async def _call_api(self, messages):
-            raise RuntimeError("Upstream AI Provider 503 Overloaded")
-
-    provider = FailingProvider()
-
-    persisted_insights = []
-    charges = []
-
-    class MockAnalysisDB:
-        def __init__(self):
-            self.bind = MagicMock()
-            self.bind.dialect.name = "postgresql"
-
-        async def execute(self, q):
-            q_str = str(q).lower()
-            if "organizations" in q_str:
-                return MockResult(item=org)
-            elif "plans" in q_str:
-                return MockResult(item=Plan(
-                    id="plan_test",
-                    type="paid",
-                    name="Paid",
-                    feature_flags={
-                        "discover": True,
-                        "intelligence": True,
-                        "create": True,
-                        "swipe_files": True,
-                        "scout": False,
-                        "leadgen": False,
-                        "monitors": False,
-                    },
-                ))
-            elif "organization_access_grants" in q_str:
-                return MockResult(item=SimpleNamespace(
-                    org_id=org.id,
-                    plan_id="plan_test",
-                    feature_flags={"intelligence": True, "discover": True, "create": True, "swipe_files": True},
-                    revoked_at=None,
-                    expires_at=None,
-                    granted_at=now,
-                    granted_by_user_id=user.id,
-                ))
-            elif "scrape_jobs" in q_str:
-                return MockResult(item=org.id)
-            elif "creatives.id in" in q_str or "select creatives.id from creatives" in q_str:
-                return MockResult(items=[creative.id])
-            elif "creatives" in q_str:
-                return MockResult(item=creative)
-
-            return MockResult(item=None)
-
-        def add(self, obj):
-            if isinstance(obj, AIInsight):
-                persisted_insights.append(obj)
-            elif isinstance(obj, UsageLog):
-                charges.append(obj)
-
-        async def commit(self): pass
-        async def refresh(self, obj): pass
-
-    db = MockAnalysisDB()
-
-    with patch("app.services.ai.ai_router.AIRouter.get_provider_for_user", AsyncMock(return_value=provider)):
-        with pytest.raises(HTTPException) as exc_info:
-            await generate_insight_for_creative(db, "cr_f09", user, user_org_ids=[org.id])
-
-        # Must raise honest 503
-        assert exc_info.value.status_code == 503
-        assert "temporarily unavailable" in exc_info.value.detail or "failed" in exc_info.value.detail
-
-        # Absolutely NO fake insights saved to DB
-        assert len(persisted_insights) == 0
-        # Absolutely NO credits charged to user
-        assert len(charges) == 0
-        assert org.credit_balance == 50.0
 
 
 # ---------------------------------------------------------------------------
@@ -340,134 +235,16 @@ def test_f10_http_js_restricts_mutation_retries():
 # ---------------------------------------------------------------------------
 # F11 & F55: In-Flight Concurrency Reservation & Daily Media Limits
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f11_f55_inflight_concurrency_and_per_plan_quotas():
-    now = datetime.datetime.now(datetime.timezone.utc)
-    user = User(
-        id="usr_f11",
-        email="f11@test.com",
-        role="customer",
-        trial_started_at=now,
-        trial_expires_at=now + datetime.timedelta(days=7),
-    )
-    plan_starter = Plan(
-        id="plan_starter",
-        name="Starter",
-        type="starter",
-        daily_image_limit=10,
-        daily_video_limit=2,
-    )
-    org = Organization(
-        id="org_f11",
-        name="Org F11",
-        owner_id=user.id,
-        plan="starter",
-        plan_id="plan_starter",
-        images_generated_today=8.0,
-        images_today_date=now.strftime("%Y-%m-%d"),
-        videos_generated_today=1.0,
-    )
-
-    # When in-flight jobs = 2 (8 + 2 = 10 -> limit reached)
-    class MockMediaDB:
-        def __init__(self, in_flight: int):
-            self._in_flight = in_flight
-
-        async def execute(self, q):
-            if "organization_access_grants" in str(q).lower():
-                return MockResult(item=SimpleNamespace(
-                    revoked_at=None,
-                    expires_at=None,
-                    granted_at=now,
-                    granted_by_user_id=user.id,
-                    feature_flags={"create": True, "discover": True},
-                    plan_id=plan_starter.id,
-                ))
-            return MockResult(item=plan_starter)
-
-        async def scalar(self, q):
-            return self._in_flight
-
-        async def flush(self): pass
-        async def commit(self): pass
-
-    # In-flight count of 2 pushes images used + in-flight to 10 (cap: 10)
-    db_capped = MockMediaDB(in_flight=2)
-    with pytest.raises(HTTPException) as exc_info:
-        await assert_can_generate_image(db_capped, user, org, media_type="image")
-    assert exc_info.value.status_code == 402
-    assert exc_info.value.detail["code"] == "daily_limit"
-
-    # In-flight count of 1 pushes videos used (1) + in-flight (1) to 2 (cap: 2)
-    db_video_capped = MockMediaDB(in_flight=1)
-    with pytest.raises(HTTPException) as exc_info_v:
-        await assert_can_generate_image(db_video_capped, user, org, media_type="video")
-    assert exc_info_v.value.status_code == 402
-    assert exc_info_v.value.detail["code"] == "daily_video_limit"
 
 
 # ---------------------------------------------------------------------------
 # F27: LeadGen Billing & User Budget Ceilings
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f27_leadgen_budget_ceiling_rejection_and_charge():
-    from app.api.routers.leadgen import compute_credit_cost
-
-    brief = LeadGenBrief(
-        icp="SaaS founders",
-        geos=["US"],
-        max_pages=10,
-        max_leads=5,
-        credit_budget=2.0  # Budget specified by user: 2.0 credits
-    )
-    cost = compute_credit_cost(brief, enrich_emails=True, generate_outreach=True)
-    # Base 3.0 + 10*0.1 (1.0) + 0.25*5 (1.25) + 0.1*5 (0.5) = 5.75
-    assert cost > brief.credit_budget
-
-    # Assert that cost exceeds budget check
-    assert brief.credit_budget < cost
 
 
 # ---------------------------------------------------------------------------
 # F28: Pre-Work Failure Reversals (Scout & LeadGen Refunds)
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_f28_prework_failure_refunds_deducted_credits():
-    user = User(id="usr_f28", email="f28@test.com", role="customer")
-    org = Organization(id="org_f28", name="Org F28", owner_id=user.id, credit_balance=50.0)
-    leadgen_job = LeadGenJob(
-        id="job_lg_f28",
-        org_id=org.id,
-        user_id=user.id,
-        status="running",
-        credits_used=5.5,
-        credit_budget=10.0,
-    )
-
-    refunded_amounts = []
-
-    class MockPipelineDB:
-        async def execute(self, q):
-            return MockResult(item=leadgen_job)
-
-        def add(self, obj): pass
-        async def commit(self): pass
-
-    class MockContextManager:
-        def __init__(self, db_inst): self.db_inst = db_inst
-        async def __aenter__(self): return self.db_inst
-        async def __aexit__(self, *args): pass
-
-    mock_db = MockPipelineDB()
-
-    # Mock refund inside leadgen_pipeline
-    with patch("app.services.billing_service.refund", AsyncMock(side_effect=lambda db, org_id, amount, reason, job_id: refunded_amounts.append(amount))):
-        with patch("app.services.leadgen_pipeline.worker_session_maker", return_value=MockContextManager(mock_db)):
-            await _finish(leadgen_job.id, 0.0, "Seed stage failed", failed=True)
-
-    assert len(refunded_amounts) == 1
-    assert refunded_amounts[0] == 5.5
-    assert leadgen_job.status == "failed"
 
 
 # ---------------------------------------------------------------------------

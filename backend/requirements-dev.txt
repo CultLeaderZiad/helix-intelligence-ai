@@ -1,0 +1,6 @@
+# Test and lint tooling. Install with: pip install -r requirements-dev.txt
+-r requirements.txt
+aiosqlite==0.22.1
+pytest
+pytest-asyncio
+pyflakes

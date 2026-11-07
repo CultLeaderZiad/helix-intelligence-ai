@@ -19,8 +19,8 @@ export PYTHON
 # This stack always uses its own loopback cluster, never an injected database URL.
 export DATABASE_URL='postgresql+asyncpg://helix_w7_api@127.0.0.1:55435/helix_w7_preview'
 export TEST_DATABASE_URL='postgresql+asyncpg://postgres@127.0.0.1:55435/helix_w7_preview'
-export ENVIRONMENT=development USE_MOCKS=false AUTH_DEV_RESET_RETURN=false
-export VITE_DATA_SOURCE=api VITE_API_BASE_URL=/api
+export ENVIRONMENT=development AUTH_DEV_RESET_RETURN=false
+export VITE_API_BASE_URL=/api
 export PUBLIC_API_BASE_URL=/api
 export PUBLIC_APP_BASE_URL=http://localhost:3000 APP_BASE_URL=http://localhost:3000
 export HELIX_DISPATCH_INLINE=false

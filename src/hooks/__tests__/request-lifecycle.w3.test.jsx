@@ -3,12 +3,10 @@ import { act } from "react"
 import { createRoot } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { mediaService, discoverService } = vi.hoisted(() => ({
-  mediaService: { generate: vi.fn(), getJob: vi.fn(), getJobResult: vi.fn(), cancel: vi.fn() },
+const { discoverService } = vi.hoisted(() => ({
   discoverService: { search: vi.fn(), getJobStatus: vi.fn(), getJobResults: vi.fn(), cancelJob: vi.fn() },
 }))
-vi.mock("@/services", () => ({ mediaService, discoverService }))
-import { useMediaGenerate } from "../useMediaGenerate"
+vi.mock("@/services", () => ({ discoverService }))
 import { useDiscoverySearch } from "../useDiscoverySearch"
 import { JOB_POLL_TIMEOUT_MS } from "@/services/config"
 
@@ -44,7 +42,6 @@ afterEach(() => {
 })
 
 for (const [name, hook, service, start, status, created] of /** @type {const} */ ([
-  ["media", useMediaGenerate, mediaService, "generate", "getJob", id => ({ job_id: id })],
   ["discovery", useDiscoverySearch, discoverService, "search", "getJobStatus", id => ({ job_id: id })],
 ])) {
   describe(`${name} lifecycle`, () => {
@@ -151,7 +148,6 @@ for (const [name, hook, service, start, status, created] of /** @type {const} */
 }
 
 for (const [name, hook, service, start, status, resultMethod] of /** @type {const} */ ([
-  ["media", useMediaGenerate, mediaService, "generate", "getJob", "getJobResult"],
   ["discovery", useDiscoverySearch, discoverService, "search", "getJobStatus", "getJobResults"],
 ])) {
   it(`${name} keeps the submission deadline through a hung result fetch`, async () => {
@@ -184,34 +180,6 @@ for (const [name, hook, service, start, status, resultMethod] of /** @type {cons
     expect(vi.getTimerCount()).toBe(0)
   })
 }
-
-it("slow server cancellation cannot reset a resubmitted generation", async () => {
-  mediaService.generate.mockResolvedValueOnce({ job_id: "old" }).mockResolvedValueOnce({ job_id: "new" })
-  mediaService.getJob.mockReturnValue(new Promise(() => {}))
-  const cancellation = deferred()
-  mediaService.cancel.mockReturnValue(cancellation.promise)
-  mount(useMediaGenerate)
-  await flush(() => latest.submit({}))
-  await flush(() => latest.cancel())
-  await flush(() => latest.submit({}))
-  await flush(() => cancellation.resolve())
-  expect(latest.phase).toBe("running")
-  expect(latest.job.job_id).toBe("new")
-})
-
-it("late media result errors cannot overwrite a canceled/new generation", async () => {
-  const result = deferred()
-  mediaService.generate.mockResolvedValue({ job_id: "old" })
-  mediaService.getJob.mockResolvedValue({ status: "succeeded", result_url: "old.png" })
-  mediaService.getJobResult.mockReturnValue(result.promise)
-  mount(useMediaGenerate)
-  await flush(() => latest.submit({}))
-  await flush(() => latest.cancel())
-  await flush(() => result.reject(new Error("late")))
-  expect(latest.phase).toBe("idle")
-  expect(latest.result).toBeNull()
-  expect(vi.getTimerCount()).toBe(0)
-})
 
 it("late discovery pagination cannot replace a newer sort on the same job", async () => {
   discoverService.search.mockResolvedValue({ job_id: "job" })

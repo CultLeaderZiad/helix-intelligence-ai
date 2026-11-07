@@ -81,7 +81,7 @@ def normalize_creative(
     engagement_rate = None  # Only available from official APIs with verified data
     ctr_est = None  # Only available from official APIs with verified data
 
-    data_source = getattr(raw, "data_source", "meta_official")
+    data_source = getattr(raw, "data_source", None) or "unknown"
     is_estimated = getattr(raw, "is_estimated", True)
 
     if data_source != "meta_official":

@@ -48,7 +48,7 @@ it.each(['en', 'ar'])('marks documentation as reference material in %s', (lang) 
   renderWithLanguage(
     <DocsDetailPage />,
     lang,
-    '/docs/user-guide/quickstart-account-and-trial',
+    '/docs/user-guide/quickstart-account-and-access',
   )
 
   expect(screen.getByRole('note').textContent).toContain(getDocsReferenceCopy(lang).message)

@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from fastapi import HTTPException
-from sqlalchemy import select, text
+from sqlalchemy import literal, select, text, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.organization import Organization
@@ -147,23 +147,41 @@ async def apply_tenant_context(db: AsyncSession, ctx: Optional[TenantContext] = 
     dialect = getattr(getattr(bind, "dialect", None), "name", None)
     if dialect != "postgresql" or ctx is None:
         return
-    org_ids = "" if ctx.platform_admin or ctx.org_ids is None else ",".join(ctx.org_ids)
-    await db.execute(
-        text("SELECT set_config('helix.user_id', :user_id, true)"),
-        {"user_id": ctx.user_id or ""},
-    )
-    await db.execute(
-        text("SELECT set_config('helix.org_ids', :org_ids, true)"),
-        {"org_ids": org_ids},
-    )
-    await db.execute(
-        text("SELECT set_config('helix.platform_admin', :flag, true)"),
-        {"flag": "1" if ctx.platform_admin else "0"},
-    )
-    await db.execute(
-        text("SELECT set_config('helix.enforce', :flag, true)"),
-        {"flag": "1" if ctx.enforce else "0"},
-    )
+    from app.core.timing import span
+
+    params = tenant_settings_params(ctx)
+    info = getattr(db, "info", None)
+    # Skip only when this same open transaction already holds these exact
+    # values; the marker is cleared whenever a transaction ends.
+    if isinstance(info, dict) and db.in_transaction() and info.get(RLS_APPLIED_KEY) == params:
+        return
+    with span("rls"):
+        await db.execute(TENANT_SETTINGS_SQL, params)
+    if isinstance(info, dict):
+        info[RLS_APPLIED_KEY] = params
+
+
+# Session.info key holding the RLS parameters applied in the current
+# transaction (set by apply_tenant_context and the after_begin listener).
+RLS_APPLIED_KEY = "helix_rls_applied"
+
+# All four transaction-local RLS settings in one statement: one round trip per
+# application instead of four.
+TENANT_SETTINGS_SQL = text(
+    "SELECT set_config('helix.user_id', :user_id, true),"
+    " set_config('helix.org_ids', :org_ids, true),"
+    " set_config('helix.platform_admin', :platform_admin, true),"
+    " set_config('helix.enforce', :enforce, true)"
+)
+
+
+def tenant_settings_params(ctx: TenantContext) -> dict:
+    return {
+        "user_id": ctx.user_id or "",
+        "org_ids": "" if ctx.platform_admin or ctx.org_ids is None else ",".join(ctx.org_ids),
+        "platform_admin": "1" if ctx.platform_admin else "0",
+        "enforce": "1" if ctx.enforce else "0",
+    }
 
 
 @asynccontextmanager
@@ -209,13 +227,19 @@ async def get_user_org_ids(db: AsyncSession, user: User) -> Optional[List[str]]:
 
     from app.models.organization_member import OrganizationMember
 
-    owned_rows = _scalar_rows(await db.execute(select(Organization.id).where(Organization.owner_id == user.id)))
-    member_rows = _scalar_rows(
-        await db.execute(select(OrganizationMember.org_id).where(OrganizationMember.user_id == user.id))
+    # One round trip: owned organizations first, then memberships, same order
+    # and de-duplication as two separate lookups.
+    owned = select(Organization.id.label("org_id"), literal(0).label("rank")).where(
+        Organization.owner_id == user.id
     )
-
-    org_ids = list(dict.fromkeys(list(owned_rows or []) + list(member_rows or [])))
-    return org_ids
+    member = select(OrganizationMember.org_id.label("org_id"), literal(1).label("rank")).where(
+        OrganizationMember.user_id == user.id
+    )
+    combined = union_all(owned, member).subquery()
+    rows = _scalar_rows(
+        await db.execute(select(combined.c.org_id).order_by(combined.c.rank, combined.c.org_id))
+    )
+    return list(dict.fromkeys(rows or []))
 
 
 async def require_org_manager(db: AsyncSession, org: Organization, user: User) -> None:

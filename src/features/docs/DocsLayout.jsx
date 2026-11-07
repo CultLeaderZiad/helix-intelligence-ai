@@ -155,7 +155,7 @@ export function DocsLayout({ activeDoc, children }) {
           {/* Section Audience Switcher Tabs in Top Nav */}
           <div className="hidden sm:flex items-center rounded-md border border-border bg-surface-2 p-0.5">
             <Link
-              to="/docs/user-guide/quickstart-account-and-trial"
+              to="/docs/user-guide/quickstart-account-and-access"
               className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all ${
                 activeSectionKey === 'user-guide'
                   ? 'bg-surface text-text shadow-xs font-semibold'
@@ -251,7 +251,7 @@ export function DocsLayout({ activeDoc, children }) {
             <span className="font-mono text-[10px] text-text-faint uppercase tracking-wider">{t('docsMode', 'Documentation mode')}</span>
             <div className="grid grid-cols-2 gap-1 rounded bg-surface-2 p-0.5 border border-border">
               <Link
-                to="/docs/user-guide/quickstart-account-and-trial"
+                to="/docs/user-guide/quickstart-account-and-access"
                 className={`py-1 text-center text-xs font-medium rounded ${
                   activeSectionKey === 'user-guide' ? 'bg-surface text-text font-semibold' : 'text-text-muted'
                 }`}
