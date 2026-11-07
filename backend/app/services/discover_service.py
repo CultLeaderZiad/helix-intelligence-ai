@@ -873,6 +873,14 @@ async def _run_discovery_pipeline(
         ):
             return
         sources_tried = ad_lib_provider.sources_tried
+        # Ads loaded by advertiser (the brand's own page) are relevant by
+        # definition; the keyword relevance filter is for keyword results.
+        metapi = getattr(ad_lib_provider, "metapi_provider", None)
+        advertiser_mode = (
+            getattr(ad_lib_provider, "last_provider_used", "") == "metapi"
+            and getattr(metapi, "last_mode", "") == "advertiser"
+        )
+        advertiser_label = getattr(metapi, "resolved_page_name", None) if advertiser_mode else None
 
         # Global hard stop: the kill switch or the daily provider cap refused a
         # paid call. Not retried (retrying would only be refused again); the
@@ -1027,7 +1035,7 @@ async def _run_discovery_pipeline(
             if job is None:
                 return
             brand_id = str(uuid.uuid4())
-            brand_label = " ".join(w.capitalize() for w in query.split())
+            brand_label = advertiser_label or " ".join(w.capitalize() for w in query.split())
             saved_creatives = 0
             rejected_templates = 0
             duplicates_skipped = 0
@@ -1045,9 +1053,11 @@ async def _run_discovery_pipeline(
                 normalized_records.append((db_creative, db_score))
 
             # Apply semantic relevance filtering to drop false-positive noise (e.g. shoe stores for Sneako)
-            relevant_records = [
-                (c, s) for c, s in normalized_records if _is_creative_relevant(c, query, entity_profile)
-            ]
+            relevant_records = (
+                list(normalized_records)
+                if advertiser_mode
+                else [(c, s) for c, s in normalized_records if _is_creative_relevant(c, query, entity_profile)]
+            )
             rejected_irrelevant = len(normalized_records) - len(relevant_records)
             # Strictly save genuine relevant records — never force noise back into the user view
             final_records = relevant_records

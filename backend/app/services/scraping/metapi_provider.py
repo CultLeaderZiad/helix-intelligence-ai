@@ -1,13 +1,84 @@
 import asyncio
 import logging
 import time
-from typing import List
+import re
+from typing import List, Optional, Tuple
+from urllib.parse import parse_qs, urlsplit
 from datetime import datetime, timezone
 from app.services.scraping.base import ScraperProvider, RawCreative
 from app.core.config import settings
 from app.core.credentials import env_secret
 
 logger = logging.getLogger(__name__)
+
+_PAGE_ID = re.compile(r"^\d{5,20}$")
+_NAME_SUFFIXES = ("official", "inc", "llc", "ltd", "co", "store", "shop", "global")
+
+
+def page_id_from_query(query: str) -> Optional[str]:
+    """A Facebook page id, or the view_all_page_id of an Ad Library link."""
+    text = (query or "").strip()
+    if _PAGE_ID.match(text):
+        return text
+    lowered = text.lower()
+    if "facebook.com" in lowered and "/ads/library" in lowered:
+        try:
+            values = parse_qs(urlsplit(text).query).get("view_all_page_id") or []
+        except ValueError:
+            return None
+        value = (values[0] if values else "").strip()
+        return value if _PAGE_ID.match(value) else None
+    return None
+
+
+def brand_term(query: str) -> str:
+    """'Nike', 'nike.com', 'https://www.nike.com/x' -> 'nike'."""
+    text = (query or "").strip().lower()
+    if "://" in text:
+        text = text.split("://", 1)[1].split("/", 1)[0]
+    if text.startswith("www."):
+        text = text[4:]
+    if "." in text and " " not in text:
+        text = text.split(".", 1)[0]
+    return text
+
+
+def _norm(name: str) -> str:
+    words = re.findall(r"[a-z0-9]+", (name or "").lower())
+    while words and words[-1] in _NAME_SUFFIXES:
+        words.pop()
+    return "".join(words)
+
+
+def pick_brand_page(items: list, brand: str) -> Optional[Tuple[str, str]]:
+    """The advertiser page whose name is the brand (most ads wins), else None.
+
+    Only exact name matches count (ignoring case, spaces, punctuation and a
+    trailing word like "Official" or "Store"), so a reseller called
+    "Nike Shoes PH" is never taken for Nike.
+    """
+    target = _norm(brand)
+    if not target:
+        return None
+    counts: dict = {}
+    for item in items or []:
+        page_id = str(item.get("provider_page_id") or "").strip()
+        name = str(item.get("provider_page_name") or "").strip()
+        if page_id and _PAGE_ID.match(page_id) and _norm(name) == target:
+            key = (page_id, name)
+            counts[key] = counts.get(key, 0) + 1
+    if not counts:
+        return None
+    return max(counts.items(), key=lambda kv: kv[1])[0]
+
+
+def _first_page_name(items: list) -> Optional[str]:
+    for item in items or []:
+        name = str(item.get("provider_page_name") or "").strip()
+        if name:
+            return name
+    return None
+
 
 class MetapiProvider(ScraperProvider):
     """
@@ -30,133 +101,152 @@ class MetapiProvider(ScraperProvider):
         )
 
     async def search(self, query: str, max_records: int, filters: dict = None, progress_callback=None) -> List[RawCreative]:
+        """Return a brand's own ads when the advertiser can be identified.
+
+        * A Facebook page id, or an Ad Library link with ``view_all_page_id``,
+          goes straight to Metapi's advertiser search.
+        * Otherwise an exact-phrase keyword task finds the advertiser page whose
+          name is the brand, and a second task fetches that page's ads (the
+          keyword results alone are mostly look-alike sellers).
+        * If no page matches, the keyword results are returned as before and
+          the relevance filter decides what to keep.
+        """
         assert max_records and max_records > 0, "Safety Violation: max_records missing or invalid"
-        
+
         self.last_outcome = "failure"
+        self.last_mode = "keyword"
+        self.resolved_page_id = None
+        self.resolved_page_name = None
         if not self.metapi_api_key:
             logger.warning("Metapi credentials missing. Skipping Metapi fallback.")
             return []
-            
+
         if not query or not query.strip():
             self.last_outcome = "empty"
             return []
-
-        clean_brand = query.strip().lower()
-        if clean_brand == "*":
-            clean_brand = "brand"
-            
-        domain = clean_brand
-        if "://" in domain:
-            try:
-                domain = domain.split("://")[1].split("/")[0]
-            except:
-                pass
-        
-        # Metapi uses a general search query. We'll search the clean brand name without .com if possible.
-        search_query = domain.split(".")[0] if "." in domain else domain
-
-        headers = {
-            "Authorization": "Bearer " + self.metapi_api_key.strip().strip('"').strip("'"),
-            "Content-Type": "application/json"
-        }
-        
-        # count caps what Metapi collects (and bills as records); without it each
-        # task collected Metapi's default of 50 while Helix kept max_records.
-        # Exact-phrase search cuts look-alike sellers that merely share a word.
-        payload = {
-            "q": search_query,
-            "country": "ALL",
-            "count": int(max_records),
-            "search_type": "keyword_exact_phrase",
-        }
 
         if progress_callback:
             await progress_callback(0, "Initiating Domain Trace via Metapi...")
 
         try:
-            from app.services.safe_fetch import safe_request_async
-            metapi_hosts = {"api.metapi.io"}
-            # 1. Create Task. Redirects off api.metapi.io are rejected.
-            task_resp = await safe_request_async(
-                "POST",
-                "https://api.metapi.io/v1/tasks",
-                json=payload,
-                headers=headers,
-                timeout=45.0,
-                allowed_hosts=metapi_hosts,
+            page_id = page_id_from_query(query)
+            if page_id:
+                items = await self._run_task({"advertiser_id": page_id, "count": int(max_records)}, progress_callback)
+                if items is None:
+                    return []
+                self.last_mode = "advertiser"
+                self.resolved_page_id = page_id
+                self.resolved_page_name = _first_page_name(items)
+                return self._finish(items[:max_records], self.resolved_page_name or page_id)
+
+            search_query = brand_term(query)
+            resolve_count = max(int(max_records), int(getattr(settings, "METAPI_RESOLVE_COUNT", 30)))
+            # count caps what Metapi collects (and bills as records). Exact
+            # phrase cuts look-alike sellers that merely share a word.
+            keyword_items = await self._run_task(
+                {
+                    "q": search_query,
+                    "country": "ALL",
+                    "count": resolve_count,
+                    "search_type": "keyword_exact_phrase",
+                },
+                progress_callback,
             )
-            if task_resp.status_code != 202 and task_resp.status_code != 200:
-                logger.warning(f"Metapi task creation failed: {task_resp.status_code} {task_resp.text[:250]}")
+            if keyword_items is None:
                 return []
 
-            task_data = task_resp.json()
-            task_id = task_data.get("task_id")
-            if not task_id:
-                logger.warning(f"Metapi did not return a task_id: {task_data}")
-                return []
+            match = pick_brand_page(keyword_items, search_query)
+            if match:
+                from app.services import provider_budget
 
-            # 2. Poll Task Status until it finishes or the poll budget runs out.
-            # Results are fetched only for a finished task; an unfinished one is
-            # a provider failure the job may retry, never an empty result.
-            poll_budget_s = float(getattr(settings, "METAPI_POLL_TIMEOUT_S", 150))
-            started = time.monotonic()
-            delay = 1.5
-            finished = False
-            while time.monotonic() - started < poll_budget_s:
-                await asyncio.sleep(delay)
-                delay = min(delay * 1.4, 6.0)
-                if progress_callback:
-                    await progress_callback(int(time.monotonic() - started), "Scraping live Meta Ad Library via Metapi...")
-
-                status_resp = await safe_request_async(
-                    "GET",
-                    f"https://api.metapi.io/v1/tasks/{task_id}/status",
-                    headers=headers,
-                    timeout=45.0,
-                    allowed_hosts=metapi_hosts,
-                )
-                if status_resp.status_code == 200:
-                    status_data = status_resp.json()
-                    status = status_data.get("status")
-                    if status == "succeeded":
-                        finished = True
-                        break
-                    elif status in ("failed", "error"):
-                        logger.error("Metapi task failed: status=%s", status)
-                        return []
-            if not finished:
-                logger.warning("Metapi task %s did not finish within %.0fs", task_id, poll_budget_s)
-                return []
-
-            # 3. Get Results
-            results_resp = await safe_request_async(
-                "GET",
-                f"https://api.metapi.io/v1/tasks/{task_id}/results",
-                headers=headers,
-                timeout=45.0,
-                allowed_hosts=metapi_hosts,
-            )
-            if results_resp.status_code == 200:
-                results_data = results_resp.json()
-                if isinstance(results_data, dict):
-                    results = results_data.get("data") or results_data.get("results") or []
-                elif isinstance(results_data, list):
-                    results = results_data
+                refused = await provider_budget.reserve_provider_call("Metapi advertiser")
+                if refused:
+                    logger.warning("Metapi advertiser search skipped: %s", refused)
                 else:
-                    results = []
+                    page_id, page_name = match
+                    if progress_callback:
+                        await progress_callback(0, "Found the advertiser page; loading its ads...")
+                    advertiser_items = await self._run_task(
+                        {"advertiser_id": page_id, "count": int(max_records)}, progress_callback
+                    )
+                    if advertiser_items:
+                        self.last_mode = "advertiser"
+                        self.resolved_page_id = page_id
+                        self.resolved_page_name = page_name
+                        return self._finish(advertiser_items[:max_records], page_name)
 
-                if len(results) > max_records:
-                    results = results[:max_records]
+            return self._finish(keyword_items[:max_records], search_query)
 
-                parsed = self._parse_metapi_ads(results, domain)
-                self.last_outcome = "success" if parsed else "empty"
-                return parsed
-            logger.warning(f"Metapi results API returned status {results_resp.status_code}: {results_resp.text[:250]}")
-            return []
-                    
         except Exception as e:
             logger.error(f"Metapi API request failed: {e}")
             return []
+
+    def _finish(self, items: list, label: str) -> List[RawCreative]:
+        parsed = self._parse_metapi_ads(items, label)
+        self.last_outcome = "success" if parsed else "empty"
+        return parsed
+
+    async def _run_task(self, payload: dict, progress_callback=None) -> Optional[list]:
+        """Create a Metapi task, wait for it, and return its ads; None on failure.
+
+        Results are fetched only for a finished task; an unfinished one is a
+        provider failure the job may retry, never an empty result.
+        """
+        from app.services.safe_fetch import safe_request_async
+
+        headers = {
+            "Authorization": "Bearer " + self.metapi_api_key.strip().strip('"').strip("'"),
+            "Content-Type": "application/json",
+        }
+        hosts = {"api.metapi.io"}
+        task_resp = await safe_request_async(
+            "POST", "https://api.metapi.io/v1/tasks", json=payload, headers=headers,
+            timeout=45.0, allowed_hosts=hosts,
+        )
+        if task_resp.status_code not in (200, 202):
+            logger.warning("Metapi task creation failed: %s", task_resp.status_code)
+            return None
+        task_id = (task_resp.json() or {}).get("task_id")
+        if not task_id:
+            logger.warning("Metapi did not return a task_id")
+            return None
+
+        poll_budget_s = float(getattr(settings, "METAPI_POLL_TIMEOUT_S", 150))
+        started = time.monotonic()
+        delay = 1.5
+        finished = False
+        while time.monotonic() - started < poll_budget_s:
+            await asyncio.sleep(delay)
+            delay = min(delay * 1.4, 6.0)
+            if progress_callback:
+                await progress_callback(int(time.monotonic() - started), "Scraping live Meta Ad Library via Metapi...")
+            status_resp = await safe_request_async(
+                "GET", f"https://api.metapi.io/v1/tasks/{task_id}/status", headers=headers,
+                timeout=45.0, allowed_hosts=hosts,
+            )
+            if status_resp.status_code == 200:
+                status = (status_resp.json() or {}).get("status")
+                if status == "succeeded":
+                    finished = True
+                    break
+                if status in ("failed", "error", "timed_out", "aborted"):
+                    logger.error("Metapi task failed: status=%s", status)
+                    return None
+        if not finished:
+            logger.warning("Metapi task %s did not finish within %.0fs", task_id, poll_budget_s)
+            return None
+
+        results_resp = await safe_request_async(
+            "GET", f"https://api.metapi.io/v1/tasks/{task_id}/results", headers=headers,
+            timeout=45.0, allowed_hosts=hosts,
+        )
+        if results_resp.status_code != 200:
+            logger.warning("Metapi results API returned status %s", results_resp.status_code)
+            return None
+        data = results_resp.json()
+        if isinstance(data, dict):
+            return list(data.get("data") or data.get("results") or [])
+        return list(data) if isinstance(data, list) else []
 
     def _parse_metapi_ads(self, items: List[dict], domain: str) -> List[RawCreative]:
         creatives = []

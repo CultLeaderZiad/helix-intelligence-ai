@@ -46,7 +46,7 @@ const translations = {
     image: "Image Still",
     
     // Discover
-    searchPlaceholder: "Search competitor brand (e.g. nike.com) or product niche...",
+    searchPlaceholder: "Brand (e.g. nike.com), niche, or a brand's Ad Library page link",
     langEnglish: "English",
     langArabic: "Arabic",
     searchLanguage: "Search language",
@@ -356,7 +356,7 @@ const translations = {
     image: "صورة ثابتة",
     
     // Discover
-    searchPlaceholder: "ابحث عن نطاق المنافس (مثل nike.com) أو مجال المنتج أو صانع المحتوى...",
+    searchPlaceholder: "علامة تجارية (مثل nike.com) أو مجال، أو رابط صفحة العلامة في مكتبة الإعلانات",
     langEnglish: "English",
     langArabic: "العربية",
     searchLanguage: "لغة البحث",

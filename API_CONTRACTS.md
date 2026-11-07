@@ -43,7 +43,7 @@ no API-key or third-party-token login (W8).
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/jobs` | Start a search (`query`, `filters`, `query_language`). Runs through the durable `work_items` outbox and the jobs worker. |
+| POST | `/jobs` | Start a search (`query`, `filters`, `query_language`). Runs through the durable `work_items` outbox and the jobs worker. `query` may be a brand or domain, a niche, a Facebook page id, or an Ad Library page link (`view_all_page_id`). With Metapi, a brand query first finds the advertiser page whose name is the brand (an exact-phrase keyword task of `METAPI_RESOLVE_COUNT` ads, default 30) and then loads that page's own ads (a second task, which reserves its own slot under the daily provider cap); those ads skip the keyword relevance filter. If no page name matches, the keyword results are filtered as before. |
 | GET | `/jobs` | Recent jobs, newest first; each row includes its `query`, so clients build search history from the server. |
 | GET | `/drafts` | The caller's saved search drafts in the active workspace (`{items: [{id, title, query, notes, filters, created_at}]}`), newest first, at most 50. |
 | POST | `/drafts` | Save a draft (`title`, `query` required, `notes`, `filters`). Only `country`, `min_days_active`, `min_score` are kept from `filters`. `201`; empty query `422`; over 50 drafts `409`. |

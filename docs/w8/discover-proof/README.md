@@ -28,6 +28,9 @@ Findings:
 - **Each task used to collect 50 ads** (Metapi's default) while Helix kept 15.
   The request now sends `count` and `keyword_exact_phrase`.
 - **Refunded searches still use up the daily allowance.** Not fixed yet.
+- **Follow-up (same day):** a brand query now resolves the brand's own
+  advertiser page and loads its ads (Metapi `advertiser_id`); a page id or Ad
+  Library page link goes straight there. Not yet run against Metapi.
 
 Not run yet: `cancel`, `timeout`, and a `success` that stores ads.
 

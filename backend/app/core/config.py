@@ -204,6 +204,9 @@ class Settings(BaseSettings):
     # How long Metapi may take to finish a search task before it counts as a
     # provider failure (retried by the job), never as an empty result.
     METAPI_POLL_TIMEOUT_S: int = int(os.getenv("METAPI_POLL_TIMEOUT_S", "150"))
+    # Ads a brand keyword search collects to find the brand's own advertiser
+    # page before loading that page's ads (billed as Metapi records).
+    METAPI_RESOLVE_COUNT: int = max(15, int(os.getenv("METAPI_RESOLVE_COUNT", "30")))
     # Permanent ad archive (see archive_service). The per-workspace cap bounds
     # storage; media larger than the byte cap keeps its text only.
     ARCHIVE_ENABLED: bool = os.getenv("ARCHIVE_ENABLED", "true").lower() == "true"
