@@ -642,3 +642,19 @@ providers' own pricing; their dashboards' alerts are not hard caps.
 
 Search text is limited to 300 characters (`422 query_too_long`). Entitlement and
 credits are checked before the translation model is called.
+
+## Row-level security on users
+
+`users` and `api_keys` have tenant policies (migration `b2d4f6a8c0e3`; 39
+tenant policies in total). A user row is visible only to a platform-admin
+scope, to that user (`helix.user_id`), to the owner and members of a workspace
+in `helix.org_ids`, or to a pre-sign-in lookup of exactly one email
+(`helix.auth_email`). Writes need platform admin, the user, or that email
+lookup. Code that reads an account before authentication must say which one:
+`bind_request_lookup(db, user_id=...)` for a verified token subject, or
+`bind_request_lookup(db, auth_email=...)` for sign-in, sign-up and
+forgot-password. Support uses two narrow platform-scope lookups (staff ids,
+display emails). `tests/test_w8_users_rls.py` checks the policy as
+`helix_app`. The CI database user bypasses RLS, so app tests alone do not.
+Assistant-admins are not platform admins, so they see only users in their own
+workspaces.

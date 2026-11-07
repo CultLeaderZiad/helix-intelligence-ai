@@ -31,6 +31,10 @@ class TenantContext:
     user_id: str
     platform_admin: bool = False
     enforce: bool = True
+    # Pre-authentication lookup of exactly one account by email (sign-in,
+    # sign-up, forgot-password, team invite). Lets the users policy show that
+    # one row and nothing else. Always lower-case; empty means none.
+    auth_email: str = ""
 
 
 _tenant: ContextVar[Optional[TenantContext]] = ContextVar("helix_tenant", default=None)
@@ -55,6 +59,7 @@ def bind_tenant(
     *,
     platform_admin: bool = False,
     enforce: bool = True,
+    auth_email: str = "",
 ):
     """Remember the caller's verified organizations for this task.
 
@@ -67,6 +72,7 @@ def bind_tenant(
             user_id=user_id or "",
             platform_admin=platform_admin,
             enforce=enforce,
+            auth_email=(auth_email or "").strip().lower(),
         )
     )
 
@@ -165,13 +171,14 @@ async def apply_tenant_context(db: AsyncSession, ctx: Optional[TenantContext] = 
 # transaction (set by apply_tenant_context and the after_begin listener).
 RLS_APPLIED_KEY = "helix_rls_applied"
 
-# All four transaction-local RLS settings in one statement: one round trip per
-# application instead of four.
+# All transaction-local RLS settings in one statement: one round trip per
+# application.
 TENANT_SETTINGS_SQL = text(
     "SELECT set_config('helix.user_id', :user_id, true),"
     " set_config('helix.org_ids', :org_ids, true),"
     " set_config('helix.platform_admin', :platform_admin, true),"
-    " set_config('helix.enforce', :enforce, true)"
+    " set_config('helix.enforce', :enforce, true),"
+    " set_config('helix.auth_email', :auth_email, true)"
 )
 
 
@@ -181,6 +188,7 @@ def tenant_settings_params(ctx: TenantContext) -> dict:
         "org_ids": "" if ctx.platform_admin or ctx.org_ids is None else ",".join(ctx.org_ids),
         "platform_admin": "1" if ctx.platform_admin else "0",
         "enforce": "1" if ctx.enforce else "0",
+        "auth_email": ctx.auth_email or "",
     }
 
 
@@ -192,6 +200,7 @@ async def tenant_db_scope(
     *,
     platform_admin: bool = False,
     enforce: bool = True,
+    auth_email: str = "",
 ):
     """Bind a short-lived RLS scope and restore the caller's database context."""
     previous = current_tenant()
@@ -200,6 +209,7 @@ async def tenant_db_scope(
         user_id,
         platform_admin=platform_admin,
         enforce=enforce,
+        auth_email=auth_email,
     )
     try:
         await apply_tenant_context(db)
@@ -276,3 +286,29 @@ def is_scoped_out(user_org_ids: Optional[List[str]], org_id: Optional[str]) -> b
     if user_org_ids is None:
         return False
     return (not org_id) or (org_id not in user_org_ids)
+
+
+async def bind_request_lookup(db: AsyncSession, *, user_id: str = "", auth_email: str = "") -> None:
+    """Before authentication: allow reading exactly one account.
+
+    ``user_id`` when the caller holds a verified token for that id (bearer
+    session, sign-out, password reset). ``auth_email`` for an email lookup
+    (sign-in, sign-up, forgot-password). No organization is in scope.
+    """
+    bind_tenant([], user_id or "", platform_admin=False, enforce=True, auth_email=auth_email)
+    await apply_tenant_context(db)
+
+
+@asynccontextmanager
+async def with_auth_email(db: AsyncSession, email: str):
+    """Keep the caller's scope and also allow reading the account for one email."""
+    ctx = current_tenant() or TenantContext([], "")
+    async with tenant_db_scope(
+        db,
+        ctx.org_ids,
+        ctx.user_id,
+        platform_admin=ctx.platform_admin,
+        enforce=ctx.enforce,
+        auth_email=email,
+    ):
+        yield

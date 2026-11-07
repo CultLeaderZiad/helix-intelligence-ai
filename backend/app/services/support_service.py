@@ -87,13 +87,9 @@ async def create_ticket(
     await db.refresh(ticket)
 
     # Generate admin-targeted notification for all admins
-    admin_users = (await db.execute(
-        select(User).where(User.role.in_(["admin", "assistant-admin"]))
-    )).scalars().all()
-
-    for admin in admin_users:
+    for admin_id in await _support_staff_ids(db):
         notif = Notification(
-            user_id=admin.id,
+            user_id=admin_id,
             org_id=org_id,
             type="support",
             title=f"New {ticket_type.capitalize()} Ticket: {subject[:40]}",
@@ -105,6 +101,31 @@ async def create_ticket(
 
     await db.commit()
     return ticket
+
+async def _support_staff_ids(db: AsyncSession) -> List[str]:
+    """Ids of support staff, for notifying them about a ticket.
+
+    Staff accounts are outside the customer's workspace, so the users policy
+    hides them from the caller's scope. This one lookup reads ids only, in a
+    short platform scope, and restores the caller's scope afterwards.
+    """
+    from app.core.tenancy import current_tenant, tenant_db_scope
+
+    ctx = current_tenant()
+    async with tenant_db_scope(db, None, ctx.user_id if ctx else "", platform_admin=True):
+        rows = await db.execute(select(User.id).where(User.role.in_(["admin", "assistant-admin"])))
+        return list(rows.scalars().all())
+
+
+async def _emails_for(db: AsyncSession, user_ids: List[str]) -> Dict[str, str]:
+    """Display emails for the authors of tickets or replies the caller may already see."""
+    from app.core.tenancy import current_tenant, tenant_db_scope
+
+    ctx = current_tenant()
+    async with tenant_db_scope(db, None, ctx.user_id if ctx else "", platform_admin=True):
+        rows = await db.execute(select(User.id, User.email).where(User.id.in_(list(user_ids))))
+        return {row.id: row.email for row in rows.all()}
+
 
 async def list_user_tickets(
     db: AsyncSession,
@@ -169,7 +190,7 @@ async def _get_ticket_details_in_scope(
         raise HTTPException(status_code=403, detail="Not authorized to view this ticket")
 
     # Fetch user email & author
-    author = (await db.execute(select(User).where(User.id == ticket.user_id))).scalar_one_or_none()
+    author_email = (await _emails_for(db, [ticket.user_id])).get(ticket.user_id) if ticket.user_id else None
 
     # Fetch replies
     replies_res = await db.execute(
@@ -183,8 +204,7 @@ async def _get_ticket_details_in_scope(
     users_map = {}
     sender_ids = list({r.user_id for r in replies if r.user_id})
     if sender_ids:
-        users_res = await db.execute(select(User).where(User.id.in_(sender_ids)))
-        users_map = {u.id: u.email for u in users_res.scalars().all()}
+        users_map = await _emails_for(db, sender_ids)
 
     formatted_replies = []
     for r in replies:
@@ -202,7 +222,7 @@ async def _get_ticket_details_in_scope(
     return {
         "id": ticket.id,
         "user_id": ticket.user_id,
-        "user_email": author.email if author else "Unknown",
+        "user_email": author_email or "Unknown",
         "type": ticket.type,
         "subject": ticket.subject,
         "message": ticket.message,
@@ -272,12 +292,9 @@ async def _add_reply_in_scope(
         db.add(notif)
     else:
         # User replied -> notify admins
-        admin_users = (await db.execute(
-            select(User).where(User.role.in_(["admin", "assistant-admin"]))
-        )).scalars().all()
-        for admin in admin_users:
+        for admin_id in await _support_staff_ids(db):
             notif = Notification(
-                user_id=admin.id,
+                user_id=admin_id,
                 org_id=ticket.org_id,
                 type="support_reply",
                 title=f"User Reply on Ticket: {ticket.subject[:40]}",
@@ -371,8 +388,7 @@ async def _list_admin_tickets_in_scope(
     users_map = {}
     user_ids = list({t.user_id for t in tickets if t.user_id})
     if user_ids:
-        users_res = await db.execute(select(User).where(User.id.in_(user_ids)))
-        users_map = {u.id: u.email for u in users_res.scalars().all()}
+        users_map = await _emails_for(db, user_ids)
 
     out = []
     for t in tickets:

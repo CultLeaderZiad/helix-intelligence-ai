@@ -173,6 +173,9 @@ async def signout(
             payload = await verify_session_token(token)
             if payload and payload.get("sub"):
                 actor_id = payload["sub"]
+                from app.core.tenancy import bind_request_lookup
+
+                await bind_request_lookup(db, user_id=str(payload["sub"]))
                 res = await db.execute(select(User).where(User.id == payload["sub"]))
                 user = res.scalar_one_or_none()
                 if user:

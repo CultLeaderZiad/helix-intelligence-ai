@@ -141,6 +141,9 @@ async def authenticate_user_and_load(db: AsyncSession, user_in: UserLogin) -> tu
     checked, so guessing makes no progress while the lock lasts.
     """
     email = _normalize_email(user_in.email)
+    from app.core.tenancy import bind_request_lookup
+
+    await bind_request_lookup(db, auth_email=email)
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     user = result.scalar_one_or_none()
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -218,6 +221,9 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     # PBKDF2 runs off the event loop, and also for an existing email, so the
     # duplicate path costs the same time as a real registration.
     password_hash = await asyncio.to_thread(get_password_hash, user_in.password)
+    from app.core.tenancy import bind_request_lookup
+
+    await bind_request_lookup(db, auth_email=email)
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     if result.scalar_one_or_none():
         raise EmailAlreadyRegistered()
@@ -302,6 +308,9 @@ async def request_password_reset(db: AsyncSession, email: str) -> User:
     this for users that exist; the router handles the non-enumeration
     boundary and always returns the same public response either way."""
     email = _normalize_email(email)
+    from app.core.tenancy import bind_request_lookup
+
+    await bind_request_lookup(db, auth_email=email)
     result = await db.execute(select(User).where(func.lower(User.email) == email))
     user = result.scalar_one_or_none()
     if not user:
@@ -333,6 +342,9 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Use
             detail={"code": "invalid_reset_token", "message": "This reset link is invalid or has expired. Please request a new one."}
         )
 
+    from app.core.tenancy import bind_request_lookup
+
+    await bind_request_lookup(db, user_id=str(payload["sub"]))
     # Row lock user record during validation to prevent concurrent race condition (F18)
     result = await db.execute(
         select(User).where(User.id == payload["sub"]).with_for_update()

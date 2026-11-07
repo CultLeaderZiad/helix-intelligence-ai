@@ -89,6 +89,11 @@ async def authenticate_bearer(db: AsyncSession, token: str) -> User:
     user_id = payload.get("sub")
     if not user_id:
         raise credentials_exception
+    # The users policy shows a row only inside a matching scope; the token's
+    # verified subject is the only account this lookup may read.
+    from app.core.tenancy import bind_request_lookup
+
+    await bind_request_lookup(db, user_id=str(user_id))
     user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if user is None:
         raise credentials_exception

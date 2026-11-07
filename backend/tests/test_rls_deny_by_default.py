@@ -137,7 +137,7 @@ async def test_rls_deny_by_default_for_restricted_roles_and_worker_claims():
                     )
                 )
             ).all()
-            assert len(policies) == 37  # W8: + board_share_links, ad_archive, search_drafts
+            assert len(policies) == 39  # W8: + board_share_links, ad_archive, search_drafts, users, api_keys
             assert all(
                 "helix.enforce" not in f"{row.qual} {row.with_check}"
                 for row in policies
