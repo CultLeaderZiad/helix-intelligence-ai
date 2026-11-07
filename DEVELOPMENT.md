@@ -617,3 +617,28 @@ The session token is still in `localStorage`, so the CSP is what limits an
 injected script. Admin and assistant-admin sessions last
 `ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES` (default 12 h) instead of the 8-day
 customer lifetime.
+
+## Paid provider hard stop
+
+Credits limit what one workspace can spend. Two settings limit spend across
+every workspace (`backend/app/services/provider_budget.py`). Set both on the
+API and the worker.
+
+- `DISCOVER_ENABLED=false` is the kill switch. New searches return
+  `503 discover_paused` before any charge, monitors are not claimed or run,
+  and a queued job stops before its first provider call, failing with
+  `discover_paused` and a refund.
+- `DISCOVER_DAILY_PROVIDER_CALL_CAP` (default 300) caps paid calls per UTC day:
+  each ad-library provider attempt (Metapi, Adyntel, Meta Graph, Apify) and
+  each query-translation model call reserves one slot in `provider_call_budget`
+  first. Past the cap the call is not made, the job fails with
+  `provider_budget` and its credit is refunded. It is not retried. If the
+  counter cannot be reached the call is refused (fails closed). `0` stops all
+  paid calls.
+
+A search may try up to four providers and is retried up to `WORK_MAX_ATTEMPTS`
+times, so one search credit can use several slots. Pick the cap from the
+providers' own pricing; their dashboards' alerts are not hard caps.
+
+Search text is limited to 300 characters (`422 query_too_long`). Entitlement and
+credits are checked before the translation model is called.

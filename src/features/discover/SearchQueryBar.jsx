@@ -62,6 +62,7 @@ export function SearchQueryBar({
         <input
           id="tour-search-input"
           value={query}
+          maxLength={300}
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t("searchPlaceholder", 'Search ad copy, brand, domain — "quoted phrases" supported')}

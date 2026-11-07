@@ -197,6 +197,10 @@ class Settings(BaseSettings):
     WORK_LEASE_S: int = int(os.getenv("WORK_LEASE_S", "120"))
     WORK_MAX_ATTEMPTS: int = int(os.getenv("WORK_MAX_ATTEMPTS", "3"))
     DISCOVER_JOB_DEADLINE_S: int = int(os.getenv("DISCOVER_JOB_DEADLINE_S", "600"))
+    # Global hard stop for paid provider calls (see app/services/provider_budget.py).
+    DISCOVER_ENABLED: bool = os.getenv("DISCOVER_ENABLED", "true").lower() in ("true", "1", "yes")
+    DISCOVER_DAILY_PROVIDER_CALL_CAP: int = int(os.getenv("DISCOVER_DAILY_PROVIDER_CALL_CAP", "300"))
+    DISCOVER_MAX_QUERY_LENGTH: int = 300
     # Permanent ad archive (see archive_service). The per-workspace cap bounds
     # storage; media larger than the byte cap keeps its text only.
     ARCHIVE_ENABLED: bool = os.getenv("ARCHIVE_ENABLED", "true").lower() == "true"

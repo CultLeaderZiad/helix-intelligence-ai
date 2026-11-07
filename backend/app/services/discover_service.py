@@ -399,12 +399,40 @@ async def trigger_search(
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 
+    from app.services import provider_budget
+
+    if provider_budget.discover_paused():
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "discover_paused", "message": "Discover is paused. No credit was used; try again later."},
+        )
+
     org = await get_or_create_default_org(db, user)
     org_id = org.id
     clean_query = (search_params.query or "").strip()
+    if len(clean_query) > settings.DISCOVER_MAX_QUERY_LENGTH:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "query_too_long",
+                "message": f"Search text is limited to {settings.DISCOVER_MAX_QUERY_LENGTH} characters.",
+            },
+        )
+
+    # Entitlement and credits are checked before any paid call, including the
+    # model call that translates the query. This first check takes no row
+    # lock, so the translation does not hold the workspace row.
+    await assert_can_spend(
+        db,
+        user=user,
+        required_credits=DISCOVER_SEARCH_CREDIT_COST,
+        feature_name="discover",
+        lock_row=False,
+    )
     scrape_query = await translate_search_query(clean_query, search_params.query_language or "en")
 
-    # Entitlement runs before any cached or in-flight result is returned.
+    # Entitlement runs again under the row lock before any cached or
+    # in-flight result is returned or a charge is made.
     org, _plan = await assert_can_spend(
         db,
         user=user,
@@ -845,7 +873,33 @@ async def _run_discovery_pipeline(
         ):
             return
         sources_tried = ad_lib_provider.sources_tried
-            
+
+        # Global hard stop: the kill switch or the daily provider cap refused a
+        # paid call. Not retried (retrying would only be refused again); the
+        # search credit is refunded.
+        stopped = getattr(ad_lib_provider, "stopped_reason", None)
+        if stopped and not raw_creatives:
+            paused = stopped == "paused"
+            await _finalize_discovery_job(
+                job_id,
+                status="failed",
+                failure_kind="discover_paused" if paused else "provider_budget",
+                error=(
+                    "Discover is paused by the operator. Your credit was refunded."
+                    if paused
+                    else "Today's search capacity is used up. Your credit was refunded; try again tomorrow."
+                ),
+                stage_label="Paused" if paused else "Daily capacity reached",
+                work_item_id=work_item_id,
+                lease_owner=lease_owner,
+                lease_generation=lease_generation,
+                refund_reason="discover_paused" if paused else "provider_budget",
+            )
+            if usage_log_id:
+                async with async_session_maker() as db:
+                    await mark_api_usage_status(db, usage_log_id, "failed")
+            return
+
         # Zero Results vs Provider Outage Handling (F29)
         if not raw_creatives:
             if getattr(ad_lib_provider, "provider_outage", False):

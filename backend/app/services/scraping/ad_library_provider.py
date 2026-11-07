@@ -83,6 +83,21 @@ class AdLibraryProvider(ScraperProvider):
         self.sources_tried: List[str] = []
         self.successful_queries_count: int = 0
         self.provider_outage: bool = False
+        # Set when the global kill switch or daily provider cap refused a call
+        # ("paused" / "budget"); the pipeline then fails the job with a refund.
+        self.stopped_reason: Optional[str] = None
+
+    async def _reserve(self, provider: str) -> bool:
+        """Reserve one paid call against the global budget before making it."""
+        from app.services import provider_budget
+
+        reason = await provider_budget.reserve_provider_call(provider)
+        if reason:
+            self.stopped_reason = reason
+            self.sources_tried.append(f"{provider} (not called: {reason})")
+            logger.warning("[AdDiscovery] %s call refused: %s", provider, reason)
+            return False
+        return True
 
     async def search(
         self,
@@ -108,11 +123,14 @@ class AdLibraryProvider(ScraperProvider):
         self.last_provider_used = "none"
         self.successful_queries_count = 0
         self.provider_outage = False
+        self.stopped_reason = None
 
         # ----------------------------------------------------------------------
         # 1. METAPI (Primary: Live Meta Ad Library search)
         # ----------------------------------------------------------------------
         if self.metapi_provider.metapi_api_key:
+            if not await self._reserve("Metapi"):
+                return []
             self.sources_tried.append("Metapi")
             logger.info(f"[AdDiscovery] Attempting primary provider: Metapi for query='{cleaned_query}'")
             try:
@@ -150,6 +168,8 @@ class AdLibraryProvider(ScraperProvider):
                     cleaned_query,
                 )
             else:
+                if not await self._reserve("Adyntel"):
+                    return []
                 self.sources_tried.append("Adyntel")
                 logger.info(f"[AdDiscovery] Attempting secondary provider: Adyntel for query='{cleaned_query}'")
                 try:
@@ -181,6 +201,8 @@ class AdLibraryProvider(ScraperProvider):
         # 3. META OFFICIAL GRAPH API (Tertiary: Official ads_archive endpoint)
         # ----------------------------------------------------------------------
         if self.meta_token:
+            if not await self._reserve("Meta Graph API"):
+                return []
             self.sources_tried.append("Meta Graph API")
             logger.info(f"[AdDiscovery] Attempting tertiary provider: Meta Graph API for query='{cleaned_query}'")
             try:
@@ -205,6 +227,8 @@ class AdLibraryProvider(ScraperProvider):
         # 4. APIFY FACEBOOK AD LIBRARY ACTOR (Last Resort: actor scraper)
         # ----------------------------------------------------------------------
         if self.apify_token and _apify_allowed():
+            if not await self._reserve("Apify"):
+                return []
             self.sources_tried.append("Apify (Facebook Ad Library)")
             logger.info(f"[AdDiscovery] Attempting last-resort provider: Apify for query='{cleaned_query}'")
             try:

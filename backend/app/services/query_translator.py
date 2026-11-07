@@ -70,6 +70,12 @@ async def translate_search_query_result(query: str, target: str):
         logger.info("Query translation skipped (no GROQ_API_KEY); using original.")
         return _QueryResult(original, "unavailable")
 
+    from app.services import provider_budget
+
+    if await provider_budget.reserve_provider_call("query_translation"):
+        logger.info("Query translation skipped (provider budget); using original.")
+        return _QueryResult(original, "unavailable")
+
     language_name = "Arabic" if lang == "ar" else "English"
     try:
         result = await complete_chat(

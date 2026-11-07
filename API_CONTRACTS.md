@@ -25,6 +25,8 @@ no API-key or third-party-token login (W8).
 | 429 | `rate_limited` | Too many requests from this client |
 | 429 | `too_many_sign_in_attempts` | Sign-in for this email is locked after repeated wrong passwords (`Retry-After` set). Unknown emails get the same answer on the same attempt. A password reset ends the lock |
 | 503 | `auth_rate_limiter_unavailable` | Auth limiter fault; auth fails closed |
+| 503 | `discover_paused` | `DISCOVER_ENABLED=false`: new searches and monitor runs are refused; no credit is used |
+| 422 | `query_too_long` | Discover search text over 300 characters |
 
 ## 2. Auth — `/api/auth`
 
@@ -46,7 +48,7 @@ no API-key or third-party-token login (W8).
 | GET | `/drafts` | The caller's saved search drafts in the active workspace (`{items: [{id, title, query, notes, filters, created_at}]}`), newest first, at most 50. |
 | POST | `/drafts` | Save a draft (`title`, `query` required, `notes`, `filters`). Only `country`, `min_days_active`, `min_score` are kept from `filters`. `201`; empty query `422`; over 50 drafts `409`. |
 | DELETE | `/drafts/{id}` | Delete one of the caller's own drafts; anyone else's is `404`. |
-| GET | `/jobs/{job_id}` | Status, stage, deadline, `failure_kind`. |
+| GET | `/jobs/{job_id}` | Status, stage, deadline, `failure_kind`. A job stopped by the global hard stop fails with `failure_kind` `discover_paused` or `provider_budget` and its credit is refunded. |
 | POST | `/jobs/{job_id}/cancel` | Tenant-checked cancellation. |
 | GET | `/jobs/{job_id}/results` | Paginated creatives. `sort` = `days_active_desc` (default), `first_seen_desc`, `composite_desc`, `hook_desc`, `impressions_desc`; anything else is `422`. Nulls sort last. Optional view filters on stored rows: `min_days` ∈ {30, 60, 90} (ads with an unknown run length are excluded and counted in `hidden_unknown_run_length`, never treated as 0) and `min_score` 0–10 (text-rubric minimum); other values are `422`. |
 

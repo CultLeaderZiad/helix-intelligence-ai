@@ -429,7 +429,15 @@ export function DiscoverPage() {
               <ErrorState
                 error={error}
                 onRetry={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
-                description={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? t("discoverNeedsAccess") : undefined}
+                description={
+                  error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED"
+                    ? t("discoverNeedsAccess")
+                    : error?.code === "discover_paused"
+                      ? w8.discoverPaused
+                      : error?.code === "query_too_long"
+                        ? w8.discoverQueryTooLong
+                        : undefined
+                }
                 action={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? (
                   <Button as={Link} to="/access" size="sm" variant="primary">{w8.discoverOpenAccess}</Button>
                 ) : undefined}

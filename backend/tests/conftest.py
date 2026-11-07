@@ -18,3 +18,22 @@ from app.db.session import engine
 async def _dispose_pooled_engine_after_async_test():
     yield
     await engine.dispose()
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _provider_budget_allows_calls(request, monkeypatch):
+    """Stubbed provider tests must not share or exhaust the real daily counter.
+
+    tests/test_w8_provider_budget.py opts out with the ``real_provider_budget``
+    marker and exercises the counter against the database.
+    """
+    if request.node.get_closest_marker("real_provider_budget"):
+        yield
+        return
+    from app.services import provider_budget
+
+    async def _allow(_provider):
+        return None
+
+    monkeypatch.setattr(provider_budget, "reserve_provider_call", _allow)
+    yield

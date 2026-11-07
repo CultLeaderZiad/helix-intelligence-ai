@@ -26,9 +26,11 @@ from .leadgen import LeadGenJob, LeadGenLead, LeadGenWorkerHeartbeat
 from .board_share_link import BoardShareLink
 from .search_draft import SearchDraft
 from .ad_archive import AdArchiveEntry
+from .provider_call_budget import ProviderCallBudget
 
 __all__ = [
     "Base",
+    "ProviderCallBudget",
     "User",
     "Organization",
     "ScrapeJob",

@@ -369,6 +369,8 @@ const auditOperationLabels = {
   account_profile_updated: "Profile update",
   landing_enrich: "Landing-page enrichment",
   refund_provider_outage: "Provider outage refund",
+  refund_provider_budget: "Daily provider cap refund",
+  refund_discover_paused: "Discover paused refund",
   refund_w4_compensation: "W4 compensation refund",
   plan_switch: "Access update",
 }

@@ -344,6 +344,11 @@ async def tick(max_monitors: Optional[int] = None) -> Dict[str, Any]:
     the same instance and the tick reports only what it started. Crash safety
     comes from the existing job heartbeat and reconciliation sweep.
     """
+    from app.services.provider_budget import discover_paused
+
+    if discover_paused():
+        # Leave due monitors unclaimed (and uncharged) until Discover resumes.
+        return {"dispatched": 0, "monitor_ids": [], "paused": True}
     limit = max_monitors or settings.MONITOR_MAX_PER_TICK
     async with async_session_maker() as db:
         await apply_monitor_claim_context(db)
@@ -374,6 +379,13 @@ async def tick(max_monitors: Optional[int] = None) -> Dict[str, Any]:
 
 async def run_now(db: AsyncSession, monitor_id: str, org_id: str) -> Dict[str, Any]:
     monitor = await _load_owned(db, monitor_id, org_id)
+    from app.services.provider_budget import discover_paused
+
+    if discover_paused():
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "discover_paused", "message": "Discover is paused. No credit was used; try again later."},
+        )
     running = await db.scalar(
         select(func.count(MonitorRun.id)).where(
             MonitorRun.monitor_id == monitor.id, MonitorRun.status == "running"
@@ -445,6 +457,11 @@ async def run_monitor(monitor_id: str) -> None:
 
 async def _run_monitor(monitor_id: str) -> None:
     from app.services.discover_service import run_discovery_pipeline
+    from app.services.provider_budget import discover_paused
+
+    if discover_paused():
+        logger.info("Monitor %s not run: Discover is paused", monitor_id)
+        return
 
     async with async_session_maker() as db:
         monitor = (await db.execute(select(Monitor).where(Monitor.id == monitor_id))).scalar_one_or_none()
