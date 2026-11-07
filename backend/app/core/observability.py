@@ -32,3 +32,14 @@ def log_event(logger, event, *, error=None, level=logging.WARNING,
     # JSON message keeps correlation visible with the default console handler;
     # extra fields also support collectors that already consume LogRecord data.
     logger.log(level, json.dumps(fields, separators=(",", ":")), extra=fields)
+
+
+def quiet_http_client_logs() -> None:
+    """Keep outbound request URLs out of INFO logs.
+
+    httpx logs every request line at INFO, query string included: signed
+    Meta CDN links, and for providers that take a token in the URL, the
+    token itself. Warnings and errors still come through.
+    """
+    for name in ("httpx", "httpcore"):
+        logging.getLogger(name).setLevel(logging.WARNING)

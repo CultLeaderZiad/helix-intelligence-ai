@@ -7,9 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings, cors_origins, cors_origin_regex
 from app.db.session import engine
-from app.core.observability import log_event, request_id_context
+from app.core.observability import log_event, quiet_http_client_logs, request_id_context
 from app.middleware.rate_limit import RateLimitMiddleware
 importlib.import_module("app.models")  # register ORM tables before startup validation
+quiet_http_client_logs()
 
 from app.api.routers import (
     auth,

@@ -1,0 +1,66 @@
+{
+  "scenario": "success",
+  "passed": true,
+  "provider_configured": "metapi",
+  "query": "https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=ALL&view_all_page_id=15087023444",
+  "job_id": "dd1abb6d-dbd9-4d2c-93d3-b7ea21eee56b",
+  "final_status": "succeeded",
+  "failure_kind": null,
+  "deadline_at": "2026-11-07T14:57:13.216555Z",
+  "credits_before": 21.0,
+  "credits_after": 20.0,
+  "timeline": [
+    {
+      "at": "2026-11-07T14:47:17.690094+00:00",
+      "status": "queued",
+      "stage": "queued",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:47:31.263932+00:00",
+      "status": "running",
+      "stage": "init",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:47:36.558686+00:00",
+      "status": "running",
+      "stage": "scraping",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:48:04.523672+00:00",
+      "status": "running",
+      "stage": "enriching",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:48:10.040115+00:00",
+      "status": "running",
+      "stage": "scoring",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:48:21.657004+00:00",
+      "status": "succeeded",
+      "stage": "complete",
+      "records_found": 2,
+      "failure_kind": null
+    }
+  ],
+  "results": {
+    "total": 2,
+    "first_page": 2,
+    "with_days_active": 2,
+    "with_meta_reach": 0,
+    "platforms": [
+      "meta"
+    ]
+  },
+  "recorded_at": "2026-11-07T14:48:27.669649+00:00"
+}

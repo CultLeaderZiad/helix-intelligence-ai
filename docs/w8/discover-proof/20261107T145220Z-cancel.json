@@ -1,0 +1,37 @@
+{
+  "scenario": "cancel",
+  "passed": true,
+  "provider_configured": "metapi",
+  "query": "adidas",
+  "job_id": "639752c7-eeac-4359-81f4-b20adaa431e6",
+  "final_status": "cancelled",
+  "failure_kind": "cancelled",
+  "deadline_at": "2026-11-07T15:01:50.350464Z",
+  "credits_before": 19.0,
+  "credits_after": 19.0,
+  "timeline": [
+    {
+      "at": "2026-11-07T14:51:54.684720+00:00",
+      "status": "queued",
+      "stage": "queued",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:52:09.169484+00:00",
+      "status": "running",
+      "stage": "init",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:52:18.572751+00:00",
+      "status": "cancelled",
+      "stage": "cancelled",
+      "records_found": 0,
+      "failure_kind": "cancelled"
+    }
+  ],
+  "cancel_http": 200,
+  "recorded_at": "2026-11-07T14:52:20.855331+00:00"
+}

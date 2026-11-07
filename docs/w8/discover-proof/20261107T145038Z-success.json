@@ -1,0 +1,59 @@
+{
+  "scenario": "success",
+  "passed": true,
+  "provider_configured": "metapi",
+  "query": "gymshark",
+  "job_id": "5e3402b1-1a09-4204-b60d-e351b264a83a",
+  "final_status": "succeeded",
+  "failure_kind": null,
+  "deadline_at": "2026-11-07T14:59:41.753985Z",
+  "credits_before": 20.0,
+  "credits_after": 19.0,
+  "timeline": [
+    {
+      "at": "2026-11-07T14:49:44.458015+00:00",
+      "status": "queued",
+      "stage": "queued",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:50:03.664011+00:00",
+      "status": "running",
+      "stage": "scraping",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:50:15.957914+00:00",
+      "status": "running",
+      "stage": "enriching",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:50:21.632593+00:00",
+      "status": "running",
+      "stage": "scoring",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:50:33.312233+00:00",
+      "status": "succeeded",
+      "stage": "complete",
+      "records_found": 11,
+      "failure_kind": null
+    }
+  ],
+  "results": {
+    "total": 11,
+    "first_page": 11,
+    "with_days_active": 11,
+    "with_meta_reach": 0,
+    "platforms": [
+      "meta"
+    ]
+  },
+  "recorded_at": "2026-11-07T14:50:38.265817+00:00"
+}

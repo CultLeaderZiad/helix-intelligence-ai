@@ -313,7 +313,9 @@ class AdLibraryProvider(ScraperProvider):
         if progress_callback:
             await progress_callback(0, "Searching via Apify Facebook Ad Library actor...")
 
-        url = f"https://api.apify.com/v2/acts/curious_coder~facebook-ads-library-scraper/run-sync-get-dataset-items?token={self.apify_token}"
+        # The token goes in the Authorization header, never the URL, so it cannot
+        # end up in request logs or proxy access logs.
+        url = "https://api.apify.com/v2/acts/curious_coder~facebook-ads-library-scraper/run-sync-get-dataset-items"
         target_url = f"https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country={country}&q={query}&search_type=keyword_unordered&media_type=all"
         payload = {
             "urls": [{"url": target_url}],
@@ -323,7 +325,8 @@ class AdLibraryProvider(ScraperProvider):
         try:
             from app.services.safe_fetch import safe_request_async
             resp = await safe_request_async(
-                "POST", url, json=payload, timeout=45.0, allowed_hosts={"api.apify.com"}
+                "POST", url, json=payload, timeout=45.0, allowed_hosts={"api.apify.com"},
+                headers={"Authorization": f"Bearer {self.apify_token}"},
             )
             if resp.status_code in [200, 201]:
                 items = resp.json()

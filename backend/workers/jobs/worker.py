@@ -30,6 +30,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+from app.core.observability import quiet_http_client_logs  # noqa: E402
+
+quiet_http_client_logs()
 logger = logging.getLogger("helix.worker")
 
 BOOT_ID = f"worker:{uuid.uuid4().hex}"

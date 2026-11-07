@@ -1,8 +1,37 @@
 # Discover end-to-end proof
 
-Status: **not passed yet.** No evidence file here has `"passed": true`.
+Status: **passed on 2026-11-07** for `success`, `cancel` and `timeout`
+(Metapi, Neon branch `w8-rehearsal`, local API and jobs worker as restricted
+rehearsal logins). Not run against production.
 
-## Run of 2026-11-07 (Metapi, Neon branch `w8-rehearsal`, cap 10 provider calls)
+## Passing runs (2026-11-07, provider cap raised to 25 for the day)
+
+| Scenario | Query | Result | Evidence |
+|---|---|---|---|
+| success | Ad Library page link for Nike (`view_all_page_id`) | succeeded; Metapi returned 15 of Nike's own ads, 13 were duplicate copy, 2 stored (brand "Nike", landing `nike.com` / `nike.com.ar`, media stored in the archive) | `20261107T144827Z-success.json` |
+| success | `gymshark` | succeeded; 15 returned, 3 irrelevant, 1 duplicate, 11 stored | `20261107T145038Z-success.json` |
+| cancel | `adidas` | cancelled; credit refunded (net 0) | `20261107T145220Z-cancel.json` |
+| timeout | `puma`, 20 s deadline | timed out at the deadline; credit refunded (net 0) | `20261107T145342Z-timeout.json` |
+| success | `nike` (brand name) | succeeded with 0 kept: the 30 keyword ads came from other advertisers (most from one look-alike shop), none from a page named Nike, so the advertiser step could not resolve | `20261107T144623Z-success.json` |
+
+Notes from these runs:
+
+- **Big brands need the page link or page id.** Their ads rarely contain the
+  brand's own name, so keyword search returns other advertisers. Smaller brands
+  that name themselves (Gymshark) work by keyword.
+- **Heavy de-duplication.** Ads with the same copy count once, so a brand
+  reusing one text across many creatives shows few rows.
+- **Archive media** was stored on temporary local disk because R2 is not
+  configured; production needs R2.
+- **One intermittent `500` (`TimeoutError`)** when starting a search, while the
+  worker was archiving media; the retry succeeded. Cause not found yet.
+- **Logging:** the worker logged full outbound URLs (signed Meta CDN links) at
+  INFO. Fixed: httpx/httpcore log at WARNING; the Apify token moved from the
+  URL to the Authorization header.
+- Successful searches cost 0.5–1 credit; 15 of the day's 25 provider calls
+  were used across all runs.
+
+## Earlier run of 2026-11-07 (before the fixes; cap 10 provider calls)
 
 The API and jobs worker ran locally as restricted rehearsal logins. Evidence
 files `20261107T14*-success.json` are from this run.
