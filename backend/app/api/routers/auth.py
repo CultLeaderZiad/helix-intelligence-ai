@@ -241,9 +241,7 @@ async def reset_password(req: PasswordResetConfirm, db: AsyncSession = Depends(g
 
     log_event(logger, "password_reset_completed", actor_id=user.id, level=logging.INFO)
     await _bind_request_tenant(db, user)
-    from app.core.security import create_access_token
-    token_ver = (user.signup_metadata or {}).get("token_version", 1)
-    token = create_access_token(subject=user.id, role=user.role, token_version=token_ver)
+    token = auth_service.session_token_for(user)
     return await build_session_response(db, user, access_token=token)
 
 @router.get("/session", response_model=SessionResponse)

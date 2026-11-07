@@ -598,3 +598,22 @@ Two independent limits protect sign-in:
   answer on the same attempt, so the lock does not reveal which emails exist.
   Anyone can lock an account for 15 minutes by guessing; the reset link is the
   way back in.
+
+## Frontend security headers
+
+`vercel.json` sends a Content-Security-Policy and hardening headers on every
+path (`src/app/__tests__/security-headers.w8.test.js` checks them):
+
+- Scripts only from this origin and `https://plausible.io`. No inline or
+  `eval` script; `index.html` holds only a JSON-LD data block.
+- `connect-src` allows this origin, the Render API
+  (`https://helix-intelligence-ai.onrender.com`) and Plausible. A different API
+  host, or a self-hosted analytics script set through `VITE_ANALYTICS_SCRIPT`,
+  must be added here or the browser blocks it.
+- Images and media may come from any `https:` host (ad creatives and avatars).
+- `frame-ancestors 'none'` and `X-Frame-Options: DENY` stop framing.
+
+The session token is still in `localStorage`, so the CSP is what limits an
+injected script. Admin and assistant-admin sessions last
+`ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES` (default 12 h) instead of the 8-day
+customer lifetime.

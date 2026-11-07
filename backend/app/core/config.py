@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     CREDENTIAL_ENCRYPTION_KEY_PREVIOUS: str = os.getenv("CREDENTIAL_ENCRYPTION_KEY_PREVIOUS", "")
     CREDENTIAL_ENCRYPTION_KEY_VERSION: int = int(os.getenv("CREDENTIAL_ENCRYPTION_KEY_VERSION", "1"))
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    # Admin and assistant-admin sessions expire sooner: a stolen admin token
+    # reaches every workspace.
+    ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES: int = max(15, int(os.getenv("ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", str(60 * 12))))
     IMPERSONATION_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("IMPERSONATION_TOKEN_EXPIRE_MINUTES", "15"))
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "30"))
     # development | test | staging | production. Unset means development,

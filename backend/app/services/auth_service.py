@@ -178,8 +178,19 @@ async def authenticate_user_and_load(db: AsyncSession, user_in: UserLogin) -> tu
         await db.commit()
         await db.refresh(user)
         metadata = user.signup_metadata or {}
+    return session_token_for(user), user
+
+
+def session_token_for(user: User) -> str:
+    """Mint a session token. Admin sessions use the shorter admin lifetime."""
+    metadata = getattr(user, "signup_metadata", None) or {}
     token_version = metadata.get("token_version", 1)
-    return create_access_token(subject=user.id, role=user.role, token_version=token_version), user
+    expires = None
+    if getattr(user, "is_platform_admin", False) or getattr(user, "role", None) in ("admin", "assistant-admin"):
+        expires = datetime.timedelta(minutes=settings.ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES)
+    return create_access_token(
+        subject=user.id, role=user.role, token_version=token_version, expires_delta=expires
+    )
 
 async def revoke_user_sessions(db: AsyncSession, user: User, *, commit: bool = True) -> int:
     """Increment the user's token version to immediately invalidate all existing sessions."""
