@@ -503,3 +503,78 @@ on sequences. Migration `d4f6a8c0e2b1` grants those privileges again and sets
 default privileges for tables created later by the migration role.
 
 
+## First platform admin
+
+A new database has no platform admin, so nobody can open the admin pages to
+grant access. `backend/scripts/bootstrap_platform_admin.py` promotes one named
+account and grants its own workspace access, using the same services as the
+admin API (`update_user_role`, `grant_organization_access`). Every change is
+written to the audit log (`admin_user_role_updated`, `access_granted`,
+`platform_admin_bootstrap`).
+
+- It selects the account by `users.id` only, never by email.
+- It refuses to run unless `--expect-branch` equals the Neon branch id the
+  server reports. Use `local` for a non-Neon Postgres.
+- Without `--apply` it is a dry run.
+- Re-running it changes nothing. Features granted earlier are kept.
+- It never prints passwords, emails or connection strings.
+- It runs as the API login (`helix_api_login`) or the owner. It sets the
+  platform-admin RLS scope itself.
+
+Rehearsed on the production copy `w8-rehearsal` on 2026-11-07, as a restricted
+`helix_app` login, with a disposable account. The account was promoted, its
+workspace got Discover, and a second run changed nothing. An ordinary account
+still gets `403` on `/admin/*`, `access-grant` and `/account/access-grants`.
+
+### Production procedure (needs Ziad's approval; not run yet)
+
+1. **Rollback point.** Create a Neon branch from `production`, for example
+   `pre-admin-bootstrap`.
+2. **Account.** Ziad signs up on the live app with his own email. In the Neon
+   SQL editor (production), he looks up his id and confirms it is his account:
+   ```sql
+   SELECT id, created_at FROM users WHERE lower(email) = lower('<his email>');
+   ```
+3. **Login roles.** As the owner, check both role memberships. Grant only the
+   ones that are missing:
+   ```sql
+   SELECT pg_has_role('helix_api_login', 'helix_app', 'MEMBER'),
+          pg_has_role('helix_worker_login', 'helix_worker', 'MEMBER');
+   GRANT helix_app TO helix_api_login;          -- only if false
+   GRANT helix_worker TO helix_worker_login;    -- only if false
+   ```
+4. **Dry run.** Render's free plan has no shell, so Ziad runs this from his own
+   machine, in a fresh terminal, with two variables set for that terminal only:
+   - `DATABASE_URL`: the `helix_api_login` connection string from the Neon
+     console.
+   - `ALLOWED_REMOTE_DATABASE_HOST`: that string's host.
+
+   Don't save either variable to a file. The production branch id is
+   `br-soft-mode-ax44ab32`. Check the printed `user_id`, `org_id` and flags.
+   ```bash
+   cd backend
+   python scripts/bootstrap_platform_admin.py --user-id <id> --expect-branch br-soft-mode-ax44ab32
+   ```
+5. **Apply.** Run the same command again with `--apply`. Add
+   `--features discover,swipe_files,monitors` if those should be on too. Note
+   the printed `grant_id`.
+6. **Verify.** Sign in. `/admin` should load and Access & Usage should show
+   approved. `GET /api/auth/session` should return `is_platform_admin: true`
+   and `feature_flags.discover: true`.
+
+The promotion is committed before the grant. If the grant step fails, re-run
+the same command: it skips the promotion and retries only the grant.
+
+### Rollback
+
+- **Access only:** in Admin → Access requests, revoke the workspace, or call
+  `POST /api/admin/organizations/<org_id>/access-revoke`. The grant row stays,
+  marked revoked.
+- **Admin rights:** as the owner, run
+  `UPDATE users SET role = 'customer', is_platform_admin = false WHERE id = '<id>';`.
+  This leaves the app with no admin until the procedure is run again.
+- **Login roles:** do not revoke them unless the whole release is rolled back.
+  Without them the API and worker cannot read any table.
+- **Everything:** restore from `pre-admin-bootstrap`, or use Neon's
+  point-in-time restore to just before step 3. This also discards anything
+  written after that point.
