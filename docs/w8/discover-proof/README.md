@@ -1,8 +1,35 @@
 # Discover end-to-end proof
 
-Status: **blocked — no authorized non-production provider key yet.** The harness
-is ready; nothing here claims Discover works until evidence files exist in this
-folder with `"passed": true`.
+Status: **not passed yet.** No evidence file here has `"passed": true`.
+
+## Run of 2026-11-07 (Metapi, Neon branch `w8-rehearsal`, cap 10 provider calls)
+
+The API and jobs worker ran locally as restricted rehearsal logins. Evidence
+files `20261107T14*-success.json` are from this run.
+
+| Attempt | Query | Result | What it showed |
+|---|---|---|---|
+| 1 | `nike` | failed, `provider_outage`, refunded | Every Metapi results read failed: safe_fetch decoded gzip twice. Fixed. |
+| 2 | `nike` | succeeded, 0 ads kept | Metapi returned 15 ads; the relevance filter dropped all 15 |
+| 3 | `nike` | succeeded, 0 ads kept | Same; filter counts now logged: `irrelevant=15` |
+| 4 | `nike.com` | succeeded, 0 ads kept | Same |
+| diagnostic | `nike` | no data | Metapi was still running after 25 polls; the old code then read results (409). Fixed. |
+| 5 | `gymshark` | refused (429) | The trial plan's daily limit (3.5 credits) counted refunded searches |
+
+Findings:
+
+- **Data arrives.** Metapi accepts the task and returns ads through the
+  durable worker. Credits for failed searches are refunded.
+- **Keyword search is mostly look-alike sellers.** A replay of an older stored
+  Metapi response shows the same: ads from pages like resellers whose text does
+  not mention the brand. Helix's relevance filter correctly drops them, so a
+  brand query can end with zero ads. To show a brand's own ads, Discover needs
+  Metapi's `advertiser_id` search (or a pasted Ad Library page link).
+- **Each task used to collect 50 ads** (Metapi's default) while Helix kept 15.
+  The request now sends `count` and `keyword_exact_phrase`.
+- **Refunded searches still use up the daily allowance.** Not fixed yet.
+
+Not run yet: `cancel`, `timeout`, and a `success` that stores ads.
 
 `backend/scripts/prove_discover.py` drives a **local** API and the jobs worker
 over HTTP, the same way the browser does, against the Neon dev branch `dev-w8`

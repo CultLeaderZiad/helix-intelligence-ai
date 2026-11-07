@@ -1,0 +1,86 @@
+{
+  "scenario": "success",
+  "passed": false,
+  "provider_configured": "metapi",
+  "query": "nike",
+  "job_id": "51bf91ff-3c10-440d-bae5-170aa0d2a493",
+  "final_status": "failed",
+  "failure_kind": "provider_outage",
+  "deadline_at": "2026-11-07T14:22:28.672688Z",
+  "credits_before": 25.0,
+  "credits_after": 24.0,
+  "timeline": [
+    {
+      "at": "2026-11-07T14:12:32.909670+00:00",
+      "status": "queued",
+      "stage": "queued",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:12:51.941701+00:00",
+      "status": "running",
+      "stage": "init",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:12:57.257888+00:00",
+      "status": "running",
+      "stage": "scraping",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:13:13.169924+00:00",
+      "status": "queued",
+      "stage": "queued",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:13:29.176927+00:00",
+      "status": "running",
+      "stage": "init",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:13:34.765939+00:00",
+      "status": "running",
+      "stage": "scraping",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:13:50.786415+00:00",
+      "status": "queued",
+      "stage": "queued",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:14:06.648322+00:00",
+      "status": "running",
+      "stage": "init",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:14:11.972378+00:00",
+      "status": "running",
+      "stage": "scraping",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:14:22.566826+00:00",
+      "status": "failed",
+      "stage": "failed",
+      "records_found": 0,
+      "failure_kind": "provider_outage"
+    }
+  ],
+  "results": null,
+  "recorded_at": "2026-11-07T14:14:24.383430+00:00"
+}

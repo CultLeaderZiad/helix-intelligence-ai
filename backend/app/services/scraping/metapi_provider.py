@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from typing import List
 from datetime import datetime, timezone
 from app.services.scraping.base import ScraperProvider, RawCreative
@@ -59,9 +60,14 @@ class MetapiProvider(ScraperProvider):
             "Content-Type": "application/json"
         }
         
+        # count caps what Metapi collects (and bills as records); without it each
+        # task collected Metapi's default of 50 while Helix kept max_records.
+        # Exact-phrase search cuts look-alike sellers that merely share a word.
         payload = {
             "q": search_query,
-            "country": "ALL"
+            "country": "ALL",
+            "count": int(max_records),
+            "search_type": "keyword_exact_phrase",
         }
 
         if progress_callback:
@@ -89,12 +95,18 @@ class MetapiProvider(ScraperProvider):
                 logger.warning(f"Metapi did not return a task_id: {task_data}")
                 return []
 
-            # 2. Poll Task Status
-            max_attempts = 25
-            for attempt in range(max_attempts):
-                await asyncio.sleep(1.5)
+            # 2. Poll Task Status until it finishes or the poll budget runs out.
+            # Results are fetched only for a finished task; an unfinished one is
+            # a provider failure the job may retry, never an empty result.
+            poll_budget_s = float(getattr(settings, "METAPI_POLL_TIMEOUT_S", 150))
+            started = time.monotonic()
+            delay = 1.5
+            finished = False
+            while time.monotonic() - started < poll_budget_s:
+                await asyncio.sleep(delay)
+                delay = min(delay * 1.4, 6.0)
                 if progress_callback:
-                    await progress_callback(int(attempt * 1.5), "Scraping live Meta Ad Library via Metapi...")
+                    await progress_callback(int(time.monotonic() - started), "Scraping live Meta Ad Library via Metapi...")
 
                 status_resp = await safe_request_async(
                     "GET",
@@ -107,10 +119,14 @@ class MetapiProvider(ScraperProvider):
                     status_data = status_resp.json()
                     status = status_data.get("status")
                     if status == "succeeded":
+                        finished = True
                         break
                     elif status in ("failed", "error"):
-                        logger.error(f"Metapi task failed: {status_data}")
+                        logger.error("Metapi task failed: status=%s", status)
                         return []
+            if not finished:
+                logger.warning("Metapi task %s did not finish within %.0fs", task_id, poll_budget_s)
+                return []
 
             # 3. Get Results
             results_resp = await safe_request_async(

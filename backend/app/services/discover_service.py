@@ -1071,6 +1071,11 @@ async def _run_discovery_pipeline(
 
             if rejected_templates or duplicates_skipped or rejected_irrelevant:
                 log_event(logger, "discover_records_filtered", job_id=job_id, tenant_id=org_id, level=logging.INFO)
+                # Counts only, no ad content: why a search that found ads shows fewer (or none).
+                logger.info(
+                    "discover filter counts job=%s provider_rows=%d templates=%d irrelevant=%d duplicates=%d saved=%d",
+                    job_id, len(enriched_creatives), rejected_templates, rejected_irrelevant, duplicates_skipped, saved_creatives,
+                )
             await db.commit()
             
         # Stage 4: AI Pattern Scoring/Generation (Graceful Degradation)

@@ -201,6 +201,9 @@ class Settings(BaseSettings):
     DISCOVER_ENABLED: bool = os.getenv("DISCOVER_ENABLED", "true").lower() in ("true", "1", "yes")
     DISCOVER_DAILY_PROVIDER_CALL_CAP: int = int(os.getenv("DISCOVER_DAILY_PROVIDER_CALL_CAP", "300"))
     DISCOVER_MAX_QUERY_LENGTH: int = 300
+    # How long Metapi may take to finish a search task before it counts as a
+    # provider failure (retried by the job), never as an empty result.
+    METAPI_POLL_TIMEOUT_S: int = int(os.getenv("METAPI_POLL_TIMEOUT_S", "150"))
     # Permanent ad archive (see archive_service). The per-workspace cap bounds
     # storage; media larger than the byte cap keeps its text only.
     ARCHIVE_ENABLED: bool = os.getenv("ARCHIVE_ENABLED", "true").lower() == "true"

@@ -135,6 +135,20 @@ class _PinningTransport(httpx.BaseTransport):
         self._inner.close()
 
 
+def _decoded_headers(headers: httpx.Headers) -> httpx.Headers:
+    """Headers for a response rebuilt from an already-decoded body.
+
+    ``iter_bytes`` returns the body after gzip/deflate/brotli decoding. Keeping
+    ``Content-Encoding`` would make httpx decode it a second time and fail
+    ("incorrect header check"), and the original length no longer matches.
+    """
+    cleaned = httpx.Headers(headers)
+    for name in ("content-encoding", "content-length", "transfer-encoding"):
+        if name in cleaned:
+            del cleaned[name]
+    return cleaned
+
+
 def _read_capped(response: httpx.Response, max_bytes: int) -> bytes:
     declared = response.headers.get("content-length")
     if declared and declared.isdigit() and int(declared) > max_bytes:
@@ -168,7 +182,7 @@ def _pinned_get(destination: PublicDestination, timeout: float, headers: dict, m
                 body = _read_capped(response, max_bytes)
                 return httpx.Response(
                     status_code=response.status_code,
-                    headers=response.headers,
+                    headers=_decoded_headers(response.headers),
                     content=body,
                 )
             finally:
@@ -312,7 +326,7 @@ def _exchange(method, destination, timeout, headers, max_bytes, json_body, conte
                 body = _read_capped(response, max_bytes)
                 return httpx.Response(
                     status_code=response.status_code,
-                    headers=response.headers,
+                    headers=_decoded_headers(response.headers),
                     content=body,
                 )
             finally:
