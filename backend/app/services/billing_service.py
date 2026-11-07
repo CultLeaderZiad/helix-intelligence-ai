@@ -726,6 +726,11 @@ async def charge(
     return log_entry
 
 
+# Reservations taken for optional extra work on a job (not the job's own
+# charge). Releasing one must not count as refunding the job.
+SIDE_RESERVATION_OPERATIONS = ("pattern_synthesis",)
+
+
 async def refund(
     db: AsyncSession,
     org_id: str,
@@ -752,30 +757,41 @@ async def refund(
     if not org:
         return False
 
-    # 2. Idempotency check: if job_id was already refunded, do not refund again (F08)
+    # 2. Idempotency check: if job_id was already refunded, do not refund again (F08).
+    # A job can also carry side reservations (pattern scoring) under the same
+    # job_id. Their release is not a refund of the job's own charge, so the job
+    # charge is found by operation and judged by its own status.
     reservation = None
     if job_id:
-        existing_refund = (await db.execute(
-            select(UsageLog).where(
-                UsageLog.job_id == job_id,
-                UsageLog.credits_deducted < 0
-            )
-        )).scalars().first()
-        if existing_refund:
-            log_event(logger, "duplicate_refund_ignored", job_id=job_id, tenant_id=org_id)
-            return False
         reservation = (
             await db.execute(
                 select(CreditReservation)
-                .where(CreditReservation.job_id == job_id)
+                .where(
+                    CreditReservation.job_id == job_id,
+                    CreditReservation.operation.notin_(SIDE_RESERVATION_OPERATIONS),
+                )
                 .order_by(CreditReservation.created_at.desc())
             )
         ).scalars().first()
         if reservation is not None:
             if reservation.status == "refunded":
+                log_event(logger, "duplicate_refund_ignored", job_id=job_id, tenant_id=org_id)
                 return False
             if reservation.status == "settled":
                 amount = float(reservation.amount)
+        else:
+            # Legacy charges without a reservation: any earlier refund row for
+            # the job, except side-reservation releases, means already refunded.
+            existing_refund = (await db.execute(
+                select(UsageLog).where(
+                    UsageLog.job_id == job_id,
+                    UsageLog.credits_deducted < 0,
+                    UsageLog.operation.notlike("refund_pattern%"),
+                )
+            )).scalars().first()
+            if existing_refund:
+                log_event(logger, "duplicate_refund_ignored", job_id=job_id, tenant_id=org_id)
+                return False
 
     decimal_amount = _decimal_amount(amount)
     org.credit_balance += float(decimal_amount)
