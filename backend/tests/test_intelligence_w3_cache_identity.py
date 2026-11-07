@@ -215,7 +215,9 @@ async def test_downgrade_with_distinct_active_filter_jobs_aborts_without_data_lo
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("record_count,age_hours,status", [(0, 0, "succeeded"), (10, 13, "succeeded"), (10, 0, "failed")])
+# W8: an empty result is reused only inside DISCOVER_ZERO_RESULT_CACHE_MINUTES (default 60),
+# so (0 ads, 2 h old) must not be reused; see the next test for the window itself.
+@pytest.mark.parametrize("record_count,age_hours,status", [(0, 2, "succeeded"), (10, 13, "succeeded"), (10, 0, "failed")])
 async def test_empty_expired_and_failed_results_are_not_reused(cache_db, record_count, age_hours, status):
     db, user, org = cache_db
     with mocks(org):
@@ -227,6 +229,19 @@ async def test_empty_expired_and_failed_results_are_not_reused(cache_db, record_
         second = await discover_service.trigger_search(db, SearchParams(query="nike"), user.id)
         assert second.job_id != first.job_id
 
+
+
+@pytest.mark.asyncio
+async def test_a_recent_empty_result_is_reused_inside_the_zero_result_window(cache_db):
+    db, user, org = cache_db
+    with mocks(org):
+        first = await discover_service.trigger_search(db, SearchParams(query="nike"), user.id)
+        row = await db.get(ScrapeJob, first.job_id)
+        row.status, row.record_count = "succeeded", 0
+        row.created_at = discover_service._utcnow() - datetime.timedelta(minutes=10)
+        await db.flush()
+        second = await discover_service.trigger_search(db, SearchParams(query="nike"), user.id)
+        assert second.job_id == first.job_id
 
 def test_provider_configuration_identity_tracks_enabled_chain_not_credentials():
     provider = SimpleNamespace(
