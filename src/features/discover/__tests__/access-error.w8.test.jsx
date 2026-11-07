@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
 import React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { MemoryRouter } from "react-router-dom"
+import { Link, MemoryRouter } from "react-router-dom"
 import { describe, expect, it } from "vitest"
 import { ErrorState } from "@/components/ui/States"
 import { Button } from "@/components/ui/Button"
-import { Link } from "react-router-dom"
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext"
 
 function NeedsAccess() {
