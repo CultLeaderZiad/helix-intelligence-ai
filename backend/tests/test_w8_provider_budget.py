@@ -38,7 +38,7 @@ def _provider_with_metapi_key(monkeypatch) -> AdLibraryProvider:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("reason", [provider_budget.BUDGET, provider_budget.PAUSED])
 async def test_a_refused_reservation_stops_the_chain_before_any_paid_call(monkeypatch, reason):
-    async def _refuse(_provider):
+    async def _refuse(_provider, org_id=None):
         return reason
 
     monkeypatch.setattr(provider_budget, "reserve_provider_call", _refuse)
@@ -98,7 +98,7 @@ async def test_no_translation_model_call_for_a_workspace_without_credits(monkeyp
     user_id = await _granted_workspace(credits=0.0)
     calls = []
 
-    async def _record(query, lang):
+    async def _record(query, lang, **_kw):
         calls.append(query)
         return query
 

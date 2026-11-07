@@ -50,7 +50,10 @@ def mocks(org):
     stack = ExitStack()
     stack.enter_context(patch.object(discover_service, "get_or_create_default_org", new=AsyncMock(return_value=org)))
     stack.enter_context(patch.object(discover_service, "assert_can_spend", new=AsyncMock(return_value=(org, None))))
-    stack.enter_context(patch.object(discover_service, "translate_search_query", new=AsyncMock(side_effect=lambda query, lang: query)))
+    stack.enter_context(patch.object(discover_service, "translate_search_query", new=AsyncMock(side_effect=lambda query, lang, **_kw: query)))
+    # The workspace here is uncommitted, so the per-workspace counter (its own
+    # session) cannot see it; the counter has its own tests.
+    stack.enter_context(patch("app.services.provider_budget.reserve_search_slot", new=AsyncMock(return_value=True)))
     stack.enter_context(patch.object(discover_service, "charge", new=AsyncMock()))
     stack.enter_context(patch("app.services.work_outbox.enqueue_work", new=AsyncMock()))
     stack.enter_context(patch("app.services.work_outbox.inline_execution_enabled", return_value=False))

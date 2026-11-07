@@ -85,7 +85,7 @@ async def test_a_brand_query_loads_the_brands_own_page(monkeypatch):
     posted = _fake_metapi(monkeypatch, results)
     reserved = []
 
-    async def _reserve(name):
+    async def _reserve(name, org_id=None):
         reserved.append(name)
         return None
 
@@ -112,7 +112,7 @@ async def test_no_matching_page_keeps_keyword_results_with_one_task(monkeypatch)
 async def test_the_daily_cap_stops_the_second_task(monkeypatch):
     posted = _fake_metapi(monkeypatch, lambda payload: [_ad("222222", "Nike")])
 
-    async def _refuse(_name):
+    async def _refuse(_name, org_id=None):
         return provider_budget.BUDGET
 
     monkeypatch.setattr(provider_budget, "reserve_provider_call", _refuse)

@@ -201,6 +201,13 @@ class Settings(BaseSettings):
     DISCOVER_ENABLED: bool = os.getenv("DISCOVER_ENABLED", "true").lower() in ("true", "1", "yes")
     DISCOVER_DAILY_PROVIDER_CALL_CAP: int = int(os.getenv("DISCOVER_DAILY_PROVIDER_CALL_CAP", "300"))
     DISCOVER_MAX_QUERY_LENGTH: int = 300
+    # Per-workspace daily caps, counted in workspace_daily_usage and never
+    # lowered by refunds (see app/services/provider_budget.py).
+    DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY: int = int(os.getenv("DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY", "50"))
+    DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE: int = int(os.getenv("DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE", "60"))
+    # An identical search that found no ads is reused for this long instead
+    # of calling the provider again.
+    DISCOVER_ZERO_RESULT_CACHE_MINUTES: int = int(os.getenv("DISCOVER_ZERO_RESULT_CACHE_MINUTES", "60"))
     # How long Metapi may take to finish a search task before it counts as a
     # provider failure (retried by the job), never as an empty result.
     METAPI_POLL_TIMEOUT_S: int = int(os.getenv("METAPI_POLL_TIMEOUT_S", "150"))

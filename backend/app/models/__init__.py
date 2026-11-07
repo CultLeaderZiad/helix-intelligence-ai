@@ -27,10 +27,12 @@ from .board_share_link import BoardShareLink
 from .search_draft import SearchDraft
 from .ad_archive import AdArchiveEntry
 from .provider_call_budget import ProviderCallBudget
+from .workspace_daily_usage import WorkspaceDailyUsage
 
 __all__ = [
     "Base",
     "ProviderCallBudget",
+    "WorkspaceDailyUsage",
     "User",
     "Organization",
     "ScrapeJob",

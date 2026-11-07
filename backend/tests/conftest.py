@@ -32,7 +32,7 @@ async def _provider_budget_allows_calls(request, monkeypatch):
         return
     from app.services import provider_budget
 
-    async def _allow(_provider):
+    async def _allow(_provider, org_id=None):
         return None
 
     monkeypatch.setattr(provider_budget, "reserve_provider_call", _allow)

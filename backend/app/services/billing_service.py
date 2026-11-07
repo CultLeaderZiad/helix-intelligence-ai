@@ -741,12 +741,19 @@ async def refund(
     org_id: str,
     amount: float,
     reason: str,
-    job_id: Optional[str] = None
+    job_id: Optional[str] = None,
+    *,
+    only_operation: Optional[str] = None,
 ) -> bool:
     """
     Restores credits to the organization when an asynchronous job fails
     before consuming external provider quota.
     Idempotent: prevents duplicate refunds for the same job_id (F08).
+
+    ``only_operation`` limits the refund to a job whose own charge was that
+    operation (e.g. ``discover_job_start``): anything else, including a charge
+    with no reservation to verify, is left alone. Atomic: the workspace row
+    and the reservation are locked, checked and updated in one transaction.
     """
     if amount <= 0:
         return False
@@ -776,8 +783,12 @@ async def refund(
                     CreditReservation.operation.notin_(SIDE_RESERVATION_OPERATIONS),
                 )
                 .order_by(CreditReservation.created_at.desc())
+                .execution_options(populate_existing=True)
             )
         ).scalars().first()
+        if only_operation is not None and (reservation is None or reservation.operation != only_operation):
+            await db.rollback()
+            return False
         if reservation is not None:
             if reservation.status == "refunded":
                 log_event(logger, "duplicate_refund_ignored", job_id=job_id, tenant_id=org_id)

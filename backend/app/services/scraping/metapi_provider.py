@@ -159,7 +159,7 @@ class MetapiProvider(ScraperProvider):
             if match:
                 from app.services import provider_budget
 
-                refused = await provider_budget.reserve_provider_call("Metapi advertiser")
+                refused = await provider_budget.reserve_provider_call("Metapi advertiser", org_id=self.org_id)
                 if refused:
                     logger.warning("Metapi advertiser search skipped: %s", refused)
                 else:

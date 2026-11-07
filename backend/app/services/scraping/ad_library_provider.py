@@ -91,7 +91,7 @@ class AdLibraryProvider(ScraperProvider):
         """Reserve one paid call against the global budget before making it."""
         from app.services import provider_budget
 
-        reason = await provider_budget.reserve_provider_call(provider)
+        reason = await provider_budget.reserve_provider_call(provider, org_id=self.org_id)
         if reason:
             self.stopped_reason = reason
             self.sources_tried.append(f"{provider} (not called: {reason})")

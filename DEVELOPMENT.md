@@ -658,3 +658,23 @@ display emails). `tests/test_w8_users_rls.py` checks the policy as
 `helix_app`. The CI database user bypasses RLS, so app tests alone do not.
 Assistant-admins are not platform admins, so they see only users in their own
 workspaces.
+
+### Per-workspace limits and zero-ad refunds
+
+- A Discover search that finishes with **no ads for the user** is refunded:
+  only that search's own `discover_job_start` charge, once per job
+  (`refund_zero_result_search`; concurrent settlements refund once). Monitor
+  runs and pattern scoring are never refunded by this path.
+- Refunds do **not** lower the abuse limits. In `workspace_daily_usage`, per
+  workspace per UTC day:
+  - `searches` counts searches started (cache hits excluded). Over
+    `DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY` (default 50) a new search is
+    refused with `429 daily_search_cap_reached`.
+  - `provider_calls` counts paid provider calls. Over
+    `DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE` (default 60) the call is
+    refused, so one workspace cannot use up the global budget.
+- An identical search that found no ads within
+  `DISCOVER_ZERO_RESULT_CACHE_MINUTES` (default 60) is shown again without a
+  new provider call or charge.
+- The per-IP rate limit, the global provider budget and the per-job attempt cap
+  are unchanged and are not affected by refunds.

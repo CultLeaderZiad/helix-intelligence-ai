@@ -429,7 +429,7 @@ async def trigger_search(
         feature_name="discover",
         lock_row=False,
     )
-    scrape_query = await translate_search_query(clean_query, search_params.query_language or "en")
+    scrape_query = await translate_search_query(clean_query, search_params.query_language or "en", org_id=org.id)
 
     # Entitlement runs again under the row lock before any cached or
     # in-flight result is returned or a charge is made.
@@ -480,6 +480,40 @@ async def trigger_search(
     duplicate_job = duplicate_job_result.scalar_one_or_none()
     if duplicate_job:
         return _job_response(duplicate_job)
+
+    # 2c. A very recent identical search that found no ads is shown again
+    #     instead of calling the provider again (its credit was refunded).
+    zero_window = max(0, int(settings.DISCOVER_ZERO_RESULT_CACHE_MINUTES))
+    if zero_window:
+        recent_empty = (await db.execute(
+            select(ScrapeJob)
+            .where(ScrapeJob.org_id == org_id)
+            .where(ScrapeJob.cache_identity == cache_identity)
+            .where(ScrapeJob.status == "succeeded")
+            .where(ScrapeJob.record_count == 0)
+            .where(ScrapeJob.created_at >= _utcnow() - datetime.timedelta(minutes=zero_window))
+            .order_by(ScrapeJob.created_at.desc())
+            .limit(1)
+        )).scalar_one_or_none()
+        if recent_empty:
+            return _job_response(recent_empty)
+
+    # 3. Per-workspace daily search cap. Counted before any provider work and
+    #    never lowered by a refund, so refunded searches still count.
+    from app.services.provider_budget import reserve_search_slot
+
+    if not await reserve_search_slot(org_id):
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "daily_search_cap_reached",
+                "message": (
+                    f"This workspace has started {settings.DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY} "
+                    "searches today. Saved searches and past results stay available. Resets at 00:00 UTC."
+                ),
+                "daily_search_cap": settings.DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY,
+            },
+        )
 
     # 4. Create new ScrapeJob. The partial unique canonical-identity index
     # makes a duplicate active job structurally impossible. Legacy rows have
@@ -665,6 +699,26 @@ async def update_job_stage(
     job.stage_index = stage_index
     await db.commit()
     return True
+
+
+async def refund_zero_result_search(db: AsyncSession, org_id: str, job_id: str) -> bool:
+    """Refund a Discover search that finished with no ads for the user.
+
+    Only the search's own ``discover_job_start`` charge is refunded (never a
+    monitor run or pattern scoring), once per job. Per-workspace and global
+    provider counters, rate limits and attempt counts are not touched.
+    """
+    try:
+        refunded = await refund(
+            db, org_id, DISCOVER_SEARCH_CREDIT_COST, "no_results", job_id,
+            only_operation="discover_job_start",
+        )
+    except Exception as exc:
+        log_event(logger, "discover_zero_result_refund_failed", error=exc, job_id=job_id, tenant_id=org_id)
+        return False
+    if refunded:
+        log_event(logger, "discover_zero_result_refunded", job_id=job_id, tenant_id=org_id, level=logging.INFO)
+    return refunded
 
 
 async def run_discovery_pipeline(
@@ -981,6 +1035,7 @@ async def _run_discovery_pipeline(
                     job.record_count = 0
                     job.elapsed_ms = int((time.time() - start_time) * 1000)
                     await db.commit()
+                    await refund_zero_result_search(db, org_id, job_id)
             return
             
         # Stage 2: Enriching with ScrapeGraph (Capped at top 2 landing pages)
@@ -1144,6 +1199,8 @@ async def _run_discovery_pipeline(
                 job.record_count = saved_creatives
                 job.elapsed_ms = int((time.time() - start_time) * 1000)
                 await db.commit()
+                if not saved_creatives:
+                    await refund_zero_result_search(db, org_id, job_id)
                 if saved_creatives and settings.ARCHIVE_ENABLED:
                     # Permanent copy runs as its own work item so media
                     # downloads never hold up the search result.

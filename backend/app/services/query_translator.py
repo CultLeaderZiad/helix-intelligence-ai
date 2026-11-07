@@ -28,7 +28,7 @@ def _looks_latin(text: str) -> bool:
     return bool(_LATIN_RE.search(text or ""))
 
 
-async def translate_search_query(query: str, target: str) -> str:
+async def translate_search_query(query: str, target: str, org_id: str | None = None) -> str:
     original = (query or "").strip()
     if not original:
         return original
@@ -39,11 +39,11 @@ async def translate_search_query(query: str, target: str) -> str:
     if lang == "ar" and _looks_arabic(original) and not _looks_latin(original):
         return original
 
-    result = await translate_search_query_result(original, target)
+    result = await translate_search_query_result(original, target, org_id=org_id)
     return result.text
 
 
-async def translate_search_query_result(query: str, target: str):
+async def translate_search_query_result(query: str, target: str, org_id: str | None = None):
     """Return the original query when the provider is unavailable. Never invent a translation."""
     from app.services.ai.call_policy import complete_chat
     from app.services.ai.prompts import PROMPT_QUERY, query_messages
@@ -72,7 +72,7 @@ async def translate_search_query_result(query: str, target: str):
 
     from app.services import provider_budget
 
-    if await provider_budget.reserve_provider_call("query_translation"):
+    if await provider_budget.reserve_provider_call("query_translation", org_id=org_id):
         logger.info("Query translation skipped (provider budget); using original.")
         return _QueryResult(original, "unavailable")
 

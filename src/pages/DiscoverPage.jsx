@@ -436,7 +436,9 @@ export function DiscoverPage() {
                       ? w8.discoverPaused
                       : error?.code === "query_too_long"
                         ? w8.discoverQueryTooLong
-                        : undefined
+                        : error?.code === "daily_search_cap_reached"
+                          ? w8.discoverSearchCap
+                          : undefined
                 }
                 action={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? (
                   <Button as={Link} to="/access" size="sm" variant="primary">{w8.discoverOpenAccess}</Button>

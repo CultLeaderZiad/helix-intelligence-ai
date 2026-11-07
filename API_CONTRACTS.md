@@ -27,6 +27,7 @@ no API-key or third-party-token login (W8).
 | 503 | `auth_rate_limiter_unavailable` | Auth limiter fault; auth fails closed |
 | 503 | `discover_paused` | `DISCOVER_ENABLED=false`: new searches and monitor runs are refused; no credit is used |
 | 422 | `query_too_long` | Discover search text over 300 characters |
+| 429 | `daily_search_cap_reached` | The workspace started `DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY` searches today (cache hits and refunds do not change the count) |
 
 ## 2. Auth — `/api/auth`
 
