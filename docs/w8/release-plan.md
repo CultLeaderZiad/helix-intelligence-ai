@@ -9,7 +9,14 @@
 > against that migrated copy as the owner: health, sign-up/in, session, reads, and creating a
 > search, ticket and monitor all 200. The reconciliation migration is a no-op on the clean
 > `production` branch copy. Roles `helix_api_login` / `helix_worker_login` must be confirmed on
-> `dev` before cutover.
+> `dev` before cutover. **Checked: `dev` has no `helix_*` roles at all** (only `neondb_owner`).
+> The migrations create the NOLOGIN roles `helix_app` / `helix_worker`; at cutover, after
+> migrating, create the logins with Neon (it generates the passwords):
+> `neon roles create --branch br-gentle-star-axcrbk22 --name helix_api_login` (and
+> `helix_worker_login` if a separate worker is used), then as the owner:
+> `GRANT helix_app TO helix_api_login;` and, for the embedded worker,
+> `GRANT helix_worker TO helix_api_login;`. Put the new `helix_api_login` URL in Render's
+> `DATABASE_URL` and the owner URL in `MIGRATION_DATABASE_URL`.
 
 Release candidate: `fix/core-W8` at `ea71a51` (CI green, all 8 jobs; docs-only commits may follow). Production Neon branch: `production` (`br-soft-mode-ax44ab32`), revision `c4d92e1f7a8b`, 1 user, 1 workspace, 2 plans. Nothing below has been run on production.
 
