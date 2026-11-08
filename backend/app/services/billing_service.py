@@ -18,6 +18,8 @@ from app.models.usage_log import UsageLog
 from app.models.credit_ledger import CreditLedgerEntry, CreditReservation, OperationIdempotency
 
 _MONEY = Decimal("0.000001")
+from app.core.state_machines import CREDIT_RESERVATION  # noqa: E402
+
 _ACTIVE_ORG_STATUSES = {"active", "quota_exhausted", "daily_limit_reached"}
 _SECRET_FLAG_PARTS = ("api_key", "secret", "token", "password", "cookie")
 
@@ -1072,7 +1074,7 @@ async def settle_reservation(
     db.add(log_entry)
     if hasattr(db, "flush"):
         await db.flush()
-    reservation.status = "settled"
+    reservation.status = CREDIT_RESERVATION.check(reservation.status, "settled")
     reservation.usage_log_id = log_id
     reservation.settled_at = datetime.datetime.now(datetime.timezone.utc)
     if commit:
