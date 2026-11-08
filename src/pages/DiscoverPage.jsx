@@ -3,7 +3,7 @@ import { Radar, SearchX, Clock, RotateCcw, MessageSquarePlus } from "lucide-reac
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useTelemetry } from "@/app/TelemetryContext"
 import { SearchQueryBar } from "@/features/discover/SearchQueryBar"
-import { FilterRail, countActiveFilters } from "@/features/discover/FilterRail"
+import { FilterRail, countActiveFilters, searchFiltersDiffer } from "@/features/discover/FilterRail"
 import { JobProgress } from "@/features/discover/JobProgress"
 import { ResultSummary } from "@/features/discover/ResultSummary"
 import { ResultsTable } from "@/features/discover/ResultsTable"
@@ -23,7 +23,8 @@ import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 import w5Discover from "@/i18n/w5Discover"
 import { useW8Copy } from "@/i18n/w8Product"
 
-/* Country is sent with the search; run length and the text-rubric minimum
+/* Search-time filters (country, status, format, dates, platform, language)
+   are sent with the search; run length and the text-rubric minimum
    filter the stored results. Platform, format and spend-band controls were
    removed: every provider is Meta-only and none of them was ever applied. */
 const EMPTY_FILTERS = {
@@ -104,8 +105,8 @@ export function DiscoverPage() {
     }
   }, [queryLanguage])
 
-  /* Only the search-time filter (country) needs a re-run to apply. */
-  const dirty = (draftFilters.country ?? "ALL") !== (appliedFilters.country ?? "ALL")
+  /* Search-time filters need a re-run to apply. */
+  const dirty = searchFiltersDiffer(draftFilters, appliedFilters)
 
   const activeFilterCount = useMemo(() => countActiveFilters(draftFilters), [draftFilters])
 

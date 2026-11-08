@@ -6,6 +6,7 @@ from typing import List, Optional, Tuple
 from urllib.parse import parse_qs, urlsplit
 from datetime import datetime, timezone
 from app.services.scraping.base import ScraperProvider, RawCreative
+from app.services.scraping.search_filters import metapi_task_filters
 from app.core.config import settings
 from app.core.credentials import env_secret
 
@@ -172,7 +173,7 @@ class MetapiProvider(ScraperProvider):
         try:
             page_id = page_id_from_query(query)
             if page_id:
-                items = await self._run_task({"advertiser_id": page_id, "count": int(max_records)}, progress_callback)
+                items = await self._run_task({"advertiser_id": page_id, "count": int(max_records), **metapi_task_filters(filters, advertiser=True)}, progress_callback)
                 if items is None:
                     return []
                 self.last_mode = "advertiser"
@@ -187,8 +188,8 @@ class MetapiProvider(ScraperProvider):
             keyword_items = await self._run_task(
                 {
                     "q": search_query,
-                    "country": "ALL",
                     "count": resolve_count,
+                    **metapi_task_filters(filters, advertiser=False),
                     "search_type": "keyword_exact_phrase",
                 },
                 progress_callback,
@@ -208,7 +209,7 @@ class MetapiProvider(ScraperProvider):
                     if progress_callback:
                         await progress_callback(0, "Found the advertiser page; loading its ads...")
                     advertiser_items = await self._run_task(
-                        {"advertiser_id": page_id, "count": int(max_records)}, progress_callback
+                        {"advertiser_id": page_id, "count": int(max_records), **metapi_task_filters(filters, advertiser=True)}, progress_callback
                     )
                     if advertiser_items:
                         self.last_mode = "advertiser"

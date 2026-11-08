@@ -1,4 +1,4 @@
-import { Label, Select } from "@/components/ui/Field"
+import { Input, Label, Select } from "@/components/ui/Field"
 import { COUNTRIES } from "@/lib/constants"
 import { useW8Copy } from "@/i18n/w8Product"
 
@@ -6,10 +6,32 @@ import { useW8Copy } from "@/i18n/w8Product"
 export const LONGEVITY_PRESETS = [0, 30, 60, 90]
 const RUBRIC_MINIMUMS = [0, 6, 7, 8, 9]
 
+/** Filters sent with the search (Metapi applies them); "" means not set. */
+export const SEARCH_FILTER_KEYS = [
+  "country",
+  "active_status",
+  "media_type",
+  "start_date_min",
+  "start_date_max",
+  "publisher_platforms",
+  "content_languages",
+]
+const SEARCH_DEFAULTS = { country: "ALL" }
+const searchValue = (filters, key) => {
+  const v = filters?.[key]
+  if (Array.isArray(v)) return v.join(",")
+  return v ?? SEARCH_DEFAULTS[key] ?? ""
+}
+
+/** True when any search-time filter differs between two filter objects. */
+export function searchFiltersDiffer(a, b) {
+  return SEARCH_FILTER_KEYS.some((key) => searchValue(a, key) !== searchValue(b, key))
+}
+
 /** How many result filters differ from the defaults. */
 export function countActiveFilters(filters) {
   return (
-    ((filters?.country ?? "ALL") !== "ALL" ? 1 : 0) +
+    SEARCH_FILTER_KEYS.filter((key) => searchValue(filters, key) !== (SEARCH_DEFAULTS[key] ?? "")).length +
     ((filters?.min_days_active ?? 0) > 0 ? 1 : 0) +
     ((filters?.min_score ?? 0) > 0 ? 1 : 0)
   )
@@ -17,7 +39,7 @@ export function countActiveFilters(filters) {
 
 /**
  * Filter rail. Purely controlled. Only controls that the backend really
- * applies are shown: country is sent with the search (staged until the
+ * applies are shown: search-time filters are sent with the search (staged until the
  * search is run again); run length and the text-rubric minimum filter the
  * stored results and apply instantly without spending credits.
  */
@@ -71,6 +93,87 @@ export function FilterRail({ filters, onChange, onClear, dirty }) {
             options={rubricOptions}
           />
           <p className="text-[11px] leading-relaxed text-text-faint">{c.rubricHint}</p>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="filter-status">{c.status}</Label>
+          <Select
+            id="filter-status"
+            value={filters.active_status ?? ""}
+            onChange={(e) => onChange({ ...filters, active_status: e.target.value })}
+            options={[
+              { value: "", label: c.statusAny },
+              { value: "active", label: c.statusActive },
+              { value: "inactive", label: c.statusInactive },
+            ]}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="filter-media">{c.mediaType}</Label>
+          <Select
+            id="filter-media"
+            value={filters.media_type ?? ""}
+            onChange={(e) => onChange({ ...filters, media_type: e.target.value })}
+            options={[
+              { value: "", label: c.mediaAny },
+              { value: "image", label: c.mediaImage },
+              { value: "video", label: c.mediaVideo },
+            ]}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="filter-started-after">{c.startedAfter}</Label>
+          <Input
+            id="filter-started-after"
+            type="date"
+            value={filters.start_date_min ?? ""}
+            max={filters.start_date_max || undefined}
+            onChange={(e) => onChange({ ...filters, start_date_min: e.target.value })}
+          />
+          <Label htmlFor="filter-started-before">{c.startedBefore}</Label>
+          <Input
+            id="filter-started-before"
+            type="date"
+            value={filters.start_date_max ?? ""}
+            min={filters.start_date_min || undefined}
+            onChange={(e) => onChange({ ...filters, start_date_max: e.target.value })}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="filter-platform">{c.platform}</Label>
+          <Select
+            id="filter-platform"
+            value={(filters.publisher_platforms ?? [])[0] ?? ""}
+            onChange={(e) =>
+              onChange({ ...filters, publisher_platforms: e.target.value ? [e.target.value] : [] })
+            }
+            options={[
+              { value: "", label: c.platformAny },
+              { value: "facebook", label: "Facebook" },
+              { value: "instagram", label: "Instagram" },
+              { value: "messenger", label: "Messenger" },
+              { value: "audience_network", label: "Audience Network" },
+            ]}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="filter-language">{c.language}</Label>
+          <Select
+            id="filter-language"
+            value={(filters.content_languages ?? [])[0] ?? ""}
+            onChange={(e) =>
+              onChange({ ...filters, content_languages: e.target.value ? [e.target.value] : [] })
+            }
+            options={[
+              { value: "", label: c.languageAny },
+              { value: "en", label: "English" },
+              { value: "ar", label: "العربية" },
+            ]}
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">

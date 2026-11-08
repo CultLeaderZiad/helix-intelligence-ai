@@ -10,6 +10,13 @@ class SearchParams(BaseModel):
     # Which language the ad-library query should be sent in.
     query_language: Optional[str] = "en"
 
+    @field_validator("filters")
+    @classmethod
+    def _search_filters(cls, value: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        from app.services.scraping.search_filters import normalize_search_filters
+
+        return normalize_search_filters(value)
+
     @field_validator("query_language")
     @classmethod
     def _lang(cls, value: Optional[str]) -> str:

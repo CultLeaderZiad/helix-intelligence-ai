@@ -26,7 +26,8 @@ describe("W8 longevity presets", () => {
     render(<FilterRail filters={base} onChange={() => {}} onClear={() => {}} dirty={false} />)
     const options = [...container.querySelectorAll("#filter-days option")].map((o) => o.textContent)
     expect(options).toEqual(["Any run length", "30+ days", "60+ days", "90+ days"])
-    expect(container.textContent).not.toMatch(/Platform|Spend band|Format/)
+    // Platform and format are real search filters now (sent to Metapi); spend band is never shown.
+    expect(container.textContent).not.toMatch(/Spend band/)
   })
 
   it("speaks Arabic and never labels the rubric as a performance score", () => {
