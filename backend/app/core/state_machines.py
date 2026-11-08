@@ -88,7 +88,9 @@ SCRAPE_JOB = StateMachine(
     name="scrape_job",
     initial=frozenset({"queued", "running"}),  # running when executed inline
     transitions=_t({
-        "queued": {"running", "failed", "cancelled", "timed_out"},
+        # queued -> succeeded: a retried job is queued again when the
+        # replacement worker finishes it (crash reclaim), as before W8.
+        "queued": {"running", "succeeded", "failed", "cancelled", "timed_out"},
         # running -> queued: a retryable provider error schedules a retry.
         "running": {"queued", "succeeded", "failed", "cancelled", "timed_out"},
         "succeeded": set(),

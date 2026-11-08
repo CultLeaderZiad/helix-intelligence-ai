@@ -13,7 +13,8 @@ from app.core.state_machines import (
 
 EXPECTED_LEGAL = {
     "scrape_job": {
-        ("queued", "running"), ("queued", "failed"), ("queued", "cancelled"), ("queued", "timed_out"),
+        ("queued", "running"), ("queued", "succeeded"), ("queued", "failed"), ("queued", "cancelled"),
+        ("queued", "timed_out"),
         ("running", "queued"), ("running", "succeeded"), ("running", "failed"),
         ("running", "cancelled"), ("running", "timed_out"),
     },

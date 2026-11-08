@@ -34,8 +34,11 @@ No stored value, API field or migration changed. Guards raise
 (create) ──────────▶ queued ──lease──▶ running ──▶ succeeded
                       │  ▲               │  └────▶ failed | cancelled | timed_out
                       │  └─retryable─────┘
-                      └──▶ failed | cancelled | timed_out
+                      └──▶ succeeded | failed | cancelled | timed_out
 ```
+
+`queued → succeeded` is legal: after a crash reclaim the job is queued again
+and the replacement worker can finish it without re-marking it running.
 
 - **Triggers.** User: create (`POST /discover`), cancel. Worker: lease → running,
   provider retry → queued, finish. Read path: `get_job` times out an overdue
