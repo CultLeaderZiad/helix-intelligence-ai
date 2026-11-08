@@ -668,7 +668,7 @@ workspaces.
 - Refunds do **not** lower the abuse limits. In `workspace_daily_usage`, per
   workspace per UTC day:
   - `searches` counts searches started (cache hits excluded). Over
-    `DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY` (default 50) a new search is
+    `DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY` (default 3) a new search is
     refused with `429 daily_search_cap_reached`.
   - `provider_calls` counts paid provider calls. Over
     `DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE` (default 6) the call is
