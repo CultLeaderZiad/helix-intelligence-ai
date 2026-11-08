@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from app.schemas.pricing import PlanPricing
 from typing import List, Optional, Dict, Any
 
 class AdminOverviewStats(BaseModel):
@@ -45,6 +46,7 @@ class PlanSchema(BaseModel):
     price_monthly: Optional[float] = 0.0
     price_per_credit: Optional[float] = None
     feature_flags: Dict[str, bool]
+    pricing: Optional[PlanPricing] = None
     created_by_admin_id: Optional[str] = None
     created_at: Optional[str] = None
 
@@ -63,6 +65,7 @@ class PlanCreate(BaseModel):
         "monitors": True,
         "team_accounts": False,
     }
+    pricing: Optional[PlanPricing] = None
 
 class PlanUpdate(BaseModel):
     name: Optional[str] = None
@@ -74,6 +77,7 @@ class PlanUpdate(BaseModel):
     price_monthly: Optional[float] = None
     price_per_credit: Optional[float] = None
     feature_flags: Optional[Dict[str, bool]] = None
+    pricing: Optional[PlanPricing] = None
 
 # --- Organization Schemas ---
 class AdminOrganizationRow(BaseModel):

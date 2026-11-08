@@ -27,6 +27,7 @@ from app.api.routers import (
     monitors,
     boards,
     archive,
+    pricing,
 )
 
 @asynccontextmanager
@@ -110,6 +111,7 @@ app.include_router(monitors.router, prefix=f"{settings.API_V1_STR}/monitors", ta
 app.include_router(boards.router, prefix=f"{settings.API_V1_STR}/boards", tags=["boards"])
 app.include_router(archive.router, prefix=f"{settings.API_V1_STR}/archive", tags=["archive"])
 app.include_router(boards.guest_router, prefix=f"{settings.API_V1_STR}/public/boards", tags=["boards"])
+app.include_router(pricing.router, prefix=f"{settings.API_V1_STR}/public/pricing", tags=["pricing"])
 
 # Locally stored media. This is served by a router rather than a StaticFiles
 # mount so that access is checked: the old mount handed any file to anyone who

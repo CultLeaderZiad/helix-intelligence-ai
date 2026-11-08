@@ -9,7 +9,7 @@ Production's revision was `c4d92e1f7a8b`, read from the `w8-rehearsal` copy of
 production made on 2026-11-06. **Re-read it on production (read-only) right
 before release**; if it differs, recompute this list.
 
-From `c4d92e1f7a8b` to head `e5a7c9d1f3b6` there are **23 migrations**, applied
+From `c4d92e1f7a8b` to head `a6c8e0f2b4d7` there are **24 migrations**, applied
 in this order (`alembic upgrade head`, as the owner role):
 
 | # | Revision | What it does | Changes existing data? |
@@ -37,17 +37,18 @@ in this order (`alembic upgrade head`, as the owner role):
 | 21 | `b2d4f6a8c0e3` | RLS on `users` and `api_keys` (added 2026-11-07) | policies only |
 | 22 | `d3f5a7b9c1e4` | Per-workspace daily search/provider counters (added 2026-11-07) | no |
 | 23 | `e5a7c9d1f3b6` | Monthly per-provider record counter (added 2026-11-08) | no |
+| 24 | `a6c8e0f2b4d7` | Public pricing card per plan (added 2026-11-08) | no |
 
 Evidence: 1–19 were rehearsed in one run on 2026-11-06 (no errors, no rows
 changed: production then held 1 user, 1 workspace, no patterns or usage logs;
-`alembic check` clean). 20–23 were applied to `w8-rehearsal` one at a time on
-2026-11-07/08; it is now at `e5a7c9d1f3b6` with 40 tenant policies. **The 23 have
+`alembic check` clean). 20–24 were applied to `w8-rehearsal` one at a time on
+2026-11-07/08; it is now at `a6c8e0f2b4d7` with 40 tenant policies. **The 24 have
 not been run as one sequence on a fresh production copy.**
 
 ## 2. Before and after the migrations
 
 1. Create a Neon branch from `production` as the rollback point.
-2. Rehearse all 23 on a second fresh copy; compare row counts before/after.
+2. Rehearse all 24 on a second fresh copy; compare row counts before/after.
 3. Migrate production as the owner.
 4. `GRANT helix_app TO helix_api_login; GRANT helix_worker TO helix_worker_login;`
    (both logins exist in production; neither is a member yet).

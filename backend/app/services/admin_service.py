@@ -242,6 +242,36 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
     return AdminSystemHealth(state=state, services=services)
 
 # --- Plans Management ---
+def _pricing(plan):
+    from app.schemas.pricing import PlanPricing
+
+    raw = getattr(plan, "pricing", None)
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return PlanPricing.model_validate(raw)
+    except Exception:  # a hand-edited row must not break the admin list
+        return None
+
+
+async def list_public_pricing(db: AsyncSession):
+    """Listed plans for /pricing, plus the sign-up trial terms. No auth."""
+    from app.schemas.pricing import PublicPlan, PublicPricing
+
+    plans = []
+    for p in (await db.execute(select(Plan))).scalars().all():
+        pricing = _pricing(p)
+        if pricing is None or not pricing.listed:
+            continue
+        plans.append(PublicPlan(id=p.id, name=p.name, price_monthly=p.price_monthly, pricing=pricing))
+    plans.sort(key=lambda item: (item.pricing.order, item.price_monthly or 0, item.name))
+    return PublicPricing(
+        trial_days=int(settings.SIGNUP_TRIAL_DAYS),
+        trial_features=[f for f in settings.SIGNUP_TRIAL_FEATURES if f in GRANTABLE_FEATURES],
+        plans=plans,
+    )
+
+
 async def list_plans(db: AsyncSession) -> List[PlanSchema]:
     result = await db.execute(select(Plan).order_by(Plan.created_at.asc()))
     plans = result.scalars().all()
@@ -257,6 +287,7 @@ async def list_plans(db: AsyncSession) -> List[PlanSchema]:
             price_monthly=getattr(p, "price_monthly", 0.0) or 0.0,
             price_per_credit=p.price_per_credit,
             feature_flags=p.feature_flags or {},
+            pricing=_pricing(p),
             created_by_admin_id=p.created_by_admin_id,
             created_at=_iso_utc(p.created_at)
         )
@@ -276,6 +307,7 @@ async def create_plan(db: AsyncSession, plan_in: PlanCreate, admin_id: str) -> P
         price_monthly=plan_in.price_monthly or 0.0,
         price_per_credit=plan_in.price_per_credit,
         feature_flags=plan_in.feature_flags,
+        pricing=plan_in.pricing.model_dump() if plan_in.pricing else None,
         created_by_admin_id=admin_id
     )
     db.add(new_plan)
@@ -292,6 +324,7 @@ async def create_plan(db: AsyncSession, plan_in: PlanCreate, admin_id: str) -> P
         price_monthly=new_plan.price_monthly,
         price_per_credit=new_plan.price_per_credit,
         feature_flags=new_plan.feature_flags or {},
+        pricing=_pricing(new_plan),
         created_by_admin_id=new_plan.created_by_admin_id,
         created_at=_iso_utc(new_plan.created_at)
     )
@@ -319,6 +352,8 @@ async def update_plan(db: AsyncSession, plan_id: str, plan_update: PlanUpdate) -
         plan.price_per_credit = plan_update.price_per_credit
     if plan_update.feature_flags is not None:
         plan.feature_flags = plan_update.feature_flags
+    if plan_update.pricing is not None:
+        plan.pricing = plan_update.pricing.model_dump()
 
     await db.commit()
     await db.refresh(plan)
@@ -334,6 +369,7 @@ async def update_plan(db: AsyncSession, plan_id: str, plan_update: PlanUpdate) -
         price_monthly=getattr(plan, "price_monthly", 0.0),
         price_per_credit=plan.price_per_credit,
         feature_flags=plan.feature_flags or {},
+        pricing=_pricing(plan),
         created_by_admin_id=plan.created_by_admin_id,
         created_at=_iso_utc(plan.created_at)
     )
