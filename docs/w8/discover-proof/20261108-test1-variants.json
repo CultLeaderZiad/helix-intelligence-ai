@@ -1,0 +1,21 @@
+{
+  "job_id": "123a9e5b-6a59-420c-82ba-ff7421e315ba",
+  "status": "succeeded",
+  "rows_stored": 15,
+  "concepts": 1,
+  "concept_sizes": [
+    15
+  ],
+  "variant_count_matches_concept": true,
+  "ads_with_multiple_copy_variants": 0,
+  "max_copy_variants": 1,
+  "permalink_present": 0,
+  "permalink_hosts": [],
+  "source_ad_id_present": 15,
+  "brands": [
+    "Nike"
+  ],
+  "landing_domains": [
+    "nike.com"
+  ]
+}

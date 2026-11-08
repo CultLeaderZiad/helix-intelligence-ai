@@ -4,6 +4,19 @@ Status: **passed on 2026-11-07** for `success`, `cancel` and `timeout`
 (Metapi, Neon branch `w8-rehearsal`, local API and jobs worker as restricted
 rehearsal logins). Not run against production.
 
+## Test 1, 2026-11-08: copy variants and grouping (≤ 15 Metapi records)
+
+Nike page id `15087023444`, advertiser search, `count` 15, after `dde27e8`.
+Evidence: `20261108-test1-variants.json`.
+
+| Check | Result |
+|---|---|
+| Ads stored | **15 of 15** (the old duplicate filter kept 2 on 2026-11-07) |
+| Grouping | 1 concept of 15 ads (all share one copy); `variant_count` = 15 on each |
+| Copy variants | none of these 15 ads had more than one body, so multi-variant display is **not yet shown live** (stub-tested only) |
+| Ad Library link | **0 of 15**: Metapi sent neither `snapshot_url` nor the older names. Fixed afterwards: the link falls back to `facebook.com/ads/library/?id=<ad id>`; these 15 rows keep no link |
+| Ad id, brand, landing | 15/15 ids; brand Nike; `nike.com` |
+
 ## Passing runs (2026-11-07, provider cap raised to 25 for the day)
 
 | Scenario | Query | Result | Evidence |

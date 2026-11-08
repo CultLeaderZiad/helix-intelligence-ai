@@ -390,7 +390,12 @@ class MetapiProvider(ScraperProvider):
 
             ad_id = _text(item.get("provider_id") or item.get("id") or item.get("ad_archive_id")) or None
             # snapshot_url is the documented field; the others are older names.
-            permalink = item.get("snapshot_url") or item.get("ad_snapshot_url") or item.get("permalink")
+            # Live results (2026-11-08) carried none of them, so fall back to
+            # the Ad Library's own link for the ad id.
+            permalink = (
+                item.get("snapshot_url") or item.get("ad_snapshot_url") or item.get("permalink")
+                or (f"https://www.facebook.com/ads/library/?id={ad_id}" if ad_id and ad_id.isdigit() else None)
+            )
 
             raw = RawCreative(
                     platform="meta",

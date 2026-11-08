@@ -53,6 +53,16 @@ def test_snapshot_link_landing_url_and_ad_id_use_documented_fields():
     assert raw.raw["countries"] == ["US"] and raw.raw["page_id"] == "15087023444"
 
 
+def test_ad_library_link_falls_back_to_the_ad_id_when_no_snapshot_field():
+    item = _metapi_ad(4242, "Run further.", "https://scontent.fbcdn.net/a.jpg")
+    del item["snapshot_url"]
+    (raw,) = _parse([item])
+    assert raw.permalink == "https://www.facebook.com/ads/library/?id=4242"
+    item["provider_id"] = "not-a-number"
+    (raw,) = _parse([item])
+    assert raw.permalink is None
+
+
 def test_variants_survive_normalization_and_reach_the_api_fields():
     item = _metapi_ad(5, "Run further.", "https://scontent.fbcdn.net/a.jpg", bodies=["Run further.", "Run faster."])
     (raw,) = _parse([item])
