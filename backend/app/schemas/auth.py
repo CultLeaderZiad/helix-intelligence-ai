@@ -80,6 +80,9 @@ class SessionResponse(BaseModel):
     org_id: Optional[str] = None
     org_name: Optional[str] = None
     access_status: Optional[str] = None
+    # When the workspace's current access ends (the 7-day trial, or an
+    # admin-set date). None = no end date or no access.
+    access_expires_at: Optional[str] = None
     is_platform_admin: bool = False
     has_completed_onboarding: bool = False
 

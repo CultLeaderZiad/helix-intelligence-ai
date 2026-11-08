@@ -91,6 +91,9 @@ function sessionToUser(session, fallbackName) {
     plan_id: session.plan_id ?? null,
     has_completed_onboarding: session.has_completed_onboarding ?? false,
     feature_flags: session.feature_flags ?? {},
+    access_status: session.access_status ?? null,
+    access_expires_at: session.access_expires_at ?? null,
+    is_platform_admin: session.is_platform_admin ?? false,
   }
 }
 

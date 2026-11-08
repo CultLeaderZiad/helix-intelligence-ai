@@ -18,8 +18,8 @@ export function AccessSection() {
           <p className="mt-2 text-sm leading-6 text-text-muted">{t("marketingNoCheckout")}</p>
           <p className="mt-2 text-sm leading-6 text-text-muted">{t("marketingAdminGrant")}</p>
         </div>
-        <Link to="/sign-in" className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-accent hover:text-white">
-          {t("marketingSignIn")}
+        <Link to="/sign-up" className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-accent hover:text-white">
+          {t("marketingStartTrial")}
           {isRtl ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
         </Link>
       </div>

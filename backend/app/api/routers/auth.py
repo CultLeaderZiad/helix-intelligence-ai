@@ -77,11 +77,13 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         credit_balance = max(credit_balance, 999999.0)
 
     access_status = "approved" if platform_admin else "pending"
+    access_expires_at = None
     if org and access_status != "approved":
         try:
             access_state = await billing_service.access_status_for_org(db, org.id)
             access_status = access_state["status"]
             if access_status == "approved":
+                access_expires_at = access_state.get("expires_at")
                 # Same merge as assert_can_spend: the active grant's flags
                 # win over the plan's, so the app shows what the server allows.
                 effective_flags.update({
@@ -112,6 +114,7 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         org_id=org.id if org else None,
         org_name=org.name if org else None,
         access_status=access_status,
+        access_expires_at=access_expires_at,
         is_platform_admin=platform_admin,
         has_completed_onboarding=getattr(user, "has_completed_onboarding", False)
     )

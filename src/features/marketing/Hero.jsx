@@ -20,10 +20,10 @@ export function Hero() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <Link
-              to="/sign-in"
+              to="/sign-up"
               className="inline-flex items-center gap-2 rounded bg-accent px-5 py-3 text-sm font-semibold text-black transition hover:brightness-110"
             >
-              {t("marketingSignIn")}
+              {t("marketingStartTrial")}
               {isRtl ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
             </Link>
             <a

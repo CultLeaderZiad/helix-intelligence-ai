@@ -5,6 +5,7 @@ import { Sidebar } from "./Sidebar"
 import { StatusBar } from "./StatusBar"
 import { Button } from "@/components/ui/Button"
 import { UpdatesBanner } from "@/components/UpdatesBanner"
+import { TrialBanner } from "@/components/TrialBanner"
 import { ScrollToTopButton } from "@/components/ui/ScrollToTopButton"
 import { useRoutePosition } from "@/hooks/useRoutePosition"
 import { useDialogFocus } from "@/hooks/useDialogFocus"
@@ -152,6 +153,7 @@ export function AppShell({ children }) {
             </div>
           </div>
 
+          <TrialBanner />
           <UpdatesBanner />
 
           {children}
