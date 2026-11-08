@@ -1,5 +1,16 @@
 # W8 release plan: compatibility, cutover and rollback (2026-11-08)
 
+> **Update 2026-11-08 (later): the live database is the Neon branch `dev`, not `production`.**
+> Render's environment export points `DATABASE_URL` at `ep-cold-rice-axydlqmv` (branch `dev`,
+> `br-gentle-star-axcrbk22`), revision `b1c2d3e4f5a6`, 230 users / 197 workspaces. Read every
+> "production" below as that branch. Rehearsed on a fresh copy of `dev` (`w8-dev-rehearsal-2`):
+> all migrations through `c9e1f3a5b7d0` applied, row counts unchanged except 2 workspace-less
+> patterns moved to `pattern_quarantine`, `alembic check` clean. The old backend (`main`) ran
+> against that migrated copy as the owner: health, sign-up/in, session, reads, and creating a
+> search, ticket and monitor all 200. The reconciliation migration is a no-op on the clean
+> `production` branch copy. Roles `helix_api_login` / `helix_worker_login` must be confirmed on
+> `dev` before cutover.
+
 Release candidate: `fix/core-W8` at `ea71a51` (CI green, all 8 jobs; docs-only commits may follow). Production Neon branch: `production` (`br-soft-mode-ax44ab32`), revision `c4d92e1f7a8b`, 1 user, 1 workspace, 2 plans. Nothing below has been run on production.
 
 ## 1. Evidence

@@ -9,7 +9,7 @@ Production's revision was `c4d92e1f7a8b`, read from the `w8-rehearsal` copy of
 production made on 2026-11-06. **Re-read it on production (read-only) right
 before release**; if it differs, recompute this list.
 
-From `c4d92e1f7a8b` to head `b8d0f2a4c6e9` there are **25 migrations**, applied
+From `c4d92e1f7a8b` to head `c9e1f3a5b7d0` there are **26 migrations**, applied
 in this order (`alembic upgrade head`, as the owner role):
 
 | # | Revision | What it does | Changes existing data? |
@@ -39,6 +39,7 @@ in this order (`alembic upgrade head`, as the owner role):
 | 23 | `e5a7c9d1f3b6` | Monthly per-provider record counter (added 2026-11-08) | no |
 | 24 | `a6c8e0f2b4d7` | Public pricing card per plan (added 2026-11-08) | no |
 | 25 | `b8d0f2a4c6e9` | Per-plan limits: searches/day, monitors, cadences (added 2026-11-08) | no |
+| 26 | `c9e1f3a5b7d0` | Reconcile drifted schemas: defaults, timestamptz, NOT NULL, cascade FKs; no-op on a clean DB (added 2026-11-08) | fills 1 NULL with its default on the live copy |
 
 Evidence: 1–19 were rehearsed in one run on 2026-11-06 (no errors, no rows
 changed: production then held 1 user, 1 workspace, no patterns or usage logs;
