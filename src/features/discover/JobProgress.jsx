@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/Button"
+import { JOB_STATUS, isJobCancelled } from "@/lib/constants"
 import { formatDuration, formatInt } from "@/lib/format"
 import { useLanguage } from "@/context/LanguageContext"
 import w5Discover from "@/i18n/w5Discover"
@@ -8,8 +9,8 @@ export function JobProgress({ job, query, onCancel = null, onRetry = null, cance
   const copy = w5Discover[lang] ?? w5Discover.en
   if (!job) return null
   const failed = job.status === "failed"
-  const timedOut = job.status === "timed_out" || (showRetry && job.status !== "succeeded" && job.status !== "failed" && job.status !== "cancelled" && job.status !== "canceled")
-  const cancelled = job.status === "cancelled" || job.status === "canceled"
+  const cancelled = isJobCancelled(job.status)
+  const timedOut = job.status === JOB_STATUS.TIMED_OUT || (showRetry && job.status !== JOB_STATUS.SUCCEEDED && job.status !== JOB_STATUS.FAILED && !cancelled)
   const done = job.status === "succeeded"
   const active = !failed && !timedOut && !cancelled && !done
   const canRetry = failed || timedOut || cancelled || showRetry

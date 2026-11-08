@@ -46,9 +46,37 @@ export const SCORE_THRESHOLD = {
   moderate: 6.0,
 }
 
+/**
+ * Discover job statuses (scrape_jobs.status). Mirrors SCRAPE_JOB in
+ * backend/app/core/state_machines.py; see docs/w8/state-machines.md.
+ * "canceled" (US spelling) is the work-item value and is accepted as a
+ * legacy alias for "cancelled".
+ */
 export const JOB_STATUS = {
   QUEUED: "queued",
   RUNNING: "running",
   SUCCEEDED: "succeeded",
   FAILED: "failed",
+  CANCELLED: "cancelled",
+  TIMED_OUT: "timed_out",
+}
+
+export const JOB_STATUS_CANCELED_ALIAS = "canceled"
+
+export const JOB_TERMINAL_STATUSES = Object.freeze([
+  JOB_STATUS.SUCCEEDED,
+  JOB_STATUS.FAILED,
+  JOB_STATUS.CANCELLED,
+  JOB_STATUS_CANCELED_ALIAS,
+  JOB_STATUS.TIMED_OUT,
+])
+
+/** @param {string | null | undefined} status */
+export function isJobCancelled(status) {
+  return status === JOB_STATUS.CANCELLED || status === JOB_STATUS_CANCELED_ALIAS
+}
+
+/** @param {string | null | undefined} status */
+export function isJobTerminal(status) {
+  return typeof status === "string" && JOB_TERMINAL_STATUSES.includes(status)
 }

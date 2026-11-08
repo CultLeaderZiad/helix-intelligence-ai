@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { discoverService } from "@/services"
 import { getAccessToken } from "@/services/sessionStore"
 import { JOB_POLL_INTERVAL_MS } from "@/services/config"
+import { isJobTerminal } from "@/lib/constants"
 import { pollDelay, useJobLifecycle } from "./useJobLifecycle"
 
 export const PHASE = {
@@ -22,13 +23,10 @@ export function isServiceRestart(error) {
 }
 
 const PAGE_SIZE = 20
-const TERMINAL_STATUSES = new Set([
-  "succeeded", "failed", "cancelled", "canceled", "timed_out",
-])
 const CANCELLING_STATUSES = new Set(["cancelling", "cancel_requested"])
 
 function isTerminalStatus(status) {
-  return TERMINAL_STATUSES.has(status)
+  return isJobTerminal(status)
 }
 
 function isDocumentVisible() {
