@@ -85,7 +85,7 @@ services:
     #   address" warning in the logs). Unset, every client shares one IP bucket.
     # DISCOVER_ENABLED – "false" pauses Discover and monitors (kill switch).
     # DISCOVER_DAILY_PROVIDER_CALL_CAP – paid provider calls allowed per UTC
-    #   day across all workspaces (default 300). Set on the API and worker.
+    #   day across all workspaces (default 6, Metapi Free). Set on the API and worker.
     # SIGN_IN_FAILURE_LIMIT / SIGN_IN_FAILURE_WINDOW_S / SIGN_IN_LOCK_S –
     #   per-account lock after repeated wrong passwords (defaults 10 / 900 / 900).
     # AUTH_DEV_RESET_RETURN – now DEFAULTS TO FALSE in code. Only set "true"

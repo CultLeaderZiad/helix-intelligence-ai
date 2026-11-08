@@ -28,11 +28,13 @@ from .search_draft import SearchDraft
 from .ad_archive import AdArchiveEntry
 from .provider_call_budget import ProviderCallBudget
 from .workspace_daily_usage import WorkspaceDailyUsage
+from .provider_record_budget import ProviderRecordBudget
 
 __all__ = [
     "Base",
     "ProviderCallBudget",
     "WorkspaceDailyUsage",
+    "ProviderRecordBudget",
     "User",
     "Organization",
     "ScrapeJob",

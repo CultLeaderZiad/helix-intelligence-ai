@@ -628,7 +628,7 @@ API and the worker.
   `503 discover_paused` before any charge, monitors are not claimed or run,
   and a queued job stops before its first provider call, failing with
   `discover_paused` and a refund.
-- `DISCOVER_DAILY_PROVIDER_CALL_CAP` (default 300) caps paid calls per UTC day:
+- `DISCOVER_DAILY_PROVIDER_CALL_CAP` (default 6) caps paid calls per UTC day:
   each ad-library provider attempt (Metapi, Adyntel, Meta Graph, Apify) and
   each query-translation model call reserves one slot in `provider_call_budget`
   first. Past the cap the call is not made, the job fails with
@@ -671,7 +671,7 @@ workspaces.
     `DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY` (default 50) a new search is
     refused with `429 daily_search_cap_reached`.
   - `provider_calls` counts paid provider calls. Over
-    `DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE` (default 60) the call is
+    `DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE` (default 6) the call is
     refused, so one workspace cannot use up the global budget.
 - An identical search that found no ads within
   `DISCOVER_ZERO_RESULT_CACHE_MINUTES` (default 60) is shown again without a

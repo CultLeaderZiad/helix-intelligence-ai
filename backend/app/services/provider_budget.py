@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 PAUSED = "paused"
 BUDGET = "budget"
 WORKSPACE_BUDGET = "workspace_budget"
+RECORD_BUDGET = "record_budget"
 
 _DAY = "(now() AT TIME ZONE 'utc')::date"
 _RESERVE_SQL = text(
@@ -115,4 +116,39 @@ async def reserve_search_slot(org_id: str) -> bool:
             return True
     except Exception as exc:  # fail closed
         logger.error("Search counter unavailable; refusing search for %s: %s", workspace, exc)
+        return False
+
+
+_RECORDS_SQL = text(
+    "INSERT INTO provider_record_budget (provider, period_start, records, updated_at) "
+    "VALUES (:provider, date_trunc('month', now() AT TIME ZONE 'utc')::date, :n, now()) "
+    "ON CONFLICT (provider, period_start) DO UPDATE SET "
+    "records = provider_record_budget.records + :n, updated_at = now() "
+    "RETURNING records"
+)
+
+
+async def reserve_provider_records(provider: str, records: int, monthly_budget: int) -> bool:
+    """Reserve ``records`` against a provider's monthly record budget.
+
+    Metapi bills records, so each task reserves its ``count`` before it is
+    created. Refused reservations are rolled back; errors refuse (fail closed).
+    Refunds never lower this counter.
+    """
+    n = max(0, int(records))
+    if monthly_budget <= 0 or n == 0:
+        return n == 0 and monthly_budget > 0
+    from app.db.session import async_session_maker
+
+    try:
+        async with async_session_maker() as db:
+            used = (await db.execute(_RECORDS_SQL, {"provider": provider, "n": n})).scalar_one()
+            if used > monthly_budget:
+                await db.rollback()
+                logger.warning("%s monthly record budget reached (%s); refused %s records", provider, monthly_budget, n)
+                return False
+            await db.commit()
+            return True
+    except Exception as exc:  # fail closed
+        logger.error("Record budget unavailable; refusing %s task: %s", provider, exc)
         return False

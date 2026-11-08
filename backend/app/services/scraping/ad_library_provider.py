@@ -140,6 +140,12 @@ class AdLibraryProvider(ScraperProvider):
                     filters=filters,
                     progress_callback=progress_callback
                 )
+                if getattr(self.metapi_provider, "records_refused", False) and not creatives:
+                    # Monthly record budget reached: stop like the daily cap
+                    # (job fails with provider_budget and is refunded).
+                    self.stopped_reason = "budget"
+                    self.sources_tried.append("Metapi (not called: record budget)")
+                    return []
                 outcome = getattr(self.metapi_provider, "last_outcome", "empty")
                 if outcome == "failure":
                     logger.warning("[AdDiscovery] Metapi failed; not counting the call as a successful empty result")

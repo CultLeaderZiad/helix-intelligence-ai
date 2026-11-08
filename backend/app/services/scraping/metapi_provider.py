@@ -115,6 +115,7 @@ class MetapiProvider(ScraperProvider):
 
         self.last_outcome = "failure"
         self.last_mode = "keyword"
+        self.records_refused = False
         self.resolved_page_id = None
         self.resolved_page_name = None
         if not self.metapi_api_key:
@@ -192,7 +193,15 @@ class MetapiProvider(ScraperProvider):
         Results are fetched only for a finished task; an unfinished one is a
         provider failure the job may retry, never an empty result.
         """
+        from app.services import provider_budget
         from app.services.safe_fetch import safe_request_async
+
+        # Metapi bills records: reserve this task's count first.
+        if not await provider_budget.reserve_provider_records(
+            "metapi", int(payload.get("count") or 50), int(settings.METAPI_MONTHLY_RECORD_BUDGET)
+        ):
+            self.records_refused = True
+            return None
 
         headers = {
             "Authorization": "Bearer " + self.metapi_api_key.strip().strip('"').strip("'"),

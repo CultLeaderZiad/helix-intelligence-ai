@@ -35,5 +35,9 @@ async def _provider_budget_allows_calls(request, monkeypatch):
     async def _allow(_provider, org_id=None):
         return None
 
+    async def _allow_records(_provider, _records, _budget):
+        return True
+
     monkeypatch.setattr(provider_budget, "reserve_provider_call", _allow)
+    monkeypatch.setattr(provider_budget, "reserve_provider_records", _allow_records)
     yield

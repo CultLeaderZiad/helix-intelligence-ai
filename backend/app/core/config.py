@@ -199,12 +199,12 @@ class Settings(BaseSettings):
     DISCOVER_JOB_DEADLINE_S: int = int(os.getenv("DISCOVER_JOB_DEADLINE_S", "600"))
     # Global hard stop for paid provider calls (see app/services/provider_budget.py).
     DISCOVER_ENABLED: bool = os.getenv("DISCOVER_ENABLED", "true").lower() in ("true", "1", "yes")
-    DISCOVER_DAILY_PROVIDER_CALL_CAP: int = int(os.getenv("DISCOVER_DAILY_PROVIDER_CALL_CAP", "300"))
+    DISCOVER_DAILY_PROVIDER_CALL_CAP: int = int(os.getenv("DISCOVER_DAILY_PROVIDER_CALL_CAP", "6"))
     DISCOVER_MAX_QUERY_LENGTH: int = 300
     # Per-workspace daily caps, counted in workspace_daily_usage and never
     # lowered by refunds (see app/services/provider_budget.py).
-    DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY: int = int(os.getenv("DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY", "50"))
-    DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE: int = int(os.getenv("DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE", "60"))
+    DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY: int = int(os.getenv("DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY", "3"))
+    DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE: int = int(os.getenv("DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE", "6"))
     # An identical search that found no ads is reused for this long instead
     # of calling the provider again.
     DISCOVER_ZERO_RESULT_CACHE_MINUTES: int = int(os.getenv("DISCOVER_ZERO_RESULT_CACHE_MINUTES", "60"))
@@ -213,7 +213,12 @@ class Settings(BaseSettings):
     METAPI_POLL_TIMEOUT_S: int = int(os.getenv("METAPI_POLL_TIMEOUT_S", "150"))
     # Ads a brand keyword search collects to find the brand's own advertiser
     # page before loading that page's ads (billed as Metapi records).
-    METAPI_RESOLVE_COUNT: int = max(15, int(os.getenv("METAPI_RESOLVE_COUNT", "30")))
+    METAPI_RESOLVE_COUNT: int = max(15, int(os.getenv("METAPI_RESOLVE_COUNT", "15")))
+    # Metapi bills records (ads returned). Each task reserves its `count`
+    # against this per-calendar-month (UTC) budget before it is created.
+    # Defaults sized for Metapi Free (3,000/month). Set it to the plan's
+    # remaining records when starting mid-period.
+    METAPI_MONTHLY_RECORD_BUDGET: int = int(os.getenv("METAPI_MONTHLY_RECORD_BUDGET", "3000"))
     # Permanent ad archive (see archive_service). The per-workspace cap bounds
     # storage; media larger than the byte cap keeps its text only.
     ARCHIVE_ENABLED: bool = os.getenv("ARCHIVE_ENABLED", "true").lower() == "true"
