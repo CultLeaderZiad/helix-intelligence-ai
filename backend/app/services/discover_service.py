@@ -235,7 +235,11 @@ def _isoformat_utc(value: datetime.datetime) -> str:
     return value.isoformat().replace("+00:00", "Z")
 
 
-DISCOVER_TERMINAL_STATUSES = {"succeeded", "failed", "cancelled", "timed_out"}
+from app.core.state_machines import SCRAPE_JOB
+
+# Kept as a set for callers; the transition table in app.core.state_machines
+# is the source of truth.
+DISCOVER_TERMINAL_STATUSES = set(SCRAPE_JOB.terminal)
 
 
 async def _lock_active_discovery_job(
@@ -297,6 +301,7 @@ def _set_discovery_terminal(
     error: Optional[str] = None,
     stage_label: Optional[str] = None,
 ) -> None:
+    SCRAPE_JOB.check(job.status, status)
     job.status = status
     job.stage = status
     job.stage_label = stage_label or error or status.replace("_", " ").title()
@@ -1028,7 +1033,7 @@ async def _run_discovery_pipeline(
                         )
                         if job is None:
                             return
-                        job.status = "queued"
+                        job.status = SCRAPE_JOB.check(job.status, "queued")
                         job.failure_kind = None
                         job.error_msg = None
                         job.stage = "queued"
