@@ -254,6 +254,18 @@ def _pricing(plan):
         return None
 
 
+def _limits(plan):
+    from app.schemas.pricing import PlanLimits
+
+    raw = getattr(plan, "limits", None)
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return PlanLimits.model_validate(raw)
+    except Exception:
+        return None
+
+
 async def list_public_pricing(db: AsyncSession):
     """Listed plans for /pricing, plus the sign-up trial terms. No auth."""
     from app.schemas.pricing import PublicPlan, PublicPricing
@@ -288,6 +300,7 @@ async def list_plans(db: AsyncSession) -> List[PlanSchema]:
             price_per_credit=p.price_per_credit,
             feature_flags=p.feature_flags or {},
             pricing=_pricing(p),
+            limits=_limits(p),
             created_by_admin_id=p.created_by_admin_id,
             created_at=_iso_utc(p.created_at)
         )
@@ -308,6 +321,7 @@ async def create_plan(db: AsyncSession, plan_in: PlanCreate, admin_id: str) -> P
         price_per_credit=plan_in.price_per_credit,
         feature_flags=plan_in.feature_flags,
         pricing=plan_in.pricing.model_dump() if plan_in.pricing else None,
+        limits=plan_in.limits.model_dump() if plan_in.limits else None,
         created_by_admin_id=admin_id
     )
     db.add(new_plan)
@@ -325,6 +339,7 @@ async def create_plan(db: AsyncSession, plan_in: PlanCreate, admin_id: str) -> P
         price_per_credit=new_plan.price_per_credit,
         feature_flags=new_plan.feature_flags or {},
         pricing=_pricing(new_plan),
+            limits=_limits(new_plan),
         created_by_admin_id=new_plan.created_by_admin_id,
         created_at=_iso_utc(new_plan.created_at)
     )
@@ -354,6 +369,8 @@ async def update_plan(db: AsyncSession, plan_id: str, plan_update: PlanUpdate) -
         plan.feature_flags = plan_update.feature_flags
     if plan_update.pricing is not None:
         plan.pricing = plan_update.pricing.model_dump()
+    if plan_update.limits is not None:
+        plan.limits = plan_update.limits.model_dump()
 
     await db.commit()
     await db.refresh(plan)
@@ -370,6 +387,7 @@ async def update_plan(db: AsyncSession, plan_id: str, plan_update: PlanUpdate) -
         price_per_credit=plan.price_per_credit,
         feature_flags=plan.feature_flags or {},
         pricing=_pricing(plan),
+            limits=_limits(plan),
         created_by_admin_id=plan.created_by_admin_id,
         created_at=_iso_utc(plan.created_at)
     )

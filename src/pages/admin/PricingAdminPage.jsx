@@ -30,6 +30,28 @@ export function normalizeCard(card) {
   }
 }
 
+/** Admin form values -> API limits. Blank means "use the global default" (null). */
+export function limitsFromForm(form) {
+  const num = (v) => (v === "" || v === null || v === undefined ? null : Math.max(0, Math.floor(Number(v)) || 0))
+  const cadences = ["daily", "weekly"].filter((c) => form.cadences?.[c])
+  return {
+    searches_per_day: num(form.searches),
+    monitors: num(form.monitors),
+    monitor_cadences: cadences.length === 0 || cadences.length === 2 ? null : cadences,
+  }
+}
+
+/** API limits -> admin form values. */
+export function limitsToForm(limits) {
+  const l = limits || {}
+  const allowed = l.monitor_cadences
+  return {
+    searches: l.searches_per_day ?? "",
+    monitors: l.monitors ?? "",
+    cadences: { daily: !allowed || allowed.includes("daily"), weekly: !allowed || allowed.includes("weekly") },
+  }
+}
+
 /** One feature per line; blank lines dropped. */
 export function linesToList(text) {
   return String(text || "")
@@ -69,6 +91,7 @@ function PlanEditor({ plan, lang, onClose, onSaved }) {
     en: normalizeCard(plan.pricing).features.en.join("\n"),
     ar: normalizeCard(plan.pricing).features.ar.join("\n"),
   }))
+  const [limits, setLimits] = useState(() => limitsToForm(plan.limits))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
@@ -80,6 +103,7 @@ function PlanEditor({ plan, lang, onClose, onSaved }) {
       await adminService.updatePlan(plan.id, {
         name: name.trim() || plan.name,
         price_monthly: Number(price) || 0,
+        limits: limitsFromForm(limits),
         pricing: {
           ...card,
           order: Math.max(0, Math.min(99, Number(card.order) || 0)),
@@ -136,6 +160,47 @@ function PlanEditor({ plan, lang, onClose, onSaved }) {
               />
             </label>
           </div>
+
+          <fieldset className="rounded border border-slate-800 bg-slate-950/40 p-3">
+            <legend className="px-1 font-mono text-[11px] text-slate-400">{t("Enforced limits (blank = default)")}</legend>
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-200">
+              <label className="flex items-center gap-2">
+                {t("Searches a day")}
+                <input
+                  type="number"
+                  min="0"
+                  max="1000"
+                  value={limits.searches}
+                  onChange={(e) => setLimits({ ...limits, searches: e.target.value })}
+                  className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                {t("Active monitors")}
+                <input
+                  type="number"
+                  min="0"
+                  max="500"
+                  value={limits.monitors}
+                  onChange={(e) => setLimits({ ...limits, monitors: e.target.value })}
+                  className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
+                />
+              </label>
+              {["daily", "weekly"].map((cad) => (
+                <label key={cad} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={limits.cadences[cad]}
+                    onChange={(e) => setLimits({ ...limits, cadences: { ...limits.cadences, [cad]: e.target.checked } })}
+                  />
+                  {t(cad === "daily" ? "Daily monitors" : "Weekly monitors")}
+                </label>
+              ))}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500">
+              {t("Applied on the server to every workspace on this plan. Searches also cap provider calls at twice this number.")}
+            </p>
+          </fieldset>
 
           <div className="flex flex-wrap items-center gap-4 text-xs text-slate-200">
             <label className="flex items-center gap-2">
@@ -322,7 +387,7 @@ export function PricingAdminPage() {
               <th className="px-4 py-3 text-start">{t("Plan")}</th>
               <th className="px-4 py-3 text-start">{t("Monthly price")}</th>
               <th className="px-4 py-3 text-start">{t("On pricing page")}</th>
-              <th className="px-4 py-3 text-start">{t("Features")}</th>
+              <th className="px-4 py-3 text-start">{t("Limits")}</th>
               <th className="px-4 py-3 text-end">{t("Actions")}</th>
             </tr>
           </thead>
@@ -357,7 +422,9 @@ export function PricingAdminPage() {
                         <span className="text-slate-500">{t("Hidden")}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-400">{card.features.en.length || card.features.ar.length}</td>
+                    <td className="px-4 py-3 font-mono text-slate-400">
+                      {plan.limits?.searches_per_day ?? "—"} / {t("day")} · {plan.limits?.monitors ?? "—"} {t("monitors")}
+                    </td>
                     <td className="px-4 py-3 text-end">
                       <button
                         type="button"

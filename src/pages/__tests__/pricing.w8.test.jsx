@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom"
 import { describe, expect, it } from "vitest"
 import { PlanCard, formatPrice } from "../PricingPage"
 import { localized, localizedList, en, ar } from "@/i18n/pricing"
-import { linesToList, normalizeCard } from "../admin/PricingAdminPage"
+import { limitsFromForm, limitsToForm, linesToList, normalizeCard } from "../admin/PricingAdminPage"
 
 describe("pricing page", () => {
   it("renders a plan as a reflective card with its price, features and call to action", () => {
@@ -56,5 +56,27 @@ describe("admin pricing editor helpers", () => {
 
   it("turns one feature per line into a list, dropping blanks", () => {
     expect(linesToList("  5 monitors \n\nUnlimited boards\n")).toEqual(["5 monitors", "Unlimited boards"])
+  })
+})
+
+
+describe("admin plan limits form", () => {
+  it("sends blanks as defaults and one cadence only when restricted", () => {
+    expect(limitsFromForm({ searches: "", monitors: "", cadences: { daily: true, weekly: true } })).toEqual({
+      searches_per_day: null,
+      monitors: null,
+      monitor_cadences: null,
+    })
+    expect(limitsFromForm({ searches: "5", monitors: "2", cadences: { daily: false, weekly: true } })).toEqual({
+      searches_per_day: 5,
+      monitors: 2,
+      monitor_cadences: ["weekly"],
+    })
+  })
+
+  it("round-trips the API shape", () => {
+    const form = limitsToForm({ searches_per_day: 20, monitors: 10, monitor_cadences: ["daily"] })
+    expect(form).toEqual({ searches: 20, monitors: 10, cadences: { daily: true, weekly: false } })
+    expect(limitsToForm(null).cadences).toEqual({ daily: true, weekly: true })
   })
 })

@@ -183,6 +183,8 @@ async def create_monitor(
             detail=f"Unknown cadence '{cadence}'. Expected one of {sorted(CADENCE_INTERVALS)}.",
         )
 
+    await _enforce_plan_monitor_limits(db, org_id, cadence, activating=True)
+
     existing = await db.scalar(
         select(func.count(Monitor.id)).where(
             Monitor.org_id == org_id, Monitor.query == clean_query, Monitor.status == "active"
@@ -238,10 +240,49 @@ async def list_monitors(db: AsyncSession, org_id: str) -> List[Dict[str, Any]]:
     return [serialize_monitor(m, latest.get(m.id)) for m in monitors]
 
 
+async def _enforce_plan_monitor_limits(
+    db: AsyncSession, org_id: str, cadence: Optional[str], activating: bool, exclude_id: Optional[str] = None
+) -> None:
+    """Plan limits (plans.limits): allowed cadences and active monitor count. 403 when over."""
+    from app.services.provider_budget import plan_limits
+
+    limits = await plan_limits(db, org_id)
+    allowed = limits.get("monitor_cadences")
+    if cadence and allowed and cadence not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_cadence_not_allowed",
+                "message": f"Your plan allows {', '.join(allowed)} monitors.",
+                "allowed": allowed,
+            },
+        )
+    cap = limits.get("monitors")
+    if activating and cap is not None:
+        query = select(func.count(Monitor.id)).where(Monitor.org_id == org_id, Monitor.status == "active")
+        if exclude_id:
+            query = query.where(Monitor.id != exclude_id)
+        active = await db.scalar(query) or 0
+        if active >= int(cap):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "plan_monitor_limit",
+                    "message": f"Your plan allows {cap} active monitors. Pause or delete one first.",
+                    "limit": int(cap),
+                },
+            )
+
+
 async def update_monitor(
     db: AsyncSession, monitor_id: str, org_id: str, changes: Dict[str, Any]
 ) -> Dict[str, Any]:
     monitor = await _load_owned(db, monitor_id, org_id)
+
+    new_cadence = changes.get("cadence")
+    activating = changes.get("status") == "active" and monitor.status != "active"
+    if new_cadence is not None or activating:
+        await _enforce_plan_monitor_limits(db, org_id, new_cadence, activating, exclude_id=monitor.id)
 
     if "cadence" in changes and changes["cadence"] is not None:
         if changes["cadence"] not in CADENCE_INTERVALS:

@@ -8,6 +8,9 @@
   so a single workspace cannot use up the global budget.
 * ``DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY`` caps searches a workspace
   starts per UTC day (cache hits do not count).
+* A workspace's plan can override both per-workspace caps (``plans.limits``:
+  ``searches_per_day``; its provider-call cap becomes twice that). The global
+  daily cap still applies on top.
 
 Counters live in ``provider_call_budget`` (global) and
 ``workspace_daily_usage`` (per workspace). Each reservation is an atomic upsert
@@ -54,6 +57,33 @@ _WORKSPACE_SEARCH_SQL = text(
 )
 
 
+_PLAN_LIMITS_SQL = text(
+    "SELECT p.limits FROM organizations o JOIN plans p ON p.id = o.plan_id WHERE o.id = :org_id"
+)
+
+
+async def plan_limits(db, org_id: Optional[str]) -> dict:
+    """The workspace plan's limits (plans.limits), or {} for global defaults."""
+    workspace = _org(org_id)
+    if not workspace:
+        return {}
+    row = (await db.execute(_PLAN_LIMITS_SQL, {"org_id": workspace})).first()
+    limits = row[0] if row else None
+    return limits if isinstance(limits, dict) else {}
+
+
+def search_cap(limits: dict) -> int:
+    value = limits.get("searches_per_day")
+    return int(settings.DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY) if value is None else int(value)
+
+
+def workspace_call_cap(limits: dict) -> int:
+    """A brand search can use two provider tasks, so a plan's cap is 2x its searches."""
+    base = int(settings.DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE)
+    value = limits.get("searches_per_day")
+    return base if value is None else max(base, 2 * int(value))
+
+
 def discover_paused() -> bool:
     return not settings.DISCOVER_ENABLED
 
@@ -81,7 +111,7 @@ async def reserve_provider_call(provider: str, org_id: Optional[str] = None) -> 
                 logger.warning("Daily provider call cap reached (%s); refused %s call", cap, provider)
                 return BUDGET
             if workspace:
-                workspace_cap = int(settings.DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE)
+                workspace_cap = workspace_call_cap(await plan_limits(db, workspace))
                 used = (await db.execute(_WORKSPACE_CALL_SQL, {"org_id": workspace})).scalar_one()
                 if workspace_cap <= 0 or used > workspace_cap:
                     await db.rollback()
@@ -100,14 +130,16 @@ async def reserve_search_slot(org_id: str) -> bool:
     Committed on its own so it stays counted even if the search later fails
     or is refunded.
     """
-    cap = int(settings.DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY)
     workspace = _org(org_id)
-    if cap <= 0 or workspace is None:
+    if workspace is None:
         return False
     from app.db.session import async_session_maker
 
     try:
         async with async_session_maker() as db:
+            cap = search_cap(await plan_limits(db, workspace))
+            if cap <= 0:
+                return False
             used = (await db.execute(_WORKSPACE_SEARCH_SQL, {"org_id": workspace})).scalar_one()
             if used > cap:
                 await db.rollback()

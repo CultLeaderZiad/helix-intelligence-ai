@@ -48,6 +48,29 @@ class PlanPricing(BaseModel):
     period: Localized = Localized()
 
 
+class PlanLimits(BaseModel):
+    """Server-enforced limits for workspaces on this plan. None = global default.
+
+    searches_per_day: new Discover searches per workspace per UTC day (cache
+    hits are free). The workspace's provider-call cap becomes twice this, as
+    a brand search can use two provider tasks.
+    monitors: active monitors per workspace.
+    monitor_cadences: cadences the plan may use ("daily", "weekly").
+    """
+
+    searches_per_day: Optional[int] = Field(None, ge=0, le=1000)
+    monitors: Optional[int] = Field(None, ge=0, le=500)
+    monitor_cadences: Optional[List[Literal["daily", "weekly"]]] = None
+
+    @field_validator("monitor_cadences")
+    @classmethod
+    def _cadences(cls, value):
+        if value is None:
+            return None
+        out = sorted(set(value))
+        return out or None
+
+
 class PublicPlan(BaseModel):
     id: str
     name: str

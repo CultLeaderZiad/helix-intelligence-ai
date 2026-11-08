@@ -21,6 +21,8 @@ class Plan(Base):
     # Public pricing card: listed, order, tagline/features/badge (EN + AR),
     # highlight, cta. Edited by full admins; see app/schemas/pricing.py.
     pricing = Column(JSON, nullable=True)
+    # Enforced usage limits; see app/schemas/pricing.PlanLimits. None = global defaults.
+    limits = Column(JSON, nullable=True)
     created_by_admin_id = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
