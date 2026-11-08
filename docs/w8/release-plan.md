@@ -1,6 +1,6 @@
 # W8 release plan: compatibility, cutover and rollback (2026-11-08)
 
-Release candidate: `fix/core-W8` at `7ca5c2a`. Production Neon branch: `production` (`br-soft-mode-ax44ab32`), revision `c4d92e1f7a8b`, 1 user, 1 workspace, 2 plans. Nothing below has been run on production.
+Release candidate: `fix/core-W8` at `ea71a51` (CI green, all 8 jobs; docs-only commits may follow). Production Neon branch: `production` (`br-soft-mode-ax44ab32`), revision `c4d92e1f7a8b`, 1 user, 1 workspace, 2 plans. Nothing below has been run on production.
 
 ## 1. Evidence
 
