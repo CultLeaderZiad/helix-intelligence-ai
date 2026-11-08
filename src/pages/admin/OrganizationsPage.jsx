@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { useLanguage } from "@/context/LanguageContext"
 import { adminAccessLabel, adminMessage, getAdminAccessStatus } from "@/i18n/adminMessages"
+import { ManageAccessDialog, daysLeft, toDateInput } from "@/features/admin/ManageAccessDialog"
 
 export function OrganizationsPage() {
   const { lang, isRtl } = useLanguage()
@@ -25,6 +26,7 @@ export function OrganizationsPage() {
   const [grantReason, setGrantReason] = useState(() => adminMessage(lang, "Admin manual grant"))
   const [submittingGrant, setSubmittingGrant] = useState(false)
 
+  const [accessModalOrg, setAccessModalOrg] = useState(null)
   const [flagsModalOrg, setFlagsModalOrg] = useState(null)
   const [currentFlags, setCurrentFlags] = useState({})
   const [submittingFlags, setSubmittingFlags] = useState(false)
@@ -185,6 +187,16 @@ export function OrganizationsPage() {
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-xs">
                       {adminAccessLabel(lang, getAdminAccessStatus(org))}
                     </span>
+                    {org.access_status === "approved" ? (
+                      <div className="mt-1 text-[11px] text-slate-500">
+                        {org.access_expires_at
+                          ? adminMessage(lang, "until {date} · {days} days left", {
+                              date: toDateInput(org.access_expires_at),
+                              days: daysLeft(org.access_expires_at),
+                            })
+                          : adminMessage(lang, "no end date")}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-1.5 text-amber-300 font-bold">
@@ -195,9 +207,13 @@ export function OrganizationsPage() {
                   <td className="py-3.5 px-4 text-slate-400">
                     {Number(org.credits_used || 0).toFixed(1)} cr
                   </td>
-                  <td className="py-3.5 px-4">
-                  </td>
                   <td className="py-3.5 px-4 text-end space-x-2">
+                    <button
+                      onClick={() => setAccessModalOrg(org)}
+                      className="px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded transition text-xs"
+                    >
+                      {adminMessage(lang, "Access")}
+                    </button>
                     <button
                       onClick={() => {
                         setGrantModalOrg(org)
@@ -225,6 +241,19 @@ export function OrganizationsPage() {
         </table>
         </div>
       </div>
+
+      {accessModalOrg && (
+        <ManageAccessDialog
+          org={accessModalOrg}
+          lang={lang}
+          onClose={() => setAccessModalOrg(null)}
+          onSaved={(msg) => {
+            setAccessModalOrg(null)
+            showToast(msg)
+            fetchAll()
+          }}
+        />
+      )}
 
       {/* Grant Credits Modal */}
       {grantModalOrg && (

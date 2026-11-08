@@ -90,6 +90,9 @@ class AdminOrganizationRow(BaseModel):
     effective_feature_flags: Dict[str, Any]
     status: str
     access_status: Optional[str] = None
+    # Active grant: when it ends (None = no end date) and which features it allows.
+    access_expires_at: Optional[str] = None
+    access_features: Dict[str, bool] = {}
     total_jobs: int = 0
 
 class GrantCreditsRequest(BaseModel):

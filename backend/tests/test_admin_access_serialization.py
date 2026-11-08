@@ -28,9 +28,28 @@ def test_access_status_fields_are_optional_for_unavailable_workspaces():
 
 
 @pytest.mark.asyncio
-async def test_access_status_serializer_returns_none_without_workspace(monkeypatch):
-    async def unexpected_lookup(_db, _org_id):
-        raise AssertionError("an absent workspace must not trigger access lookup")
+async def test_batched_access_lookup_skips_absent_workspaces():
+    from app.services import billing_service
 
-    monkeypatch.setattr(admin_service, "access_status_for_org", unexpected_lookup)
-    assert await admin_service._organization_access_status(object(), None) is None
+    class NoQueries:
+        async def execute(self, *_a, **_k):
+            raise AssertionError("no workspace ids must not query")
+
+    assert await billing_service.access_states_for_orgs(NoQueries(), [None, ""]) == {}
+
+
+def test_access_state_is_the_same_logic_for_one_and_many():
+    import datetime as dt
+    from types import SimpleNamespace
+
+    from app.services.billing_service import _access_state
+
+    now = dt.datetime(2026, 11, 8, tzinfo=dt.timezone.utc)
+    grant = SimpleNamespace(
+        revoked_at=None, expires_at=now + dt.timedelta(days=7), granted_at=now,
+        granted_by_user_id="u", feature_flags={"discover": True}, plan_id="p",
+    )
+    assert _access_state(grant, None, now)["status"] == "approved"
+    grant.expires_at = now - dt.timedelta(seconds=1)
+    assert _access_state(grant, None, now)["status"] == "expired"
+    assert _access_state(None, None, now)["status"] == "pending"

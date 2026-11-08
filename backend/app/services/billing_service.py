@@ -100,6 +100,35 @@ async def access_status_for_org(db: AsyncSession, org_id: str) -> Dict[str, Any]
             .order_by(AccessRequest.created_at.desc())
         )
     ).scalars().first()
+    return _access_state(grant, request_row, now)
+
+
+async def access_states_for_orgs(db: AsyncSession, org_ids) -> Dict[str, Dict[str, Any]]:
+    """access_status_for_org for many workspaces in two queries (admin lists)."""
+    from app.models.access_grant import AccessRequest, OrganizationAccessGrant
+
+    ids = list({str(i) for i in org_ids if i})
+    if not ids:
+        return {}
+    now = datetime.datetime.now(datetime.timezone.utc)
+    grants: Dict[str, Any] = {}
+    for g in (await db.execute(
+        select(OrganizationAccessGrant)
+        .where(OrganizationAccessGrant.org_id.in_(ids))
+        .order_by(OrganizationAccessGrant.granted_at.desc())
+    )).scalars():
+        grants.setdefault(g.org_id, g)
+    requests: Dict[str, Any] = {}
+    for r in (await db.execute(
+        select(AccessRequest)
+        .where(AccessRequest.org_id.in_(ids))
+        .order_by(AccessRequest.created_at.desc())
+    )).scalars():
+        requests.setdefault(r.org_id, r)
+    return {i: _access_state(grants.get(i), requests.get(i), now) for i in ids}
+
+
+def _access_state(grant, request_row, now) -> Dict[str, Any]:
     decision_at = None
     if grant is not None:
         # A future expiry is not a decision yet. Compare a later request to

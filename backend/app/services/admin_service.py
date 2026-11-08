@@ -22,7 +22,7 @@ from app.models.api_usage import ExternalApiUsage
 from app.models.notification import Notification
 from app.core.config import settings
 from app.core.security import create_access_token
-from app.services.billing_service import access_status_for_org, is_platform_admin
+from app.services.billing_service import access_states_for_orgs, is_platform_admin
 
 
 async def _primary_org_id(db: AsyncSession, user_id: str) -> Optional[str]:
@@ -79,13 +79,6 @@ def _iso_utc(value: Optional[datetime.datetime]) -> Optional[str]:
     else:
         value = value.astimezone(datetime.timezone.utc)
     return value.isoformat().replace("+00:00", "Z")
-
-
-async def _organization_access_status(db: AsyncSession, org_id: Optional[str]) -> Optional[str]:
-    if org_id is None:
-        return None
-    state = await access_status_for_org(db, org_id)
-    return state.get("status")
 
 
 GRANTABLE_FEATURES = frozenset({
@@ -383,11 +376,13 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
     job_counts = dict(job_counts_result.all())
 
     orgs = []
+    access_by_org = await access_states_for_orgs(db, [org.id for org, _owner, _plan in rows])
     for org, owner, plan in rows:
         effective_flags = dict(plan.feature_flags or {}) if plan else {}
         if org.custom_feature_flags:
             effective_flags.update(org.custom_feature_flags)
 
+        access = access_by_org.get(str(org.id)) or {"status": "pending"}
         orgs.append(AdminOrganizationRow(
             id=org.id,
             name=org.name,
@@ -401,7 +396,11 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
             custom_feature_flags=_redact_flags(org.custom_feature_flags),
             effective_feature_flags=_redact_flags(effective_flags),
             status=org.status or "active",
-            access_status=await _organization_access_status(db, org.id),
+            access_status=access["status"],
+            access_expires_at=access.get("expires_at") if access["status"] == "approved" else None,
+            access_features={
+                k: v is True for k, v in (access.get("feature_flags") or {}).items()
+            } if access["status"] == "approved" else {},
             total_jobs=job_counts.get(org.id, 0)
         ))
     return orgs
@@ -616,6 +615,7 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
     rows = result.all()
 
     users = []
+    user_access = await access_states_for_orgs(db, [org.id for _u, org, _p in rows if org])
     for user, org, plan in rows:
         users.append(AdminUserRow(
             id=user.id,
@@ -628,7 +628,7 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
             organization_name=org.name if org else None,
             plan_id=org.plan_id if org else None,
             plan_name=plan.name if plan else None,
-            access_status=await _organization_access_status(db, org.id if org else None),
+            access_status=(user_access.get(str(org.id)) or {}).get("status") if org else None,
             created_at=_iso_utc(user.created_at) or "",
             is_suspended=bool(getattr(user, "is_suspended", False) or False),
             is_banned=bool(getattr(user, "is_banned", False) or False),
