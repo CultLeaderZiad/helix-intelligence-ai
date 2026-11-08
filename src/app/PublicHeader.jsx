@@ -5,16 +5,19 @@ import PillNav from "@/components/ui/PillNav"
 import { LanguageSwitcher } from "@/components/LanguageSwitcher"
 import { UpdatesBanner } from "@/components/UpdatesBanner"
 import { useW8Copy } from "@/i18n/w8Product"
+import { usePricingCopy } from "@/i18n/pricing"
 
 export function PublicHeader() {
   const { isAuthenticated } = useAuth()
   const { t } = useLanguage()
   const c = useW8Copy()
+  const pricing = usePricingCopy()
   const location = useLocation()
   const isHome = location.pathname === "/"
   const items = [
     { label: t("productNav"), href: isHome ? "#product" : "/#product" },
-    { label: t("accessNav"), href: isHome ? "#access" : "/#access" },
+    // Pricing replaces the old Access link; the landing page keeps its Access section.
+    { label: pricing.nav, href: "/pricing" },
     { label: c.navDocs, href: "/docs" },
     { label: t("updatesNavigation"), href: "/updates" },
     {

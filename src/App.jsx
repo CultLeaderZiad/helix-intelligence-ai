@@ -42,6 +42,8 @@ function safeLazy(importFn) {
 }
 
 const LandingPage = safeLazy(() => import("@/pages/LandingPage").then(m => ({ default: m.LandingPage })))
+const PricingAdminPage = safeLazy(() => import("@/pages/admin/PricingAdminPage").then(m => ({ default: m.PricingAdminPage })))
+const PricingPage = safeLazy(() => import("@/pages/PricingPage").then(m => ({ default: m.PricingPage })))
 const AdminShell = safeLazy(() => import("@/app/admin/AdminShell").then(m => ({ default: m.AdminShell })))
 
 // Lazy loaded pages with robust named export mapping
@@ -174,6 +176,7 @@ export default function App() {
                 <Routes>
                   {/* Public front door */}
                   <Route path="/" element={<LandingPage />} />
+                  <Route path="/pricing" element={<PricingPage />} />
 
                   <Route path="/sign-in" element={<SignInPage />} />
                   <Route path="/sign-up" element={<SignUpPage />} />
@@ -202,6 +205,7 @@ export default function App() {
                       <Route path="/admin/usage" element={optionalPage(<UsagePage />)} />
                       <Route path="/admin/feature-flags" element={optionalPage(<FeatureFlagsPage />)} />
                       <Route path="/admin/users" element={<UsersPage />} />
+                      <Route path="/admin/pricing" element={<PricingAdminPage />} />
                       <Route path="/admin/updates" element={<UpdatesPage />} />
                       <Route path="/admin/support" element={<SupportAdminPage />} />
                       <Route path="/admin/data-sources" element={optionalPage(<DataSourcesPage />)} />

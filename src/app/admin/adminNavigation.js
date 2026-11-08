@@ -12,6 +12,7 @@ import {
   Bell,
   MessageSquareCheck,
   ShieldCheck,
+  Tag,
 } from "lucide-react"
 
 /**
@@ -49,6 +50,13 @@ const ALL_ADMIN_NAV_GROUPS = [
         path: "/admin/access-requests",
         label: "Access Requests",
         icon: ShieldCheck,
+        built: true,
+      },
+      {
+        key: "pricing",
+        path: "/admin/pricing",
+        label: "Pricing",
+        icon: Tag,
         built: true,
       },
       {
