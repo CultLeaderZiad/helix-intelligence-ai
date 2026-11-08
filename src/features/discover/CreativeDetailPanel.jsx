@@ -292,6 +292,22 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                   {data.body}
                 </p>
               ) : null}
+              {data.copy_variants?.length > 1 ? (
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <span className="label-mono" title={w8.copyVariantsHint}>
+                    {w8.copyVariants(data.copy_variants.length)}
+                  </span>
+                  <ol className="space-y-1.5">
+                    {data.copy_variants.map((v, i) => (
+                      <li key={i} className="text-pretty text-xs leading-relaxed text-text-muted" dir="auto">
+                        {v.title ? <span className="block text-text">{v.title}</span> : null}
+                        {v.body}
+                        {v.description ? <span className="block text-text-faint">{v.description}</span> : null}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
               {data.landing_domain ? (
                 <span className="flex items-center gap-1 pt-0.5 font-mono text-[11px] text-text-faint">
                   <ExternalLink className="h-3 w-3" aria-hidden="true" />

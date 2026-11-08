@@ -72,6 +72,46 @@ def pick_brand_page(items: list, brand: str) -> Optional[Tuple[str, str]]:
     return max(counts.items(), key=lambda kv: kv[1])[0]
 
 
+def _text(value) -> str:
+    return str(value).strip() if value is not None else ""
+
+
+def _texts(value) -> List[str]:
+    if isinstance(value, str):
+        value = [value]
+    return [_text(v) for v in (value or []) if _text(v)]
+
+
+MAX_COPY_VARIANTS = 20
+
+
+def metapi_copy_variants(item: dict) -> List[dict]:
+    """Every distinct copy variant of one ad, in Metapi's order.
+
+    Metapi returns parallel lists (bodies, creative_link_titles,
+    creative_link_descriptions); dynamic-creative ads carry several. Keeping
+    only the first one hid the advertiser's copy testing.
+    """
+    bodies = _texts(item.get("bodies"))
+    titles = _texts(item.get("creative_link_titles"))
+    descriptions = _texts(item.get("creative_link_descriptions"))
+    variants, seen = [], set()
+    for i in range(max(len(bodies), len(titles), len(descriptions))):
+        variant = {
+            "body": bodies[i] if i < len(bodies) else "",
+            "title": titles[i] if i < len(titles) else "",
+            "description": descriptions[i] if i < len(descriptions) else "",
+        }
+        key = tuple(v.lower() for v in variant.values())
+        if key in seen:
+            continue
+        seen.add(key)
+        variants.append(variant)
+        if len(variants) >= MAX_COPY_VARIANTS:
+            break
+    return variants
+
+
 def _first_page_name(items: list) -> Optional[str]:
     for item in items or []:
         name = str(item.get("provider_page_name") or "").strip()
@@ -296,7 +336,11 @@ class MetapiProvider(ScraperProvider):
             else:
                 headline = None
             
-            landing_url = item.get("query_params")
+            copy_variants = metapi_copy_variants(item)
+
+            # link_url is Metapi's documented destination; query_params is a
+            # legacy fallback.
+            landing_url = item.get("link_url") or item.get("query_params")
             if not landing_url and captions and len(captions) > 0:
                 cap = captions[0]
                 landing_url = f"https://{cap}" if not cap.startswith("http") else cap
@@ -344,6 +388,10 @@ class MetapiProvider(ScraperProvider):
             if not landing_domain and domain and "." in domain and " " not in domain:
                 landing_domain = domain.lower().replace("www.", "")
 
+            ad_id = _text(item.get("provider_id") or item.get("id") or item.get("ad_archive_id")) or None
+            # snapshot_url is the documented field; the others are older names.
+            permalink = item.get("snapshot_url") or item.get("ad_snapshot_url") or item.get("permalink")
+
             raw = RawCreative(
                     platform="meta",
                     format=format_type,
@@ -364,13 +412,17 @@ class MetapiProvider(ScraperProvider):
                     is_estimated=True,
                     media_url=media_url,
                     thumbnail_url=thumbnail_url,
-                    source_ad_id=item.get("id") or item.get("ad_archive_id"),
-                    permalink=item.get("ad_snapshot_url") or item.get("permalink"),
+                    source_ad_id=ad_id,
+                    permalink=permalink,
                     fetched_at=datetime.now(timezone.utc).isoformat(),
                     provider="metapi",
                     raw={
-                        "id": item.get("id") or item.get("ad_archive_id"),
-                        "permalink": item.get("ad_snapshot_url") or item.get("permalink"),
+                        "id": ad_id,
+                        "permalink": permalink,
+                        "copy_variants": copy_variants,
+                        "countries": list(item.get("countries") or []),
+                        "languages": list(item.get("languages") or []),
+                        "page_id": _text(item.get("provider_page_id")) or None,
                         "metrics_observed": False,
                     },
                 )

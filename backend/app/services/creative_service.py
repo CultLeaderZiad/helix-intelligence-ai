@@ -16,6 +16,19 @@ from fastapi import HTTPException
 import logging
 from app.core.observability import log_event
 
+
+def provenance_fields(c) -> dict:
+    """Copy variants and concept id kept in provenance (no extra columns)."""
+    prov = getattr(c, "provenance_json", None)
+    prov = prov if isinstance(prov, dict) else {}
+    raw = prov.get("raw") if isinstance(prov.get("raw"), dict) else {}
+    variants = [v for v in (raw.get("copy_variants") or []) if isinstance(v, dict)]
+    concept = prov.get("concept_id")
+    return {
+        "copy_variants": variants,
+        "concept_id": concept if isinstance(concept, str) else None,
+    }
+
 logger = logging.getLogger(__name__)
 
 # Result orderings offered by Discover. Rubric sorts are a text rubric, not
@@ -116,6 +129,7 @@ async def list_creatives(
             last_seen=c.last_seen or "",
             days_active=c.days_active,
             variant_count=c.variant_count or 1,
+            **provenance_fields(c),
             source_ad_id=getattr(c, "source_ad_id", None),
             permalink=getattr(c, "permalink", None),
             fetched_at=c.fetched_at.isoformat() if getattr(c, "fetched_at", None) else None,
@@ -187,6 +201,7 @@ async def get_creative_by_id(
         last_seen=c.last_seen or "",
         days_active=c.days_active,
         variant_count=c.variant_count or 1,
+        **provenance_fields(c),
         source_ad_id=getattr(c, "source_ad_id", None),
         permalink=getattr(c, "permalink", None),
         fetched_at=c.fetched_at.isoformat() if getattr(c, "fetched_at", None) else None,
@@ -357,6 +372,7 @@ async def generate_patterns_for_recent_creatives(
             last_seen=c.last_seen or "",
             days_active=c.days_active or 1,
             variant_count=c.variant_count or 1,
+            **provenance_fields(c),
             scores=Scores(),
             metrics=CreativeMetrics(),
             pattern_ids=[]
@@ -569,6 +585,7 @@ async def list_saved_creatives(
             last_seen=c.last_seen or "",
             days_active=c.days_active,
             variant_count=c.variant_count or 1,
+            **provenance_fields(c),
             source_ad_id=getattr(c, "source_ad_id", None),
             permalink=getattr(c, "permalink", None),
             fetched_at=c.fetched_at.isoformat() if getattr(c, "fetched_at", None) else None,

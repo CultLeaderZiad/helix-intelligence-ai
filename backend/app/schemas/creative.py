@@ -18,6 +18,11 @@ class CreativeMetrics(BaseModel):
     engagement_rate: Optional[float] = None
     ctr_est: Optional[float] = None
 
+class CopyVariant(BaseModel):
+    body: str = ""
+    title: str = ""
+    description: str = ""
+
 class Creative(BaseModel):
     id: str
     brand_id: str
@@ -40,6 +45,11 @@ class Creative(BaseModel):
     permalink: Optional[str] = None
     fetched_at: Optional[str] = None
     variant_count: int
+    # Every copy variant the provider returned for this ad (dynamic creative).
+    copy_variants: List[CopyVariant] = []
+    # Ads in one search sharing the same copy share a concept id; variant_count
+    # is then the number of ads in that concept.
+    concept_id: Optional[str] = None
     scores: Scores
     metrics: CreativeMetrics
     pattern_ids: List[str]

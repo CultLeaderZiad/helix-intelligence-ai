@@ -18,6 +18,50 @@ logger = logging.getLogger(__name__)
 _active_discovery_tasks = {}
 
 
+def _concept_key(creative) -> tuple:
+    return (
+        creative.format,
+        (creative.headline or "").lower().strip(),
+        (creative.body or "").lower().strip()[:200],
+    )
+
+
+def _ad_identity(creative) -> tuple:
+    ad_id = str(getattr(creative, "source_ad_id", "") or "").strip()
+    if ad_id:
+        return ("id", getattr(creative, "platform", None), ad_id)
+    return ("content", *_concept_key(creative), getattr(creative, "media_url", None))
+
+
+def group_by_concept(records: list) -> tuple:
+    """Group ads that share copy instead of dropping them.
+
+    Only true repeats (the same ad id, or with no id the same copy and media)
+    are skipped. Different ads with the same copy are an advertiser testing
+    media or audiences: all are kept, share a ``concept_id`` in provenance,
+    and ``variant_count`` becomes the number of ads in that concept.
+    Returns (kept_records, repeats_skipped).
+    """
+    kept, seen, concepts = [], set(), {}
+    repeats = 0
+    for creative, score in records:
+        identity = _ad_identity(creative)
+        if identity in seen:
+            repeats += 1
+            continue
+        seen.add(identity)
+        concepts.setdefault(_concept_key(creative), []).append(creative)
+        kept.append((creative, score))
+    for members in concepts.values():
+        concept_id = str(uuid.uuid4())
+        for creative in members:
+            creative.variant_count = len(members)
+            prov = dict(creative.provenance_json or {})
+            prov["concept_id"] = concept_id
+            creative.provenance_json = prov
+    return kept, repeats
+
+
 def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] = None) -> bool:
     clean_q = (query or "").lower().strip()
     if not clean_q or len(clean_q) < 3:
@@ -1095,7 +1139,6 @@ async def _run_discovery_pipeline(
             rejected_templates = 0
             duplicates_skipped = 0
             rejected_irrelevant = 0
-            seen_content_keys = set()
             normalized_records = []
 
             for rc, extra in enriched_creatives:
@@ -1117,19 +1160,8 @@ async def _run_discovery_pipeline(
             # Strictly save genuine relevant records — never force noise back into the user view
             final_records = relevant_records
 
+            final_records, duplicates_skipped = group_by_concept(final_records)
             for db_creative, db_score in final_records:
-                # Providers (especially Adyntel) can return the same snapshot
-                # many times; identical (format, headline, body) within one
-                # job is one creative, not ten.
-                content_key = (
-                    db_creative.format,
-                    (db_creative.headline or "").lower().strip(),
-                    (db_creative.body or "").lower().strip()[:200],
-                )
-                if content_key in seen_content_keys:
-                    duplicates_skipped += 1
-                    continue
-                seen_content_keys.add(content_key)
                 db.add(db_creative)
                 db.add(db_score)
                 saved_creatives += 1

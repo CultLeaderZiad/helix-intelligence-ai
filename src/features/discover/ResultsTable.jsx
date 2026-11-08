@@ -98,8 +98,8 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                       <p className="truncate text-[13px] text-text">{c.headline}</p>
                       <p className="truncate text-[11px] text-text-faint">
                         {c.landing_domain ?? "no landing page"}
-                        {c.variant_count
-                          ? ` · ${formatInt(c.variant_count)} variants`
+                        {c.variant_count > 1
+                          ? ` · ${w8.sharedCopy(formatInt(c.variant_count))}`
                           : ""}
                       </p>
                     </div>
