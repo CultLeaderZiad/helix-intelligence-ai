@@ -79,7 +79,14 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     access_status = "approved" if platform_admin else "pending"
     if org and access_status != "approved":
         try:
-            access_status = (await billing_service.access_status_for_org(db, org.id))["status"]
+            access_state = await billing_service.access_status_for_org(db, org.id)
+            access_status = access_state["status"]
+            if access_status == "approved":
+                # Same merge as assert_can_spend: the active grant's flags
+                # win over the plan's, so the app shows what the server allows.
+                effective_flags.update({
+                    k: v is True for k, v in (access_state.get("feature_flags") or {}).items()
+                })
         except Exception as access_err:
             log_event(logger, "session_access_status_failed", error=access_err, actor_id=user.id, tenant_id=org.id)
             access_status = "pending"

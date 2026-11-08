@@ -213,6 +213,38 @@ class EmailAlreadyRegistered(Exception):
     """Internal signal only. The sign-up route answers identically either way."""
 
 
+async def _start_signup_trial(db: AsyncSession, user: User, org) -> None:
+    """Grant the new workspace a time-limited trial, enforced server-side.
+
+    The grant expires on its own (access_status_for_org treats an expired
+    grant as no access); saved data is never deleted. Recorded as granted by
+    the user themself so the admin audit shows it was the automatic trial.
+    """
+    days = int(settings.SIGNUP_TRIAL_DAYS)
+    from app.services.admin_service import GRANTABLE_FEATURES
+
+    features = [f for f in settings.SIGNUP_TRIAL_FEATURES if f in GRANTABLE_FEATURES]
+    if days <= 0 or not features:
+        return
+    from app.core.tenancy import apply_tenant_context, bind_tenant
+    from app.models.access_grant import OrganizationAccessGrant
+
+    await db.flush()  # the org id must exist before its grant
+    bind_tenant([org.id], user.id, platform_admin=False, enforce=True)
+    await apply_tenant_context(db)
+    now = datetime.datetime.now(datetime.timezone.utc)
+    expires = now + datetime.timedelta(days=days)
+    db.add(OrganizationAccessGrant(
+        org_id=org.id,
+        plan_id=org.plan_id,
+        feature_flags={f: True for f in features},
+        granted_by_user_id=user.id,
+        expires_at=expires,
+    ))
+    user.trial_started_at = now
+    user.trial_expires_at = expires
+
+
 async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     raw_name = (user_in.name or "").strip()
     full_name = raw_name if raw_name else None
@@ -270,8 +302,9 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     bind_tenant([], user.id, platform_admin=False, enforce=True)
     await apply_tenant_context(db)
 
-    # Every new user gets a personal workspace on the default plan. It stays
-    # pending (all features off) until a platform admin grants access.
+    # Every new user gets a personal workspace on the default plan, with a
+    # SIGNUP_TRIAL_DAYS access grant (no card). With trials off it stays
+    # pending until a platform admin grants access.
     from app.models.organization import Organization
     org_name = full_name or user_in.email.split("@")[0]
     org = Organization(
@@ -288,6 +321,7 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         status="active"
     )
     db.add(org)
+    await _start_signup_trial(db, user, org)
     try:
         await db.commit()
     except Exception as e:

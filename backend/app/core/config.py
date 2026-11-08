@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     # Admin and assistant-admin sessions expire sooner: a stolen admin token
     # reaches every workspace.
     ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES: int = max(15, int(os.getenv("ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", str(60 * 12))))
+    # Every new account gets this many days of access automatically (0 turns
+    # it off and new workspaces wait for an admin grant). The provider caps
+    # (DISCOVER_*) still apply per workspace and globally during the trial.
+    SIGNUP_TRIAL_DAYS: int = max(0, int(os.getenv("SIGNUP_TRIAL_DAYS", "7")))
+    SIGNUP_TRIAL_FEATURES: tuple = tuple(
+        f.strip() for f in os.getenv("SIGNUP_TRIAL_FEATURES", "discover,swipe_files,monitors").split(",") if f.strip()
+    )
     IMPERSONATION_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("IMPERSONATION_TOKEN_EXPIRE_MINUTES", "15"))
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "30"))
     # development | test | staging | production. Unset means development,

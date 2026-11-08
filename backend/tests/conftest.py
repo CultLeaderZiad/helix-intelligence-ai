@@ -41,3 +41,16 @@ async def _provider_budget_allows_calls(request, monkeypatch):
     monkeypatch.setattr(provider_budget, "reserve_provider_call", _allow)
     monkeypatch.setattr(provider_budget, "reserve_provider_records", _allow_records)
     yield
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _signup_trial_off_unless_marked(request, monkeypatch):
+    """Most tests sign up users and then grant access by hand; keep the
+    automatic sign-up trial off for them. ``signup_trial`` tests turn it on."""
+    from app.core.config import settings
+
+    if not request.node.get_closest_marker("signup_trial"):
+        monkeypatch.setattr(settings, "SIGNUP_TRIAL_DAYS", 0)

@@ -296,3 +296,53 @@ def test_pool_ping_is_a_single_simple_query():
 
     assert _single_round_trip_ping(FakeAdapted()) is True
     assert calls == ["SELECT 1"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.signup_trial
+async def test_sign_up_starts_a_seven_day_trial_that_expires_server_side():
+    from datetime import datetime, timezone
+
+    from sqlalchemy import update
+
+    from app.models.access_grant import OrganizationAccessGrant
+
+    suffix = _suffix()
+    email, password = f"w8-trial-{suffix}@example.com", f"Trial-{suffix}-Pw1!"
+    async with _client() as client:
+        signed_up = await _sign_up(client, email, password)
+        assert signed_up["access_status"] == "approved"
+        flags = signed_up["feature_flags"]
+        assert flags.get("discover") and flags.get("swipe_files") and flags.get("monitors")
+        org_id = signed_up["org_id"]
+
+        token = await _token(client, email, password)
+        access = (await client.get("/api/account/access", headers=_auth(token))).json()
+        expires = datetime.fromisoformat(access["expires_at"])
+        left = expires - datetime.now(timezone.utc)
+        assert timedelta(days=6, hours=23) < left <= timedelta(days=7)
+        assert (await client.get("/api/discovery/drafts", headers=_auth(token))).status_code == 200
+
+        # Expire it: access stops on the server, nothing is deleted.
+        async with async_session_maker() as db:
+            await db.execute(
+                update(OrganizationAccessGrant)
+                .where(OrganizationAccessGrant.org_id == org_id)
+                .values(expires_at=datetime.now(timezone.utc) - timedelta(minutes=1))
+            )
+            await db.commit()
+        token = await _token(client, email, password)
+        session = (await client.get("/api/auth/session", headers=_auth(token))).json()
+        assert session["access_status"] != "approved"
+        assert (await client.get("/api/discovery/drafts", headers=_auth(token))).status_code == 403
+        async with async_session_maker() as db:
+            user = (await db.execute(select(User).where(User.email == email))).scalar_one()
+            assert user.trial_expires_at is not None
+
+
+@pytest.mark.asyncio
+async def test_trial_off_keeps_new_workspaces_pending():
+    suffix = _suffix()
+    async with _client() as client:
+        signed_up = await _sign_up(client, f"w8-notrial-{suffix}@example.com", f"NoTrial-{suffix}-Pw1!")
+        assert signed_up["access_status"] == "pending"
