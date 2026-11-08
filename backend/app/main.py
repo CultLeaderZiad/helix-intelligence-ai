@@ -35,7 +35,13 @@ async def lifespan(app: FastAPI):
     from app.core.rls_role import assert_rls_role
     async with engine.begin() as conn:
         await assert_rls_role(conn)
-    yield
+    from app.services import embedded_worker
+
+    await embedded_worker.start()
+    try:
+        yield
+    finally:
+        await embedded_worker.stop()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,

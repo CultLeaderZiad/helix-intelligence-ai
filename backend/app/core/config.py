@@ -203,6 +203,9 @@ class Settings(BaseSettings):
     HELIX_DISPATCH_INLINE: bool = os.getenv("HELIX_DISPATCH_INLINE", "false").lower() in ("true", "1", "yes")
     WORK_LEASE_S: int = int(os.getenv("WORK_LEASE_S", "120"))
     WORK_MAX_ATTEMPTS: int = int(os.getenv("WORK_MAX_ATTEMPTS", "3"))
+    # Run the jobs worker inside the API process (free hosting, one service).
+    # The API login must also be GRANTed helix_worker. See docs/w8/free-worker.md.
+    EMBEDDED_WORKER_ENABLED: bool = os.getenv("EMBEDDED_WORKER_ENABLED", "false").lower() == "true"
     DISCOVER_JOB_DEADLINE_S: int = int(os.getenv("DISCOVER_JOB_DEADLINE_S", "600"))
     # Global hard stop for paid provider calls (see app/services/provider_budget.py).
     DISCOVER_ENABLED: bool = os.getenv("DISCOVER_ENABLED", "true").lower() in ("true", "1", "yes")

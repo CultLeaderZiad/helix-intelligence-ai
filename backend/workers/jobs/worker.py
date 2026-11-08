@@ -48,57 +48,10 @@ async def _check_rls_role() -> None:
         await assert_rls_role(conn)
 
 
-async def _monitor_scheduler_loop() -> None:
-    """Enqueue due monitors on a timer; the claim is SKIP LOCKED, so an
-    external cron calling /api/monitors/tick as well is harmless."""
-    from app.core.config import settings
-    from app.services.monitor_service import tick
-
-    interval = int(settings.MONITOR_SCHEDULER_INTERVAL_S)
-    if interval <= 0:
-        logger.info("in-worker monitor scheduler disabled")
-        return
-    while not _stop.is_set():
-        try:
-            result = await tick()
-            if result.get("dispatched"):
-                logger.info("monitor scheduler dispatched %s", result["dispatched"])
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            logger.exception("monitor scheduler tick failed: %s", exc)
-        try:
-            await asyncio.wait_for(_stop.wait(), timeout=interval)
-        except asyncio.TimeoutError:
-            pass
-
-
 async def _worker_loop() -> None:
-    from app.services.job_reconciliation import reconcile_once, reconciliation_loop
-    from app.services.work_outbox import claim_next_work_item, execute_work_item
+    from app.services.job_runner import run_jobs
 
-    await reconcile_once()
-    reconciler = asyncio.create_task(reconciliation_loop())
-    scheduler = asyncio.create_task(_monitor_scheduler_loop())
-    try:
-        while not _stop.is_set():
-            try:
-                work_id = await claim_next_work_item(BOOT_ID)
-                if work_id:
-                    logger.info("claimed work item %s", work_id)
-                    await execute_work_item(work_id, BOOT_ID)
-                    continue
-                try:
-                    await asyncio.wait_for(_stop.wait(), timeout=POLL_INTERVAL_S)
-                except asyncio.TimeoutError:
-                    pass
-            except Exception as exc:  # keep the loop alive; the item's lease handles retries
-                logger.exception("worker loop error: %s", exc)
-                await asyncio.sleep(POLL_INTERVAL_S)
-    finally:
-        reconciler.cancel()
-        scheduler.cancel()
-        await asyncio.gather(reconciler, scheduler, return_exceptions=True)
+    await run_jobs(_stop, BOOT_ID, POLL_INTERVAL_S)
 
 
 async def _main() -> None:
