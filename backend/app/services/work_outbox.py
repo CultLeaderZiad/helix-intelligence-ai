@@ -37,6 +37,9 @@ RUNNING = "running"
 SUCCEEDED = "succeeded"
 DEAD = "dead"
 CANCELED = "canceled"
+# The transition table lives in app.core.state_machines.WORK_ITEM.
+from app.core.state_machines import WORK_ITEM  # noqa: E402
+assert {QUEUED, LEASED, RUNNING, SUCCEEDED, DEAD, CANCELED} == set(WORK_ITEM.states)
 
 
 def inline_execution_enabled() -> bool:
@@ -228,7 +231,7 @@ async def finish_work_item(
         item = (await db.execute(query.with_for_update())).scalars().first()
         if item is None:
             return False
-        item.status = status
+        item.status = WORK_ITEM.check(item.status, status)
         item.lease_owner = None
         item.lease_until = None
         item.last_error = (error or "")[:500] or None
