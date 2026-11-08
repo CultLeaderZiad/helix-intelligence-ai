@@ -83,8 +83,11 @@ provider-specific quota, and Metapi bills **records**, not tasks.
 
 ### Metapi allowance
 
-- **Not verified for Helix's account.** No live call was made. Check the plan,
-  records used this month and request limits in the Metapi dashboard.
+- **Verified from the Metapi dashboard on 2026-11-08 (screenshot from Ziad):**
+  Free plan, 850 of 3,000 records used, 2,150 remaining, resets 2026-11-30.
+  18 requests this period, all succeeded (≈ 47 records per task, matching the
+  old uncapped default of 50). 2,150 records over the ~22 days left is about
+  97 records/day, so the proposed settings below (≤ 90/day) fit.
 - Metapi's API docs (read 2026-11-07) list: Free 3,000 records/month (hard
   block, `402 quota_exceeded`), Lite 25,000, Pro 100,000; Free rate limits
   120 requests/min and 1,000 requests/day.
