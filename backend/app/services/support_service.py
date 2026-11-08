@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from app.core.state_machines import SUPPORT_TICKET_STATUSES
 import re
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -334,7 +335,7 @@ async def _update_ticket_status_in_scope(
     ticket_id: str,
     new_status: str,
 ) -> Dict[str, Any]:
-    if new_status not in ["open", "in_progress", "resolved"]:
+    if new_status not in SUPPORT_TICKET_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid status. Choose open, in_progress, or resolved.")
 
     ticket = (await db.execute(select(SupportTicket).where(SupportTicket.id == ticket_id))).scalar_one_or_none()
