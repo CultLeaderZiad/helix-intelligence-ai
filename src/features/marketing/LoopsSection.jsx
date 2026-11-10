@@ -1,643 +1,198 @@
-import React, { useState } from "react"
+import { useState } from "react"
+import { ArrowLeft, ArrowRight, Bookmark, Bot, Compass, Eye, Layers } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { NAV_SECTIONS } from "@/app/navigation"
+import { useLanguage } from "@/context/LanguageContext"
+import { useW8Copy } from "@/i18n/w8Product"
 import CardSwap, { Card } from "@/components/ui/CardSwap"
-import {
-  Compass,
-  Cpu,
-  PenTool,
-  Radio,
-  TrendingUp,
-  Sparkles,
-  ArrowRight,
-  ExternalLink,
-  Layers,
-  Activity,
-  CheckCircle2,
-  Clock,
-  Eye,
-  Check,
-  Crosshair,
-} from "lucide-react"
 
+const CARD_CLASS = "flex h-full flex-col justify-between gap-3 p-4 text-start sm:p-6"
+
+/** @param {{ Icon: import("lucide-react").LucideIcon, title: string, chip: string }} props */
+function CardHeader({ Icon, title, chip }) {
+  return (
+    <div className="flex items-center justify-between gap-2 border-b border-border pb-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-60 motion-reduce:animate-none" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-accent" />
+        </span>
+        <Icon className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
+        <span className="truncate font-mono text-xs font-bold text-text sm:text-sm">{title}</span>
+      </div>
+      <span className="shrink-0 rounded-full border border-accent/40 bg-accent-wash px-2 py-0.5 font-mono text-[10px] font-semibold text-accent sm:text-[11px]">
+        {chip}
+      </span>
+    </div>
+  )
+}
+
+/** @param {{ children: React.ReactNode }} props */
+function CardFooter({ children }) {
+  return <p className="border-t border-border pt-2 font-mono text-[11px] text-text-faint">{children}</p>
+}
+
+/** @param {{ children: React.ReactNode }} props */
+function Note({ children }) {
+  return <p className="rounded-lg border border-border bg-surface/80 p-2.5 text-xs leading-relaxed text-text-muted">{children}</p>
+}
+
+/**
+ * "Four loops, one instrument": the stacked, auto-swapping cards from the
+ * live landing page, describing only the loops that exist today. No sample
+ * brands, scores or counts: every card states a product rule.
+ */
 export function LoopsSection() {
-  const [activeCardIndex, setActiveCardIndex] = useState(0)
+  const { t, isRtl } = useLanguage()
+  const c = useW8Copy()
+  const [active, setActive] = useState(0)
 
   const loops = [
-    {
-      num: "01",
-      key: "discover",
-      title: "Discover Engine",
-      desc: "Scrape competitor ad libraries across Meta, TikTok, and X in real time.",
-      icon: Compass,
-      tag: "Live Pipeline"
-    },
-    {
-      num: "02",
-      key: "intelligence",
-      title: "Intelligence & Patterns",
-      desc: "Mine winning angles, script formulas, and fatigue curves across competitor creative.",
-      icon: Cpu,
-      tag: "Deep AI"
-    },
-    {
-      num: "03",
-      key: "create",
-      title: "Remix & Create Studio",
-      desc: "Generate high-fidelity, unwatermarked ad variations in 1:1, 4:5, 9:16, and 16:9.",
-      icon: PenTool,
-      tag: "Dual-Engine AI"
-    },
-    {
-      num: "04",
-      key: "monitors",
-      title: "24/7 Competitor Monitors",
-      desc: "Track competitor diffs: automatically catch new ads, killed ads, and copy adjustments.",
-      icon: Radio,
-      tag: "Automated Diffs"
-    },
-    {
-      num: "05",
-      key: "performance",
-      title: "Performance & Scoring",
-      desc: "Composite ad scoring and cross-brand reach leaderboards grounded in real data.",
-      icon: TrendingUp,
-      tag: "Benchmarking"
-    },
-    {
-      num: "06",
-      key: "scout",
-      title: "Helix Scout Engine",
-      desc: "Scrape social profiles, enrich direct contact databases, and export verified leads.",
-      icon: Crosshair,
-      tag: "Social Lead Gen"
-    }
+    { key: "discover", title: t("marketingDiscoverTitle"), desc: t("marketingDiscoverBody"), tag: c.loopDiscoverTag, Icon: Compass },
+    { key: "monitors", title: t("marketingCreativeTitle"), desc: t("marketingCreativeBody"), tag: c.loopMonitorsTag, Icon: Eye },
+    { key: "boards", title: t("marketingWorkspaceTitle"), desc: t("marketingWorkspaceBody"), tag: c.loopBoardsTag, Icon: Bookmark },
+    { key: "agents", title: c.loopAgentsTitle, desc: c.loopAgentsBody, tag: c.loopAgentsTag, Icon: Bot },
   ]
 
   return (
-    <section id="product" className="scroll-mt-16 border-b border-border bg-bg overflow-hidden py-16 sm:py-20 lg:py-28 relative">
-      {/* Subtle background ambient glow */}
-      <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+    <section id="product" className="relative scroll-mt-20 overflow-hidden border-b border-border bg-bg py-16 sm:py-20 lg:py-28">
+      <div className="pointer-events-none absolute end-1/4 top-1/2 h-96 w-96 -translate-y-1/2 rounded-full bg-accent/5 blur-3xl" aria-hidden="true" />
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 md:px-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-          
-          {/* Left Column: Product Positioning & Interactive Features */}
-          <div className="lg:col-span-5 flex flex-col gap-6 z-10">
-            <div className="space-y-3">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-accent/30 bg-accent/10 font-mono text-[11px] uppercase tracking-[0.14em] text-accent font-semibold">
-                <Layers className="h-3.5 w-3.5" />
-                The Product
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 md:px-6 lg:grid-cols-12 lg:gap-10">
+        <div className="z-10 flex flex-col gap-6 lg:col-span-5">
+          <div className="space-y-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent-wash px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
+              <Layers className="h-3.5 w-3.5" aria-hidden="true" />
+              {c.loopsLabel}
+            </span>
+            <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-text sm:text-4xl lg:text-[42px]">
+              {c.loopsTitleA}
+              <br />
+              <span className="bg-gradient-to-r from-accent via-white to-text-muted bg-clip-text text-transparent rtl:bg-gradient-to-l">
+                {c.loopsTitleB}
               </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-[42px] font-extrabold tracking-tight text-text leading-tight">
-                Four loops, <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent via-white to-text-muted">
-                  one instrument.
-                </span>
-              </h2>
-              <p className="text-sm sm:text-base leading-relaxed text-text-muted">
-                Discovery feeds intelligence, intelligence briefs creation, and live performance feeds back into scoring.
-                The output of each loop is the input to the next.
-              </p>
-            </div>
+            </h2>
+            <p className="text-sm leading-relaxed text-text-muted sm:text-base">{c.loopsIntro}</p>
+          </div>
 
-            {/* Interactive Loop Feature List */}
-            <div className="space-y-2.5 pt-1">
-              {loops.map((loop, idx) => {
-                const Icon = loop.icon
-                const isSelected = activeCardIndex === idx
-                return (
-                  <div
-                    key={loop.key}
-                    onClick={() => setActiveCardIndex(idx)}
+          <ul className="space-y-2.5" aria-label={c.loopsSwapHint}>
+            {loops.map(({ key, title, desc, tag, Icon }, idx) => {
+              const selected = active === idx
+              return (
+                <li key={key}>
+                  <button
+                    type="button"
+                    onClick={() => setActive(idx)}
+                    aria-pressed={selected}
                     className={cn(
-                      "flex items-start gap-3.5 p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer group select-none",
-                      isSelected
-                        ? "bg-gradient-to-r from-accent/15 via-surface-2 to-surface border-accent/60 shadow-lg shadow-accent/10 translate-x-1"
-                        : "bg-surface/50 border-border/70 hover:border-border-strong hover:bg-surface text-text-muted hover:text-text"
+                      "flex w-full items-start gap-3.5 rounded-xl border p-3 text-start transition-all sm:p-3.5",
+                      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                      selected
+                        ? "translate-x-1 border-accent/60 bg-gradient-to-r from-accent/15 via-surface to-surface shadow-lg shadow-accent/10 rtl:-translate-x-1 rtl:bg-gradient-to-l"
+                        : "border-border bg-surface/50 text-text-muted hover:border-border-strong hover:bg-surface hover:text-text"
                     )}
                   >
-                    <span className={cn(
-                      "font-mono text-xs font-bold pt-0.5 transition-colors",
-                      isSelected ? "text-accent" : "text-text-muted"
-                    )}>
-                      {loop.num}
+                    <span className={cn("pt-0.5 font-mono text-xs font-bold", selected ? "text-accent" : "text-text-muted")}>
+                      {String(idx + 1).padStart(2, "0")}
                     </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className={cn(
-                          "text-xs sm:text-sm font-bold flex items-center gap-2 transition-colors",
-                          isSelected ? "text-white" : "text-text"
-                        )}>
-                          <Icon className={cn("h-4 w-4 transition-colors", isSelected ? "text-accent" : "text-text-muted")} />
-                          {loop.title}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2 text-xs font-bold text-text sm:text-sm">
+                          <Icon className={cn("h-4 w-4", selected ? "text-accent" : "text-text-muted")} aria-hidden="true" />
+                          {title}
                         </span>
-                        <span className={cn(
-                          "text-[10px] font-mono uppercase px-2 py-0.5 rounded border transition-colors shrink-0",
-                          isSelected
-                            ? "border-accent/40 bg-accent/10 text-accent font-semibold"
-                            : "border-border bg-surface-elevated text-text-faint"
-                        )}>
-                          {loop.tag}
+                        <span
+                          className={cn(
+                            "shrink-0 rounded border px-2 py-0.5 font-mono text-[10px] uppercase",
+                            selected ? "border-accent/40 bg-accent-wash font-semibold text-accent" : "border-border bg-surface text-text-faint"
+                          )}
+                        >
+                          {tag}
                         </span>
-                      </div>
-                      <p className="text-xs text-text-muted leading-relaxed mt-1 line-clamp-1">
-                        {loop.desc}
-                      </p>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* Quick Action Link */}
-            <div className="pt-1">
-              <a
-                href="/create"
-                className="inline-flex items-center gap-2 text-xs sm:text-sm font-mono text-accent hover:underline font-medium"
-              >
-                <span>Launch Creative Studio in Console</span>
-                <ArrowRight className="h-4 w-4" />
-              </a>
-            </div>
-          </div>
-
-          {/* Right Column: React Bits CardSwap Component Canvas */}
-          <div className="lg:col-span-7 relative flex items-center justify-center min-h-[470px] sm:min-h-[520px] lg:min-h-[560px] w-full overflow-visible">
-            <div className="w-full relative flex items-center justify-center overflow-visible py-2">
-              <CardSwap
-                width={580}
-                height={450}
-                delay={2800}
-                pauseOnHover={true}
-                activeCardIndex={activeCardIndex}
-                onActiveChange={(newIdx) => setActiveCardIndex(newIdx)}
-                onCardClick={(idx) => setActiveCardIndex(idx)}
-              >
-                {/* ============================================================ */}
-                {/* CARD 0: DISCOVER ENGINE (Loop 01) */}
-                {/* ============================================================ */}
-                <Card className="bg-[#0e1115] border border-white/10 p-4 sm:p-6 text-left flex flex-col justify-between shadow-2xl h-full">
-                  {/* Header */}
-                  <div className="flex items-center justify-between border-b border-border/80 pb-2.5 sm:pb-3 gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-cyan-400" />
                       </span>
-                      <Compass className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-cyan-400 shrink-0" />
-                      <span className="font-mono text-[11px] sm:text-xs lg:text-sm font-bold text-text truncate">
-                        Discover &gt; Ad Mining
-                      </span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 font-mono text-[9px] sm:text-[11px] font-semibold shrink-0">
-                      327 Active Ads
+                      <span className="mt-1 block text-xs leading-relaxed text-text-muted">{desc}</span>
                     </span>
-                  </div>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
 
-                  {/* Query Bar */}
-                  <div className="my-2 px-3.5 py-2 rounded-lg border border-border bg-surface-elevated/90 flex items-center justify-between text-xs font-mono">
-                    <span className="text-text-muted">
-                      Target Query: <strong className="text-white font-bold">"nike running"</strong>
+          <a href="#access" className="inline-flex items-center gap-2 font-mono text-xs font-medium text-accent hover:underline sm:text-sm">
+            {c.loopsCta}
+            {isRtl ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+          </a>
+        </div>
+
+        <div className="relative flex min-h-[470px] w-full items-center justify-center overflow-visible sm:min-h-[520px] lg:col-span-7 lg:min-h-[560px]" dir="ltr">
+          <CardSwap width={560} height={430} delay={3200} activeCardIndex={active} onActiveChange={setActive} onCardClick={setActive}>
+            <Card className={CARD_CLASS} dir={isRtl ? "rtl" : "ltr"}>
+              <CardHeader Icon={Compass} title={c.cardDiscoverTitle} chip={c.cardDiscoverChip} />
+              <div className="space-y-2">
+                <span className="block font-mono text-[10px] uppercase text-text-faint">{c.cardDiscoverPresets}</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[c.longevity30, c.longevity60, c.longevity90].map((label) => (
+                    <span key={label} className="rounded-md border border-accent/40 bg-accent-wash px-2.5 py-1 font-mono text-[11px] font-bold text-accent">
+                      {label}
                     </span>
-                    <span className="text-cyan-300 text-[11px] font-semibold">Filtered: Meta + TikTok</span>
-                  </div>
+                  ))}
+                </div>
+              </div>
+              <Note>{c.cardDiscoverRunLength}</Note>
+              <Note>{c.cardDiscoverScore}</Note>
+              <Note>{c.cardDiscoverReach}</Note>
+              <CardFooter>{c.cardDiscoverFooter}</CardFooter>
+            </Card>
 
-                  {/* Verified Platform Chips */}
-                  <div className="p-2.5 rounded-lg border border-border/80 bg-surface/60 space-y-1.5">
-                    <div className="flex items-center justify-between text-[10px] font-mono text-text-muted">
-                      <span className="font-semibold text-text-faint">VERIFIED DATA SOURCES (6 PLATFORMS)</span>
-                      <span className="text-accent font-semibold flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-accent" /> Live Sync
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {["Meta Ad Library", "TikTok Creative Center", "Instagram", "X (Twitter)", "YouTube", "Kick"].map((p) => (
-                        <span key={p} className="px-2 py-0.5 rounded border border-border bg-surface-elevated text-[10px] font-mono text-text-muted">
-                          {p} ↗
-                        </span>
-                      ))}
-                    </div>
+            <Card className={CARD_CLASS} dir={isRtl ? "rtl" : "ltr"}>
+              <CardHeader Icon={Eye} title={c.cardMonitorsTitle} chip={c.cardMonitorsChip} />
+              <div className="space-y-2">
+                {[
+                  [c.cardMonitorsNew, c.cardMonitorsNewBody, "border-success/30 bg-success/10 text-success"],
+                  [c.cardMonitorsStopped, c.cardMonitorsStoppedBody, "border-danger/30 bg-danger/10 text-danger"],
+                  [c.cardMonitorsRewritten, c.cardMonitorsRewrittenBody, "border-warning/30 bg-warning/10 text-warning"],
+                ].map(([label, body, tone]) => (
+                  <div key={label} className="flex items-start gap-3 rounded-xl border border-border bg-surface p-2.5">
+                    <span className={cn("mt-0.5 shrink-0 rounded border px-2 py-0.5 font-mono text-[10px] font-bold uppercase", tone)}>{label}</span>
+                    <p className="text-xs leading-relaxed text-text-muted">{body}</p>
                   </div>
+                ))}
+              </div>
+              <CardFooter>{c.cardMonitorsFooter}</CardFooter>
+            </Card>
 
-                  {/* Top Winning Ad Unit Card */}
-                  <div className="p-3 sm:p-3.5 rounded-xl border border-border bg-surface-2/90 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs sm:text-sm font-bold text-white">Nike Pegasus 41 — Global Campaign</span>
-                      <span className="px-2 py-0.5 rounded border border-accent/40 bg-accent/15 text-accent font-mono text-[11px] font-extrabold shadow-sm shadow-accent/20">
-                        SCORE: 94.2
-                      </span>
-                    </div>
-                    <p className="text-xs text-text-muted font-sans line-clamp-1 italic">
-                      "Don't just run. Fly with responsive ReactX foam cushioning."
-                    </p>
-                    <div className="grid grid-cols-3 gap-2 pt-1 border-t border-border/50 text-[10px] sm:text-[11px] font-mono text-text-faint">
-                      <div><span className="text-text-muted block text-[9px]">EST. REACH</span><strong className="text-text font-bold">1.4M</strong></div>
-                      <div><span className="text-text-muted block text-[9px]">VELOCITY</span><strong className="text-accent font-bold">+340%/wk</strong></div>
-                      <div><span className="text-text-muted block text-[9px]">LIFESPAN</span><strong className="text-text font-bold">42 Days</strong></div>
-                    </div>
-                  </div>
+            <Card className={CARD_CLASS} dir={isRtl ? "rtl" : "ltr"}>
+              <CardHeader Icon={Bookmark} title={c.cardBoardsTitle} chip={c.cardBoardsChip} />
+              <Note>{c.cardBoardsSave}</Note>
+              <div className="space-y-2 rounded-xl border border-accent/30 bg-accent-wash p-3">
+                <span className="block font-mono text-[10px] uppercase text-accent">/b/…</span>
+                <p className="text-xs leading-relaxed text-text">{c.cardBoardsLink}</p>
+              </div>
+              <Note>{c.cardBoardsTeam}</Note>
+              <CardFooter>{c.cardBoardsFooter}</CardFooter>
+            </Card>
 
-                  {/* Footer */}
-                  <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-text-faint">
-                    <span>Ranked by Velocity & Durability</span>
-                    <span className="text-cyan-300 font-bold flex items-center gap-1 hover:underline">
-                      Mine Winning Patterns →
+            <Card className={CARD_CLASS} dir={isRtl ? "rtl" : "ltr"}>
+              <CardHeader Icon={Bot} title={c.cardAgentsTitle} chip={c.cardAgentsChip} />
+              <div className="space-y-1.5">
+                <span className="block font-mono text-[10px] uppercase text-text-faint">{c.cardAgentsMarkdown}</span>
+                <pre className="overflow-hidden rounded-lg border border-border bg-black/40 p-2.5 font-mono text-[11px] leading-relaxed text-text-muted" dir="ltr">
+                  <span className="text-text-faint">GET</span> /api/discovery/stored-results{"\n"}
+                  <span className="text-accent">Accept:</span> text/markdown
+                </pre>
+              </div>
+              <div className="space-y-1.5">
+                <span className="block font-mono text-[10px] uppercase text-text-faint">{c.cardAgentsMcp}</span>
+                <div className="flex flex-wrap gap-1.5" dir="ltr">
+                  {["search_ads", "get_board", "list_monitor_changes", "get_ad"].map((tool) => (
+                    <span key={tool} className="rounded border border-border bg-surface px-2 py-0.5 font-mono text-[11px] text-text">
+                      {tool}
                     </span>
-                  </div>
-                </Card>
-
-                {/* ============================================================ */}
-                {/* CARD 1: INTELLIGENCE & PATTERNS (Loop 02) */}
-                {/* ============================================================ */}
-                <Card className="bg-[#0e1115] border border-white/10 p-4 sm:p-6 text-left flex flex-col justify-between shadow-2xl h-full">
-                  {/* Header */}
-                  <div className="flex items-center justify-between border-b border-border/80 pb-2.5 sm:pb-3 gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-purple-400" />
-                      </span>
-                      <Cpu className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-400 shrink-0" />
-                      <span className="font-mono text-[11px] sm:text-xs lg:text-sm font-bold text-text truncate">
-                        Intelligence &gt; Patterns
-                      </span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-purple-300 font-mono text-[9px] sm:text-[11px] font-semibold shrink-0">
-                      Mining 50+ Ads
-                    </span>
-                  </div>
-
-                  <div className="space-y-2.5 py-1">
-                    {/* Dominant Angle */}
-                    <div className="p-2.5 sm:p-3 rounded-xl border border-purple-500/25 bg-purple-500/10 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs sm:text-sm font-bold text-white flex items-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5 text-purple-400" /> Dominant Hook Angle
-                        </span>
-                        <span className="text-[11px] font-mono text-purple-300 font-bold">88% Win Correlation</span>
-                      </div>
-                      <p className="text-xs text-text-muted leading-relaxed">
-                        Problem-agitation opening featuring slow-motion sole compression, transitioning directly to split-screen kinetic stress test.
-                      </p>
-                    </div>
-
-                    {/* Signal Grid */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="p-2 sm:p-2.5 rounded-lg border border-border bg-surface text-xs font-mono">
-                        <span className="text-text-faint block text-[9px] uppercase">FATIGUE RISK</span>
-                        <span className="text-accent font-bold text-xs sm:text-sm">Low (Scaling)</span>
-                      </div>
-                      <div className="p-2 sm:p-2.5 rounded-lg border border-border bg-surface text-xs font-mono">
-                        <span className="text-text-faint block text-[9px] uppercase">RECOMMENDED CTA</span>
-                        <span className="text-white font-bold text-xs sm:text-sm">"Early Access"</span>
-                      </div>
-                    </div>
-
-                    {/* Synthesis */}
-                    <div className="p-2 sm:p-2.5 rounded-lg border border-border bg-surface/80 space-y-1">
-                      <span className="text-[9px] font-mono text-text-faint uppercase font-semibold">Strategic Directive</span>
-                      <p className="text-xs text-text-muted leading-relaxed line-clamp-2">
-                        Competitors shifted +42% toward split-screen comparisons this week. Creative brief automatically calibrated for generation.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-text-faint">
-                    <span>Export Brief to Remix Studio</span>
-                    <span className="text-purple-300 font-bold flex items-center gap-1 hover:underline">
-                      1-Click Brief →
-                    </span>
-                  </div>
-                </Card>
-
-                {/* ============================================================ */}
-                {/* CARD 2: REMIX & CREATE STUDIO (Loop 03) */}
-                {/* ============================================================ */}
-                <Card className="bg-[#0e1115] border border-white/10 p-4 sm:p-6 text-left flex flex-col justify-between shadow-2xl h-full">
-                  {/* Header */}
-                  <div className="flex items-center justify-between border-b border-border/80 pb-2.5 sm:pb-3 gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-accent" />
-                      </span>
-                      <PenTool className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent shrink-0" />
-                      <span className="font-mono text-[11px] sm:text-xs lg:text-sm font-bold text-text truncate">
-                        Create &gt; Remix Studio
-                      </span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full border border-accent/40 bg-accent/15 text-accent font-mono text-[9px] sm:text-[11px] font-semibold shrink-0">
-                      Ratio: 1:1 Square
-                    </span>
-                  </div>
-
-                  {/* Discovered Ad Banner */}
-                  <div className="my-1 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated flex items-center justify-between text-xs font-mono text-text-muted">
-                    <span className="flex items-center gap-1.5 truncate">
-                      <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                      Remix from Mined Nike Brief (5 ready)
-                    </span>
-                    <span className="text-accent text-xs font-semibold shrink-0">Switch ▾</span>
-                  </div>
-
-                  {/* Body Content Grid */}
-                  <div className="grid grid-cols-12 gap-2 sm:gap-3 flex-1 items-stretch py-1">
-                    {/* Controls Side */}
-                    <div className="col-span-7 space-y-1.5 sm:space-y-2">
-                      <div>
-                        <span className="text-[9px] font-mono uppercase text-text-faint block mb-1 font-semibold">
-                          Creative Style
-                        </span>
-                        <div className="grid grid-cols-2 gap-1 sm:gap-1.5">
-                          <div className="p-1 sm:p-1.5 rounded-lg border border-accent bg-accent/15 text-[10px] sm:text-[11px] font-bold text-accent text-center">
-                            Commercial 3D
-                          </div>
-                          <div className="p-1 sm:p-1.5 rounded-lg border border-border bg-surface text-[10px] sm:text-[11px] text-text-muted text-center">
-                            Cinematic
-                          </div>
-                          <div className="p-1 sm:p-1.5 rounded-lg border border-border bg-surface text-[10px] sm:text-[11px] text-text-muted text-center">
-                            Luxury
-                          </div>
-                          <div className="p-1 sm:p-1.5 rounded-lg border border-border bg-surface text-[10px] sm:text-[11px] text-text-muted text-center">
-                            Split
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Aspect Ratio Row */}
-                      <div>
-                        <span className="text-[9px] font-mono uppercase text-text-faint block mb-1 font-semibold">
-                          Deliverable Format
-                        </span>
-                        <div className="flex gap-1 sm:gap-1.5">
-                          <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-accent text-accent bg-accent/15 font-mono text-[9px] sm:text-[10px] font-bold">
-                            1:1
-                          </span>
-                          <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-border text-text-muted font-mono text-[9px] sm:text-[10px]">
-                            9:16
-                          </span>
-                          <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-md border border-border text-text-muted font-mono text-[9px] sm:text-[10px]">
-                            16:9
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Prompt Chip */}
-                      <div className="p-1.5 sm:p-2 rounded-lg bg-surface border border-border text-xs text-text-muted space-y-0.5 sm:space-y-1">
-                        <span className="text-white font-bold flex items-center gap-1 text-[10px] sm:text-[11px]">
-                          <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-accent" /> Prompt
-                        </span>
-                        <p className="line-clamp-2 text-[9px] sm:text-[11px] text-text-faint font-mono">
-                          "Studio commercial of obsidian sneaker on reflective pedestal, neon lime rim"
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Live Output Canvas Side */}
-                    <div className="col-span-5 rounded-xl border border-border bg-black/80 p-2 flex flex-col items-center justify-center text-center relative overflow-hidden group">
-                      <div className="w-full h-full rounded-lg border border-dashed border-accent/40 flex flex-col items-center justify-center p-2 bg-gradient-to-b from-accent/5 to-surface-2/60">
-                        <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-full border border-accent/50 bg-accent/15 flex items-center justify-center mb-1.5 shadow-lg shadow-accent/20">
-                          <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-accent" />
-                        </div>
-                        <span className="text-[11px] sm:text-xs font-mono font-bold text-white">
-                          Commercial PNG
-                        </span>
-                        <span className="text-[9px] sm:text-[10px] font-mono text-accent font-semibold mt-0.5">
-                          1024x1024 UHD
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-text-faint">
-                    <span>Dual-Engine AI Hubmix</span>
-                    <span className="text-accent font-bold flex items-center gap-1 hover:underline">
-                      GENERATE WITH HELIX AI →
-                    </span>
-                  </div>
-                </Card>
-
-                {/* ============================================================ */}
-                {/* CARD 3: 24/7 COMPETITOR MONITORS (Loop 04) */}
-                {/* ============================================================ */}
-                <Card className="bg-[#0e1115] border border-white/10 p-4 sm:p-6 text-left flex flex-col justify-between shadow-2xl h-full">
-                  {/* Header */}
-                  <div className="flex items-center justify-between border-b border-border/80 pb-2.5 sm:pb-3 gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-emerald-400" />
-                      </span>
-                      <Radio className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400 shrink-0" />
-                      <span className="font-mono text-[11px] sm:text-xs lg:text-sm font-bold text-text truncate">
-                        Monitors &gt; Diff Stream
-                      </span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 font-mono text-[9px] sm:text-[11px] font-semibold shrink-0">
-                      24/7 Crawl
-                    </span>
-                  </div>
-
-                  {/* Activity Feed */}
-                  <div className="space-y-2 py-1">
-                    <div className="flex items-start gap-2.5 sm:gap-3 p-2 sm:p-2.5 rounded-xl border border-border bg-surface-2/90">
-                      <span className="px-1.5 sm:px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono text-[9px] sm:text-[10px] font-bold mt-0.5 shrink-0">
-                        NEW AD
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs sm:text-sm font-bold text-white">Shopify launched 3 new reels</div>
-                        <p className="text-[11px] sm:text-xs text-text-muted truncate mt-0.5">Targeting boutique apparel and fashion retailers</p>
-                        <span className="text-[9px] sm:text-[10px] font-mono text-text-faint">2 hours ago · Automated</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5 sm:gap-3 p-2 sm:p-2.5 rounded-xl border border-border bg-surface-2/90">
-                      <span className="px-1.5 sm:px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono text-[9px] sm:text-[10px] font-bold mt-0.5 shrink-0">
-                        DIFF
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs sm:text-sm font-bold text-white">Gymshark headline shifted</div>
-                        <p className="text-[11px] sm:text-xs text-text-muted truncate mt-0.5">Changed: "Summer Launch" → "Restocked: Black Camo"</p>
-                        <span className="text-[9px] sm:text-[10px] font-mono text-text-faint">5 hours ago · Copy test</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5 sm:gap-3 p-2 sm:p-2.5 rounded-xl border border-border bg-surface-2/90">
-                      <span className="px-1.5 sm:px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 font-mono text-[9px] sm:text-[10px] font-bold mt-0.5 shrink-0">
-                        KILLED
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs sm:text-sm font-bold text-white">Nike discontinued static display</div>
-                        <p className="text-[11px] sm:text-xs text-text-muted truncate mt-0.5">Killed after 9 days · Retained 68% velocity</p>
-                        <span className="text-[9px] sm:text-[10px] font-mono text-text-faint">Yesterday · Fatigue triggered</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-text-faint">
-                    <span>Baseline: 12 Brands</span>
-                    <span className="text-emerald-300 font-bold flex items-center gap-1 hover:underline">
-                      View Live Diffs →
-                    </span>
-                  </div>
-                </Card>
-
-                {/* ============================================================ */}
-                {/* CARD 4: PERFORMANCE BENCHMARKING (Loop 05) */}
-                {/* ============================================================ */}
-                <Card className="bg-[#0e1115] border border-white/10 p-4 sm:p-6 text-left flex flex-col justify-between shadow-2xl h-full">
-                  {/* Header */}
-                  <div className="flex items-center justify-between border-b border-border/80 pb-2.5 sm:pb-3 gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-accent" />
-                      </span>
-                      <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent shrink-0" />
-                      <span className="font-mono text-[11px] sm:text-xs lg:text-sm font-bold text-text truncate">
-                        Performance &gt; Scoring
-                      </span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full border border-accent/40 bg-accent/15 text-accent font-mono text-[9px] sm:text-[11px] font-semibold shrink-0">
-                      Model v2.4 Calibrated
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 sm:space-y-2.5 py-1">
-                    {/* 3 Metric Tiles */}
-                    <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-center">
-                      <div className="p-2 sm:p-2.5 rounded-xl border border-border bg-surface">
-                        <span className="text-[9px] sm:text-[10px] font-mono text-text-faint block uppercase">TOP SCORE</span>
-                        <span className="text-sm sm:text-lg font-extrabold text-accent">96.4</span>
-                      </div>
-                      <div className="p-2 sm:p-2.5 rounded-xl border border-border bg-surface">
-                        <span className="text-[9px] sm:text-[10px] font-mono text-text-faint block uppercase">ROAS MULT</span>
-                        <span className="text-sm sm:text-lg font-extrabold text-white">3.8x</span>
-                      </div>
-                      <div className="p-2 sm:p-2.5 rounded-xl border border-border bg-surface">
-                        <span className="text-[9px] sm:text-[10px] font-mono text-text-faint block uppercase">DURATION</span>
-                        <span className="text-sm sm:text-lg font-extrabold text-white">38d</span>
-                      </div>
-                    </div>
-
-                    {/* Leaderboard */}
-                    <div className="p-2.5 sm:p-3 rounded-xl border border-border bg-surface/80 space-y-1.5 sm:space-y-2">
-                      <div className="flex items-center justify-between text-[10px] font-mono text-text-muted">
-                        <span className="font-bold text-white">REACH LEADERBOARD</span>
-                        <span className="text-accent font-semibold">EST. IMPRESSIONS</span>
-                      </div>
-                      <div className="space-y-1 sm:space-y-1.5 text-xs">
-                        <div className="flex items-center justify-between py-0.5 sm:py-1 border-b border-border/50">
-                          <span className="font-semibold text-white truncate mr-2">1. Nike — ReactX Launch</span>
-                          <span className="font-mono text-accent font-bold shrink-0">2.8M</span>
-                        </div>
-                        <div className="flex items-center justify-between py-0.5 sm:py-1 border-b border-border/50">
-                          <span className="font-semibold text-text truncate mr-2">2. Gymshark — Seamless</span>
-                          <span className="font-mono text-text-muted shrink-0">1.6M</span>
-                        </div>
-                        <div className="flex items-center justify-between py-0.5 sm:py-1">
-                          <span className="font-semibold text-text truncate mr-2">3. On Running — Monster 2</span>
-                          <span className="font-mono text-text-muted shrink-0">1.1M</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-text-faint">
-                    <span>Continuous Benchmark</span>
-                    <span className="text-accent font-bold flex items-center gap-1 hover:underline">
-                      Share Playbook →
-                    </span>
-                  </div>
-                </Card>
-
-                {/* ============================================================ */}
-                {/* CARD 5: HELIX SCOUT ENGINE (Loop 06) */}
-                {/* ============================================================ */}
-                <Card className="bg-[#0e1115] border border-white/10 p-4 sm:p-6 text-left flex flex-col justify-between shadow-2xl h-full">
-                  {/* Header */}
-                  <div className="flex items-center justify-between border-b border-border/80 pb-2.5 sm:pb-3 gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-accent" />
-                      </span>
-                      <Crosshair className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-accent shrink-0" />
-                      <span className="font-mono text-[11px] sm:text-xs lg:text-sm font-bold text-text truncate">
-                        Scout &gt; Social Lead Gen
-                      </span>
-                    </div>
-                    <span className="px-2 py-0.5 rounded-full border border-accent/40 bg-accent/15 text-accent font-mono text-[9px] sm:text-[11px] font-semibold shrink-0">
-                      ● Active Pipeline
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 sm:space-y-2.5 py-1">
-                    {/* Platforms Bar */}
-                    <div className="p-2 sm:p-2.5 rounded-xl border border-border bg-surface flex items-center justify-between text-xs font-mono">
-                      <span className="text-text-muted">Target Handles: <strong className="text-white">3 queued</strong></span>
-                      <div className="flex gap-1">
-                        {["IG", "GH", "LT", "TT"].map((p) => (
-                          <span key={p} className="px-1.5 py-0.5 rounded border border-accent/30 bg-accent/10 text-accent font-mono text-[9.5px] font-bold">
-                            {p}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Verified Lead Snapshot */}
-                    <div className="p-2.5 sm:p-3 rounded-xl border border-border bg-surface/80 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-white text-xs sm:text-sm font-mono">@helixagency</span>
-                          <span className="text-[10px] font-mono text-text-faint">(Instagram)</span>
-                        </div>
-                        <span className="px-2 py-0.5 rounded border border-accent/40 bg-accent/15 text-accent font-mono text-[11px] font-extrabold shadow-sm shadow-accent/20">
-                          SCORE: 78
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                        <div>
-                          <span className="text-text-faint text-[10px] block">EMAIL (BIO VERIFIED)</span>
-                          <span className="text-text font-semibold truncate block">hello@helixx.xo.je</span>
-                        </div>
-                        <div>
-                          <span className="text-text-faint text-[10px] block">PHONE (WHATSAPP)</span>
-                          <span className="text-text font-semibold truncate block">+966 50 123 4567</span>
-                        </div>
-                      </div>
-
-                      {/* Score bar */}
-                      <div className="space-y-1 pt-1">
-                        <div className="flex justify-between text-[10px] font-mono text-text-muted">
-                          <span>Contact Enrichment Confidence</span>
-                          <span className="text-accent font-bold">90%</span>
-                        </div>
-                        <div className="h-1 w-full rounded-full bg-[#1c1c24] overflow-hidden">
-                          <div className="h-full bg-accent rounded-full" style={{ width: "90%" }} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="pt-2 border-t border-border/70 flex items-center justify-between text-[11px] font-mono text-text-faint">
-                    <span>kiryano/Scout MIT Adapted</span>
-                    <a href="/scout" className="text-accent font-bold flex items-center gap-1 hover:underline">
-                      Launch Scout Loop →
-                    </a>
-                  </div>
-                </Card>
-              </CardSwap>
-            </div>
-          </div>
-
+                  ))}
+                </div>
+              </div>
+              <CardFooter>{c.cardAgentsFooter}</CardFooter>
+            </Card>
+          </CardSwap>
         </div>
       </div>
     </section>

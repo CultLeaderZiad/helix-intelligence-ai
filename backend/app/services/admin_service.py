@@ -1,8 +1,9 @@
 import datetime
+import math
 import uuid
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text, desc, update
+from sqlalchemy import select, func, text
 from fastapi import HTTPException
 
 from app.schemas.admin import (
@@ -21,6 +22,72 @@ from app.models.api_usage import ExternalApiUsage
 from app.models.notification import Notification
 from app.core.config import settings
 from app.core.security import create_access_token
+from app.services.billing_service import access_states_for_orgs, is_platform_admin
+from app.services.query_bounds import ADMIN_LIST_CAP, pagination_bounds
+
+
+async def _primary_org_id(db: AsyncSession, user_id: str) -> Optional[str]:
+    result = await db.execute(
+        select(Organization.id)
+        .where(Organization.owner_id == user_id)
+        .order_by(Organization.id)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def record_admin_audit_event(
+    db: AsyncSession,
+    actor_id: str,
+    operation: str,
+    metadata: Dict[str, Any],
+    *,
+    org_id: Optional[str] = None,
+) -> None:
+    """Persist privileged actions in the existing tenant-scoped admin log."""
+    audit_org_id = org_id or await _primary_org_id(db, actor_id)
+    if audit_org_id is None:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "admin_audit_context_missing",
+                "message": "This admin action cannot be saved without an audit workspace.",
+            },
+        )
+    db.add(UsageLog(
+        org_id=audit_org_id,
+        user_id=actor_id,
+        provider="admin",
+        operation=operation,
+        units=1.0,
+        cost_usd=0.0,
+        credits_deducted=0.0,
+        requests_used=0,
+        metadata_json=metadata,
+    ))
+
+
+def _limit_or_fallback(value, fallback):
+    """None means the column was never set. Zero is a real limit."""
+    return fallback if value is None else value
+
+
+def _iso_utc(value: Optional[datetime.datetime]) -> Optional[str]:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=datetime.timezone.utc)
+    else:
+        value = value.astimezone(datetime.timezone.utc)
+    return value.isoformat().replace("+00:00", "Z")
+
+
+GRANTABLE_FEATURES = frozenset({
+    "discover",
+    "swipe_files",
+    "monitors",
+    "team_accounts",
+})
 
 # Credential-bearing keys live in organizations.custom_feature_flags (Hunter
 # keys, LinkedIn cookies) and must never leave the server.
@@ -36,23 +103,10 @@ def _redact_flags(flags) -> dict:
     }
 
 async def get_overview(db: AsyncSession) -> AdminOverviewStats:
-    if settings.USE_MOCKS:
-        return AdminOverviewStats(
-            organizations=10,
-            active_scrape_jobs=2,
-            system_health="operational",
-            api_error_rate=0.01,
-            window_label="Last 24h",
-            total_credits_consumed=142.5,
-            total_provider_cost_usd=1.42,
-            active_trials=8
-        )
-    
     org_count = await db.scalar(select(func.count(Organization.id))) or 0
     active_jobs = await db.scalar(select(func.count(ScrapeJob.id)).where(ScrapeJob.status == "running")) or 0
     total_credits = await db.scalar(select(func.sum(UsageLog.credits_deducted))) or 0.0
     total_cost = await db.scalar(select(func.sum(UsageLog.cost_usd))) or 0.0
-    active_trials = await db.scalar(select(func.count(Organization.id)).where(Organization.plan_id == "plan_trial_default")) or 0
 
     now = datetime.datetime.now(datetime.timezone.utc)
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -67,7 +121,6 @@ async def get_overview(db: AsyncSession) -> AdminOverviewStats:
         window_label="All Time",
         total_credits_consumed=round(float(total_credits), 2),
         total_provider_cost_usd=round(float(total_cost), 4),
-        active_trials=active_trials,
         today_api_calls=today_api_calls,
         today_api_spend=round(float(today_api_spend), 4)
     )
@@ -86,7 +139,7 @@ async def list_jobs(db: AsyncSession) -> list[AdminJobRow]:
             status=job.status,
             records=job.record_count or 0,
             duration_ms=job.elapsed_ms or 0,
-            created_at=job.created_at.isoformat() + "Z" if job.created_at else ""
+            created_at=_iso_utc(job.created_at) or ""
         ))
     return jobs
 
@@ -97,7 +150,7 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
     recorded traffic report "unknown" rather than "success"."""
     now = datetime.datetime.now(datetime.timezone.utc)
     window = now - datetime.timedelta(hours=24)
-    checked_at = now.isoformat() + "Z"
+    checked_at = _iso_utc(now) or ""
     services: List[AdminServiceHealth] = []
 
     def _row_status(success: int, failed: int) -> str:
@@ -109,7 +162,7 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
             return "success"
         return "unknown"
 
-    # --- Neon Postgres: live probe ---
+    # --- PostgreSQL: live probe ---
     db_status, db_detail, db_latency = "danger", "Disconnected", None
     try:
         start = datetime.datetime.now()
@@ -120,7 +173,7 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
     except Exception as e:
         db_detail = f"Probe failed: {str(e)[:120]}"
     services.append(AdminServiceHealth(
-        id="db-neon", name="Neon Serverless Postgres",
+        id="db-neon", name="PostgreSQL",
         status=db_status, detail=db_detail,
         latency_ms=db_latency, last_checked=checked_at,
     ))
@@ -185,34 +238,53 @@ async def get_health(db: AsyncSession) -> AdminSystemHealth:
             latency_ms=None, last_checked=checked_at,
         ))
 
-    # --- Media generation providers: MediaGenerationJob outcomes ---
-    from app.models.media_job import MediaGenerationJob
-    media_rows = (await db.execute(
-        select(MediaGenerationJob.provider, MediaGenerationJob.status)
-        .where(MediaGenerationJob.created_at >= window)
-    )).all()
-    media_stats: Dict[str, Dict[str, int]] = {}
-    for provider, status in media_rows:
-        stats = media_stats.setdefault(provider or "unknown", {"success": 0, "failed": 0})
-        if status == "completed":
-            stats["success"] += 1
-        elif status == "failed":
-            stats["failed"] += 1
-    if media_stats:
-        for provider, stats in sorted(media_stats.items()):
-            services.append(AdminServiceHealth(
-                id=f"media-{provider}",
-                name=f"Media Generation — {provider}",
-                status=_row_status(stats["success"], stats["failed"]),
-                detail=f"{stats['success']} completed, {stats['failed']} failed in last 24h",
-                latency_ms=None, last_checked=checked_at,
-            ))
-
     has_danger = any(s.status == "danger" for s in services)
     state = "degraded" if has_danger else "operational"
     return AdminSystemHealth(state=state, services=services)
 
 # --- Plans Management ---
+def _pricing(plan):
+    from app.schemas.pricing import PlanPricing
+
+    raw = getattr(plan, "pricing", None)
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return PlanPricing.model_validate(raw)
+    except Exception:  # a hand-edited row must not break the admin list
+        return None
+
+
+def _limits(plan):
+    from app.schemas.pricing import PlanLimits
+
+    raw = getattr(plan, "limits", None)
+    if not isinstance(raw, dict):
+        return None
+    try:
+        return PlanLimits.model_validate(raw)
+    except Exception:
+        return None
+
+
+async def list_public_pricing(db: AsyncSession):
+    """Listed plans for /pricing, plus the sign-up trial terms. No auth."""
+    from app.schemas.pricing import PublicPlan, PublicPricing
+
+    plans = []
+    for p in (await db.execute(select(Plan))).scalars().all():
+        pricing = _pricing(p)
+        if pricing is None or not pricing.listed:
+            continue
+        plans.append(PublicPlan(id=p.id, name=p.name, price_monthly=p.price_monthly, pricing=pricing))
+    plans.sort(key=lambda item: (item.pricing.order, item.price_monthly or 0, item.name))
+    return PublicPricing(
+        trial_days=int(settings.SIGNUP_TRIAL_DAYS),
+        trial_features=[f for f in settings.SIGNUP_TRIAL_FEATURES if f in GRANTABLE_FEATURES],
+        plans=plans,
+    )
+
+
 async def list_plans(db: AsyncSession) -> List[PlanSchema]:
     result = await db.execute(select(Plan).order_by(Plan.created_at.asc()))
     plans = result.scalars().all()
@@ -223,13 +295,15 @@ async def list_plans(db: AsyncSession) -> List[PlanSchema]:
             type=p.type,
             credit_allowance=p.credit_allowance,
             daily_credit_limit=p.daily_credit_limit,
-            daily_image_limit=getattr(p, "daily_image_limit", 5) or 5,
-            daily_video_limit=getattr(p, "daily_video_limit", 3) or 3,
+            daily_image_limit=_limit_or_fallback(getattr(p, "daily_image_limit", None), 5),
+            daily_video_limit=_limit_or_fallback(getattr(p, "daily_video_limit", None), 3),
             price_monthly=getattr(p, "price_monthly", 0.0) or 0.0,
             price_per_credit=p.price_per_credit,
             feature_flags=p.feature_flags or {},
+            pricing=_pricing(p),
+            limits=_limits(p),
             created_by_admin_id=p.created_by_admin_id,
-            created_at=p.created_at.isoformat() + "Z" if p.created_at else None
+            created_at=_iso_utc(p.created_at)
         )
         for p in plans
     ]
@@ -242,11 +316,13 @@ async def create_plan(db: AsyncSession, plan_in: PlanCreate, admin_id: str) -> P
         type=plan_in.type,
         credit_allowance=plan_in.credit_allowance,
         daily_credit_limit=plan_in.daily_credit_limit,
-        daily_image_limit=plan_in.daily_image_limit or 5,
-        daily_video_limit=plan_in.daily_video_limit or 3,
+        daily_image_limit=_limit_or_fallback(plan_in.daily_image_limit, 5),
+        daily_video_limit=_limit_or_fallback(plan_in.daily_video_limit, 3),
         price_monthly=plan_in.price_monthly or 0.0,
         price_per_credit=plan_in.price_per_credit,
         feature_flags=plan_in.feature_flags,
+        pricing=plan_in.pricing.model_dump() if plan_in.pricing else None,
+        limits=plan_in.limits.model_dump() if plan_in.limits else None,
         created_by_admin_id=admin_id
     )
     db.add(new_plan)
@@ -263,8 +339,10 @@ async def create_plan(db: AsyncSession, plan_in: PlanCreate, admin_id: str) -> P
         price_monthly=new_plan.price_monthly,
         price_per_credit=new_plan.price_per_credit,
         feature_flags=new_plan.feature_flags or {},
+        pricing=_pricing(new_plan),
+            limits=_limits(new_plan),
         created_by_admin_id=new_plan.created_by_admin_id,
-        created_at=new_plan.created_at.isoformat() + "Z" if new_plan.created_at else None
+        created_at=_iso_utc(new_plan.created_at)
     )
 
 async def update_plan(db: AsyncSession, plan_id: str, plan_update: PlanUpdate) -> PlanSchema:
@@ -290,6 +368,10 @@ async def update_plan(db: AsyncSession, plan_id: str, plan_update: PlanUpdate) -
         plan.price_per_credit = plan_update.price_per_credit
     if plan_update.feature_flags is not None:
         plan.feature_flags = plan_update.feature_flags
+    if plan_update.pricing is not None:
+        plan.pricing = plan_update.pricing.model_dump()
+    if plan_update.limits is not None:
+        plan.limits = plan_update.limits.model_dump()
 
     await db.commit()
     await db.refresh(plan)
@@ -305,8 +387,10 @@ async def update_plan(db: AsyncSession, plan_id: str, plan_update: PlanUpdate) -
         price_monthly=getattr(plan, "price_monthly", 0.0),
         price_per_credit=plan.price_per_credit,
         feature_flags=plan.feature_flags or {},
+        pricing=_pricing(plan),
+            limits=_limits(plan),
         created_by_admin_id=plan.created_by_admin_id,
-        created_at=plan.created_at.isoformat() + "Z" if plan.created_at else None
+        created_at=_iso_utc(plan.created_at)
     )
 
 async def delete_plan(db: AsyncSession, plan_id: str) -> dict:
@@ -337,6 +421,7 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
         .outerjoin(User, Organization.owner_id == User.id)
         .outerjoin(Plan, Organization.plan_id == Plan.id)
         .order_by(Organization.name.asc())
+        .limit(ADMIN_LIST_CAP)
     )
     result = await db.execute(query)
     rows = result.all()
@@ -347,11 +432,13 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
     job_counts = dict(job_counts_result.all())
 
     orgs = []
+    access_by_org = await access_states_for_orgs(db, [org.id for org, _owner, _plan in rows])
     for org, owner, plan in rows:
         effective_flags = dict(plan.feature_flags or {}) if plan else {}
         if org.custom_feature_flags:
             effective_flags.update(org.custom_feature_flags)
 
+        access = access_by_org.get(str(org.id)) or {"status": "pending"}
         orgs.append(AdminOrganizationRow(
             id=org.id,
             name=org.name,
@@ -365,12 +452,18 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
             custom_feature_flags=_redact_flags(org.custom_feature_flags),
             effective_feature_flags=_redact_flags(effective_flags),
             status=org.status or "active",
-            trial_expires_at=owner.trial_expires_at.isoformat() + "Z" if owner and owner.trial_expires_at else None,
+            access_status=access["status"],
+            access_expires_at=access.get("expires_at") if access["status"] == "approved" else None,
+            access_features={
+                k: v is True for k, v in (access.get("feature_flags") or {}).items()
+            } if access["status"] == "approved" else {},
             total_jobs=job_counts.get(org.id, 0)
         ))
     return orgs
 
 async def grant_credits(db: AsyncSession, org_id: str, grant_in: GrantCreditsRequest, admin_id: str) -> Dict[str, Any]:
+    if not math.isfinite(grant_in.amount) or grant_in.amount <= 0:
+        raise HTTPException(status_code=422, detail="Credit grants must be a finite positive amount")
     org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
@@ -493,7 +586,7 @@ async def get_usage_summary(db: AsyncSession) -> AdminUsageSummary:
             units=round(float(log.units), 2),
             cost_usd=round(float(log.cost_usd), 4),
             credits_deducted=round(float(log.credits_deducted), 2),
-            created_at=log.created_at.isoformat() + "Z" if log.created_at else ""
+            created_at=_iso_utc(log.created_at) or ""
         )
         for log, org, user in recent_res.all()
     ]
@@ -536,7 +629,7 @@ async def get_usage_logs_filtered(
         count_query = count_query.where(UsageLog.operation == operation)
 
     total_count = await db.scalar(count_query) or 0
-    offset = (page - 1) * page_size
+    offset, page_size = pagination_bounds(page, page_size)
     query = query.order_by(UsageLog.created_at.desc()).offset(offset).limit(page_size)
 
     result = await db.execute(query)
@@ -554,7 +647,7 @@ async def get_usage_logs_filtered(
             units=round(float(log.units), 2),
             cost_usd=round(float(log.cost_usd), 4),
             credits_deducted=round(float(log.credits_deducted), 2),
-            created_at=log.created_at.isoformat() + "Z" if log.created_at else ""
+            created_at=_iso_utc(log.created_at) or ""
         )
         for log, org, user in rows
     ]
@@ -573,11 +666,13 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
         .outerjoin(Organization, User.id == Organization.owner_id)
         .outerjoin(Plan, Organization.plan_id == Plan.id)
         .order_by(User.created_at.desc())
+        .limit(ADMIN_LIST_CAP)
     )
     result = await db.execute(query)
     rows = result.all()
 
     users = []
+    user_access = await access_states_for_orgs(db, [org.id for _u, org, _p in rows if org])
     for user, org, plan in rows:
         users.append(AdminUserRow(
             id=user.id,
@@ -590,21 +685,66 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
             organization_name=org.name if org else None,
             plan_id=org.plan_id if org else None,
             plan_name=plan.name if plan else None,
-            trial_started_at=user.trial_started_at.isoformat() + "Z" if user.trial_started_at else None,
-            trial_expires_at=user.trial_expires_at.isoformat() + "Z" if user.trial_expires_at else None,
-            created_at=user.created_at.isoformat() + "Z" if user.created_at else "",
+            access_status=(user_access.get(str(org.id)) or {}).get("status") if org else None,
+            created_at=_iso_utc(user.created_at) or "",
             is_suspended=bool(getattr(user, "is_suspended", False) or False),
             is_banned=bool(getattr(user, "is_banned", False) or False),
             status="banned" if bool(getattr(user, "is_banned", False) or False) else ("suspended" if bool(getattr(user, "is_suspended", False) or False) else "active")
         ))
     return users
 
-async def ban_user(db: AsyncSession, target_user_id: str, is_banned: bool) -> Dict[str, Any]:
+
+async def update_user_status(
+    db: AsyncSession,
+    target_user_id: str,
+    status: str,
+    actor_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    if status not in {"active", "suspended"}:
+        raise HTTPException(status_code=400, detail="Status must be active or suspended")
+    user = (await db.execute(select(User).where(User.id == target_user_id))).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.is_suspended = status == "suspended"
+    if status == "suspended":
+        from app.services import auth_service
+        await auth_service.revoke_user_sessions(db, user, commit=False)
+    if actor_id:
+        await record_admin_audit_event(
+            db,
+            actor_id,
+            "admin_user_status_updated",
+            {"target_user_id": user.id, "status": status},
+            org_id=await _primary_org_id(db, user.id),
+        )
+    await db.commit()
+    await db.refresh(user)
+    effective_status = "banned" if user.is_banned else ("suspended" if user.is_suspended else "active")
+    return {"success": True, "user_id": user.id, "status": effective_status}
+
+async def ban_user(
+    db: AsyncSession,
+    target_user_id: str,
+    is_banned: bool,
+    actor_id: Optional[str] = None,
+) -> Dict[str, Any]:
     user = (await db.execute(select(User).where(User.id == target_user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
     user.is_banned = is_banned
+    if is_banned:
+        from app.services import auth_service
+        await auth_service.revoke_user_sessions(db, user, commit=False)
+    if actor_id:
+        await record_admin_audit_event(
+            db,
+            actor_id,
+            "admin_user_ban_updated",
+            {"target_user_id": user.id, "is_banned": is_banned},
+            org_id=await _primary_org_id(db, user.id),
+        )
     await db.commit()
     await db.refresh(user)
     
@@ -619,7 +759,8 @@ async def update_user_role(
     db: AsyncSession,
     target_user_id: str,
     role: str,
-    admin_permissions: Optional[Dict[str, Any]] = None
+    admin_permissions: Optional[Dict[str, Any]] = None,
+    actor_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     if role not in ["customer", "assistant-admin", "admin"]:
         raise HTTPException(status_code=400, detail="Invalid role. Choose customer, assistant-admin, or admin.")
@@ -628,10 +769,30 @@ async def update_user_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    previous_role = user.role
     user.role = role
-    if admin_permissions is not None:
-        user.admin_permissions = admin_permissions
-        
+    user.is_platform_admin = role == "admin"
+    if role == "assistant-admin":
+        if admin_permissions is not None:
+            user.admin_permissions = admin_permissions
+        elif previous_role != "assistant-admin":
+            user.admin_permissions = {}
+    else:
+        user.admin_permissions = {}
+
+    if actor_id:
+        await record_admin_audit_event(
+            db,
+            actor_id,
+            "admin_user_role_updated",
+            {
+                "target_user_id": user.id,
+                "role": role,
+                "is_platform_admin": user.is_platform_admin,
+                "admin_permissions": user.admin_permissions or {},
+            },
+            org_id=await _primary_org_id(db, user.id),
+        )
     await db.commit()
     await db.refresh(user)
 
@@ -639,7 +800,9 @@ async def update_user_role(
         "success": True,
         "message": f"User role updated to {role}",
         "user_id": user.id,
-        "role": user.role
+        "role": user.role,
+        "is_platform_admin": user.is_platform_admin,
+        "admin_permissions": user.admin_permissions or {},
     }
 
 async def switch_user_plan(db: AsyncSession, target_user_id: str, plan_id: str) -> Dict[str, Any]:
@@ -698,6 +861,9 @@ async def broadcast_announcement(
     }
 
 async def impersonate_user(db: AsyncSession, target_user_id: str, actor: Optional[User] = None) -> ImpersonateResponse:
+    if actor is None or actor.role != "admin":
+        raise HTTPException(status_code=403, detail="Full administrator access is required")
+
     user = (await db.execute(select(User).where(User.id == target_user_id))).scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -705,37 +871,336 @@ async def impersonate_user(db: AsyncSession, target_user_id: str, actor: Optiona
     # SECURITY: never allow privilege escalation through impersonation. An
     # assistant-admin used to be able to mint a full-admin token by targeting an
     # admin user; block that at the service layer as well as the route.
-    if user.role == "admin":
+    if is_platform_admin(user):
         raise HTTPException(status_code=403, detail="Impersonating an administrator is not permitted")
 
-    token = create_access_token(subject=user.id, role=user.role)
+    metadata = getattr(user, "signup_metadata", None) or {}
+    token_version = int(metadata.get("token_version", 1) or 1)
+    expires = datetime.timedelta(minutes=int(getattr(settings, "IMPERSONATION_TOKEN_EXPIRE_MINUTES", 15)))
+    token = create_access_token(
+        subject=user.id,
+        role=user.role,
+        token_version=token_version,
+        expires_delta=expires,
+        extra_claims={
+            "token_use": "impersonation",
+            "scope": "impersonation",
+            "act": actor.id if actor else None,
+            "actor_role": actor.role if actor else None,
+        },
+    )
 
     # Audit trail: privileged action must be attributable (surfaces in the
     # admin Audit Log, which reads UsageLog).
     target_org = (await db.execute(
         select(Organization.id).where(Organization.owner_id == user.id)
     )).scalar_one_or_none()
-    if target_org:
-        db.add(UsageLog(
-            org_id=target_org,
-            user_id=actor.id if actor else None,
-            provider="admin",
-            operation="admin_impersonation",
-            units=1.0,
-            cost_usd=0.0,
-            credits_deducted=0.0,
-            requests_used=0,
-            metadata_json={
-                "actor_id": actor.id if actor else None,
-                "actor_email": actor.email if actor else None,
-                "target_user_id": user.id,
-                "target_email": user.email,
-            },
-        ))
-        await db.commit()
+    db.add(UsageLog(
+        org_id=target_org,
+        user_id=actor.id if actor else user.id,
+        provider="admin",
+        operation="admin_impersonation",
+        units=1.0,
+        cost_usd=0.0,
+        credits_deducted=0.0,
+        requests_used=0,
+        metadata_json={
+            "actor_id": actor.id if actor else None,
+            "actor_email": actor.email if actor else None,
+            "target_user_id": user.id,
+            "target_email": user.email,
+            "scope": "impersonation",
+            "token_use": "impersonation",
+            "target_token_version": token_version,
+            "expires_in_seconds": int(expires.total_seconds()),
+        },
+    ))
+    await db.commit()
     return ImpersonateResponse(
         access_token=token,
         user_id=user.id,
         email=user.email,
         role=user.role
     )
+
+
+def _require_platform_admin(actor: User) -> None:
+    if not is_platform_admin(actor):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "self_grant_denied",
+                "message": "Only a platform admin can grant, approve, or revoke workspace access.",
+            },
+        )
+
+
+def _clean_flags(flags: Dict[str, Any]) -> Dict[str, bool]:
+    if not isinstance(flags, dict) or not flags:
+        raise HTTPException(status_code=422, detail={"code": "flags_required", "message": "Choose at least one feature flag."})
+    cleaned = {}
+    for key, value in flags.items():
+        if key not in GRANTABLE_FEATURES:
+            raise HTTPException(status_code=422, detail={"code": "unknown_feature", "message": f"Unknown feature '{key}'."})
+        cleaned[key] = value is True
+    if not any(cleaned.values()):
+        raise HTTPException(status_code=422, detail={"code": "flags_required", "message": "Approve at least one feature."})
+    return cleaned
+
+
+def _request_payload(row) -> Dict[str, Any]:
+    return {
+        "id": row.id,
+        "org_id": row.org_id,
+        "user_id": row.user_id,
+        "requested_features": row.requested_features or [],
+        "note": row.note,
+        "status": row.status,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "decided_by_user_id": row.decided_by_user_id,
+        "decided_at": row.decided_at.isoformat() if row.decided_at else None,
+        "decision_note": row.decision_note,
+    }
+
+
+async def submit_access_request(db: AsyncSession, user: User, org_id: str, features: List[str], note: Optional[str] = None) -> Dict[str, Any]:
+    from app.models.access_grant import AccessRequest
+    from app.models.organization_member import OrganizationMember
+
+    org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+    if org is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    member = (
+        await db.execute(
+            select(OrganizationMember).where(
+                OrganizationMember.org_id == org_id,
+                OrganizationMember.user_id == user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if org.owner_id != user.id and member is None and not is_platform_admin(user):
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    requested = []
+    for feature in features or []:
+        if feature not in GRANTABLE_FEATURES:
+            raise HTTPException(status_code=422, detail={"code": "unknown_feature", "message": f"Unknown feature '{feature}'."})
+        if feature not in requested:
+            requested.append(feature)
+    if not requested:
+        raise HTTPException(status_code=422, detail={"code": "features_required", "message": "Choose at least one feature."})
+    existing = (
+        await db.execute(
+            select(AccessRequest).where(
+                AccessRequest.org_id == org_id,
+                AccessRequest.user_id == user.id,
+                AccessRequest.status == "pending",
+            )
+        )
+    ).scalars().first()
+    if existing is not None:
+        existing.requested_features = requested
+        existing.note = note
+        await db.commit()
+        await db.refresh(existing)
+        return _request_payload(existing)
+    row = AccessRequest(
+        org_id=org_id,
+        user_id=user.id,
+        requested_features=requested,
+        note=(note or "")[:500] or None,
+        status="pending",
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return _request_payload(row)
+
+
+async def list_access_requests(db: AsyncSession, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    from app.models.access_grant import AccessRequest
+
+    stmt = select(AccessRequest).order_by(AccessRequest.created_at.desc())
+    if status:
+        stmt = stmt.where(AccessRequest.status == status)
+    rows = (await db.execute(stmt)).scalars().all()
+    return [_request_payload(row) for row in rows]
+
+
+async def grant_organization_access(
+    db: AsyncSession,
+    actor: User,
+    org_id: str,
+    plan_id: str,
+    feature_flags: Dict[str, Any],
+    expires_at: Optional[datetime.datetime] = None,
+    request_id: Optional[str] = None,
+    *,
+    _commit: bool = True,
+) -> Dict[str, Any]:
+    """Record who granted which flags. Does not delete workspace data."""
+    from app.models.access_grant import OrganizationAccessGrant
+
+    _require_platform_admin(actor)
+    org = (await db.execute(select(Organization).where(Organization.id == org_id))).scalar_one_or_none()
+    if org is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    plan = (await db.execute(select(Plan).where(Plan.id == plan_id))).scalar_one_or_none()
+    if plan is None:
+        raise HTTPException(status_code=404, detail={"code": "plan_unavailable", "message": "Plan not found."})
+    flags = _clean_flags(feature_flags)
+    if expires_at is not None and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=datetime.timezone.utc)
+    grant = OrganizationAccessGrant(
+        org_id=org.id,
+        plan_id=plan.id,
+        feature_flags=flags,
+        granted_by_user_id=actor.id,
+        expires_at=expires_at,
+        request_id=request_id,
+    )
+    org.plan_id = plan.id
+    org.plan = plan.type
+    if org.status in ("suspended",):
+        pass
+    elif org.status != "active":
+        org.status = "active"
+    preserved = {
+        key: value
+        for key, value in (org.custom_feature_flags or {}).items()
+        if key not in GRANTABLE_FEATURES
+    }
+    preserved.update(flags)
+    org.custom_feature_flags = preserved
+    db.add(grant)
+    db.add(UsageLog(
+        org_id=org.id,
+        user_id=actor.id,
+        provider="admin",
+        operation="access_granted",
+        units=1.0,
+        cost_usd=0.0,
+        credits_deducted=0.0,
+        requests_used=0,
+        metadata_json={
+            "granted_by_user_id": actor.id,
+            "plan_id": plan.id,
+            "feature_flags": flags,
+            "expires_at": expires_at.isoformat() if expires_at else None,
+            "request_id": request_id,
+        },
+    ))
+    if _commit:
+        await db.commit()
+    else:
+        await db.flush()
+    await db.refresh(grant)
+    return {
+        "id": grant.id,
+        "org_id": org.id,
+        "plan_id": plan.id,
+        "feature_flags": flags,
+        "granted_by_user_id": actor.id,
+        "granted_at": grant.granted_at.isoformat() if grant.granted_at else None,
+        "expires_at": expires_at.isoformat() if expires_at else None,
+        "status": "approved",
+    }
+
+
+async def approve_access_request(
+    db: AsyncSession,
+    actor: User,
+    request_id: str,
+    plan_id: str,
+    feature_flags: Dict[str, Any],
+    expires_at: Optional[datetime.datetime] = None,
+    note: Optional[str] = None,
+) -> Dict[str, Any]:
+    from app.models.access_grant import AccessRequest
+
+    _require_platform_admin(actor)
+    row = (await db.execute(
+        select(AccessRequest).where(AccessRequest.id == request_id).with_for_update()
+    )).scalar_one_or_none()
+    if row is None or row.status != "pending":
+        raise HTTPException(status_code=404, detail="Pending access request not found")
+    granted = await grant_organization_access(
+        db,
+        actor,
+        row.org_id,
+        plan_id,
+        feature_flags,
+        expires_at=expires_at,
+        request_id=row.id,
+        _commit=False,
+    )
+    row.status = "approved"
+    row.decided_by_user_id = actor.id
+    row.decided_at = datetime.datetime.now(datetime.timezone.utc)
+    row.decision_note = note
+    await db.commit()
+    await db.refresh(row)
+    payload = _request_payload(row)
+    payload["grant"] = granted
+    return payload
+
+
+async def reject_access_request(db: AsyncSession, actor: User, request_id: str, note: Optional[str] = None) -> Dict[str, Any]:
+    from app.models.access_grant import AccessRequest
+
+    _require_platform_admin(actor)
+    row = (await db.execute(
+        select(AccessRequest).where(AccessRequest.id == request_id).with_for_update()
+    )).scalar_one_or_none()
+    if row is None or row.status != "pending":
+        raise HTTPException(status_code=404, detail="Pending access request not found")
+    row.status = "rejected"
+    row.decided_by_user_id = actor.id
+    row.decided_at = datetime.datetime.now(datetime.timezone.utc)
+    row.decision_note = note
+    await record_admin_audit_event(
+        db,
+        actor.id,
+        "access_request_rejected",
+        {"request_id": row.id, "org_id": row.org_id, "note": note},
+        org_id=row.org_id,
+    )
+    await db.commit()
+    return _request_payload(row)
+
+
+async def revoke_organization_access(db: AsyncSession, actor: User, org_id: str, note: Optional[str] = None) -> Dict[str, Any]:
+    """Revoke the active grant. Workspace rows stay in the database."""
+    from app.models.access_grant import OrganizationAccessGrant
+
+    _require_platform_admin(actor)
+    grant = (await db.execute(
+        select(OrganizationAccessGrant)
+        .where(OrganizationAccessGrant.org_id == org_id)
+        .order_by(OrganizationAccessGrant.granted_at.desc())
+        .with_for_update()
+    )).scalars().first()
+    if grant is None or grant.revoked_at is not None:
+        raise HTTPException(status_code=404, detail={"code": "grant_not_found", "message": "No active grant to revoke."})
+    now = datetime.datetime.now(datetime.timezone.utc)
+    grant.revoked_at = now
+    grant.revoked_by_user_id = actor.id
+    db.add(UsageLog(
+        org_id=org_id,
+        user_id=actor.id,
+        provider="admin",
+        operation="access_revoked",
+        units=1.0,
+        cost_usd=0.0,
+        credits_deducted=0.0,
+        requests_used=0,
+        metadata_json={"note": note, "grant_id": grant.id},
+    ))
+    await db.commit()
+    return {
+        "org_id": org_id,
+        "grant_id": grant.id,
+        "status": "revoked",
+        "revoked_at": now.isoformat(),
+        "revoked_by_user_id": actor.id,
+        "data_retained": True,
+    }

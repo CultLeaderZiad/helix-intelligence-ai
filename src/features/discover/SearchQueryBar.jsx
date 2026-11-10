@@ -45,11 +45,11 @@ export function SearchQueryBar({
   }
 
   const sortOptions = [
-    { value: "composite_desc", label: t("sortComposite", "Composite score") },
-    { value: "hook_desc", label: t("sortHook", "Hook score") },
     { value: "days_active_desc", label: t("sortDays", "Days active") },
     { value: "first_seen_desc", label: t("sortNewest", "Newest") },
-    { value: "impressions_desc", label: t("sortImpr", "Est. impressions") },
+    { value: "composite_desc", label: t("sortComposite", "Text rubric (0–10)") },
+    { value: "hook_desc", label: t("sortHook", "Hook rubric (0–10)") },
+    { value: "impressions_desc", label: t("sortImpr", "Meta reach (upper bound)") },
   ]
 
   return (
@@ -62,6 +62,7 @@ export function SearchQueryBar({
         <input
           id="tour-search-input"
           value={query}
+          maxLength={300}
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={t("searchPlaceholder", 'Search ad copy, brand, domain — "quoted phrases" supported')}
@@ -87,6 +88,7 @@ export function SearchQueryBar({
 
       <div className="w-[170px]">
         <Select
+          className=""
           value={sort}
           onChange={(e) => onSortChange(e.target.value)}
           options={sortOptions}
@@ -121,11 +123,11 @@ export function SearchQueryBar({
           variant="outline"
           size="md"
           onClick={onOpenDrafts}
-          title="Search history and saved drafts"
+          title={t("searchHistoryAndSavedDrafts", "Search history and saved drafts")}
           className="flex items-center gap-1.5"
         >
           <Bookmark className="h-3.5 w-3.5 text-accent" />
-          <span className="hidden sm:inline">Drafts & History</span>
+          <span className="hidden sm:inline">{t("draftsHistory", "Drafts & history")}</span>
         </Button>
       )}
 

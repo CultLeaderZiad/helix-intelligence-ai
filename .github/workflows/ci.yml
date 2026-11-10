@@ -8,18 +8,34 @@ on:
 jobs:
   frontend:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        gate: [typecheck, lint, test, build]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Build
-        run: pnpm build
+      - name: Frontend ${{ matrix.gate }}
+        run: pnpm ${{ matrix.gate }}
         env:
           CI: true
+
+  backend-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install pyflakes
+      - run: python -m compileall -q backend/app
+      - name: Full pyflakes diagnostics (no filtered failures)
+        run: python -m pyflakes backend/app
 
   backend:
     runs-on: ubuntu-latest
@@ -48,23 +64,71 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install -r requirements.txt pyflakes pytest pytest-asyncio
-      - name: Undefined name and syntax lint (pyflakes)
-        run: |
-          python -c "import subprocess, sys; res = subprocess.run(['pyflakes', 'app'], capture_output=True, text=True); errs = [l for l in res.stdout.splitlines() if 'undefined name' in l or 'syntax' in l.lower()]; (print('\n'.join(errs)) or sys.exit(1)) if errs else print('Zero undefined names in app')"
+      - run: pip install -r requirements-dev.txt
       - name: Compile check (syntax)
         run: python -m compileall -q app
       - name: Alembic migration upgrade & drift check
         run: |
           alembic upgrade head
           alembic check
+      - name: Migration upgrade, dirty-data, rollback, and transaction regressions
+        run: python -m pytest -q tests/test_intelligence_w4_migrations.py tests/test_intelligence_w4_transactions.py
+        env:
+          W4_DISPOSABLE_DATABASE_URL: postgresql+asyncpg://helix_test:helix_password@localhost:5432/helix_test_db
+      - name: Separate disposable rollback database
+        env:
+          PGPASSWORD: helix_password
+          TEST_DATABASE_URL: postgresql+asyncpg://helix_test:helix_password@localhost:5432/helix_w4_rollback
+          DATABASE_URL: postgresql+asyncpg://helix_test:helix_password@localhost:5432/helix_w4_rollback
+        run: |
+          psql -h localhost -U helix_test -d helix_test_db -v ON_ERROR_STOP=1 -c 'CREATE DATABASE helix_w4_rollback'
+          python -m alembic upgrade head
+          python -m alembic downgrade -1
+          python -m alembic upgrade head
+          python -m alembic check
       - name: Security regression tests
         run: python tests/test_security_regressions.py
       - name: Import smoke test (app boots)
         run: |
           python -c "import app.main; print('FastAPI app imported OK; routes:', len(app.main.app.routes))"
       - name: Run pytest test suite
-        run: pytest -v tests
+        env:
+          ENVIRONMENT: test
+          TEST_DATABASE_URL: ${{ env.DATABASE_URL }}
+          W4_DISPOSABLE_DATABASE_URL: ${{ env.DATABASE_URL }}
+        run: |
+          python -m pytest -v tests -W error --junitxml=/tmp/helix-pytest.xml
+          python - <<'PY'
+          import xml.etree.ElementTree as ET
+          report = ET.parse("/tmp/helix-pytest.xml")
+          skipped = sum(int(suite.get("skipped", "0")) for suite in report.iter("testsuite"))
+          assert skipped == 0, f"Full backend suite must not skip tests: {skipped} skipped"
+          PY
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Gitleaks matches known provider token formats and high-entropy strings.
+      # A hand-rolled grep misses rotated prefixes and multiline secrets.
+      # v3 (e0c47f4) is pinned by commit SHA: it runs on Node 24. The Node 20
+      # v2 action no longer runs on GitHub-hosted runners after 2026-09-16.
+      # On pull_request it scans parent-of-first-PR-commit..head (the PR diff),
+      # not the full history, and exits 1 when gitleaks reports leaks.
+      # This repository is a personal account, so GITLEAKS_LICENSE is not required.
+      # Comments and SARIF upload stay off so findings are not published.
+      - name: Scan the pull request diff for secrets
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: "8.24.3"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_COMMENTS: "false"
 
   security-smoke:
     runs-on: ubuntu-latest

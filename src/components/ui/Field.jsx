@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-export function Label({ className, children, ...props }) {
+export function Label({ className = "", children, ...props }) {
   return (
     <label className={cn("label-mono block", className)} {...props}>
       {children}
@@ -10,7 +10,7 @@ export function Label({ className, children, ...props }) {
   )
 }
 
-export function Input({ className, ...props }) {
+export function Input({ className = "", ...props }) {
   return (
     <input
       className={cn(
@@ -25,7 +25,7 @@ export function Input({ className, ...props }) {
   )
 }
 
-export function PasswordInput({ className, disabled, ...props }) {
+export function PasswordInput({ className = "", disabled, ...props }) {
   const [visible, setVisible] = useState(false)
   return (
     <div className="relative w-full">
@@ -52,7 +52,7 @@ export function PasswordInput({ className, disabled, ...props }) {
   )
 }
 
-export function Select({ className, options = [], ...props }) {
+export function Select({ className = "", options = [], ...props }) {
   return (
     <div className="relative">
       <select
@@ -83,7 +83,7 @@ export function Select({ className, options = [], ...props }) {
 }
 
 /** Square checkbox — a filter is a switch, not a decoration. */
-export function Checkbox({ checked, onChange, label, count, className, ...props }) {
+export function Checkbox({ checked, onChange, label, count = undefined, className = "", ...props }) {
   return (
     <label
       className={cn(

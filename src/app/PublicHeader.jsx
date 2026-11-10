@@ -1,48 +1,59 @@
 import { useLocation } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
-import { APP_HOME } from "@/app/ProtectedRoute"
+import { useLanguage } from "@/context/LanguageContext"
 import PillNav from "@/components/ui/PillNav"
 import { LanguageSwitcher } from "@/components/LanguageSwitcher"
 import { UpdatesBanner } from "@/components/UpdatesBanner"
+import { useW8Copy } from "@/i18n/w8Product"
+import { usePricingCopy } from "@/i18n/pricing"
 
 export function PublicHeader() {
   const { isAuthenticated } = useAuth()
+  const { t } = useLanguage()
+  const c = useW8Copy()
+  const pricing = usePricingCopy()
   const location = useLocation()
-
   const isHome = location.pathname === "/"
-  const navItems = [
-    { label: "Product", href: isHome ? "#product" : "/#product" },
-    { label: "Pricing", href: isHome ? "#pricing" : "/#pricing" },
-    { label: "Docs", href: "/docs" },
-    { label: "Updates", href: "/updates" },
-    ...(isAuthenticated
-      ? [{ label: "Console", href: APP_HOME, isPrimary: true }]
-      : [{ label: "Get started", href: "/sign-up", isPrimary: true }]
-    )
+  const items = [
+    { label: t("productNav"), href: isHome ? "#product" : "/#product" },
+    // Pricing replaces the old Access link; the landing page keeps its Access section.
+    { label: pricing.nav, href: "/pricing" },
+    { label: c.navDocs, href: "/docs" },
+    { label: t("updatesNavigation"), href: "/updates" },
+    {
+      label: t(isAuthenticated ? "consoleNav" : "signInNav"),
+      href: isAuthenticated ? "/discover" : "/sign-in",
+      isPrimary: true,
+    },
   ]
 
   return (
     <>
       <UpdatesBanner />
-      <header className="sticky top-0 z-50 w-full flex items-center justify-center px-4 pointer-events-auto relative">
-      <PillNav
-        logo="/helix-logo.svg"
-        logoAlt="Helix"
-        items={navItems}
-        activeHref={location.pathname}
-        className="custom-nav"
-        ease="power2.easeOut"
-        baseColor="#0c0d0e"
-        pillColor="#181a1b"
-        hoverCircleColor="#ccff00"
-        hoveredPillTextColor="#000000"
-        pillTextColor="#ffffff"
-        initialLoadAnimation={true}
-      />
-      <div className="absolute right-6 hidden md:block">
-        <LanguageSwitcher />
-      </div>
-    </header>
+      {/* Centered floating pill nav, as on the live landing page. The language
+          switcher sits at the inline end on desktop and beside the menu on mobile. */}
+      <header className="pointer-events-auto sticky top-0 z-50 flex w-full items-center justify-center px-4">
+        <PillNav
+          logo="/brand/helix-mark.svg"
+          logoAlt="Helix"
+          items={items}
+          activeHref={location.pathname}
+          ease="power2.out"
+          baseColor="#0c0d0e"
+          pillColor="#181a1b"
+          hoverCircleColor="#ccff00"
+          hoveredPillTextColor="#000000"
+          pillTextColor="#ffffff"
+          initialLoadAnimation
+          ariaLabel={t("primaryNavigation")}
+          homeLabel={t("homeLink")}
+          menuOpenLabel={t("openMenu")}
+          menuCloseLabel={t("closeMenu")}
+        />
+        <div className="shrink-0 md:absolute md:end-6 md:top-1/2 md:-translate-y-1/2">
+          <LanguageSwitcher />
+        </div>
+      </header>
     </>
   )
 }

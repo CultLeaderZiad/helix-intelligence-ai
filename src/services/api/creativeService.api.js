@@ -56,25 +56,6 @@ const creativeService = {
       method: "DELETE",
     })
   },
-
-  getBrands() {
-    return request("/brands")
-  },
-
-  getPatterns() {
-    return request("/patterns")
-  },
-
-  translateCopy(text, targetLang = "en", breakdown = true) {
-    return request("/creatives/translate-copy", {
-      method: "POST",
-      body: JSON.stringify({
-        text,
-        target_lang: targetLang,
-        breakdown,
-      }),
-    })
-  },
 }
 
 export default creativeService

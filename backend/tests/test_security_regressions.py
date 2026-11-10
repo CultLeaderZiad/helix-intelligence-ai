@@ -35,27 +35,12 @@ def check(condition: bool, label: str, failures: list[str]) -> None:
 def main() -> int:
     failures: list[str] = []
 
-    scout = read("app/api/routers/scout.py")
-    # 3. No email-substring admin bypass anywhere; central gate in place.
-    # (Strip comments first: the fix's own explanatory comments mention the old
-    # backdoor, and only executable code should be asserted on.)
-    scout_code = "\n".join(
-        line for line in scout.splitlines() if not line.strip().startswith("#")
-    )
+    # 3. Scout (with its email-substring billing backdoor history) was removed
+    # in W8; it must not come back.
     check(
-        '"cultleader" in' not in scout_code
-        and 'in (current_user.email or "")' not in scout_code,
-        "scout: no email-substring admin bypass",
-        failures,
-    )
-    check(
-        scout.count("assert_can_spend(") >= 2 and scout.count("await charge(") >= 2,
-        "scout: central row-locked gate + charge() on both job routes",
-        failures,
-    )
-    check(
-        "org.credit_balance = 250" not in scout and "org.credit_balance = max(" not in scout,
-        "scout: no direct credit_balance writes",
+        not (ROOT / "app/api/routers/scout.py").exists()
+        and not (ROOT / "app/api/routers/leadgen.py").exists(),
+        "scout/leadgen: routers removed",
         failures,
     )
 
@@ -97,12 +82,13 @@ def main() -> int:
     tenancy = ROOT / "app/core/tenancy.py"
     check(tenancy.exists(), "tenancy helper module exists", failures)
 
-    # 4. Auth webhook: real signature comparison, fails closed.
+    # 4. Auth webhook: W8 removed the Neon Auth webhook entirely, which is
+    # stronger than signature checks. It must not come back unauthenticated.
     auth = read("app/api/routers/auth.py")
     check(
-        "hmac.compare_digest" in auth
-        and 'status_code=503, detail="Auth webhook is not configured"' in auth,
-        "auth webhook: HMAC enforced and closed when unconfigured",
+        '@router.post("/webhook")' not in auth
+        and not (ROOT / "app/services/neon_webhook.py").exists(),
+        "auth webhook: removed (no unauthenticated user-creation endpoint)",
         failures,
     )
     check(
@@ -130,23 +116,13 @@ def main() -> int:
         failures,
     )
 
-    # 6. Media: per-request BYOK key never persisted with the job.
-    media = read("app/services/media_service.py")
+    # 6/7. Create (media generation) was removed in W8: no service, router
+    # or per-request key handling remains to leak or skip metering.
     check(
-        'parameters.pop("custom_api_key", None)' in media,
-        "media: custom_api_key stripped before persistence",
-        failures,
-    )
-    check(
-        "custom_api_key=request_api_key" in media,
-        "media: key handed to the task in memory, not via DB",
-        failures,
-    )
-
-    # 7. Paid completions are metered on every path.
-    check(
-        "async def meter_media_success(" in media,
-        "media: metering helper exists for completed generations",
+        not (ROOT / "app/services/media_service.py").exists()
+        and not (ROOT / "app/api/routers/media.py").exists()
+        and "media.router" not in read("app/main.py"),
+        "media: generation service and router removed",
         failures,
     )
     # Higgsfield provider was removed from the app - guard the removal.
@@ -159,11 +135,6 @@ def main() -> int:
     check(
         "higgsfield" not in read("app/main.py").lower(),
         "higgsfield: not mounted in main.py",
-        failures,
-    )
-    check(
-        (ROOT / "app/services/media/modes.py").exists(),
-        "media: neutral mode catalogue replaces the provider registry",
         failures,
     )
 

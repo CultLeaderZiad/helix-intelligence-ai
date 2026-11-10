@@ -6,11 +6,11 @@ from fastapi import HTTPException
 
 from app.models.playbook import Playbook, generate_public_id
 from app.models.user import User
-from app.models.organization import Organization
 from app.models.creative import Creative
 from app.models.pattern import Pattern
 from app.models.ai_insight import AIInsight
 from app.models.usage_log import UsageLog
+from app.services.query_bounds import pagination_bounds
 
 async def compile_playbook(
     db: AsyncSession,
@@ -27,7 +27,6 @@ async def compile_playbook(
     from app.services.billing_service import get_or_create_default_org
     from app.core.tenancy import get_user_org_ids
     from app.models.scrape_job import ScrapeJob
-    from sqlalchemy import or_
 
     # 1. Fetch user's org & tenant scope
     org = await get_or_create_default_org(db, user)
@@ -88,28 +87,33 @@ async def compile_playbook(
     # 3. Collect top patterns or use pre-provided
     formatted_patterns = []
     if pre_patterns and len(pre_patterns) > 0:
-        formatted_patterns = pre_patterns
+        from app.core.redaction import strip_secret_fields
+        formatted_patterns = strip_secret_fields(pre_patterns)
     else:
-        patterns_stmt = select(Pattern)
+        patterns_stmt = select(Pattern).where(Pattern.org_id.is_not(None), Pattern.job_id.is_not(None))
         if job_id:
             patterns_stmt = patterns_stmt.where(Pattern.job_id == job_id)
+            if user_org_ids is not None:
+                patterns_stmt = patterns_stmt.where(Pattern.org_id.in_(user_org_ids))
         else:
+            patterns_stmt = patterns_stmt.where(Pattern.job_id.is_not(None))
             if user_org_ids is not None:
                 scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
-                patterns_stmt = patterns_stmt.where(or_(Pattern.job_id.in_(scoped_jobs), Pattern.job_id.is_(None)))
+                patterns_stmt = patterns_stmt.where(Pattern.org_id.in_(user_org_ids))
+                patterns_stmt = patterns_stmt.where(Pattern.job_id.in_(scoped_jobs))
         patterns_stmt = patterns_stmt.limit(5)
         patterns_res = (await db.execute(patterns_stmt)).scalars().all()
 
         for p in patterns_res:
             prevalence = float(getattr(p, "prevalence", 0.0) or 0.0)
-            lift_index = float(getattr(p, "lift_index", 1.0) or 1.0)
             formatted_patterns.append({
                 "id": p.id,
                 "name": getattr(p, "label", None) or "Unnamed pattern",
                 "category": getattr(p, "family", None) or "unclassified",
                 "description": f"Detected in {prevalence * 100:.0f}% of the analyzed creatives.",
                 "confidence_score": round(prevalence, 2),
-                "estimated_lift_percent": int((lift_index - 1.0) * 100) if lift_index > 1.0 else None,
+                # lift_index is not a measured outcome.
+                "estimated_lift_percent": None,
                 "visual_structure": None,
             })
 
@@ -181,12 +185,19 @@ async def compile_playbook(
     await db.refresh(playbook)
     return playbook
 
-async def get_public_playbook(db: AsyncSession, public_id: str) -> Dict[str, Any]:
+async def get_public_playbook(db: AsyncSession, public_id: str, user: Optional[User] = None) -> Dict[str, Any]:
+    if user is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     playbook = (await db.execute(
         select(Playbook).where(Playbook.public_id == public_id)
     )).scalar_one_or_none()
 
     if not playbook:
+        raise HTTPException(status_code=404, detail="Playbook not found or expired")
+
+    from app.core.tenancy import get_user_org_ids
+    org_ids = await get_user_org_ids(db, user)
+    if org_ids is not None and playbook.user_id != user.id and playbook.org_id not in org_ids:
         raise HTTPException(status_code=404, detail="Playbook not found or expired")
 
     return {
@@ -202,9 +213,13 @@ async def get_public_playbook(db: AsyncSession, public_id: str) -> Dict[str, Any
         "created_at": playbook.created_at.isoformat() if playbook.created_at else ""
     }
 
-async def list_user_playbooks(db: AsyncSession, user_id: str) -> List[Dict[str, Any]]:
+async def list_user_playbooks(
+    db: AsyncSession, user_id: str, page: int = 1, page_size: int = 20,
+) -> List[Dict[str, Any]]:
+    offset, page_size = pagination_bounds(page, page_size)
     result = await db.execute(
-        select(Playbook).where(Playbook.user_id == user_id).order_by(desc(Playbook.created_at))
+        select(Playbook).where(Playbook.user_id == user_id)
+        .order_by(desc(Playbook.created_at), Playbook.id).offset(offset).limit(page_size)
     )
     items = result.scalars().all()
     return [

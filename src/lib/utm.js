@@ -110,6 +110,7 @@ export function getAttribution() {
     const parsed = JSON.parse(raw)
     if (typeof parsed !== "object" || parsed === null) return {}
 
+    /** @type {Record<string, string>} */
     const cleaned = {}
     for (const [k, v] of Object.entries(parsed)) {
       if (typeof v === "string" && !EMAIL_REGEX.test(v)) {

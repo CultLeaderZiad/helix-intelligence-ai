@@ -2,23 +2,20 @@
 
 ## 1. What Helix is
 
-Helix Intelligence is organized around four "loops," each its own route
-under the sidebar:
+Helix Intelligence has three features, each its own route:
 
-| Loop | Route | Status | What it does |
+| Feature | Route | Status | What it does |
 |---|---|---|---|
-| Discover | `/discover` | **Live** | Query competitor ad libraries, run an async scrape job, browse/filter/sort the resulting creatives, inspect one in detail |
-| Intelligence | `/intelligence` | PLANNED | Mine recurring creative patterns across a discovered corpus |
-| Create | `/create` | **Live** | Draft new creative briefed on the patterns that win, using Gemini media generation via webhook/polling |
-| Performance | `/performance` | PLANNED | Feed live performance data back into the scoring model |
+| Discover | `/discover` | **Live** | Query competitor ad libraries through a durable background job, browse/filter/sort the resulting creatives, inspect one in detail |
+| Monitors | `/monitors` | Per-workspace flag `monitors` | Re-run a saved search on a schedule and report what changed |
+| Boards | `/swipe-files` | Per-workspace flag `swipe_files` | Save creatives into boards and create a report link |
 
-The single source of truth for this list is `src/app/navigation.js`
-(`NAV_SECTIONS`). The sidebar, the `⌘K` command palette, and the document
-`<title>` all derive from it, and routes are generated from it in
-`src/App.jsx` — a loop cannot appear in one navigation surface and be
-missing from another. Loops with `status: "pending"` render
-`PendingLoopPage`, an honest "not wired up yet" screen, instead of a route
-that 404s or a screen faking data.
+The navigation list lives in `src/app/navigation.js` (`NAV_SECTIONS`); the
+sidebar and the `⌘K` palette derive from it through `visibleSections(flags)`.
+Monitors and Boards appear when the workspace is granted `monitors` /
+`swipe_files` (the same flags the API enforces with `require_feature`);
+otherwise their routes redirect to `/discover`. Team and the experimental
+admin pages still need `VITE_ENABLE_EXPERIMENTAL_FEATURES=true`.
 
 ## 2. Frontend stack
 
@@ -55,7 +52,6 @@ src/
 
   pages/               Routed top-level screens
     DiscoverPage.jsx       Composition root for the Discover loop
-    PendingLoopPage.jsx    Placeholder for Intelligence/Create/Performance
     NotFoundPage.jsx       404
 
   features/discover/   Discover-loop presentational components
@@ -73,15 +69,11 @@ src/
     useMediaQuery.js       useIsMobile / useIsBelowLg / useIsBelowXl
 
   services/            The data boundary (see API_CONTRACTS.md)
-    index.js             Picks mock vs. api per domain, exported as the only import surface
-    config.js            DATA_SOURCE / API_BASE_URL / mock latency & failure knobs
+    index.js             The only import surface; every domain uses its api/* client
+    config.js            API_BASE_URL and job polling limits
     contracts.js          JSDoc-only typedefs — the agreed shape client ⇄ backend
     http.js               fetch wrapper + ServiceError, used only by api/*
-    api/                  Thin FastAPI-shaped implementations (not wired up yet)
-    mock/                 In-memory implementations backed by src/data/*
-
-  data/                Fixtures. Only ever imported by services/mock/*
-    creatives.js, brands.js, patterns.js, insights.js, jobs.js
+    api/                  FastAPI clients (there is no mock or fixture data source)
 
   lib/                 Pure functions, no React, no service imports
     format.js  Every numeric/date readout in the UI routes through here
@@ -90,7 +82,7 @@ src/
     constants.js  Enumerations mirrored from the (future) FastAPI schema
     utils.js  cn() className helper
 
-  styles/globals.css   Design tokens (see DESIGN_SYSTEM.md)
+  styles/globals.css   Design tokens (CSS custom properties + Tailwind theme)
   App.jsx, main.jsx     Root component and entry point
 ```
 
@@ -110,11 +102,11 @@ Feature hook (e.g. useDiscoverySearch)
   │
   ▼
 services/index.js
-  the ONLY module that knows whether data is mocked or real
+  the only import surface for data
   │
   ▼
-services/mock/*.mock.js   OR   services/api/*.api.js
-  (selected per-domain by DATA_SOURCE, see API_CONTRACTS.md)
+services/api/*.api.js
+  FastAPI clients (see API_CONTRACTS.md)
 ```
 
 Concretely, for Discover:
@@ -138,33 +130,23 @@ Concretely, for Discover:
   `useDiscoverySearch` because it's a different service domain
   (creatives vs. discovery jobs).
 - **No component in `features/discover/` or `pages/` imports from
-  `services/mock`, `services/api`, or `src/data` directly.** They only
+  `services/api` directly.** They only
   ever import `discoverService` / `creativeService` / `analysisService`
   from `@/services`, or — more commonly — only receive already-fetched
   data as props from a hook.
 
-**Why this matters for future work:** when Intelligence/Create/Performance
-get built, or when Discover grows new capability, follow the same shape —
+**Why this matters for future work:** when Discover grows new capability
+or a new feature is built, follow the same shape —
 a page owns intent, a dedicated hook owns the async lifecycle for one
 service domain, and the hook is the only caller of `@/services`. This is
 what lets the FastAPI cutover (see `API_CONTRACTS.md`) touch zero
 component code.
 
-One documented, deliberate exception: `ResultsTable.jsx` and
-`JobProgress.jsx` import `brandsById` (from `@/data/brands`) and
-`DISCOVERY_STAGES` (from `@/data/jobs`) directly. These are not row data —
-`brandsById` resolves a display name the list endpoint doesn't embed, and
-`DISCOVERY_STAGES` is shared pipeline vocabulary the real worker will
-report against with the same keys. Both imports disappear the moment the
-corresponding endpoint embeds/returns that data; nothing else about the
-component changes.
-
 ## 5. Data models
 
 Canonical shapes live as JSDoc typedefs in `src/services/contracts.js`
 (no runtime code — types only, so editors get intellisense without
-TypeScript). Every mock and every future HTTP implementation must satisfy
-these shapes exactly.
+TypeScript). Every API client must satisfy these shapes exactly.
 
 - **`Creative`** — `id`, `brand_id`, `platform`, `format`, `headline`,
   `body`, `cta`, `landing_domain`, `thumbnail_ratio`, `duration_seconds`,
@@ -206,10 +188,10 @@ deliberately imperfect: a minority of records have null/missing fields
 (no thumbnail ratio, no engagement rate, unscored composite) so the UI is
 forced to handle real-world gaps from day one, not just the happy path.
 
-## 6. Mock service interfaces
+## 6. Service interfaces
 
-See [`API_CONTRACTS.md`](./API_CONTRACTS.md) for the full contract,
-endpoint mapping, and the mock ⇄ API parity guarantee.
+See [`API_CONTRACTS.md`](./API_CONTRACTS.md) for the full contract and
+endpoint mapping.
 
 ## 7. Current Discover flow
 
@@ -240,46 +222,26 @@ endpoint mapping, and the mock ⇄ API parity guarantee.
    `JobProgress` renders the failed stage inline; `retry()` resubmits the
    last params.
 
-## 8. Current Create flow (Gemini Integration)
+## 9. Backend integration
 
-1. User selects a Source Creative (from Discover) or provides a custom brief.
-2. The UI drafts a `CreativeBrief` using the AI Router (falling back across Groq, OpenRouter, Gemini, AIHubMix, Token Harbor).
-3. The user initiates generation by selecting a media capability (e.g., `IMAGE_FAST`).
-4. The `mediaService.generateMedia` call creates a `MediaGenerationJob` in the backend.
-5. The backend (`GeminiProvider`) submits a generation request to the Gemini API. It includes a `webhook` payload pointing to the backend's `/api/v1/webhooks/gemini` endpoint.
-6. The frontend uses `useMediaGeneration` to poll `mediaService.getJobStatus(jobId)` while waiting.
-7. Gemini processes the request. Upon completion (success or failure), it POSTs to the webhook endpoint.
-8. The backend's webhook handler dedupes the event, updates the job status, and if successful, downloads the generated artifact to persistent storage.
-9. The polling frontend receives the updated status (`succeeded`) and artifact URL, rendering the result with full lineage intact.
+Every service talks to the FastAPI backend through `services/api/*.api.js`
+and `request()` in `services/http.js`, which throws a normalized
+`ServiceError` on failure. There is no mock data source: W8 removed the
+in-memory mocks, the `src/data` fixtures, the `VITE_DATA_SOURCE` switch and
+the backend `USE_MOCKS` flag. `VITE_API_BASE_URL` selects the backend origin
+(same-origin `/api` proxy locally and in previews).
 
-## 9. Future FastAPI integration — PLANNED
+## 10. Database
 
-Not implemented. When it happens:
-
-- Set `VITE_DATA_SOURCE=api` and `VITE_API_BASE_URL=<backend origin>`.
-- `src/services/index.js` switches every domain's service from
-  `services/mock/*.mock.js` to `services/api/*.api.js` — this is the
-  entire cutover. No component, hook, or page changes.
-- The `api/*.api.js` files already exist and are written against the
-  contracts in `contracts.js`; they call `request()` from `services/http.js`,
-  which throws a normalized `ServiceError` on failure so error-handling
-  code never branches on data source.
-- Expected endpoints are documented as comments at the top of each
-  `api/*.api.js` file (e.g. `POST /v1/discovery/jobs`,
-  `GET /v1/creatives/{id}`). See `API_CONTRACTS.md` for the full list.
-
-## 10. Future Neon database integration — PLANNED
-
-Not implemented, and nothing in this repository talks to a database.
-When a backend is built, the FastAPI service is expected to be backed by
-Neon Postgres; the frontend has no direct database dependency in any
-scenario — it only ever talks to the HTTP contract in `contracts.js`.
-This frontend repo requires no changes for that integration beyond the
-`VITE_DATA_SOURCE` / `VITE_API_BASE_URL` cutover in §9.
+The backend runs on Neon Postgres with row-level security. The API connects
+as `helix_api_login` and the worker as `helix_worker_login`; see
+`docs/w8/login-latency-and-production-db.md`. The frontend has no direct
+database dependency.
 
 ## 11–14. Design tokens, motion rules, anti-patterns
 
-See [`DESIGN_SYSTEM.md`](./DESIGN_SYSTEM.md).
+Tokens live in `src/styles/globals.css`. There is no separate design-system
+document yet.
 
 ## 15–16. Running, building, TODOs
 

@@ -31,6 +31,7 @@ const monitorService = {
     })
   },
 
+  /** @param {{ monitorId?: string, limit?: number }} [options] */
   listEvents({ monitorId, limit = 50 } = {}) {
     const params = new URLSearchParams()
     if (monitorId) params.set("monitor_id", monitorId)

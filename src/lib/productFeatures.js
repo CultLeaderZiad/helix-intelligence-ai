@@ -1,0 +1,1 @@
+export const EXPERIMENTAL_FEATURES_ENABLED = import.meta.env.VITE_ENABLE_EXPERIMENTAL_FEATURES === "true"

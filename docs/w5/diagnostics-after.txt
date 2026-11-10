@@ -1,0 +1,419 @@
+Final full diagnostics; no suppression or filtering of gates.
+
+TYPECHECK
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(94,9): error TS1003: Identifier expected.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(95,9): error TS1003: Identifier expected.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(127,9): error TS1003: Identifier expected.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(137,9): error TS1003: Identifier expected.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(159,9): error TS1003: Identifier expected.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(171,27): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(171,43): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(294,2): error TS2322: Type 'any[]' is not assignable to type 'string'.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(306,7): error TS2365: Operator '<' cannot be applied to types 'string' and 'number'.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(307,35): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(329,8): error TS2365: Operator '>=' cannot be applied to types 'string' and 'number'.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(329,29): error TS2365: Operator '<' cannot be applied to types 'string' and 'number'.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(330,5): error TS2322: Type 'string' is not assignable to type 'number'.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(345,8): error TS2365: Operator '<' cannot be applied to types 'string' and 'number'.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(348,8): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+node_modules/.pnpm/punycode@2.3.1/node_modules/punycode/punycode.js(429,10): error TS1003: Identifier expected.
+src/components/SavedDraftsModal.jsx(247,35): error TS2322: Type '"accent"' is not assignable to type '"default" | "danger" | "primary" | "ghost" | "outline"'.
+src/components/ui/CardSwap.jsx(15,35): error TS2339: Property 'customClass' does not exist on type '{}'.
+src/components/ui/CardSwap.jsx(15,48): error TS2339: Property 'className' does not exist on type '{}'.
+src/components/ui/CardSwap.jsx(15,59): error TS2339: Property 'style' does not exist on type '{}'.
+src/components/ui/CardSwap.jsx(337,11): error TS2769: No overload matches this call.
+src/components/ui/CardSwap.jsx(341,29): error TS2339: Property 'style' does not exist on type 'unknown'.
+src/components/ui/CardSwap.jsx(344,25): error TS2339: Property 'onClick' does not exist on type 'unknown'.
+src/features/admin/OrganizationsTable.jsx(62,20): error TS2741: Property 'className' is missing in type '{ children: any; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/features/admin/OrganizationsTable.jsx(73,21): error TS2322: Type '"secondary"' is not assignable to type '"default" | "danger" | "primary" | "ghost" | "outline"'.
+src/features/admin/OverviewStatStrip.jsx(50,8): error TS2741: Property 'className' is missing in type '{ children: Element; label: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; }' but required in type '{ label: any; icon: any; children: any; className: any; }'.
+src/features/admin/OverviewStatStrip.jsx(56,8): error TS2741: Property 'className' is missing in type '{ children: Element; label: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; }' but required in type '{ label: any; icon: any; children: any; className: any; }'.
+src/features/admin/OverviewStatStrip.jsx(65,8): error TS2741: Property 'className' is missing in type '{ children: Element; label: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; }' but required in type '{ label: any; icon: any; children: any; className: any; }'.
+src/features/admin/OverviewStatStrip.jsx(72,8): error TS2741: Property 'className' is missing in type '{ children: Element; label: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; }' but required in type '{ label: any; icon: any; children: any; className: any; }'.
+src/features/admin/OverviewStatStrip.jsx(78,8): error TS2741: Property 'className' is missing in type '{ children: Element; label: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; }' but required in type '{ label: any; icon: any; children: any; className: any; }'.
+src/features/admin/OverviewStatStrip.jsx(84,8): error TS2741: Property 'className' is missing in type '{ children: Element; label: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; }' but required in type '{ label: any; icon: any; children: any; className: any; }'.
+src/features/admin/RecentJobsTable.jsx(67,18): error TS2741: Property 'className' is missing in type '{ children: any; tone: any; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/features/admin/UsersTable.jsx(59,20): error TS2741: Property 'className' is missing in type '{ children: any; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/features/admin/UsersTable.jsx(65,20): error TS2741: Property 'className' is missing in type '{ children: string; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/features/admin/UsersTable.jsx(72,21): error TS2322: Type '"primary" | "secondary"' is not assignable to type '"default" | "danger" | "primary" | "ghost" | "outline"'.
+src/features/discover/CreativeDetailPanel.jsx(248,17): error TS2739: Type '{ error: any; onRetry: () => Promise<void>; }' is missing the following properties from type '{ error: any; onRetry: any; className: any; description: any; }': className, description
+src/features/discover/CreativeDetailPanel.jsx(268,20): error TS2741: Property 'className' is missing in type '{ children: any; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/features/discover/CreativeDetailPanel.jsx(302,16): error TS2739: Type '{ label: string; value: string; }' is missing the following properties from type '{ label: any; value: any; unit: any; className: any; }': unit, className
+src/features/discover/CreativeDetailPanel.jsx(303,16): error TS2739: Type '{ label: string; value: string; }' is missing the following properties from type '{ label: any; value: any; unit: any; className: any; }': unit, className
+src/features/discover/CreativeDetailPanel.jsx(304,16): error TS2739: Type '{ label: string; value: string; }' is missing the following properties from type '{ label: any; value: any; unit: any; className: any; }': unit, className
+src/features/discover/CreativeDetailPanel.jsx(334,22): error TS2741: Property 'className' is missing in type '{ value: any; width: string; }' but required in type '{ value: any; max?: number; showValue?: boolean; className: any; width?: string; }'.
+src/features/discover/CreativeDetailPanel.jsx(341,16): error TS2739: Type '{ label: Element; value: any; }' is missing the following properties from type '{ label: any; value: any; unit: any; className: any; }': unit, className
+src/features/discover/CreativeDetailPanel.jsx(354,16): error TS2739: Type '{ label: string; value: any; }' is missing the following properties from type '{ label: any; value: any; unit: any; className: any; }': unit, className
+src/features/discover/CreativeDetailPanel.jsx(358,16): error TS2739: Type '{ label: string; value: any; }' is missing the following properties from type '{ label: any; value: any; unit: any; className: any; }': unit, className
+src/features/discover/CreativeDetailPanel.jsx(367,16): error TS2739: Type '{ label: any; value: any; }' is missing the following properties from type '{ label: any; value: any; unit: any; className: any; }': unit, className
+src/features/discover/FilterRail.jsx(66,12): error TS2741: Property 'className' is missing in type '{ children: string; htmlFor: string; }' but required in type '{ [x: string]: any; className: any; children: any; }'.
+src/features/discover/FilterRail.jsx(67,12): error TS2741: Property 'className' is missing in type '{ id: string; value: any; onChange: (e: any) => any; options: { value: string; label: string; }[]; }' but required in type '{ [x: string]: any; className: any; options?: any[]; }'.
+src/features/discover/FilterRail.jsx(76,12): error TS2741: Property 'className' is missing in type '{ children: string; }' but required in type '{ [x: string]: any; className: any; children: any; }'.
+src/features/discover/FilterRail.jsx(81,16): error TS2739: Type '{ key: string; label: string; checked: any; onChange: () => void; }' is missing the following properties from type '{ [x: string]: any; checked: any; onChange: any; label: any; count: any; className: any; }': count, className
+src/features/discover/FilterRail.jsx(92,12): error TS2741: Property 'className' is missing in type '{ children: string; }' but required in type '{ [x: string]: any; className: any; children: any; }'.
+src/features/discover/FilterRail.jsx(95,16): error TS2739: Type '{ key: string; label: string; checked: any; onChange: () => void; }' is missing the following properties from type '{ [x: string]: any; checked: any; onChange: any; label: any; count: any; className: any; }': count, className
+src/features/discover/FilterRail.jsx(106,12): error TS2741: Property 'className' is missing in type '{ children: string; }' but required in type '{ [x: string]: any; className: any; children: any; }'.
+src/features/discover/FilterRail.jsx(134,12): error TS2741: Property 'className' is missing in type '{ children: string; htmlFor: string; }' but required in type '{ [x: string]: any; className: any; children: any; }'.
+src/features/discover/FilterRail.jsx(135,12): error TS2741: Property 'className' is missing in type '{ id: string; value: string; onChange: (e: any) => any; options: { value: string; label: string; }[]; }' but required in type '{ [x: string]: any; className: any; options?: any[]; }'.
+src/features/discover/FilterRail.jsx(144,12): error TS2741: Property 'className' is missing in type '{ children: string; htmlFor: string; }' but required in type '{ [x: string]: any; className: any; children: any; }'.
+src/features/discover/FilterRail.jsx(145,12): error TS2741: Property 'className' is missing in type '{ id: string; value: string; onChange: (e: any) => any; options: { value: string; label: string; }[]; }' but required in type '{ [x: string]: any; className: any; options?: any[]; }'.
+src/features/discover/ResultsTable.jsx(120,22): error TS2741: Property 'className' is missing in type '{ children: any; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/features/discover/ResultsTable.jsx(132,22): error TS2741: Property 'className' is missing in type '{ value: any; }' but required in type '{ value: any; max?: number; showValue?: boolean; className: any; width?: string; }'.
+src/features/docs/MarkdownRenderer.jsx(332,12): error TS2741: Property 'title' is missing in type '{ children: Element[]; key: string; type: any; }' but required in type '{ type: any; title: any; children: any; }'.
+src/features/scout-leadgen/LeadsTable.jsx(92,43): error TS2741: Property 'bad' is missing in type '{ label: string; value: any; }' but required in type '{ label: any; value: any; bad: any; }'.
+src/hooks/useAdminOverview.js(45,24): error TS2339: Property 'reason' does not exist on type 'PromiseSettledResult<any>'.
+src/hooks/useLeadGenJob.js(5,72): error TS1003: Identifier expected.
+src/lib/analytics.js(25,10): error TS2339: Property 'plausible' does not exist on type 'Window & typeof globalThis'.
+src/lib/analytics.js(28,16): error TS2339: Property 'plausible' does not exist on type 'Window & typeof globalThis'.
+src/lib/analytics.js(28,37): error TS2339: Property 'plausible' does not exist on type 'Window & typeof globalThis'.
+src/lib/analytics.js(44,65): error TS2339: Property 'plausible' does not exist on type 'Window & typeof globalThis'.
+src/lib/analytics.js(45,10): error TS2339: Property 'plausible' does not exist on type 'Window & typeof globalThis'.
+src/lib/analytics.js(50,65): error TS2339: Property 'plausible' does not exist on type 'Window & typeof globalThis'.
+src/lib/analytics.js(51,10): error TS2339: Property 'plausible' does not exist on type 'Window & typeof globalThis'.
+src/lib/utm.js(119,5): error TS2322: Type '{}' is not assignable to type 'Record<string, string>'.
+src/pages/ApiKeysPage.jsx(489,23): error TS2322: Type 'string' is not assignable to type 'number'.
+src/pages/ApiKeysPage.jsx(495,23): error TS2322: Type 'string' is not assignable to type 'number'.
+src/pages/DashboardPage.jsx(245,15): error TS2322: Type '"accent"' is not assignable to type '"default" | "danger" | "primary" | "ghost" | "outline"'.
+src/pages/DashboardPage.jsx(274,19): error TS2322: Type '"accent"' is not assignable to type '"default" | "danger" | "primary" | "ghost" | "outline"'.
+src/pages/DashboardPage.jsx(402,37): error TS2322: Type '"accent"' is not assignable to type '"default" | "danger" | "primary" | "ghost" | "outline"'.
+src/pages/IntelligencePage.jsx(420,15): error TS2322: Type '"secondary"' is not assignable to type '"default" | "danger" | "primary" | "ghost" | "outline"'.
+src/pages/MonitorsPage.jsx(89,29): error TS2741: Property 'className' is missing in type '{ children: any[]; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/MonitorsPage.jsx(90,33): error TS2741: Property 'className' is missing in type '{ children: any[]; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/MonitorsPage.jsx(91,32): error TS2741: Property 'className' is missing in type '{ children: any[]; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/MonitorsPage.jsx(173,10): error TS2741: Property 'className' is missing in type '{ children: any; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/MonitorsPage.jsx(174,34): error TS2741: Property 'className' is missing in type '{ children: string; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/MonitorsPage.jsx(233,12): error TS2741: Property 'className' is missing in type '{ children: any; tone: any; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/MonitorsPage.jsx(411,12): error TS2739: Type '{ error: any; onRetry: () => Promise<void>; }' is missing the following properties from type '{ error: any; onRetry: any; className: any; description: any; }': className, description
+src/pages/MonitorsPage.jsx(457,18): error TS2741: Property 'action' is missing in type '{ icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; status: string; title: string; description: string; }' but required in type '{ status?: string; title: any; description: any; action: any; icon: any; size?: string; className?: string; }'.
+src/pages/PerformancePage.jsx(86,16): error TS2741: Property 'className' is missing in type '{ children: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/PerformancePage.jsx(89,39): error TS2741: Property 'className' is missing in type '{ children: any[]; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/PerformancePage.jsx(90,43): error TS2741: Property 'className' is missing in type '{ children: any[]; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/PerformancePage.jsx(91,42): error TS2741: Property 'className' is missing in type '{ children: any[]; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/PerformancePage.jsx(94,16): error TS2741: Property 'className' is missing in type '{ children: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/ScoutLeadGenerationPage.jsx(19,30): error TS1003: Identifier expected.
+src/pages/ScoutPage.jsx(412,16): error TS2741: Property 'onToggleGenerateOutreach' is missing in type '{ value: string; onChange: Dispatch<SetStateAction<string>>; enrichEmails: boolean; onToggleEnrich: Dispatch<SetStateAction<boolean>>; ... 6 more ...; disabled: boolean; }' but required in type '{ value: any; onChange: any; targetCategory?: string; onChangeTargetCategory: any; generateOutreach?: boolean; onToggleGenerateOutreach: any; onToggleOutreach: any; enrichEmails: any; onToggleEnrich: any; onSubmit: any; isBusy: any; disabled: any; }'.
+src/pages/TeamPage.jsx(193,23): error TS2322: Type 'string' is not assignable to type 'number'.
+src/pages/admin/AuditLogPage.jsx(164,16): error TS2741: Property 'className' is missing in type '{ children: string; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/AuditLogPage.jsx(174,16): error TS2739: Type '{ error: any; onRetry: () => Promise<void>; }' is missing the following properties from type '{ error: any; onRetry: any; className: any; description: any; }': className, description
+src/pages/admin/DataSourcesPage.jsx(246,24): error TS2741: Property 'className' is missing in type '{ children: any; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/DataSourcesPage.jsx(287,16): error TS2741: Property 'className' is missing in type '{ children: string; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/DataSourcesPage.jsx(297,16): error TS2739: Type '{ error: any; onRetry: () => Promise<void>; }' is missing the following properties from type '{ error: any; onRetry: any; className: any; description: any; }': className, description
+src/pages/admin/DataSourcesPage.jsx(317,28): error TS2741: Property 'className' is missing in type '{ children: any; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/OrganizationsPage.jsx(70,80): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/pages/admin/OrganizationsPage.jsx(189,21): error TS2322: Type 'string' is not assignable to type 'number'.
+src/pages/admin/OrganizationsPage.jsx(195,21): error TS2322: Type 'string' is not assignable to type 'number'.
+src/pages/admin/OrganizationsPage.jsx(289,51): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<number>'.
+src/pages/admin/OverviewPage.jsx(39,10): error TS2739: Type '{ error: any; onRetry: () => Promise<void>; }' is missing the following properties from type '{ error: any; onRetry: any; className: any; description: any; }': className, description
+src/pages/admin/OverviewPage.jsx(54,22): error TS2741: Property 'className' is missing in type '{ children: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/OverviewPage.jsx(68,22): error TS2741: Property 'className' is missing in type '{ children: any; tone: any; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/OverviewPage.jsx(85,20): error TS2741: Property 'className' is missing in type '{ children: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/OverviewPage.jsx(99,20): error TS2741: Property 'className' is missing in type '{ children: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/ScrapeJobsPage.jsx(186,16): error TS2741: Property 'className' is missing in type '{ children: string; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/ScrapeJobsPage.jsx(196,16): error TS2739: Type '{ error: any; onRetry: () => Promise<void>; }' is missing the following properties from type '{ error: any; onRetry: any; className: any; description: any; }': className, description
+src/pages/admin/ScrapeJobsPage.jsx(240,28): error TS2741: Property 'className' is missing in type '{ children: any; tone: any; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/ScrapeJobsPage.jsx(291,18): error TS2741: Property 'className' is missing in type '{ children: any; tone: any; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/SubscriptionsPlansPage.jsx(82,36): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/pages/admin/SubscriptionsPlansPage.jsx(83,38): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/pages/admin/SubscriptionsPlansPage.jsx(118,36): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/pages/admin/SubscriptionsPlansPage.jsx(119,35): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/pages/admin/SubscriptionsPlansPage.jsx(120,37): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/pages/admin/SubscriptionsPlansPage.jsx(121,37): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/pages/admin/SubscriptionsPlansPage.jsx(328,58): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<number>'.
+src/pages/admin/SubscriptionsPlansPage.jsx(337,55): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<number>'.
+src/pages/admin/SubscriptionsPlansPage.jsx(349,57): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<number>'.
+src/pages/admin/SubscriptionsPlansPage.jsx(358,57): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<number>'.
+src/pages/admin/SubscriptionsPlansPage.jsx(435,57): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<number>'.
+src/pages/admin/SubscriptionsPlansPage.jsx(445,56): error TS2345: Argument of type 'string' is not assignable to parameter of type 'SetStateAction<number>'.
+src/pages/admin/SystemHealthPage.jsx(76,16): error TS2741: Property 'className' is missing in type '{ children: any[]; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/SystemHealthPage.jsx(131,16): error TS2741: Property 'className' is missing in type '{ children: string; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/SystemHealthPage.jsx(141,16): error TS2739: Type '{ error: any; onRetry: () => Promise<void>; }' is missing the following properties from type '{ error: any; onRetry: any; className: any; description: any; }': className, description
+src/pages/admin/SystemHealthPage.jsx(161,28): error TS2741: Property 'className' is missing in type '{ children: any; tone: string; }' but required in type '{ [x: string]: any; tone?: string; className: any; children: any; }'.
+src/pages/admin/UpdatesPage.jsx(543,22): error TS2741: Property 'className' is missing in type '{ required: true; placeholder: string; value: string; onChange: (e: any) => void; }' but required in type '{ [x: string]: any; className: any; }'.
+src/pages/admin/UpdatesPage.jsx(604,22): error TS2741: Property 'className' is missing in type '{ placeholder: string; value: string; onChange: (e: any) => void; }' but required in type '{ [x: string]: any; className: any; }'.
+src/services/__tests__/http.w3.test.js(9,9): error TS2339: Property 'mockRejectedValue' does not exist on type '{ (input: URL | RequestInfo, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<...>; }'.
+src/services/__tests__/http.w3.test.js(23,9): error TS2339: Property 'mockResolvedValue' does not exist on type '{ (input: URL | RequestInfo, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<...>; }'.
+src/services/__tests__/http.w3.test.js(34,9): error TS2339: Property 'mockRejectedValue' does not exist on type '{ (input: URL | RequestInfo, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<...>; }'.
+src/services/__tests__/http.w3.test.js(44,9): error TS2339: Property 'mockImplementation' does not exist on type '{ (input: URL | RequestInfo, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<...>; }'.
+src/services/__tests__/http.w3.test.js(51,10): error TS18048: 'signal' is possibly 'undefined'.
+src/services/__tests__/http.w3.test.js(56,9): error TS2339: Property 'mockRejectedValue' does not exist on type '{ (input: URL | RequestInfo, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<...>; }'.
+src/services/__tests__/http.w3.test.js(73,9): error TS2339: Property 'mockRejectedValue' does not exist on type '{ (input: URL | RequestInfo, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<...>; }'.
+src/services/__tests__/http.w3.test.js(82,9): error TS2339: Property 'mockResolvedValue' does not exist on type '{ (input: URL | RequestInfo, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<...>; }'.
+src/services/__tests__/http.w3.test.js(91,9): error TS2339: Property 'mockResolvedValue' does not exist on type '{ (input: URL | RequestInfo, init?: RequestInit): Promise<Response>; (input: string | URL | Request, init?: RequestInit): Promise<...>; }'.
+src/services/__tests__/mock-cancellation.w3.test.js(23,22): error TS2349: This expression is not callable.
+src/services/__tests__/sessionStore.w0.test.js(19,1): error TS2322: Type 'typeof globalThis' is not assignable to type 'Window & typeof globalThis'.
+src/services/__tests__/sessionStore.w0.test.js(20,1): error TS2739: Type '{ getItem(key: any): any; setItem(key: any, value: any): void; removeItem(key: any): void; }' is missing the following properties from type 'Storage': length, clear, key
+src/services/__tests__/sessionStore.w0.test.js(21,1): error TS2739: Type '{ getItem(key: any): any; setItem(key: any, value: any): void; removeItem(key: any): void; }' is missing the following properties from type 'Storage': length, clear, key
+src/services/api/leadgen.js(8,34): error TS1003: Identifier expected.
+src/services/api/mediaService.api.js(4,30): error TS2339: Property 'signal' does not exist on type '{}'.
+src/services/api/mediaService.api.js(16,27): error TS2339: Property 'signal' does not exist on type '{}'.
+src/services/api/mediaService.api.js(28,33): error TS2339: Property 'signal' does not exist on type '{}'.
+src/services/api/mediaService.api.js(32,13): error TS2339: Property 'status' does not exist on type 'Error'.
+src/services/api/mediaService.api.js(49,27): error TS2339: Property 'signal' does not exist on type '{}'.
+src/services/api/monitorService.api.js(34,16): error TS2339: Property 'monitorId' does not exist on type '{ limit?: number; }'.
+src/services/mock/accountService.mock.js(85,11): error TS2339: Property 'status' does not exist on type 'Error'.
+src/services/mock/accountService.mock.js(91,11): error TS2339: Property 'status' does not exist on type 'Error'.
+src/services/mock/adminService.mock.js(193,17): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/services/mock/adminService.mock.js(193,42): error TS2363: The right-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/services/mock/adminService.mock.js(213,45): error TS2322: Type '{ id: string; name: string; status: string; detail: string; latency_ms: number; last_checked: string; }[]' is not assignable to type 'AdminServiceHealth[]'.
+src/services/mock/authService.mock.js(104,55): error TS2694: Namespace '"/tmp/hoplite/workspace/src/services/contracts"' has no exported member 'AuthUser'.
+src/services/mock/authService.mock.js(113,37): error TS2694: Namespace '"/tmp/hoplite/workspace/src/services/contracts"' has no exported member 'Credentials'.
+src/services/mock/authService.mock.js(114,55): error TS2694: Namespace '"/tmp/hoplite/workspace/src/services/contracts"' has no exported member 'AuthUser'.
+src/services/mock/authService.mock.js(135,37): error TS2694: Namespace '"/tmp/hoplite/workspace/src/services/contracts"' has no exported member 'SignUpParams'.
+src/services/mock/authService.mock.js(136,55): error TS2694: Namespace '"/tmp/hoplite/workspace/src/services/contracts"' has no exported member 'AuthUser'.
+src/services/mock/authService.mock.js(187,30): error TS2741: Property 'email' is missing in type '{}' but required in type '{ email: string; }'.
+src/services/mock/creativeService.mock.js(50,5): error TS2322: Type '{ brand: any; patterns: any[]; id: string; brand_id: string; platform: string; format: string; headline: string; body: string; cta: string; landing_domain: string; thumbnail_ratio: string; duration_seconds: number; ... 6 more ...; pattern_ids: string[]; }' is not assignable to type 'Creative & { brand: any; patterns: any[]; }'.
+src/services/mock/latency.js(9,29): error TS2339: Property 'signal' does not exist on type '{}'.
+src/services/mock/mediaService.mock.js(7,30): error TS2339: Property 'signal' does not exist on type '{}'.
+src/services/mock/mediaService.mock.js(68,27): error TS2339: Property 'signal' does not exist on type '{}'.
+src/services/mock/mediaService.mock.js(71,55): error TS2559: Type '404' has no properties in common with type '{ status?: any; code?: string; }'.
+src/services/mock/mediaService.mock.js(75,33): error TS2339: Property 'signal' does not exist on type '{}'.
+src/services/mock/mediaService.mock.js(78,55): error TS2559: Type '404' has no properties in common with type '{ status?: any; code?: string; }'.
+src/services/mock/mediaService.mock.js(80,58): error TS2559: Type '400' has no properties in common with type '{ status?: any; code?: string; }'.
+src/services/mock/mediaService.mock.js(85,27): error TS2339: Property 'signal' does not exist on type '{}'.
+src/services/mock/simulationService.mock.js(88,30): error TS2741: Property 'segment_ids' is missing in type '{}' but required in type '{ segment_ids: string[]; }'.
+
+ESLINT
+src/app/ProtectedRoute.jsx:1:10: 'useEffect' is defined but never used. [no-unused-vars]
+src/components/LanguageSwitcher.jsx:3:10: 'Globe' is defined but never used. [no-unused-vars]
+src/components/SavedDraftsModal.jsx:2:56: 'Search' is defined but never used. [no-unused-vars]
+src/components/SavedDraftsModal.jsx:2:64: 'Sparkles' is defined but never used. [no-unused-vars]
+src/components/SavedDraftsModal.jsx:4:10: 'Panel' is defined but never used. [no-unused-vars]
+src/features/discover/CreativeDetailPanel.jsx:227:21: 'url' is assigned a value but never used. [no-unused-vars]
+src/features/discover/EntityDossierCard.jsx:4:3: 'ShieldAlert' is defined but never used. [no-unused-vars]
+src/features/discover/EntityDossierCard.jsx:5:3: 'Tv' is defined but never used. [no-unused-vars]
+src/features/discover/EntityDossierCard.jsx:11:3: 'Share2' is defined but never used. [no-unused-vars]
+src/features/discover/EntityDossierCard.jsx:13:3: 'Target' is defined but never used. [no-unused-vars]
+src/features/discover/EntityDossierCard.jsx:15:3: 'Users' is defined but never used. [no-unused-vars]
+src/features/discover/EntityDossierCard.jsx:17:3: 'Video' is defined but never used. [no-unused-vars]
+src/features/discover/EntityDossierCard.jsx:186:14: 'isRtl' is assigned a value but never used. [no-unused-vars]
+src/features/discover/FilterRail.jsx:2:10: 'Button' is defined but never used. [no-unused-vars]
+src/features/scout/MapsLeadDetailPanel.jsx:2:10: 'Building2' is defined but never used. [no-unused-vars]
+src/features/scout/MapsLeadsTable.jsx:2:51: 'Share2' is defined but never used. [no-unused-vars]
+src/features/scout/MapsLeadsTable.jsx:2:66: 'Copy' is defined but never used. [no-unused-vars]
+src/features/scout/MapsQueryForm.jsx:2:69: 'Sparkles' is defined but never used. [no-unused-vars]
+src/features/scout/ScoutJobProgress.jsx:42:21: 'isVerified' is assigned a value but never used. [no-unused-vars]
+src/features/scout/ScoutJobProgress.jsx:43:21: 'isOk' is assigned a value but never used. [no-unused-vars]
+src/features/scout/ScoutModeTabs.jsx:2:25: 'CheckCircle2' is defined but never used. [no-unused-vars]
+src/features/scout/ScoutModeTabs.jsx:2:39: 'ShieldCheck' is defined but never used. [no-unused-vars]
+src/features/scout/TargetCategoryField.jsx:2:10: 'Sparkles' is defined but never used. [no-unused-vars]
+src/hooks/useAsync.js:43:5: Definition for rule 'react-hooks/exhaustive-deps' was not found. [react-hooks/exhaustive-deps]
+src/hooks/useAsync.js:52:5: Definition for rule 'react-hooks/exhaustive-deps' was not found. [react-hooks/exhaustive-deps]
+src/pages/ApiKeysPage.jsx:18:3: 'Check' is defined but never used. [no-unused-vars]
+src/pages/ApiKeysPage.jsx:21:3: 'ArrowRight' is defined but never used. [no-unused-vars]
+src/pages/DashboardPage.jsx:16:3: 'ExternalLink' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:11:3: 'Bookmark' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:13:3: 'CreditCard' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:14:3: 'Sparkles' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:15:3: 'Zap' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:16:3: 'ArrowRight' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:18:3: 'Flame' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:19:3: 'Clock' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:21:3: 'HelpCircle' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:22:3: 'Code' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:23:3: 'Sliders' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:24:3: 'Database' is defined but never used. [no-unused-vars]
+src/pages/GuidePage.jsx:25:3: 'Cpu' is defined but never used. [no-unused-vars]
+src/pages/MonitorsPage.jsx:26:1: 'react' import is duplicated. [no-duplicate-imports]
+src/pages/PerformancePage.jsx:14:3: 'Flame' is defined but never used. [no-unused-vars]
+src/pages/PerformancePage.jsx:20:3: 'CheckCircle' is defined but never used. [no-unused-vars]
+src/pages/PerformancePage.jsx:23:3: 'ArrowUpRight' is defined but never used. [no-unused-vars]
+src/pages/PublicPlaybookPage.jsx:3:37: 'ExternalLink' is defined but never used. [no-unused-vars]
+src/pages/ScoutLeadGenerationPage.jsx:70:9: 'offline' is assigned a value but never used. [no-unused-vars]
+src/pages/ScoutPage.jsx:3:40: 'RefreshCw' is defined but never used. [no-unused-vars]
+src/pages/ScoutPage.jsx:3:75: 'ArrowRight' is defined but never used. [no-unused-vars]
+src/pages/SwipeFilesPage.jsx:12:3: 'ExternalLink' is defined but never used. [no-unused-vars]
+src/pages/SwipeFilesPage.jsx:15:3: 'FolderPlus' is defined but never used. [no-unused-vars]
+src/pages/SwipeFilesPage.jsx:17:3: 'Tag' is defined but never used. [no-unused-vars]
+src/pages/SwipeFilesPage.jsx:24:3: 'Play' is defined but never used. [no-unused-vars]
+src/pages/SwipeFilesPage.jsx:25:3: 'ArrowRight' is defined but never used. [no-unused-vars]
+src/pages/SwipeFilesPage.jsx:34:14: 'isRtl' is assigned a value but never used. [no-unused-vars]
+src/pages/SwipeFilesPage.jsx:38:10: 'error' is assigned a value but never used. [no-unused-vars]
+src/pages/SwipeFilesPage.jsx:39:28: 'setActiveCollection' is assigned a value but never used. [no-unused-vars]
+src/pages/TeamPage.jsx:9:3: 'Mail' is defined but never used. [no-unused-vars]
+src/pages/TeamPage.jsx:13:3: 'ShieldCheck' is defined but never used. [no-unused-vars]
+src/pages/TeamPage.jsx:14:3: 'Copy' is defined but never used. [no-unused-vars]
+src/pages/admin/AuditLogPage.jsx:11:3: 'Search' is defined but never used. [no-unused-vars]
+src/pages/admin/AuditLogPage.jsx:16:3: 'Shield' is defined but never used. [no-unused-vars]
+src/pages/admin/AuditLogPage.jsx:17:3: 'Activity' is defined but never used. [no-unused-vars]
+src/pages/admin/AuditLogPage.jsx:18:3: 'User' is defined but never used. [no-unused-vars]
+src/pages/admin/AuditLogPage.jsx:19:3: 'Clock' is defined but never used. [no-unused-vars]
+src/pages/admin/AuditLogPage.jsx:20:3: 'Coins' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:11:3: 'Activity' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:13:3: 'CheckCircle2' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:14:3: 'AlertTriangle' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:15:3: 'XCircle' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:16:3: 'Server' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:17:3: 'Cpu' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:18:3: 'Radio' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:19:3: 'ShieldCheck' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:20:3: 'Zap' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:22:3: 'ExternalLink' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:23:3: 'Layers' is defined but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:106:10: 'activeTab' is assigned a value but never used. [no-unused-vars]
+src/pages/admin/DataSourcesPage.jsx:106:21: 'setActiveTab' is assigned a value but never used. [no-unused-vars]
+src/pages/admin/FeatureFlagsPage.jsx:3:16: 'Sliders' is defined but never used. [no-unused-vars]
+src/pages/admin/FeatureFlagsPage.jsx:3:25: 'CheckCircle2' is defined but never used. [no-unused-vars]
+src/pages/admin/FeatureFlagsPage.jsx:3:50: 'ShieldCheck' is defined but never used. [no-unused-vars]
+src/pages/admin/FeatureFlagsPage.jsx:7:10: 'orgs' is assigned a value but never used. [no-unused-vars]
+src/pages/admin/FeatureFlagsPage.jsx:9:10: 'error' is assigned a value but never used. [no-unused-vars]
+src/pages/admin/OrganizationsPage.jsx:9:3: 'AlertTriangle' is defined but never used. [no-unused-vars]
+src/pages/admin/OrganizationsPage.jsx:12:3: 'PlusCircle' is defined but never used. [no-unused-vars]
+src/pages/admin/OrganizationsPage.jsx:13:3: 'ShieldAlert' is defined but never used. [no-unused-vars]
+src/pages/admin/OrganizationsPage.jsx:21:10: 'error' is assigned a value but never used. [no-unused-vars]
+src/pages/admin/ScrapeJobsPage.jsx:13:3: 'CheckCircle2' is defined but never used. [no-unused-vars]
+src/pages/admin/ScrapeJobsPage.jsx:14:3: 'XCircle' is defined but never used. [no-unused-vars]
+src/pages/admin/ScrapeJobsPage.jsx:15:3: 'Clock' is defined but never used. [no-unused-vars]
+src/pages/admin/ScrapeJobsPage.jsx:16:3: 'Play' is defined but never used. [no-unused-vars]
+src/pages/admin/ScrapeJobsPage.jsx:17:3: 'ExternalLink' is defined but never used. [no-unused-vars]
+src/pages/admin/ScrapeJobsPage.jsx:18:3: 'Layers' is defined but never used. [no-unused-vars]
+src/pages/admin/ScrapeJobsPage.jsx:19:3: 'Database' is defined but never used. [no-unused-vars]
+src/pages/admin/ScrapeJobsPage.jsx:20:3: 'ArrowUpDown' is defined but never used. [no-unused-vars]
+src/pages/admin/SubscriptionsPlansPage.jsx:8:3: 'Sparkles' is defined but never used. [no-unused-vars]
+src/pages/admin/SubscriptionsPlansPage.jsx:11:3: 'ShieldCheck' is defined but never used. [no-unused-vars]
+src/pages/admin/SubscriptionsPlansPage.jsx:20:10: 'error' is assigned a value but never used. [no-unused-vars]
+src/pages/admin/SupportAdminPage.jsx:2:33: 'CheckCircle2' is defined but never used. [no-unused-vars]
+src/pages/admin/SupportAdminPage.jsx:2:47: 'Clock' is defined but never used. [no-unused-vars]
+src/pages/admin/SupportAdminPage.jsx:2:75: 'Filter' is defined but never used. [no-unused-vars]
+src/pages/admin/SupportAdminPage.jsx:2:94: 'ChevronRight' is defined but never used. [no-unused-vars]
+src/pages/admin/SystemHealthPage.jsx:12:3: 'CheckCircle2' is defined but never used. [no-unused-vars]
+src/pages/admin/SystemHealthPage.jsx:13:3: 'AlertTriangle' is defined but never used. [no-unused-vars]
+src/pages/admin/SystemHealthPage.jsx:14:3: 'Server' is defined but never used. [no-unused-vars]
+src/pages/admin/SystemHealthPage.jsx:18:3: 'Radio' is defined but never used. [no-unused-vars]
+src/pages/admin/SystemHealthPage.jsx:19:3: 'Clock' is defined but never used. [no-unused-vars]
+src/pages/admin/UpdatesPage.jsx:19:3: 'Calendar' is defined but never used. [no-unused-vars]
+src/pages/admin/UpdatesPage.jsx:20:3: 'Bold' is defined but never used. [no-unused-vars]
+src/pages/admin/UpdatesPage.jsx:21:3: 'List' is defined but never used. [no-unused-vars]
+src/pages/admin/UpdatesPage.jsx:22:3: 'Heading' is defined but never used. [no-unused-vars]
+src/pages/admin/UpdatesPage.jsx:23:11: 'LinkIcon' is defined but never used. [no-unused-vars]
+src/pages/admin/UsagePage.jsx:14:3: 'User' is defined but never used. [no-unused-vars]
+src/pages/admin/UsagePage.jsx:15:3: 'Building' is defined but never used. [no-unused-vars]
+src/pages/admin/UsagePage.jsx:21:10: 'error' is assigned a value but never used. [no-unused-vars]
+src/pages/docs/ScoutCliDocsPage.jsx:3:31: 'Download' is defined but never used. [no-unused-vars]
+src/pages/docs/ScoutCliDocsPage.jsx:3:41: 'Shield' is defined but never used. [no-unused-vars]
+src/services/mock/adminService.mock.js:1:10: 'ServiceError' is defined but never used. [no-unused-vars]
+
+PYFLAKES (backend/)
+app/api/routers/account.py:1:1: 'os' imported but unused
+app/api/routers/account.py:2:1: 'uuid' imported but unused
+app/api/routers/account.py:4:1: 'fastapi.Body' imported but unused
+app/api/routers/account.py:4:1: 'fastapi.Form' imported but unused
+app/api/routers/account.py:6:1: 'sqlalchemy.desc' imported but unused
+app/api/routers/account.py:7:1: 'typing.Dict' imported but unused
+app/api/routers/account.py:7:1: 'typing.Any' imported but unused
+app/api/routers/account.py:219:5: 'app.services.billing_service._ensure_daily_reset' imported but unused
+app/api/routers/creatives.py:1:1: 'fastapi.Query' imported but unused
+app/api/routers/notifications.py:1:1: 'fastapi.Path' imported but unused
+app/api/routers/notifications.py:3:1: 'typing.Dict' imported but unused
+app/api/routers/notifications.py:3:1: 'typing.Any' imported but unused
+app/api/routers/playbooks.py:1:1: 'fastapi.HTTPException' imported but unused
+app/api/routers/providers.py:11:1: 'app.models.organization.Organization' imported but unused
+app/api/routers/providers.py:14:1: 'app.services.security_service.mask_api_key' imported but unused
+app/api/routers/providers.py:94:9: local variable 'test_res' is assigned to but never used
+app/api/routers/support.py:1:1: 'fastapi.HTTPException' imported but unused
+app/api/routers/support.py:1:1: 'fastapi.Query' imported but unused
+app/api/routers/support.py:3:1: 'typing.List' imported but unused
+app/api/routers/updates.py:5:1: 'sqlalchemy.and_' imported but unused
+app/api/routers/updates.py:7:1: 'app.core.deps.get_current_user' imported but unused
+app/models/__init__.py:1:1: 'app.db.base.Base' imported but unused
+app/models/__init__.py:2:1: '.user.User' imported but unused
+app/models/__init__.py:3:1: '.organization.Organization' imported but unused
+app/models/__init__.py:4:1: '.scrape_job.ScrapeJob' imported but unused
+app/models/__init__.py:5:1: '.creative.Creative' imported but unused
+app/models/__init__.py:6:1: '.creative_score.CreativeScore' imported but unused
+app/models/__init__.py:7:1: '.pattern.Pattern' imported but unused
+app/models/__init__.py:8:1: '.ai_insight.AIInsight' imported but unused
+app/models/__init__.py:9:1: '.usage_log.UsageLog' imported but unused
+app/models/__init__.py:10:1: '.plan.Plan' imported but unused
+app/models/__init__.py:11:1: '.saved_creative.SavedCreative' imported but unused
+app/models/__init__.py:12:1: '.api_key.ApiKey' imported but unused
+app/models/__init__.py:13:1: '.notification.Notification' imported but unused
+app/models/__init__.py:14:1: '.organization_member.OrganizationMember' imported but unused
+app/models/__init__.py:14:1: '.organization_member.OrganizationInvite' imported but unused
+app/models/__init__.py:15:1: '.api_usage.ExternalApiUsage' imported but unused
+app/models/__init__.py:16:1: '.media_job.MediaGenerationJob' imported but unused
+app/models/__init__.py:17:1: '.webhook_event.WebhookEvent' imported but unused
+app/models/__init__.py:18:1: '.app_update.AppUpdate' imported but unused
+app/models/__init__.py:19:1: '.workspace_credential.WorkspaceProviderCredential' imported but unused
+app/models/__init__.py:20:1: '.support_ticket.SupportTicket' imported but unused
+app/models/__init__.py:20:1: '.support_ticket.SupportTicketReply' imported but unused
+app/models/__init__.py:21:1: '.playbook.Playbook' imported but unused
+app/models/__init__.py:22:1: '.simulation_report.SimulationReport' imported but unused
+app/models/__init__.py:23:1: '.monitor.Monitor' imported but unused
+app/models/__init__.py:23:1: '.monitor.MonitorRun' imported but unused
+app/models/__init__.py:23:1: '.monitor.MonitorCreative' imported but unused
+app/models/__init__.py:23:1: '.monitor.MonitorEvent' imported but unused
+app/models/__init__.py:24:1: '.scout.ScoutJob' imported but unused
+app/models/__init__.py:24:1: '.scout.ScoutLead' imported but unused
+app/models/__init__.py:24:1: '.scout.ScoutMapsJob' imported but unused
+app/models/__init__.py:24:1: '.scout.ScoutMapsLead' imported but unused
+app/models/__init__.py:25:1: '.leadgen.LeadGenJob' imported but unused
+app/models/__init__.py:25:1: '.leadgen.LeadGenLead' imported but unused
+app/models/__init__.py:25:1: '.leadgen.LeadGenWorkerHeartbeat' imported but unused
+app/models/creative.py:3:1: 'sqlalchemy.Index' imported but unused
+app/models/creative.py:4:1: 'sqlalchemy.orm.relationship' imported but unused
+app/models/organization.py:1:1: 'sqlalchemy.func' imported but unused
+app/models/organization.py:2:1: 'sqlalchemy.orm.relationship' imported but unused
+app/schemas/__init__.py:1:1: '.common.Paginated' imported but unused
+app/schemas/__init__.py:1:1: '.common.ServiceErrorShape' imported but unused
+app/schemas/__init__.py:2:1: '.auth.UserCreate' imported but unused
+app/schemas/__init__.py:2:1: '.auth.UserLogin' imported but unused
+app/schemas/__init__.py:2:1: '.auth.SessionResponse' imported but unused
+app/schemas/__init__.py:3:1: '.discover.SearchParams' imported but unused
+app/schemas/__init__.py:3:1: '.discover.Job' imported but unused
+app/schemas/__init__.py:4:1: '.creative.Creative' imported but unused
+app/schemas/__init__.py:4:1: '.creative.Scores' imported but unused
+app/schemas/__init__.py:4:1: '.creative.CreativeMetrics' imported but unused
+app/schemas/__init__.py:4:1: '.creative.Brand' imported but unused
+app/schemas/__init__.py:5:1: '.analysis.Pattern' imported but unused
+app/schemas/__init__.py:5:1: '.analysis.Insight' imported but unused
+app/schemas/__init__.py:6:1: '.admin.AdminOverviewStats' imported but unused
+app/schemas/__init__.py:6:1: '.admin.AdminJobRow' imported but unused
+app/schemas/__init__.py:6:1: '.admin.AdminSystemHealth' imported but unused
+app/schemas/__init__.py:6:1: '.admin.AdminServiceHealth' imported but unused
+app/schemas/common.py:1:1: 'pydantic.ConfigDict' imported but unused
+app/schemas/common.py:2:1: 'typing.Any' imported but unused
+app/services/__init__.py:1:1: '.auth_service.authenticate_user' imported but unused
+app/services/__init__.py:1:1: '.auth_service.register_user' imported but unused
+app/services/__init__.py:2:1: '.discover_service.trigger_search' imported but unused
+app/services/__init__.py:2:1: '.discover_service.get_job_status' imported but unused
+app/services/__init__.py:3:1: '.creative_service.list_creatives' imported but unused
+app/services/__init__.py:4:1: '.analysis_service.get_creative_insight' imported but unused
+app/services/__init__.py:5:1: '.admin_service.get_overview' imported but unused
+app/services/__init__.py:5:1: '.admin_service.list_jobs' imported but unused
+app/services/__init__.py:5:1: '.admin_service.get_health' imported but unused
+app/services/admin_service.py:5:1: 'sqlalchemy.desc' imported but unused
+app/services/admin_service.py:5:1: 'sqlalchemy.update' imported but unused
+app/services/api_key_service.py:4:1: 'typing.Optional' imported but unused
+app/services/api_key_service.py:6:1: 'sqlalchemy.delete' imported but unused
+app/services/atlas_pipeline.py:224:5: local variable 'is_verified' is assigned to but never used
+app/services/auth_service.py:5:1: 'app.schemas.auth.SessionResponse' imported but unused
+app/services/dashboard_service.py:11:1: 'app.models.organization.Organization' imported but unused
+app/services/entity_intelligence.py:13:1: 're' imported but unused
+app/services/lifecycle_email_service.py:18:1: 'typing.List' imported but unused
+app/services/maps_scout_service.py:18:1: 'app.services.scrapegraph_lead_service.extract_profile_with_scrapegraph' imported but unused
+app/services/maps_scout_service.py:313:17: import 'safe_request_async' from line 258 shadowed by loop variable
+app/services/maps_scout_service.py:415:13: f-string is missing placeholders
+app/services/notification_service.py:1:1: 'typing.List' imported but unused
+app/services/notification_service.py:5:1: 'app.models.user.User' imported but unused
+app/services/notification_service.py:44:5: local variable 'unread_count' is assigned to but never used
+app/services/playbook_service.py:9:1: 'app.models.organization.Organization' imported but unused
+app/services/scout_service.py:7:1: 're' imported but unused
+app/services/scout_service.py:8:1: 'asyncio' imported but unused
+app/services/scout_service.py:12:1: 'typing.List' imported but unused
+app/services/scout_service.py:12:1: 'typing.Tuple' imported but unused
+app/services/scout_service.py:13:1: 'sqlalchemy.ext.asyncio.AsyncSession' imported but unused
+app/services/scout_service.py:14:1: 'sqlalchemy.update' imported but unused
+app/services/scout_service.py:31:1: 'app.services.scout_parse.parse_line' imported but unused
+app/services/scout_service.py:373:25: local variable 'atlas_err' is assigned to but never used
+app/services/scrapegraph_lead_service.py:5:1: 'typing.Union' imported but unused
+app/services/support_service.py:1:1: 'datetime' imported but unused
+app/services/support_service.py:4:1: 'sqlalchemy.update' imported but unused
+app/services/support_service.py:5:1: 'fastapi.status' imported but unused
+app/services/team_service.py:3:1: 'typing.List' imported but unused
+app/services/team_service.py:5:1: 'sqlalchemy.delete' imported but unused
+app/services/scraping/ad_library_provider.py:3:1: 'asyncio' imported but unused
+app/services/scraping/adyntel_provider.py:1:1: 'os' imported but unused
+app/services/scraping/adyntel_provider.py:2:1: 'asyncio' imported but unused
+app/services/scraping/metapi_provider.py:1:1: 'os' imported but unused
+app/services/scraping/scrapegraph_provider.py:1:1: 'os' imported but unused
+app/services/scraping/scrapegraph_provider.py:2:1: 'asyncio' imported but unused

@@ -1,40 +1,73 @@
 import { request } from "../http"
 
 /**
- * FastAPI-backed discovery service.
- *
- * Written up front and intentionally thin. Because it satisfies the same
- * interface as discoverService.mock.js, switching VITE_DATA_SOURCE=api
- * requires zero component or hook changes.
+ * FastAPI-backed discovery service. Intentionally thin.
  *
  * Expected endpoints:
- *   POST /v1/discovery/jobs         -> Job
- *   GET  /v1/discovery/jobs/{id}    -> Job
- *   GET  /v1/discovery/jobs/{id}/results -> Paginated<Creative>
- *   GET  /v1/discovery/jobs         -> Paginated<Job>
+ *   POST /api/discovery/jobs         -> Job
+ *   GET  /api/discovery/jobs/{id}    -> Job
+ *   POST /api/discovery/jobs/{id}/cancel -> Job or cancellation acknowledgement
+ *   GET  /api/discovery/jobs/{id}/results -> Paginated<Creative>
+ *   GET  /api/discovery/jobs         -> Paginated<Job>
  */
 const discoverService = {
-  search(params = {}) {
-    const { query = "", filters = {}, sort = "composite_desc", query_language = "en" } = params
+  /**
+   * @param {import('../contracts').SearchParams} [params]
+   * @param {{signal?: AbortSignal}} [options]
+   */
+  search(params = {}, { signal } = {}) {
+    const { query = "", filters = {}, sort = "days_active_desc", query_language = "en" } = params
     const finalQuery = query.trim() || "*"
     return request("/discovery/jobs", {
       method: "POST",
+      signal,
       body: { query: finalQuery, filters, sort, query_language },
     })
   },
 
-  getJobStatus(jobId) {
-    return request(`/discovery/jobs/${jobId}`)
+  /** @param {string} jobId @param {{signal?: AbortSignal}} [options] */
+  getJobStatus(jobId, { signal } = {}) {
+    return request(`/discovery/jobs/${encodeURIComponent(jobId)}`, { signal })
   },
 
-  getJobResults(jobId, { page = 1, page_size = 20, sort } = {}) {
-    return request(`/discovery/jobs/${jobId}/results`, {
-      params: { page, page_size, sort },
+  /** @param {string} jobId */
+  cancelJob(jobId) {
+    return request(`/discovery/jobs/${encodeURIComponent(jobId)}/cancel`, {
+      method: "POST",
     })
   },
 
-  listRecentJobs() {
-    return request("/discovery/jobs", { params: { page: 1, page_size: 8 } })
+  /**
+   * @param {string} jobId
+   * @param {{page?: number, page_size?: number, sort?: string, min_days?: number, min_score?: number}} [params]
+   * @param {{signal?: AbortSignal}} [options]
+   */
+  getJobResults(jobId, { page = 1, page_size = 20, sort, min_days = 0, min_score = 0 } = {}, { signal } = {}) {
+    // View filters apply to stored results; 0 means "not set" and is omitted.
+    const params = { page, page_size, sort }
+    if (min_days > 0) params.min_days = min_days
+    if (min_score > 0) params.min_score = min_score
+    return request(`/discovery/jobs/${encodeURIComponent(jobId)}/results`, { signal, params })
+  },
+
+  /** Recent searches recorded on the server (each row carries its query). */
+  listRecentJobs({ page_size = 15 } = {}) {
+    return request("/discovery/jobs", { params: { page: 1, page_size } })
+  },
+
+  /** Saved search drafts, stored per user per workspace on the server. */
+  listDrafts() {
+    return request("/discovery/drafts")
+  },
+
+  /** @param {{title?: string, query: string, notes?: string, filters?: Record<string, unknown>}} draft */
+  saveDraft({ title = "", query, notes = "", filters = {} }) {
+    return request("/discovery/drafts", { method: "POST", body: { title, query, notes, filters } })
+  },
+
+  /** @param {string} draftId */
+  deleteDraft(draftId) {
+    return request(`/discovery/drafts/${encodeURIComponent(draftId)}`, { method: "DELETE" })
   },
 }
 

@@ -13,8 +13,10 @@ from app.schemas.admin import (
     AdminUsageLogsFilterResponse
 )
 from app.services import admin_service, support_service
+from app.services.billing_service import is_platform_admin
 from app.core.deps import get_db, get_current_full_admin, require_admin_permission
 from app.models.user import User
+from datetime import datetime as _datetime
 
 router = APIRouter()
 
@@ -105,7 +107,7 @@ async def get_usage_logs_filtered(
     provider: Optional[str] = Query(None),
     operation: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=200),
+    page_size: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(require_admin_permission("usage"))
 ):
@@ -131,7 +133,7 @@ async def update_user_status(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(get_current_full_admin)
 ):
-    return await admin_service.update_user_status(db, user_id, status_in.status)
+    return await admin_service.update_user_status(db, user_id, status_in.status, current_admin.id)
 
 @router.post("/users/{user_id}/ban")
 async def ban_user(
@@ -140,7 +142,7 @@ async def ban_user(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(get_current_full_admin)
 ):
-    return await admin_service.ban_user(db, user_id, ban_in.is_banned)
+    return await admin_service.ban_user(db, user_id, ban_in.is_banned, current_admin.id)
 
 @router.post("/users/{user_id}/role")
 async def update_user_role(
@@ -149,7 +151,9 @@ async def update_user_role(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(get_current_full_admin)
 ):
-    return await admin_service.update_user_role(db, user_id, role_in.role, role_in.admin_permissions)
+    return await admin_service.update_user_role(
+        db, user_id, role_in.role, role_in.admin_permissions, current_admin.id,
+    )
 
 @router.post("/users/{user_id}/plan")
 async def switch_user_plan(
@@ -175,7 +179,7 @@ async def impersonate_user(
     target = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
-    if target.role == "admin":
+    if is_platform_admin(target):
         raise HTTPException(status_code=403, detail="Impersonating an administrator is not permitted")
     return await admin_service.impersonate_user(db, user_id, actor=current_admin)
 
@@ -202,7 +206,9 @@ async def list_admin_tickets(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(require_admin_permission("support"))
 ):
-    return await support_service.list_admin_tickets(db, status_filter=status, type_filter=type)
+    return await support_service.list_admin_tickets(
+        db, status_filter=status, type_filter=type, actor=current_admin
+    )
 
 class TicketReplyBody(BaseModel):
     message: str
@@ -226,4 +232,71 @@ async def update_admin_ticket_status(
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(require_admin_permission("support"))
 ):
-    return await support_service.update_ticket_status(db, ticket_id, body.status)
+    return await support_service.update_ticket_status(
+        db, ticket_id, body.status, actor=current_admin
+    )
+
+
+class AccessDecisionBody(BaseModel):
+    plan_id: str
+    feature_flags: Dict[str, bool]
+    expires_at: Optional[_datetime] = None
+    note: Optional[str] = None
+
+
+class AccessRejectBody(BaseModel):
+    note: Optional[str] = None
+
+
+@router.get("/access-requests")
+async def list_access_requests(
+    status: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin),
+):
+    del current_admin
+    return await admin_service.list_access_requests(db, status)
+
+
+@router.post("/access-requests/{request_id}/approve")
+async def approve_access_request(
+    request_id: str,
+    body: AccessDecisionBody,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin),
+):
+    return await admin_service.approve_access_request(
+        db, current_admin, request_id, body.plan_id, body.feature_flags, body.expires_at, body.note,
+    )
+
+
+@router.post("/access-requests/{request_id}/reject")
+async def reject_access_request(
+    request_id: str,
+    body: AccessRejectBody,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin),
+):
+    return await admin_service.reject_access_request(db, current_admin, request_id, body.note)
+
+
+@router.post("/organizations/{org_id}/access-grant")
+async def grant_organization_access(
+    org_id: str,
+    body: AccessDecisionBody,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin),
+):
+    return await admin_service.grant_organization_access(
+        db, current_admin, org_id, body.plan_id, body.feature_flags, body.expires_at,
+    )
+
+
+@router.post("/organizations/{org_id}/access-revoke")
+async def revoke_organization_access(
+    org_id: str,
+    body: AccessRejectBody,
+    db: AsyncSession = Depends(get_db),
+    current_admin: User = Depends(get_current_full_admin),
+):
+    return await admin_service.revoke_organization_access(db, current_admin, org_id, body.note)

@@ -1,7 +1,6 @@
 import uuid
 import sqlalchemy as sa
-from sqlalchemy import Column, String, Integer, ForeignKey, Float, Boolean, Index
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, JSON, String, Boolean
 from app.db.base import Base
 
 def generate_uuid():
@@ -30,7 +29,8 @@ class Creative(Base):
     
     first_seen = Column(String, nullable=True)
     last_seen = Column(String, nullable=True)
-    days_active = Column(Integer, default=1, server_default="1")
+    # Unknown run length stays NULL. A default of 1 made "no start date" look like one day.
+    days_active = Column(Integer, nullable=True)
     variant_count = Column(Integer, default=1, server_default="1")
     # the metrics can be linked or stored here (stored directly as columns for simplicity)
     impressions_est = Column(Integer, nullable=True)
@@ -39,4 +39,16 @@ class Creative(Base):
     spend_band = Column(String, nullable=True) # 'low'|'mid'|'high'|'very_high'
     engagement_rate = Column(Float, nullable=True)
     ctr_est = Column(Float, nullable=True)
+    source_ad_id = Column(String, nullable=True)
+    permalink = Column(String, nullable=True)
+    fetched_at = Column(DateTime(timezone=True), nullable=True)
+    provenance_json = Column(JSON, nullable=True)
+    score_basis = Column(String, nullable=True)
+    score_scale = Column(String, nullable=True)
+    heuristic_version = Column(String, nullable=True)
+
+
+from app.models.work_item import WorkItem as _WorkItem
+
+_REGISTERED_WORK_ITEMS = (_WorkItem,)
 

@@ -1,22 +1,21 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { X, ExternalLink, Play, Image as ImageIcon, Layers, Bookmark, Check } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
-import { creativeService } from "@/services"
+import { archiveService, creativeService } from "@/services"
 import { useAsync } from "@/hooks/useAsync"
 import { Button } from "@/components/ui/Button"
 import { Tag } from "@/components/ui/Tag"
 import { ScoreBar, StatBlock, MetricValue } from "@/components/ui/Metric"
 import { InfoTip } from "@/components/ui/InfoTip"
 import { useLanguage } from "@/context/LanguageContext"
+import { useW8Copy } from "@/i18n/w8Product"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { deriveInsight } from "@/lib/insight"
 import {
   formatCompact,
-  formatConfidence,
   formatDate,
   formatDays,
   formatDuration,
-  formatLift,
   formatPercent,
   formatOrdinal,
   formatPrevalence,
@@ -86,25 +85,22 @@ function MediaFrame({ format, ratio, duration, mediaUrl, thumbnailUrl }) {
  * Every line is derived from the record (see lib/insight.js).
  */
 function InsightBlock({ creative }) {
+  const { t } = useLanguage()
   const insight = deriveInsight(creative)
   if (!insight) return null
 
   return (
     <div className="flex flex-col gap-3 border border-border bg-surface-2 p-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="label-mono text-text">Why this ad matters</span>
-        <span className="label-mono tnum">
-          confidence {formatConfidence(insight.confidence)}
-        </span>
+        <span className="label-mono text-text">{t("heuristicScores")}</span>
+        <span className="label-mono" dir="auto">{t("notMeasured")}</span>
       </div>
 
       {insight.daysActive ? (
         <p className="text-xs leading-relaxed text-text-muted">
-          This creative has been active for{" "}
           <span className="tnum font-mono text-text">
             {formatDays(insight.daysActive)}
           </span>
-          {insight.daysActive >= 60 ? " — well past the typical fatigue window." : "."}
         </p>
       ) : null}
 
@@ -115,7 +111,7 @@ function InsightBlock({ creative }) {
               {formatOrdinal(i + 1)}
             </span>
             <span className="min-w-0 flex-1 truncate text-xs text-text">{r.label}</span>
-            <span className="label-mono tnum shrink-0">{formatLift(r.lift)} lift</span>
+            <span className="label-mono tnum shrink-0">{t("notMeasured")}</span>
           </li>
         ))}
       </ol>
@@ -125,6 +121,7 @@ function InsightBlock({ creative }) {
 
 /** Numbered pattern findings — research results, not feature cards. */
 function PatternFindings({ patterns }) {
+  const { t } = useLanguage()
   if (!patterns?.length) {
     return (
       <p className="text-xs text-text-faint">
@@ -147,12 +144,11 @@ function PatternFindings({ patterns }) {
             <span className="label-mono ml-auto">{p.family}</span>
           </div>
           <p className="pl-7 text-[11px] leading-relaxed text-text-muted">
-            Found in{" "}
+            {t("foundInSupplied")}{" "}
             <span className="tnum font-mono text-text">
               {formatPrevalence(p.prevalence)}
             </span>{" "}
-            of the corpus · lift{" "}
-            <span className="tnum font-mono text-text">{formatLift(p.lift_index)}</span>
+            {t("ofSuppliedAds")}
           </p>
         </div>
       ))}
@@ -167,6 +163,7 @@ function PatternFindings({ patterns }) {
  * split FastAPI will have.
  */
 export function CreativeDetailPanel({ creativeId, onClose }) {
+  const w8 = useW8Copy()
   const { user } = useAuth()
   const { t } = useLanguage()
   const [saved, setSaved] = useState(false)
@@ -178,7 +175,19 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
     { enabled: Boolean(creativeId) },
   )
 
-  const showSwipeOption = user?.feature_flags?.swipe_files !== false
+  const showSwipeOption = user?.feature_flags?.swipe_files === true
+
+  /* The permanent copy is made in the background after a search; until it
+     exists (404) nothing is shown rather than a promise. */
+  const [archived, setArchived] = useState(null)
+  useEffect(() => {
+    let live = true
+    setArchived(null)
+    if (creativeId) {
+      archiveService.forCreative(creativeId).then((entry) => live && setArchived(entry)).catch(() => {})
+    }
+    return () => { live = false }
+  }, [creativeId])
 
   const handleToggleSave = async () => {
     if (!creativeId || saving) return
@@ -224,17 +233,6 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
             </Button>
           ) : null}
           <div className="h-4 w-px bg-border mx-1"></div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-xs text-text hover:text-accent"
-            onClick={() => {
-              const url = new URL(window.location.href)
-              window.location.href = `/create?sourceId=${creativeId}`
-            }}
-          >
-            Remix
-          </Button>
           <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close inspector">
             <X className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
@@ -294,6 +292,22 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
                   {data.body}
                 </p>
               ) : null}
+              {data.copy_variants?.length > 1 ? (
+                <div className="space-y-1.5 border-t border-border pt-2">
+                  <span className="label-mono" title={w8.copyVariantsHint}>
+                    {w8.copyVariants(data.copy_variants.length)}
+                  </span>
+                  <ol className="space-y-1.5">
+                    {data.copy_variants.map((v, i) => (
+                      <li key={i} className="text-pretty text-xs leading-relaxed text-text-muted" dir="auto">
+                        {v.title ? <span className="block text-text">{v.title}</span> : null}
+                        {v.body}
+                        {v.description ? <span className="block text-text-faint">{v.description}</span> : null}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ) : null}
               {data.landing_domain ? (
                 <span className="flex items-center gap-1 pt-0.5 font-mono text-[11px] text-text-faint">
                   <ExternalLink className="h-3 w-3" aria-hidden="true" />
@@ -304,31 +318,34 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
 
             {/* Active duration — position 4 in the hierarchy */}
             <div className="flex items-center gap-3 border-y border-border py-2">
-              <StatBlock label="Active" value={formatDays(data.days_active)} />
+              <StatBlock label="Active" value={data.days_active != null ? formatDays(data.days_active) : w8.runLengthUnknown} />
               <StatBlock label="First seen" value={formatDate(data.first_seen)} />
               <StatBlock label="Last seen" value={formatDate(data.last_seen)} />
             </div>
+            {archived ? (
+              <p className="font-mono text-[11px] text-text-faint" role="note">
+                {(archived.media_status === "stored" ? w8.archivedWithMedia : w8.archivedTextOnly)(formatDate(archived.archived_at))}
+              </p>
+            ) : null}
 
             <InsightBlock creative={data} />
 
             {/* Performance scores */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <span className="label-mono">{t("performanceScores")}</span>
-                {data.scores?.composite !== null && data.scores?.composite !== undefined ? (
-                  <span className="label-mono text-accent">
-                    tier {data.scores.composite >= 80 ? "A" : data.scores.composite >= 60 ? "B" : "C"}
-                  </span>
+                <span className="label-mono">{t("heuristicScores")}</span>
+                {data.scores?.version ? (
+                  <span className="label-mono text-text-faint">{data.scores.version}</span>
                 ) : null}
               </div>
               <p className="text-[10px] leading-snug text-text-faint">
-                {t("helixSignalNote")}
+                {t("heuristicNote")}
               </p>
               {[
-                ["Hook", data.scores?.hook, "How strongly the opening grabs attention in the first seconds."],
-                ["Clarity", data.scores?.clarity, "How obvious the offer and message are at a glance."],
-                ["Retention", data.scores?.retention, "How likely people are to keep watching instead of scrolling away."],
-                ["Composite", data.scores?.composite, "One combined 0–100 signal from the three scores above."],
+                ["Hook", data.scores?.hook, t("heuristicNote")],
+                ["Clarity", data.scores?.clarity, t("heuristicNote")],
+                ["Retention", data.scores?.retention, t("heuristicNote")],
+                ["Composite", data.scores?.composite, t("heuristicNote")],
               ].map(([label, value, tip]) => (
                 <div key={label} className="flex items-center justify-between gap-2">
                   <span className="flex items-center text-xs text-text-muted">
@@ -348,30 +365,53 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
               <StatBlock
                 label={
                   <span className="flex items-center gap-1">
-                    Impressions
-                    {data.metrics?.is_impression_estimate && <span className="text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
+                    Meta reach (upper bound)
                   </span>
                 }
-                value={`~${formatCompact(data.metrics?.impressions_est)}`}
+                value={
+                  data.metrics?.impressions_est === null || data.metrics?.impressions_est === undefined
+                    ? t("unavailable")
+                    : `≤ ${formatCompact(data.metrics.impressions_est)}`
+                }
               />
-              <StatBlock label="Spend" value={formatSpendBand(data.metrics?.spend_band)} />
+              <StatBlock
+                label="Spend"
+                value={data.metrics?.spend_band ? formatSpendBand(data.metrics.spend_band) : t("unavailable")}
+              />
               <StatBlock
                 label="Engagement"
                 value={
                   data.metrics?.engagement_rate === null ||
                   data.metrics?.engagement_rate === undefined
-                    ? "—"
+                    ? t("unavailable")
                     : formatPercent(data.metrics.engagement_rate)
                 }
               />
               <StatBlock
-                label="Est. CTR"
+                label={t("ctrLabel")}
                 value={
                   data.metrics?.ctr_est === null || data.metrics?.ctr_est === undefined
-                    ? "—"
+                    ? t("unavailable")
                     : formatPercent(data.metrics.ctr_est, 2)
                 }
               />
+            </div>
+
+            <div className="flex flex-col gap-1 border-t border-border pt-3 text-[11px] text-text-muted" dir="auto">
+              <span className="label-mono">{t("provenanceLabel")}</span>
+              <span>
+                {t("sourceAd")}: {data.source_ad_id || t("unavailable")}
+              </span>
+              {data.permalink ? (
+                <a href={data.permalink} className="truncate text-accent" target="_blank" rel="noreferrer">
+                  {data.permalink}
+                </a>
+              ) : (
+                <span>{t("unavailable")}</span>
+              )}
+              <span>
+                {t("fetchedAt")}: {data.fetched_at ? formatDate(data.fetched_at) : t("unavailable")}
+              </span>
             </div>
 
             <div className="flex flex-col gap-2 border-t border-border pt-3">

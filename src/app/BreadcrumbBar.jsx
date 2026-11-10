@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 import { LanguageSwitcher } from "@/components/LanguageSwitcher"
 import { useLanguage } from "@/context/LanguageContext"
 
-export function BreadcrumbBar({ trail = [], meta, actions, className }) {
+export function BreadcrumbBar({ trail = [], meta = null, actions = null, className = "" }) {
   const { t, isRtl } = useLanguage()
 
   const ChevronIcon = isRtl ? ChevronLeft : ChevronRight

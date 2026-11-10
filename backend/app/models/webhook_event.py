@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, JSON
+from sqlalchemy import Column, String, DateTime, JSON, UniqueConstraint
 from app.db.base import Base
 import uuid
 from datetime import datetime, timezone
@@ -11,9 +11,13 @@ def utc_now():
 
 class WebhookEvent(Base):
     __tablename__ = "webhook_events"
+    __table_args__ = (
+        UniqueConstraint("provider", "event_id", name="uq_webhook_events_provider_event_id"),
+    )
 
     id = Column(String, primary_key=True, default=generate_uuid)
     request_id = Column(String, index=True, nullable=False)
+    event_id = Column(String, nullable=True)
     provider = Column(String, nullable=False)
     status = Column(String, nullable=False) # pending, processed, failed
     payload = Column(JSON, nullable=True)

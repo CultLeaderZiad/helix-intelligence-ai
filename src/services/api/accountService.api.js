@@ -32,22 +32,24 @@ const accountService = {
     return request("/account/billing")
   },
 
-  listApiKeys() {
-    return request("/account/api-keys")
+  getAccess() {
+    return request("/account/access")
   },
 
-  createApiKey(name = "Default API Key") {
-    return request("/account/api-keys", {
+  createAccessRequest(features, note, orgId) {
+    return request("/account/access-requests", {
       method: "POST",
-      body: { name },
+      body: { features, note, org_id: orgId || undefined },
     })
   },
 
-  revokeApiKey(keyId) {
-    return request(`/account/api-keys/${keyId}`, {
-      method: "DELETE",
+  selectWorkspace(orgId) {
+    return request("/account/workspace", {
+      method: "POST",
+      body: { org_id: orgId },
     })
   },
+
 
   getTeam() {
     return request("/account/team")

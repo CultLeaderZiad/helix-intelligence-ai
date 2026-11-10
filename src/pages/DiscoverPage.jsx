@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react"
-import { Radar, SearchX, Clock, RotateCcw } from "lucide-react"
+import { Radar, SearchX, Clock, RotateCcw, MessageSquarePlus } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useTelemetry } from "@/app/TelemetryContext"
 import { SearchQueryBar } from "@/features/discover/SearchQueryBar"
-import { FilterRail } from "@/features/discover/FilterRail"
+import { FilterRail, countActiveFilters, searchFiltersDiffer } from "@/features/discover/FilterRail"
 import { JobProgress } from "@/features/discover/JobProgress"
 import { ResultSummary } from "@/features/discover/ResultSummary"
 import { ResultsTable } from "@/features/discover/ResultsTable"
@@ -18,15 +18,17 @@ import { formatDuration, formatInt } from "@/lib/format"
 import { OnboardingTour } from "@/app/OnboardingTour"
 import { OnboardingWizardModal } from "@/components/OnboardingWizardModal"
 import { SupportFeedbackModal } from "@/components/SupportFeedbackModal"
-import { MessageSquarePlus } from "lucide-react"
 import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
+import w5Discover from "@/i18n/w5Discover"
+import { useW8Copy } from "@/i18n/w8Product"
 
+/* Search-time filters (country, status, format, dates, platform, language)
+   are sent with the search; run length and the text-rubric minimum
+   filter the stored results. Platform, format and spend-band controls were
+   removed: every provider is Meta-only and none of them was ever applied. */
 const EMPTY_FILTERS = {
   country: "ALL",
-  platforms: [],
-  formats: [],
-  spend_bands: [],
   min_score: 0,
   min_days_active: 0,
 }
@@ -48,13 +50,16 @@ const EMPTY_FILTERS = {
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 
 export function DiscoverPage() {
-  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { latestSearch, saveCompletedSearch, selectActiveCreative, selectSearchSession } = useSearchContext()
-  const { t } = useLanguage()
+  const { latestSearch, saveCompletedSearch, selectActiveCreative, openSearchSession } = useSearchContext()
+  const persistCompletedSearch = /** @type {(search: Record<string, unknown>) => void} */ (saveCompletedSearch)
+  const setActiveCreative = /** @type {(creative: object) => void} */ (selectActiveCreative)
+  const { t, lang } = useLanguage()
+  const copy = w5Discover[lang] ?? w5Discover.en
+  const w8 = useW8Copy()
   const [query, setQuery] = useState(() => searchParams.get("q") || latestSearch?.query || "")
   const [queryLanguage, setQueryLanguage] = useState(() => {
     try {
@@ -63,20 +68,33 @@ export function DiscoverPage() {
       return "en"
     }
   })
-  const [sort, setSort] = useState("composite_desc")
+  const [sort, setSort] = useState("days_active_desc")
   const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS)
   const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [selectedId, setSelectedId] = useState(null)
   const [showOnboardingModal, setShowOnboardingModal] = useState(false)
   const [tourEnabled, setTourEnabled] = useState(false)
+  const [onboardingSaveError, setOnboardingSaveError] = useState(false)
   const [showSupportModal, setShowSupportModal] = useState(false)
   const [showDraftsModal, setShowDraftsModal] = useState(false)
 
   const isBelowLg = useIsBelowLg()
   const { report } = useTelemetry()
   const { user, completeOnboarding } = useAuth()
-  const { phase, job, results, error, submit, refine, cancel, retry, isBusy } =
+  const {
+    phase,
+    job,
+    results,
+    error,
+    cancelError,
+    submit,
+    refine,
+    cancel,
+    retry,
+    isBusy,
+    isCancelling,
+  } =
     useDiscoverySearch()
 
   useEffect(() => {
@@ -87,25 +105,15 @@ export function DiscoverPage() {
     }
   }, [queryLanguage])
 
-  const dirty = useMemo(
-    () => JSON.stringify(draftFilters) !== JSON.stringify(appliedFilters),
-    [draftFilters, appliedFilters],
-  )
+  /* Search-time filters need a re-run to apply. */
+  const dirty = searchFiltersDiffer(draftFilters, appliedFilters)
 
-  const activeFilterCount = useMemo(
-    () =>
-      (draftFilters.platforms?.length ?? 0) +
-      (draftFilters.formats?.length ?? 0) +
-      (draftFilters.spend_bands?.length ?? 0) +
-      (draftFilters.min_score > 0 ? 1 : 0) +
-      (draftFilters.min_days_active > 0 ? 1 : 0),
-    [draftFilters],
-  )
+  const activeFilterCount = useMemo(() => countActiveFilters(draftFilters), [draftFilters])
 
   /* Sync completed search results with SearchContext across tabs */
   useEffect(() => {
     if (phase === PHASE.READY && results && query) {
-      saveCompletedSearch({
+      persistCompletedSearch({
         query: query.trim(),
         jobId: job?.job_id,
         total: results.total,
@@ -113,13 +121,13 @@ export function DiscoverPage() {
         tookMs: results.took_ms,
       })
     }
-  }, [phase, results, query, job?.job_id, saveCompletedSearch])
+  }, [phase, results, query, job?.job_id, persistCompletedSearch])
 
   /* Sync active creative */
   useEffect(() => {
     if (selectedId && results?.items) {
       const active = results.items.find((i) => i.id === selectedId)
-      if (active) selectActiveCreative(active)
+      if (active) setActiveCreative(active)
     }
   }, [selectedId, results?.items, selectActiveCreative])
 
@@ -167,15 +175,19 @@ export function DiscoverPage() {
     }, 200)
   }
 
-  function handleDismissOnboarding() {
-    setShowOnboardingModal(false)
-    completeOnboarding()
+  async function finishOnboarding() {
+    setTourEnabled(false)
+    try {
+      await completeOnboarding()
+      setOnboardingSaveError(false)
+    } catch {
+      setOnboardingSaveError(true)
+    }
   }
 
-  function handleGoToDashboard() {
+  function handleDismissOnboarding() {
     setShowOnboardingModal(false)
-    completeOnboarding()
-    navigate("/dashboard")
+    void finishOnboarding()
   }
 
   function runDiscovery() {
@@ -190,8 +202,22 @@ export function DiscoverPage() {
     if (phase === PHASE.READY) refine({ page: 1, sort: next })
   }
 
+  /* Run length and rubric minimum apply instantly to stored results. */
+  function handleFiltersChange(next) {
+    setDraftFilters(next)
+    const viewChanged =
+      (next.min_days_active ?? 0) !== (appliedFilters.min_days_active ?? 0) ||
+      (next.min_score ?? 0) !== (appliedFilters.min_score ?? 0)
+    if (!viewChanged) return
+    setAppliedFilters((prev) => ({ ...prev, min_days_active: next.min_days_active ?? 0, min_score: next.min_score ?? 0 }))
+    if (phase === PHASE.READY) {
+      setSelectedId(null)
+      refine({ page: 1, view: { min_days: next.min_days_active ?? 0, min_score: next.min_score ?? 0 } })
+    }
+  }
+
   function clearFilters() {
-    setDraftFilters(EMPTY_FILTERS)
+    handleFiltersChange(EMPTY_FILTERS)
   }
 
   const displayResults = results || (phase === PHASE.IDLE && latestSearch?.items?.length ? {
@@ -214,13 +240,7 @@ export function DiscoverPage() {
      nothing — the backend's zero_results stage_label says exactly why. */
   const scrapedNothing =
     phase === PHASE.READY && items.length === 0 && (job?.records_found ?? 0) === 0
-  const filtersWereApplied =
-    appliedFilters.country !== "ALL" ||
-    (appliedFilters.platforms?.length ?? 0) > 0 ||
-    (appliedFilters.formats?.length ?? 0) > 0 ||
-    (appliedFilters.spend_bands?.length ?? 0) > 0 ||
-    (appliedFilters.min_score ?? 0) > 0 ||
-    (appliedFilters.min_days_active ?? 0) > 0
+  const filtersWereApplied = countActiveFilters(appliedFilters) > 0
   const showProgress = Boolean(job) && phase !== PHASE.READY && phase !== PHASE.IDLE
   const inspectorOpen = Boolean(selectedId)
 
@@ -229,13 +249,12 @@ export function DiscoverPage() {
       <OnboardingTour 
         user={user} 
         enabled={tourEnabled} 
-        onComplete={() => {
-          setTourEnabled(false)
-          completeOnboarding()
-        }} 
+        onComplete={finishOnboarding}
       />
+      {onboardingSaveError && <div role="alert" className="flex items-center gap-3 border-b border-border bg-surface p-3 text-sm"><span>{t("onboardingSaveFailed")}</span><Button onClick={finishOnboarding}>{t("retry")}</Button></div>}
       <BreadcrumbBar
-        trail={[t("discovery", "Discovery"), t("search", "Live Search"), query ? `"${query}"` : null].filter(Boolean)}
+        className=""
+        trail={[copy.discovery, copy.liveSearch, query ? `"${query}"` : null].filter(Boolean)}
         meta={
           phase === PHASE.READY && results
             ? `${formatInt(results?.total ?? 0)} records · ${formatDuration(
@@ -246,14 +265,14 @@ export function DiscoverPage() {
             : null
         }
         actions={
-          <Button
+              <Button
             size="xs"
             variant="ghost"
             onClick={() => setShowSupportModal(true)}
             className="flex items-center gap-1 text-xs text-text-muted hover:text-text"
           >
             <MessageSquarePlus className="w-3.5 h-3.5 text-teal-400" />
-            Report Issue
+            {t("reportIssue", copy.reportIssue)}
           </Button>
         }
       />
@@ -275,7 +294,15 @@ export function DiscoverPage() {
       />
 
       {showProgress ? (
-        <JobProgress job={job} query={query} onCancel={cancel} />
+        <JobProgress
+          job={job}
+          query={query}
+          onCancel={cancel}
+          onRetry={retry}
+          cancelError={cancelError}
+          isCancelling={isCancelling}
+          showRetry={phase === PHASE.TIMED_OUT}
+        />
       ) : (
         <div id="tour-job-progress" className="w-full h-0" />
       )}
@@ -286,6 +313,7 @@ export function DiscoverPage() {
           results={displayResults}
           sort={sort}
           filterCount={activeFilterCount}
+          hiddenUnknown={displayResults?.hidden_unknown_run_length ?? null}
           selectedId={selectedId}
         />
       ) : null}
@@ -295,7 +323,7 @@ export function DiscoverPage() {
         {filtersOpen && !isBelowLg ? (
           <FilterRail
             filters={draftFilters}
-            onChange={setDraftFilters}
+            onChange={handleFiltersChange}
             onClear={clearFilters}
             dirty={dirty}
           />
@@ -312,7 +340,7 @@ export function DiscoverPage() {
             <div className="relative ml-auto flex h-full">
               <FilterRail
                 filters={draftFilters}
-                onChange={setDraftFilters}
+                onChange={handleFiltersChange}
                 onClear={clearFilters}
                 dirty={dirty}
               />
@@ -329,22 +357,47 @@ export function DiscoverPage() {
             className="flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden"
             aria-label={t("discoveryResults")}
           >
-            {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile ? (
+            {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile && latestSearch?.query ? (
               <EmptyState
-                icon={Radar}
-                title={t("noRunYet")}
-                description={t("noRunYetDesc")}
+                icon={SearchX}
+                size="lg"
+                status={w8.discoverLastEmptyStatus}
+                title={w8.discoverLastEmptyTitle(latestSearch.query)}
+                description={w8.discoverLastEmptyBody}
                 action={
                   <Button
                     size="sm"
                     variant="primary"
-                    onClick={runDiscovery}
-                    disabled={!query.trim()}
+                    onClick={() => {
+                      const again = query.trim() || latestSearch.query
+                      setQuery(again)
+                      setAppliedFilters(draftFilters)
+                      submit({ query: again, filters: draftFilters, sort, query_language: queryLanguage })
+                    }}
                   >
-                    Run discovery
+                    {w8.discoverLastEmptyCta}
                   </Button>
                 }
               />
+            ) : null}
+
+            {phase === PHASE.IDLE && items.length === 0 && !displayJob?.entity_profile && !latestSearch?.query ? (
+              <EmptyState
+                icon={Radar}
+                size="lg"
+                status={w8.discoverEmptyStatus}
+                title={w8.discoverEmptyTitle}
+                description={w8.discoverEmptyBody}
+                action={
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => (query.trim() ? runDiscovery() : document.getElementById("tour-search-input")?.focus())}
+                    className="">
+                    {w8.discoverEmptyCta}
+                  </Button>
+                }
+               className=""/>
             ) : null}
 
             {phase === PHASE.IDLE && items.length === 0 && displayJob?.entity_profile ? (
@@ -356,49 +409,60 @@ export function DiscoverPage() {
             {phase === PHASE.SUBMITTING ||
             phase === PHASE.RUNNING ||
             phase === PHASE.FETCHING_RESULTS ? (
-              <SkeletonRows rows={10} />
+              <SkeletonRows rows={10}  className=""/>
             ) : null}
 
             {phase === PHASE.ERROR && isServiceRestart(error) ? (
               <EmptyState
                 icon={RotateCcw}
                 status="interrupted"
-                title="The service restarted while this search was running"
-                description="Nothing was wrong with your query. The backend restarted mid-run, so the job could not finish, and the credits for it have already been refunded to your balance. Running it again will start a fresh search."
+                title={copy.serviceRestarted}
+                description={copy.serviceRestartedDescription}
                 action={
-                  <Button size="sm" variant="primary" onClick={retry}>
-                    Run the search again
+                  <Button size="sm" variant="primary" onClick={retry} className="">
+                    {copy.runSearchAgain}
                   </Button>
                 }
-              />
+               className=""/>
             ) : null}
 
             {phase === PHASE.ERROR && !isServiceRestart(error) ? (
               <ErrorState
                 error={error}
-                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
-                description={error?.status === 402 || error?.status === 403 || error?.code === "TRIAL_EXPIRED" || error?.code === "CREDIT_LIMIT_REACHED" ? "Upgrade your account or add credits to continue using Discover." : undefined}
+                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
+                description={
+                  error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED"
+                    ? t("discoverNeedsAccess")
+                    : error?.code === "discover_paused"
+                      ? w8.discoverPaused
+                      : error?.code === "query_too_long"
+                        ? w8.discoverQueryTooLong
+                        : error?.code === "daily_search_cap_reached"
+                          ? w8.discoverSearchCap
+                          : undefined
+                }
+                action={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? (
+                  <Button as={Link} to="/access" size="sm" variant="primary">{w8.discoverOpenAccess}</Button>
+                ) : undefined}
+                className=""
               />
             ) : null}
 
-            {phase === PHASE.TIMED_OUT ? (
+            {phase === PHASE.TIMED_OUT && !job ? (
               <EmptyState
                 icon={Clock}
                 size="lg"
                 status={t("stalled")}
                 title={t("takingLonger")}
-                description={t("takingLongerDesc")}
+                description={cancelError ? copy.timeoutNoJob : t("takingLongerDesc")}
                 action={
                   <div className="flex items-center gap-2">
-                    <Button size="sm" variant="primary" onClick={retry}>
-                      {t("retrySearch")}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={cancel}>
-                      {t("cancel")}
+                    <Button size="sm" variant="primary" onClick={retry} className="">
+                      {copy.retrySearch}
                     </Button>
                   </div>
                 }
-              />
+               className=""/>
             ) : null}
 
             {phase === PHASE.READY && items.length === 0 ? (
@@ -422,7 +486,7 @@ export function DiscoverPage() {
                 <EmptyState
                   icon={SearchX}
                   size="lg"
-                  status={scrapedNothing ? "zero results" : "no matches"}
+                status={scrapedNothing ? copy.statusZeroResults : copy.statusNoMatches}
                   title={
                     scrapedNothing
                       ? t("zeroResultsTitle")
@@ -432,17 +496,17 @@ export function DiscoverPage() {
                     scrapedNothing
                       ? displayJob?.stage_label && displayJob?.stage !== "complete"
                         ? displayJob.stage_label
-                        : 'The ad libraries had no active ads for this query. Try a company domain (e.g. "nike.com") or a broader industry keyword, then re-run.'
+                        : "The ad libraries had no active ads for this query. Try the company domain or a broader keyword, then run the search again."
                       : t("noMatchesDesc")
                   }
                   action={
                     filtersWereApplied ? (
-                      <Button size="sm" variant="outline" onClick={clearFilters}>
+                      <Button size="sm" variant="outline" onClick={clearFilters} className="">
                         {t("clearFilters")}
                       </Button>
                     ) : null
                   }
-                />
+                 className=""/>
               )
             ) : null}
 
@@ -472,7 +536,7 @@ export function DiscoverPage() {
                       variant="outline"
                       disabled={!displayResults?.page || displayResults.page <= 1 || phase === PHASE.IDLE}
                       onClick={() => refine({ page: (displayResults?.page || 1) - 1, sort })}
-                    >
+                     className="">
                       Prev
                     </Button>
                     <Button
@@ -480,7 +544,7 @@ export function DiscoverPage() {
                       variant="outline"
                       disabled={!displayResults?.has_more || phase === PHASE.IDLE}
                       onClick={() => refine({ page: (displayResults?.page || 1) + 1, sort })}
-                    >
+                     className="">
                       Next
                     </Button>
                   </div>
@@ -504,25 +568,36 @@ export function DiscoverPage() {
         isOpen={showOnboardingModal}
         onClose={handleCloseOnboarding}
         onDismiss={handleDismissOnboarding}
-        onDashboard={handleGoToDashboard}
+        onSearchSelect={(searchBrand) => setQuery(searchBrand)}
       />
 
       <SupportFeedbackModal
         isOpen={showSupportModal}
         onClose={() => setShowSupportModal(false)}
         initialContext={{ page: "Discover", query, tag: "discover" }}
+        onSuccess={() => setShowSupportModal(false)}
       />
 
       <SavedDraftsModal
         isOpen={showDraftsModal}
         onClose={() => setShowDraftsModal(false)}
         currentQuery={query}
-        onSelectSearch={(item) => {
-          selectSearchSession(item)
+        currentFilters={draftFilters}
+        onSelectSearch={async (item) => {
           setQuery(item.query)
+          setSelectedId(null)
+          const opened = await openSearchSession(item).catch(() => false)
+          // Nothing stored to show (failed or empty): run it again.
+          if (!opened) {
+            setAppliedFilters(draftFilters)
+            submit({ query: item.query, filters: draftFilters, sort, query_language: queryLanguage })
+          }
         }}
         onSelectDraft={(draft) => {
           setQuery(draft.query || draft.title)
+          const next = { ...EMPTY_FILTERS, ...(draft.filters || {}) }
+          setDraftFilters(next)
+          setAppliedFilters(next)
         }}
       />
     </div>

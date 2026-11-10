@@ -3,11 +3,16 @@ from typing import Optional
 from sqlalchemy import text, select
 import asyncio
 import os
+import hmac
 from app.db.session import async_session_maker
 from app.core.config import settings
 from app.core.credentials import env_secret
 from app.models.user import User
 
+import logging
+from app.core.observability import log_event
+
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.get("/live")
@@ -26,13 +31,14 @@ async def readiness(response: Response):
                 await session.execute(select(User.id).limit(1))
 
         await asyncio.wait_for(_check_db(), timeout=3.0)
-        return {"status": "ready", "database": "connected"}
+        return {"status": "ready", "database": "connected", "providers": "not_checked"}
     except (asyncio.TimeoutError, TimeoutError):
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {"status": "unready", "database": "timeout", "detail": "Database ping timed out"}
-    except Exception as e:
+        return {"status": "unready", "database": "timeout", "providers": "not_checked", "detail": "Database ping timed out"}
+    except Exception as exc:
+        log_event(logger, "readiness_database_failed", error=exc)
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {"status": "unready", "database": "disconnected", "detail": str(e)}
+        return {"status": "unready", "database": "disconnected", "providers": "not_checked", "code": "database_unavailable", "detail": "Database is unavailable"}
 
 
 @router.get("")
@@ -55,21 +61,26 @@ async def health_check(
         db_status = "timeout"
         db_error = "Database ping timed out"
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    except Exception as e:
+    except Exception as exc:
+        log_event(logger, "health_database_failed", error=exc)
         db_status = "disconnected"
-        db_error = str(e)
+        db_error = "Database is unavailable"
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
     # Strictly protect internal API presence diagnostics: only return when authenticated with admin secret
+    diagnostic_key = settings.HEALTH_DIAGNOSTIC_KEY
     is_admin_req = bool(
-        settings.SECRET_KEY
-        and x_admin_secret == settings.SECRET_KEY
+        diagnostic_key
+        and diagnostic_key != settings.SECRET_KEY
+        and x_admin_secret
+        and hmac.compare_digest(x_admin_secret.encode(), diagnostic_key.encode())
     )
 
     res = {
         "status": "ok" if db_status == "connected" else "degraded",
         "service": "helix-backend",
         "db": db_status,
+        "providers": "not_checked",
     }
     if db_error and is_admin_req:
         res["db_detail"] = db_error
@@ -87,7 +98,6 @@ async def health_check(
             "APIFY_API_TOKEN": bool(env_secret("APIFY_API_TOKEN", "APIFY_TOKEN", fallback=settings.APIFY_API_TOKEN)),
             "APIFY_ENABLED": bool(settings.APIFY_ENABLED),
             "JWT_SECRET": bool(settings.SECRET_KEY or os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET")),
-            "USE_MOCKS": settings.USE_MOCKS,
         }
 
     return res

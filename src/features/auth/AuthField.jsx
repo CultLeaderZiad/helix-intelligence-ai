@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/Field"
  * The input itself is the shared `Input` primitive, passed as children so
  * this wrapper stays agnostic about type/autocomplete/etc.
  */
-export function AuthField({ id, label, error, action, children, className }) {
+export function AuthField({ id, label, error = null, action = null, children, className = "" }) {
   return (
     <div className={cn("grid grid-cols-[1fr_auto] items-baseline gap-y-1.5", className)}>
       <Label htmlFor={id} className="col-start-1 row-start-1">

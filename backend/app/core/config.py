@@ -1,7 +1,24 @@
 import os
 import json
+import re
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+
+from .origins import is_loopback_host, validate_database_target, validate_http_target
+
+# Public support mailbox. The only address transactional mail uses for Reply-To
+# and the only address the API prints in an email footer.
+DEFAULT_SUPPORT_EMAIL = "support@cyreax.com"
+
+
+def _dotenv_files_for_environment(environment: str | None):
+    if environment != "development":
+        return None
+    config_path = Path(__file__).resolve()
+    project_root = config_path.parents[3]
+    backend_root = config_path.parents[2]
+    return (str(project_root / ".env.local"), str(backend_root / ".env.local"))
 
 
 class Settings(BaseSettings):
@@ -10,48 +27,69 @@ class Settings(BaseSettings):
 
     # SECURITY — must be set via env var; no hardcoded fallback
     SECRET_KEY: str = os.getenv("SECRET_KEY", "")
+    # Optional diagnostics-only credential; never accept the JWT signing key here.
+    HEALTH_DIAGNOSTIC_KEY: str = os.getenv("HEALTH_DIAGNOSTIC_KEY", "")
+    # Versioned Fernet key for BYOK credentials. Never reuse SECRET_KEY.
+    CREDENTIAL_ENCRYPTION_KEY: str = os.getenv("CREDENTIAL_ENCRYPTION_KEY", "")
+    CREDENTIAL_ENCRYPTION_KEY_PREVIOUS: str = os.getenv("CREDENTIAL_ENCRYPTION_KEY_PREVIOUS", "")
+    CREDENTIAL_ENCRYPTION_KEY_VERSION: int = int(os.getenv("CREDENTIAL_ENCRYPTION_KEY_VERSION", "1"))
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
+    # Admin and assistant-admin sessions expire sooner: a stolen admin token
+    # reaches every workspace.
+    ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES: int = max(15, int(os.getenv("ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", str(60 * 12))))
+    # Every new account gets this many days of access automatically (0 turns
+    # it off and new workspaces wait for an admin grant). The provider caps
+    # (DISCOVER_*) still apply per workspace and globally during the trial.
+    SIGNUP_TRIAL_DAYS: int = max(0, int(os.getenv("SIGNUP_TRIAL_DAYS", "7")))
+    SIGNUP_TRIAL_FEATURES: tuple = tuple(
+        f.strip() for f in os.getenv("SIGNUP_TRIAL_FEATURES", "discover,swipe_files,monitors").split(",") if f.strip()
+    )
+    IMPERSONATION_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("IMPERSONATION_TOKEN_EXPIRE_MINUTES", "15"))
     PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("PASSWORD_RESET_TOKEN_EXPIRE_MINUTES", "30"))
+    # development | test | staging | production. Unset means development,
+    # except a Render process with no explicit class, which is production.
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    JWT_ISSUER: str = os.getenv("JWT_ISSUER", "helix")
+    JWT_AUDIENCE: str = os.getenv("JWT_AUDIENCE", "helix-api")
 
-    # Password reset delivery. The app has no mail provider bundled, so the
-    # reset link is logged server-side on every request. Set to true to also
-    # return it in the API response (dev/staging convenience only — anyone
-    # who can call the endpoint could reset any account).
+    # Password reset delivery uses the existing email service. Reset tokens
+    # and links must never be logged. A response token is local-dev only.
     # DEFAULTS TO FALSE: must be explicitly opted into. Wire real email
     # delivery (Resend) instead of enabling this in any shared environment.
     AUTH_DEV_RESET_RETURN: bool = os.getenv("AUTH_DEV_RESET_RETURN", "False").lower() in ("true", "1", "yes")
 
     # Public app origin used to build password-reset links
+    # Local default; production deployment values must be injected explicitly.
     PUBLIC_APP_BASE_URL: str = os.getenv(
-        "PUBLIC_APP_BASE_URL",
-        "https://helix-intelligence-ai-six.vercel.app",
+        "PUBLIC_APP_BASE_URL", "http://localhost:3000"
     ).rstrip("/")
 
-    # CORS — see _parse_cors_origins() below.  Declared as str so
-    # pydantic-settings won't try JSON-decoding a comma-separated
-    # value from the env var.  main.py imports `cors_origins` (not
-    # this field) for the CORS middleware.
     BACKEND_CORS_ORIGINS: str = ""
-
-    # MOCKS
-    USE_MOCKS: bool = os.getenv("USE_MOCKS", "False").lower() in ("true", "1")
+    # Optional anchored regex for deployment-generated frontend origins such as
+    # Vercel preview URLs. See validate_cors_origin_regex for the rules.
+    BACKEND_CORS_ORIGIN_REGEX: str = ""
 
     # DATABASE
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    # API process pool. Point DATABASE_URL at the Neon pooler host
+    # (the hostname contains "-pooler"). PgBouncer there is transaction
+    # mode, so session.py disables asyncpg's statement cache. One Render
+    # instance and the embedded worker share one Neon compute: keep the
+    # API pool small, fail a checkout after DB_POOL_TIMEOUT_S instead of
+    # waiting forever, and recycle connections before the pooler drops them.
+    # The worker engine uses NullPool and does not take these sizes.
+    DB_POOL_SIZE: int = max(1, int(os.getenv("DB_POOL_SIZE", "5")))
+    DB_MAX_OVERFLOW: int = max(0, int(os.getenv("DB_MAX_OVERFLOW", "5")))
+    DB_POOL_TIMEOUT_S: int = max(1, int(os.getenv("DB_POOL_TIMEOUT_S", "10")))
+    DB_POOL_RECYCLE_S: int = max(30, int(os.getenv("DB_POOL_RECYCLE_S", "300")))
+    DB_COMMAND_TIMEOUT_S: int = max(1, int(os.getenv("DB_COMMAND_TIMEOUT_S", "30")))
+    # Outside production, DATABASE_URL must be loopback unless its host exactly
+    # equals ALLOWED_REMOTE_DATABASE_HOST (e.g. a Neon dev/staging branch
+    # endpoint) and the URL requires TLS. PRODUCTION_DATABASE_HOST must also be
+    # set; that endpoint is always refused. Ignored when ENVIRONMENT=production.
+    ALLOWED_REMOTE_DATABASE_HOST: str = os.getenv("ALLOWED_REMOTE_DATABASE_HOST", "")
+    PRODUCTION_DATABASE_HOST: str = os.getenv("PRODUCTION_DATABASE_HOST", "")
     
-    # NEON AUTH
-    NEON_JWKS_URL: str = os.getenv(
-        "NEON_JWKS_URL", 
-        os.getenv(
-            "NEON_AUTH_JWKS_URL",
-            "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json"
-        )
-    )
-    NEON_AUTH_URL: str = os.getenv(
-        "NEON_AUTH_BASE_URL",
-        "https://ep-fancy-bread-axe99xvb.neonauth.c-4.us-east-2.aws.neon.tech/neondb/auth"
-    )
-    NEON_WEBHOOK_SECRET: str = os.getenv("NEON_WEBHOOK_SECRET", "")
 
     # RATE LIMITING (in-memory, per-process token buckets)
     # Protects credential endpoints (brute force / account enumeration) and
@@ -65,15 +103,45 @@ class Settings(BaseSettings):
     AUTH_RATE_LIMIT_WINDOW_S: int = int(os.getenv("AUTH_RATE_LIMIT_WINDOW_S", "60"))
     EXPENSIVE_RATE_LIMIT: int = int(os.getenv("EXPENSIVE_RATE_LIMIT", "20"))  # per IP per window
     EXPENSIVE_RATE_LIMIT_WINDOW_S: int = int(os.getenv("EXPENSIVE_RATE_LIMIT_WINDOW_S", "60"))
+    # Comma-separated IPs or CIDRs of reverse proxies allowed to supply a client IP.
+    # Empty means forwarding headers are ignored and the TCP peer is used.
+    TRUSTED_PROXY_CIDRS: str = os.getenv("TRUSTED_PROXY_CIDRS", "")
+
+    # Per-account sign-in throttle (independent of client IP): after
+    # SIGN_IN_FAILURE_LIMIT wrong passwords within SIGN_IN_FAILURE_WINDOW_S the
+    # account refuses sign-in for SIGN_IN_LOCK_S. A password reset ends the lock.
+    SIGN_IN_FAILURE_LIMIT: int = max(3, int(os.getenv("SIGN_IN_FAILURE_LIMIT", "10")))
+    SIGN_IN_FAILURE_WINDOW_S: int = max(60, int(os.getenv("SIGN_IN_FAILURE_WINDOW_S", "900")))
+    SIGN_IN_LOCK_S: int = max(60, int(os.getenv("SIGN_IN_LOCK_S", "900")))
+
+    # Emit a Server-Timing header (connect/ping/db/rls/hash/app/total) on every
+    # response. Off by default: it exposes internal timing to clients.
+    SERVER_TIMING_ENABLED: bool = os.getenv("SERVER_TIMING_ENABLED", "False").lower() in ("true", "1", "yes")
 
 
     def __init__(self, **values):
-        super().__init__(**values)
+        if "_env_file" in values:
+            raise ValueError("Explicit dotenv file overrides are not supported")
+
+        requested_environment = values.get("ENVIRONMENT")
+        if requested_environment is None or not str(requested_environment).strip():
+            requested_environment = os.getenv("ENVIRONMENT")
+        if not requested_environment:
+            requested_environment = "production" if os.getenv("RENDER") else "development"
+        values["ENVIRONMENT"] = requested_environment
+
+        environment = _ENVIRONMENT_ALIASES.get(str(requested_environment).strip().lower())
+        if environment in ("development", "preview") and os.getenv("RENDER"):
+            environment = "production"
+        env_files = _dotenv_files_for_environment(environment)
+
+        super().__init__(_env_file=env_files, **values)
         if not self.SECRET_KEY:
             raise ValueError(
                 "SECRET_KEY environment variable is not set. "
                 "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
             )
+        validate_boot_invariants(self)
 
     @property
     def async_database_url(self) -> str:
@@ -95,10 +163,10 @@ class Settings(BaseSettings):
 
     # API KEYS
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    POLLINATIONS_API_KEY: str = os.getenv("POLLINATIONS_API_KEY", "")
-    GEMINI_IMAGE_MODEL: str = os.getenv("GEMINI_IMAGE_MODEL", "gemini-3.1-flash-image")
+    GEMINI_TEXT_MODEL: str = os.getenv("GEMINI_TEXT_MODEL", "gemini-flash-latest")
     SCRAPEGRAPH_API_KEY: str = os.getenv("SCRAPEGRAPH_API_KEY", "")
     META_ACCESS_TOKEN: str = os.getenv("META_ACCESS_TOKEN", "")
     BRIGHTDATA_API_KEY: str = os.getenv("BRIGHTDATA_API_KEY", "")
@@ -109,8 +177,6 @@ class Settings(BaseSettings):
         if os.getenv("APIFY_ENABLED", "").strip()
         else bool((os.getenv("APIFY_API_TOKEN", "") or os.getenv("APIFY_TOKEN", "")).strip())
     )
-    AIHUBMIX_API_KEY: str = os.getenv("AIHUBMIX_API_KEY", "")
-    TOKENHARBOR_API_KEY: str = os.getenv("TOKENHARBOR_API_KEY", "")
     METAPI_API_KEY: str = (
 
         os.getenv("METAPI_API_KEY", "")
@@ -123,10 +189,7 @@ class Settings(BaseSettings):
     ADYNTEL_API_KEY: str = os.getenv("ADYNTEL_API_KEY", "")
     ADYNTEL_EMAIL: str = os.getenv("ADYNTEL_EMAIL", "")
     # Public API origin used to build webhook URLs
-    PUBLIC_API_BASE_URL: str = os.getenv(
-        "PUBLIC_API_BASE_URL",
-        "https://helix-intelligence-ai.onrender.com/api",
-    ).rstrip("/")
+    PUBLIC_API_BASE_URL: str = os.getenv("PUBLIC_API_BASE_URL", "/api").rstrip("/")
 
     # OBJECT STORAGE (Cloudflare R2, S3-compatible)
     # Render's disk is ephemeral: anything written locally is destroyed on the
@@ -151,6 +214,51 @@ class Settings(BaseSettings):
     # not total runtime, so a legitimately slow search is never swept.
     JOB_HEARTBEAT_INTERVAL_S: int = int(os.getenv("JOB_HEARTBEAT_INTERVAL_S", "15"))
     JOB_STALE_AFTER_S: int = int(os.getenv("JOB_STALE_AFTER_S", "120"))
+    # Long jobs are claimed by the worker. Inline dispatch is a local override
+    # and is rejected in production.
+    HELIX_DISPATCH_INLINE: bool = os.getenv("HELIX_DISPATCH_INLINE", "false").lower() in ("true", "1", "yes")
+    WORK_LEASE_S: int = int(os.getenv("WORK_LEASE_S", "120"))
+    WORK_MAX_ATTEMPTS: int = int(os.getenv("WORK_MAX_ATTEMPTS", "3"))
+    # Run the jobs worker inside the API process (free hosting, one service).
+    # The API login must also be GRANTed helix_worker. See docs/w8/free-worker.md.
+    EMBEDDED_WORKER_ENABLED: bool = os.getenv("EMBEDDED_WORKER_ENABLED", "false").lower() == "true"
+    DISCOVER_JOB_DEADLINE_S: int = int(os.getenv("DISCOVER_JOB_DEADLINE_S", "600"))
+    # Global hard stop for paid provider calls (see app/services/provider_budget.py).
+    DISCOVER_ENABLED: bool = os.getenv("DISCOVER_ENABLED", "true").lower() in ("true", "1", "yes")
+    DISCOVER_DAILY_PROVIDER_CALL_CAP: int = int(os.getenv("DISCOVER_DAILY_PROVIDER_CALL_CAP", "6"))
+    DISCOVER_MAX_QUERY_LENGTH: int = 300
+    # Per-workspace daily caps, counted in workspace_daily_usage and never
+    # lowered by refunds (see app/services/provider_budget.py).
+    DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY: int = int(os.getenv("DISCOVER_MAX_SEARCHES_PER_WORKSPACE_PER_DAY", "3"))
+    DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE: int = int(os.getenv("DISCOVER_DAILY_PROVIDER_CALLS_PER_WORKSPACE", "6"))
+    # An identical search that found no ads is reused for this long instead
+    # of calling the provider again.
+    DISCOVER_ZERO_RESULT_CACHE_MINUTES: int = int(os.getenv("DISCOVER_ZERO_RESULT_CACHE_MINUTES", "60"))
+    # How long Metapi may take to finish a search task before it counts as a
+    # provider failure (retried by the job), never as an empty result.
+    METAPI_POLL_TIMEOUT_S: int = int(os.getenv("METAPI_POLL_TIMEOUT_S", "150"))
+    # Ads a brand keyword search collects to find the brand's own advertiser
+    # page before loading that page's ads (billed as Metapi records).
+    METAPI_RESOLVE_COUNT: int = max(15, int(os.getenv("METAPI_RESOLVE_COUNT", "15")))
+    # Metapi bills records (ads returned). Each task reserves its `count`
+    # against this per-calendar-month (UTC) budget before it is created.
+    # Defaults sized for Metapi Free (3,000/month). Set it to the plan's
+    # remaining records when starting mid-period.
+    METAPI_MONTHLY_RECORD_BUDGET: int = int(os.getenv("METAPI_MONTHLY_RECORD_BUDGET", "3000"))
+    # Permanent ad archive (see archive_service). The per-workspace cap bounds
+    # storage; media larger than the byte cap keeps its text only.
+    ARCHIVE_ENABLED: bool = os.getenv("ARCHIVE_ENABLED", "true").lower() == "true"
+    ARCHIVE_MAX_ENTRIES_PER_ORG: int = int(os.getenv("ARCHIVE_MAX_ENTRIES_PER_ORG", "5000"))
+    ARCHIVE_MAX_MEDIA_BYTES: int = int(os.getenv("ARCHIVE_MAX_MEDIA_BYTES", str(15 * 1024 * 1024)))
+    ARCHIVE_MEDIA_HOST_SUFFIXES: tuple = tuple(
+        h.strip().lower() for h in os.getenv(
+            "ARCHIVE_MEDIA_HOST_SUFFIXES", "fbcdn.net,fbsbx.com,cdninstagram.com,facebook.com"
+        ).split(",") if h.strip()
+    )
+    AI_MAX_OUTPUT_TOKENS: int = int(os.getenv("AI_MAX_OUTPUT_TOKENS", "1024"))
+    AI_CALL_TIMEOUT_S: float = float(os.getenv("AI_CALL_TIMEOUT_S", "20"))
+    AI_CALL_DEADLINE_S: float = float(os.getenv("AI_CALL_DEADLINE_S", "45"))
+    AI_MAX_RETRIES: int = int(os.getenv("AI_MAX_RETRIES", "2"))
 
     # MONITORS (scheduled competitor watches)
     # The scheduler is whatever calls POST /api/monitors/tick with this secret
@@ -161,6 +269,11 @@ class Settings(BaseSettings):
     # A tick dispatches at most this many monitors, so a backlog cannot bury
     # the single web instance under concurrent scrapes.
     MONITOR_MAX_PER_TICK: int = int(os.getenv("MONITOR_MAX_PER_TICK", "3"))
+    # The jobs worker ticks the monitor scheduler itself every N seconds, so
+    # monitors run without an external cron. 0 turns the in-worker tick off.
+    MONITOR_SCHEDULER_INTERVAL_S: int = int(os.getenv("MONITOR_SCHEDULER_INTERVAL_S", "300"))
+    # At most one rolled-up monitor digest per user and workspace per window.
+    MONITOR_DIGEST_INTERVAL_H: int = int(os.getenv("MONITOR_DIGEST_INTERVAL_H", "24"))
     # Consecutive absences before an ad is reported killed. See
     # creative_fingerprint: one absence is usually a flaky scrape.
     MONITOR_MISS_THRESHOLD: int = int(os.getenv("MONITOR_MISS_THRESHOLD", "2"))
@@ -172,43 +285,21 @@ class Settings(BaseSettings):
 
     # EMAIL (Resend). Unset means email fan-out is skipped and only in-app
     # notifications are delivered; it is never a hard failure.
+    # RESEND_FROM is the verified sender (planned: Helix <noreply@mail.cyreax.com>).
+    # It is read only from the environment — never hardcoded as the From address.
     RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
     RESEND_FROM: str = os.getenv("RESEND_FROM", "")
+    # Public support address. Reply-To on every transactional email, and the
+    # address shown in those emails' footers. Not a secret.
+    SUPPORT_EMAIL: str = os.getenv("SUPPORT_EMAIL", DEFAULT_SUPPORT_EMAIL)
     # Origin used to build links in emails and notifications.
-    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:5173").rstrip("/")
+    APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:3000").rstrip("/")
 
-    # 7-DAY TRIAL & MEDIA GENERATION LIMITS
-    TRIAL_DAYS: int = int(os.getenv("TRIAL_DAYS", "7"))
-    TRIAL_IMAGES_PER_DAY: int = int(os.getenv("TRIAL_IMAGES_PER_DAY", "5"))
-    TRIAL_IMAGES_TOTAL: int = int(os.getenv("TRIAL_IMAGES_TOTAL", "25"))
-    PAID_IMAGES_PER_DAY: int = int(os.getenv("PAID_IMAGES_PER_DAY", "50"))
-
-    # SCRAPLING LEAD GENERATION (Scout · Lead Generation sub-product)
-    # Worker-gated: when disabled, POST /scout/leadgen/jobs refuses with an
-    # honest worker_offline error instead of queueing work nothing will claim.
-    SCRAPLING_WORKER_ENABLED: bool = os.getenv("SCRAPLING_WORKER_ENABLED", "False").lower() in ("true", "1", "yes")
-    # Dev-only single-process fallback: runs the pipeline as an in-API
-    # background task (Scrapling is lazily imported, so uvicorn still boots
-    # without browsers). Prefer the Docker worker in production.
-    SCRAPLING_INLINE_WORKER: bool = os.getenv("SCRAPLING_INLINE_WORKER", "False").lower() in ("true", "1", "yes")
-    SCRAPLING_DEFAULT_ENGINE: str = os.getenv("SCRAPLING_DEFAULT_ENGINE", "stealth")   # http | stealth | dynamic
-    SCRAPLING_ROBOTS_OBEY: bool = os.getenv("SCRAPLING_ROBOTS_OBEY", "True").lower() in ("true", "1", "yes")
-    SCRAPLING_MAX_CONCURRENCY: int = int(os.getenv("SCRAPLING_MAX_CONCURRENCY", "4"))
-    SCRAPLING_PROXY_LIST: str = os.getenv("SCRAPLING_PROXY_LIST", "")   # newline or comma separated proxy URLs
-    SCRAPLING_CHECKPOINT_DIR: str = os.getenv("SCRAPLING_CHECKPOINT_DIR", "/tmp/helix-leadgen-checkpoints")
-    SCRAPLING_CREDIT_PER_PAGE: float = float(os.getenv("SCRAPLING_CREDIT_PER_PAGE", "0.15"))
-    SCRAPLING_CREDIT_BASE: float = float(os.getenv("SCRAPLING_CREDIT_BASE", "1.0"))
-    SCRAPLING_DOCKER_IMAGE: str = os.getenv("SCRAPLING_DOCKER_IMAGE", "ghcr.io/d4vinci/scrapling:latest")
-    SCRAPLING_WORKER_URL: str = os.getenv("SCRAPLING_WORKER_URL", "")   # optional health ping
-    # How recently the worker must have heartbeat before /worker/health says online.
-    SCRAPLING_HEARTBEAT_FRESH_S: int = int(os.getenv("SCRAPLING_HEARTBEAT_FRESH_S", "90"))
-    # Max log lines persisted on the job (FIFO); UI renders the tail.
-    SCRAPLING_MAX_LOG_LINES: int = int(os.getenv("SCRAPLING_MAX_LOG_LINES", "400"))
 
 
     model_config = SettingsConfigDict(
         case_sensitive=True,
-        env_file=("../.env", "../.env.local", ".env", ".env.local"),
+        env_file=None,
         extra="ignore",
         env_ignore_empty=True,
     )
@@ -220,27 +311,194 @@ class Settings(BaseSettings):
 # comma-separated values.  This is the single source of truth for CORS
 # origins throughout the app.
 # ---------------------------------------------------------------------------
-def _parse_cors_origins() -> List[str]:
-    """Parse BACKEND_CORS_ORIGINS env var.
+_LOCAL_CORS_ORIGINS = (
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+)
 
-    Accepts comma-separated:
-        "https://app.vercel.app,https://preview.vercel.app"
-    or JSON array:
-        '["https://app.vercel.app"]'
 
-    Returns localhost defaults when the var is unset/empty.
+def _parse_cors_origins(raw: str | None = None, environment: str = "development") -> List[str]:
+    source = os.getenv("BACKEND_CORS_ORIGINS", "") if raw is None else raw
+    source = (source or "").strip()
+    if not source:
+        return [] if environment == "production" else list(_LOCAL_CORS_ORIGINS)
+
+    if source.startswith("["):
+        try:
+            parsed = json.loads(source)
+        except json.JSONDecodeError:
+            raise ValueError("BACKEND_CORS_ORIGINS must be a JSON array or comma-separated list") from None
+        if not isinstance(parsed, list) or any(not isinstance(item, str) for item in parsed):
+            raise ValueError("BACKEND_CORS_ORIGINS must contain only origin strings")
+        values = parsed
+    else:
+        values = source.split(",")
+
+    return [item.strip().rstrip("/") for item in values if item.strip()]
+
+
+_REGEX_HOST_SUFFIX = re.compile(r"(\\\.[a-z0-9-]+){2,}\$$")
+_REGEX_DOT_WILDCARD = re.compile(r"(?<!\\)\.[*+?{]")
+
+
+def validate_cors_origin_regex(pattern: str) -> str:
+    """Return a safe CORS origin regex, or "" when unset.
+
+    The regex must be anchored, HTTPS-only, end in an escaped literal domain
+    with at least two labels (e.g. ``\\.vercel\\.app$``), and must not use an
+    unescaped ``.`` wildcard, so it cannot match an arbitrary host.
     """
-    raw = os.getenv("BACKEND_CORS_ORIGINS", "").strip()
-    if not raw:
-        return ["http://localhost:5173", "http://localhost:3000"]
-    if raw.startswith("["):
-        origins = json.loads(raw)
-        return [o.rstrip("/") for o in origins]
-    return [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+    value = (pattern or "").strip()
+    if not value:
+        return ""
+    if not value.startswith("^https://") or not value.endswith("$"):
+        raise ValueError("BACKEND_CORS_ORIGIN_REGEX must start with ^https:// and end with $")
+    if not _REGEX_HOST_SUFFIX.search(value):
+        raise ValueError(
+            "BACKEND_CORS_ORIGIN_REGEX must end with an escaped literal domain such as \\.vercel\\.app$"
+        )
+    if _REGEX_DOT_WILDCARD.search(value):
+        raise ValueError("BACKEND_CORS_ORIGIN_REGEX must not use an unescaped . wildcard")
+    try:
+        re.compile(value)
+    except re.error:
+        raise ValueError("BACKEND_CORS_ORIGIN_REGEX is not a valid regular expression") from None
+    return value
 
+
+_ENVIRONMENT_ALIASES = {
+    "production": "production",
+    "prod": "production",
+    "staging": "staging",
+    "stage": "staging",
+    "preview": "preview",
+    "test": "test",
+    "testing": "test",
+    "development": "development",
+    "dev": "development",
+    "local": "development",
+}
+
+
+def classified_environment(cfg=None) -> str:
+    """Return development, test, staging, or production."""
+    source = settings if cfg is None else cfg
+    raw = (getattr(source, "ENVIRONMENT", "") or "").strip().lower()
+    if raw not in _ENVIRONMENT_ALIASES:
+        raise RuntimeError(
+            f"ENVIRONMENT={raw!r} is not a recognized class. "
+            "Use development, test, staging, or production."
+        )
+    env = _ENVIRONMENT_ALIASES[raw]
+    if env in ("development", "preview") and os.getenv("RENDER"):
+        return "production"
+    return env
+
+
+def validate_boot_invariants(cfg) -> None:
+    if cfg is None:
+        cfg = settings
+    env = classified_environment(cfg)
+    errors = []
+
+    url_settings = (
+        ("PUBLIC_APP_BASE_URL", False),
+        ("PUBLIC_API_BASE_URL", True),
+        ("APP_BASE_URL", False),
+        ("R2_PUBLIC_BASE_URL", False),
+        ("R2_ENDPOINT_URL", False),
+    )
+    parsed_targets = {}
+    for name, allow_relative in url_settings:
+        value = getattr(cfg, name, "") or ""
+        try:
+            parsed_targets[name] = validate_http_target(
+                value, name=name, environment=env, allow_relative=allow_relative
+            )
+        except ValueError as exc:
+            errors.append(str(exc))
+            parsed_targets[name] = None
+
+    try:
+        validate_database_target(
+            getattr(cfg, "DATABASE_URL", "") or "",
+            environment=env,
+            allowed_remote_host=getattr(cfg, "ALLOWED_REMOTE_DATABASE_HOST", "") or "",
+            production_host=getattr(cfg, "PRODUCTION_DATABASE_HOST", "") or "",
+        )
+    except ValueError as exc:
+        errors.append(str(exc))
+
+    raw_cors = getattr(cfg, "BACKEND_CORS_ORIGINS", "") or ""
+    try:
+        origins = _parse_cors_origins(raw_cors, env)
+    except ValueError as exc:
+        errors.append(str(exc))
+        origins = []
+
+    for origin in origins:
+        try:
+            validate_http_target(
+                origin, name="BACKEND_CORS_ORIGINS", environment=env, origin_only=True
+            )
+        except ValueError as exc:
+            errors.append(str(exc))
+
+    try:
+        validate_cors_origin_regex(getattr(cfg, "BACKEND_CORS_ORIGIN_REGEX", "") or "")
+    except ValueError as exc:
+        errors.append(str(exc))
+
+    if env == "production":
+        for name in ("PUBLIC_APP_BASE_URL", "APP_BASE_URL"):
+            parsed = parsed_targets.get(name)
+            if not getattr(cfg, name, "") or parsed is None or is_loopback_host(parsed.hostname):
+                errors.append(f"{name} must be explicitly configured with a public HTTPS origin")
+        if not raw_cors.strip() or not origins:
+            errors.append("BACKEND_CORS_ORIGINS must be explicitly configured in production")
+
+        if getattr(cfg, "HELIX_DISPATCH_INLINE", False):
+            errors.append("HELIX_DISPATCH_INLINE must be false when ENVIRONMENT=production")
+        if getattr(cfg, "AUTH_DEV_RESET_RETURN", False):
+            errors.append("AUTH_DEV_RESET_RETURN must be false when ENVIRONMENT=production")
+        secret = getattr(cfg, "SECRET_KEY", "") or ""
+        if len(secret) < 32:
+            errors.append("SECRET_KEY must contain at least 32 characters in production")
+        encryption_key = getattr(cfg, "CREDENTIAL_ENCRYPTION_KEY", "") or ""
+        if not encryption_key or encryption_key == secret:
+            errors.append("CREDENTIAL_ENCRYPTION_KEY must be set and differ from SECRET_KEY")
+        if not getattr(cfg, "RESEND_API_KEY", "") or not getattr(cfg, "RESEND_FROM", ""):
+            errors.append("RESEND_API_KEY and RESEND_FROM must be set in production")
+        if getattr(cfg, "APIFY_ENABLED", False) and not getattr(cfg, "APIFY_API_TOKEN", ""):
+            errors.append("APIFY_API_TOKEN must be set when APIFY_ENABLED=true in production")
+        for name in ("GROQ_MODEL", "GEMINI_TEXT_MODEL"):
+            if not getattr(cfg, name, ""):
+                errors.append(f"{name} must be set in production")
+
+    support_email = (getattr(cfg, "SUPPORT_EMAIL", "") or "").strip()
+    if support_email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", support_email):
+        errors.append("SUPPORT_EMAIL must be an email address")
+
+    if errors:
+        prefix = (
+            "Refusing to serve production traffic"
+            if env == "production"
+            else "Refusing to serve with unsafe configuration"
+        )
+        raise RuntimeError(f"{prefix}: " + "; ".join(errors))
 
 settings = Settings()
 
 # Module-level list used by main.py CORS middleware.
 # Import as:  from app.core.config import cors_origins
 cors_origins: List[str] = _parse_cors_origins()
+
+
+def _cors_origin_regex_or_none() -> str | None:
+    try:
+        return validate_cors_origin_regex(os.getenv("BACKEND_CORS_ORIGIN_REGEX", "")) or None
+    except ValueError:
+        return None  # validate_boot_invariants refuses to boot with the reason
+
+
+cors_origin_regex: str | None = _cors_origin_regex_or_none()

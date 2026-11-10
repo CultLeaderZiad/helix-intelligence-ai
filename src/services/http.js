@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./config"
+import { getAccessToken } from "./sessionStore"
 
 /**
  * Normalized service error. Both the mock and HTTP layers throw this,
@@ -28,6 +29,22 @@ function buildQuery(params = {}) {
   }
   const qs = sp.toString()
   return qs ? `?${qs}` : ""
+}
+
+function errorMessageFrom(detail, fallback) {
+  if (typeof detail === "string" && detail.trim()) return detail
+  if (Array.isArray(detail)) {
+    for (const entry of detail) {
+      const message = errorMessageFrom(entry, "")
+      if (message) return message
+    }
+  } else if (detail && typeof detail === "object") {
+    for (const key of ["message", "msg", "detail"]) {
+      const message = errorMessageFrom(detail[key], "")
+      if (message) return message
+    }
+  }
+  return fallback
 }
 
 /**
@@ -68,13 +85,131 @@ startBackendKeepAlive()
  * Automatically retries up to 6 times on transient network glitches or 502/503/504 errors
  * to gracefully absorb Render cold-start latency.
  */
-export async function request(path, options = {}, retryCount = 0) {
+export const HTTP_REQUEST_TIMEOUT_MS = 60000
+const inFlightGetRequests = new Map()
+
+function abortError(signal) {
+  return signal?.reason || new DOMException("Request aborted", "AbortError")
+}
+
+function retryDelay(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) { reject(abortError(signal)); return }
+    const onAbort = () => {
+      clearTimeout(timer)
+      signal.removeEventListener("abort", onAbort)
+      reject(abortError(signal))
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener("abort", onAbort, { once: true })
+  })
+}
+
+function normalizeTimeoutMs(options) {
+  const requestedTimeout = options.timeoutMs ?? HTTP_REQUEST_TIMEOUT_MS
+  return Number.isFinite(requestedTimeout) && requestedTimeout > 0
+    ? Math.min(requestedTimeout, HTTP_REQUEST_TIMEOUT_MS) : HTTP_REQUEST_TIMEOUT_MS
+}
+
+function getInFlightGetKey(url, timeoutMs, sessionToken, headers) {
+  const headerScope = Object.entries(headers || {})
+    .map(([name, value]) => [name, String(value)])
+    .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
+  return JSON.stringify([sessionToken, url, timeoutMs, headerScope])
+}
+
+function startInFlightGet(key, path, options, sessionToken) {
+  const controller = new AbortController()
+  const entry = { key, controller, activeConsumers: 0, settled: false, promise: null }
+  entry.promise = requestAttempt(path, { ...options, signal: controller.signal }, 0, sessionToken).then(
+    value => {
+      entry.settled = true
+      if (inFlightGetRequests.get(key) === entry) inFlightGetRequests.delete(key)
+      return value
+    },
+    error => {
+      entry.settled = true
+      if (inFlightGetRequests.get(key) === entry) inFlightGetRequests.delete(key)
+      throw error
+    },
+  )
+  inFlightGetRequests.set(key, entry)
+  return entry
+}
+
+function waitForInFlightGet(entry, timeoutMs) {
+  entry.activeConsumers += 1
+  return new Promise((resolve, reject) => {
+    let finished = false
+    const timer = setTimeout(() => finish(false, new ServiceError("Request failed", { code: "request_timeout" })), timeoutMs)
+
+    function finish(succeeded, value) {
+      if (finished) return
+      finished = true
+      clearTimeout(timer)
+      entry.activeConsumers -= 1
+      if (entry.activeConsumers === 0 && !entry.settled) {
+        if (inFlightGetRequests.get(entry.key) === entry) inFlightGetRequests.delete(entry.key)
+        entry.controller.abort(new DOMException("Request aborted", "AbortError"))
+      }
+      if (succeeded) resolve(value)
+      else reject(value)
+    }
+
+    entry.promise.then(value => finish(true, value), error => finish(false, error))
+  })
+}
+
+/** One deadline covers fetches, response bodies and every retry delay. */
+export async function request(path, options = {}) {
+  const sessionToken = getAccessToken()
+  const timeoutMs = normalizeTimeoutMs(options)
+  const method = options.method || "GET"
+  if (method.toUpperCase() === "GET" && !options.signal && !options.body) {
+    const url = `${API_BASE_URL}${path}${buildQuery(options.params)}`
+    const key = getInFlightGetKey(url, timeoutMs, sessionToken, options.headers)
+    let entry = inFlightGetRequests.get(key)
+    if (!entry || entry.settled || entry.controller.signal.aborted) {
+      if (entry && inFlightGetRequests.get(key) === entry) inFlightGetRequests.delete(key)
+      entry = startInFlightGet(key, path, options, sessionToken)
+    }
+    return waitForInFlightGet(entry, timeoutMs)
+  }
+
+  return requestWithDeadline(path, options, timeoutMs, sessionToken)
+}
+
+async function requestWithDeadline(path, options, timeoutMs, sessionToken) {
+  const controller = new AbortController()
+  const callerSignal = options.signal
+  const onAbort = () => controller.abort(abortError(callerSignal))
+  if (callerSignal?.aborted) onAbort()
+  else callerSignal?.addEventListener("abort", onAbort, { once: true })
+  let timedOut = false
+  const timer = setTimeout(() => {
+    timedOut = true
+    controller.abort(new DOMException("Request aborted", "AbortError"))
+  }, timeoutMs)
+  try {
+    return await requestAttempt(path, { ...options, signal: controller.signal })
+  } catch (err) {
+    if (timedOut) throw new ServiceError("Request failed", { code: "request_timeout" })
+    throw err
+  } finally {
+    clearTimeout(timer)
+    callerSignal?.removeEventListener("abort", onAbort)
+  }
+}
+
+async function requestAttempt(path, options, retryCount = 0, sessionToken = getAccessToken()) {
   const { method = "GET", params, body, signal, headers: extraHeaders } = options
+  if (signal.aborted) throw abortError(signal)
   const url = `${API_BASE_URL}${path}${buildQuery(params)}`
 
-  // Attach JWT from localStorage if present
-  const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+  const authHeader = sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}
 
   const upperMethod = (method || "GET").toUpperCase()
   const isIdempotentMethod = upperMethod === "GET" || upperMethod === "HEAD" || upperMethod === "OPTIONS"
@@ -103,12 +238,13 @@ export async function request(path, options = {}, retryCount = 0) {
     })
   // Transparent retry on network disconnect / Render waking up (only for idempotent or key-protected requests)
   } catch (err) {
+    if (signal.aborted) throw abortError(signal)
     if (err?.name === "AbortError") throw err
 
     if (isSafeToRetry && retryCount < 6) {
       const delay = Math.min(3500, 1000 * Math.pow(1.3, retryCount))
-      await new Promise((resolve) => setTimeout(resolve, delay))
-      return request(path, options, retryCount + 1)
+      await retryDelay(delay, signal)
+      return requestAttempt(path, options, retryCount + 1, sessionToken)
     }
 
     throw new ServiceError(
@@ -121,11 +257,12 @@ export async function request(path, options = {}, retryCount = 0) {
 
   // If server returns 502, 503, or 504 gateway error (Render cold-start boot), retry transparently only if safe
   // Do NOT retry structured JSON error responses (e.g. worker_offline 503) (F57)
+  if (signal.aborted) throw abortError(signal)
   const isJsonError = res.headers?.get("content-type")?.includes("application/json")
   if (isSafeToRetry && [502, 503, 504].includes(res.status) && !isJsonError && retryCount < 8) {
     const delay = Math.min(4000, 1200 * Math.pow(1.3, retryCount))
-    await new Promise((resolve) => setTimeout(resolve, delay))
-    return request(path, options, retryCount + 1)
+    await retryDelay(delay, signal)
+    return requestAttempt(path, options, retryCount + 1, sessionToken)
   }
 
   if (!res.ok) {
@@ -134,15 +271,15 @@ export async function request(path, options = {}, retryCount = 0) {
     try {
       const payload = await res.json()
       detail = payload?.detail ?? payload?.message ?? detail
-      if (Array.isArray(detail) && detail.length > 0) {
-        detail = detail[0].msg || detail[0].message || "Validation error"
-      } else if (typeof detail === "object" && detail !== null) {
-        if (detail.code) errorCode = detail.code
-        if (detail.message) detail = detail.message
+      if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+        const structuredDetail = /** @type {{ code?: string }} */ (detail)
+        if (typeof structuredDetail.code === "string") errorCode = structuredDetail.code
       }
     } catch {
       /* non-JSON error body */
     }
+    detail = errorMessageFrom(detail, res.status === 422 ? "Validation error" : "Request failed")
+    if (signal.aborted) throw abortError(signal)
 
     if (typeof detail === "string") {
       detail = detail.replace(/^(Value error,?\s*|String should have at least\s*)/i, "")
@@ -162,12 +299,12 @@ export async function request(path, options = {}, retryCount = 0) {
     // Only dispatch unauthorized event for non-auth endpoints!
     // Never trigger sign-out while the user is actively on sign-in, sign-up, or session checks!
     const isAuthRoute = path.startsWith("/auth/") || path === "/auth"
-    if (res.status === 401 && !isAuthRoute) {
+    if (res.status === 401 && !isAuthRoute && getAccessToken() === sessionToken) {
       window.dispatchEvent(new CustomEvent("helix:unauthorized"))
     }
 
     throw new ServiceError(
-      typeof detail === "string" ? detail : "Request failed",
+      detail,
       { status: res.status, code: errorCode },
     )
   }
@@ -179,13 +316,14 @@ export async function request(path, options = {}, retryCount = 0) {
 
 export async function uploadFile(path, formData, options = {}) {
   const url = `${API_BASE_URL}${path}`
-  const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
+  const token = getAccessToken()
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
 
   let res
   try {
     res = await fetch(url, {
       method: "POST",
+      signal: options.signal,
       headers: {
         Accept: "application/json",
         ...authHeader,
@@ -204,6 +342,10 @@ export async function uploadFile(path, formData, options = {}) {
       const payload = await res.json()
       detail = payload?.detail ?? payload?.message ?? detail
     } catch {}
+    const isAuthRoute = path.startsWith("/auth/") || path === "/auth"
+    if (res.status === 401 && !isAuthRoute && getAccessToken() === token) {
+      window.dispatchEvent(new CustomEvent("helix:unauthorized"))
+    }
     throw new ServiceError(typeof detail === "string" ? detail : "Upload failed", { status: res.status })
   }
 

@@ -1,8 +1,8 @@
+import { EXPERIMENTAL_FEATURES_ENABLED } from "@/lib/productFeatures"
 import {
   LayoutDashboard,
   Building2,
   Users,
-  CreditCard,
   Gauge,
   Database,
   ListChecks,
@@ -10,8 +10,9 @@ import {
   Flag,
   ScrollText,
   Bell,
-  BookOpen,
   MessageSquareCheck,
+  ShieldCheck,
+  Tag,
 } from "lucide-react"
 
 /**
@@ -20,7 +21,7 @@ import {
  */
 export const ADMIN_HOME = "/admin"
 
-export const ADMIN_NAV_GROUPS = [
+const ALL_ADMIN_NAV_GROUPS = [
   {
     label: "Overview",
     items: [
@@ -30,13 +31,6 @@ export const ADMIN_NAV_GROUPS = [
         label: "Dashboard",
         icon: LayoutDashboard,
         end: true,
-        built: true,
-      },
-      {
-        key: "admin-guide",
-        path: "/admin/guide",
-        label: "Operating Playbook",
-        icon: BookOpen,
         built: true,
       },
     ],
@@ -49,6 +43,20 @@ export const ADMIN_NAV_GROUPS = [
         path: "/admin/organizations",
         label: "Organizations",
         icon: Building2,
+        built: true,
+      },
+      {
+        key: "access-requests",
+        path: "/admin/access-requests",
+        label: "Access Requests",
+        icon: ShieldCheck,
+        built: true,
+      },
+      {
+        key: "pricing",
+        path: "/admin/pricing",
+        label: "Pricing",
+        icon: Tag,
         built: true,
       },
       {
@@ -70,13 +78,6 @@ export const ADMIN_NAV_GROUPS = [
   {
     label: "Billing",
     items: [
-      {
-        key: "subscriptions",
-        path: "/admin/subscriptions",
-        label: "Subscriptions & Plans",
-        icon: CreditCard,
-        built: true,
-      },
       {
         key: "usage",
         path: "/admin/usage",
@@ -141,4 +142,6 @@ export const ADMIN_NAV_GROUPS = [
 ]
 
 /** Flattened lookup for routing and the document title. */
+export const ADMIN_NAV_GROUPS = ALL_ADMIN_NAV_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => EXPERIMENTAL_FEATURES_ENABLED || !["admin-guide", "subscriptions", "usage", "data-sources", "scrape-jobs", "feature-flags", "health"].includes(item.key)) })).filter((group) => group.items.length > 0)
+
 export const ADMIN_NAV_ITEMS = ADMIN_NAV_GROUPS.flatMap((g) => g.items)

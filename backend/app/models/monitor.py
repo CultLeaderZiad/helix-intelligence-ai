@@ -45,6 +45,10 @@ class Monitor(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now(), onupdate=func.now(), nullable=False)
 
+    __table_args__ = (
+        Index("ix_monitors_status_next_run_at", "status", "next_run_at"),
+    )
+
 
 class MonitorRun(Base):
     """One execution of a monitor, and what the diff concluded."""
@@ -71,6 +75,10 @@ class MonitorRun(Base):
     skipped_reason = Column(String, nullable=True)
     error = Column(String, nullable=True)
     credits_charged = Column(Float, default=0.0, server_default="0.0", nullable=False)
+
+    __table_args__ = (
+        Index("ix_monitor_runs_monitor_started", "monitor_id", "started_at"),
+    )
 
 
 class MonitorCreative(Base):

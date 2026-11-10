@@ -1,103 +1,93 @@
 import hmac
-import os
 import hashlib
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
-from typing import Any, Union
-import httpx
-from jose import jwt, JWTError
+from typing import Any, Optional, Union
+
+from jose import JWTError, jwt
+
 from app.core.config import settings
-import logging
 
 logger = logging.getLogger(__name__)
 
-import time
-
-ALGORITHM = "RS256"  # Neon JWKS issues RS256 JWTs by default
 HS256_ALGORITHM = "HS256"
+LOCAL_TOKEN_USES = {"session", "impersonation"}
 
-_jwks_cache = None
-_jwks_cache_expiry = 0.0
-_JWKS_CACHE_TTL_SECONDS = 3600.0  # 1 hour TTL
 
-async def get_jwks_keys(force_refresh: bool = False):
-    """Fetch and cache JWKS keys from Neon Auth with TTL and force-refresh support."""
-    global _jwks_cache, _jwks_cache_expiry
-    now = time.time()
-    if force_refresh or _jwks_cache is None or now >= _jwks_cache_expiry:
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(settings.NEON_JWKS_URL)
-                response.raise_for_status()
-                _jwks_cache = response.json()
-                _jwks_cache_expiry = now + _JWKS_CACHE_TTL_SECONDS
-                logger.info(f"Loaded JWKS keys from {settings.NEON_JWKS_URL}")
-        except Exception as e:
-            logger.error(f"Failed to load JWKS: {e}")
-            if _jwks_cache is not None:
-                # If network fails but we had a cache, serve stale cache as fallback
-                return _jwks_cache
-            raise ValueError("Authentication service unavailable")
-    return _jwks_cache
-
-async def verify_neon_token(token: str) -> dict:
-    """Validate a token against local HS256 secret or Neon Auth JWKS and return the decoded payload."""
-    # 1. First try local HS256 secret (for local tokens / seed sessions)
+def _unverified_header(token: str) -> Optional[dict]:
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[HS256_ALGORITHM], options={"verify_aud": False})
-        if payload and payload.get("sub") and payload.get("purpose") != "password_reset":
-            return payload
-    except Exception:
-        pass
-
-    # 2. Fall back to Neon JWKS RS256 with auto-refresh on unknown kid (key rotation)
-    try:
-        jwks = await get_jwks_keys()
-        try:
-            payload = jwt.decode(
-                token,
-                jwks,
-                algorithms=[ALGORITHM],
-                options={"verify_aud": False}
-            )
-            return payload
-        except Exception:
-            # Key rotation: if validation failed with cached keys, force a refresh once
-            jwks = await get_jwks_keys(force_refresh=True)
-            payload = jwt.decode(
-                token,
-                jwks,
-                algorithms=[ALGORITHM],
-                options={"verify_aud": False}
-            )
-            return payload
-    except Exception as e:
-        logger.warning(f"JWT Validation failed: {e}")
+        header = jwt.get_unverified_header(token)
+    except JWTError:
         return None
+    return header if isinstance(header, dict) else None
+
+
+def _verify_local_session(token: str) -> Optional[dict]:
+    try:
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[HS256_ALGORITHM],
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER,
+        )
+    except JWTError:
+        return None
+    if payload.get("purpose") == "password_reset":
+        return None
+    token_use = payload.get("token_use") or "session"
+    if token_use not in LOCAL_TOKEN_USES:
+        return None
+    if payload.get("ver") is None or not payload.get("sub") or payload.get("iat") is None:
+        return None
+    decoded = dict(payload)
+    decoded["_token_class"] = "impersonation" if token_use == "impersonation" else "local"
+    return decoded
+
+
+async def verify_session_token(token: str) -> Optional[dict]:
+    """Validate a Helix session (or impersonation) token.
+
+    Tokens are HS256 with issuer, audience and a session version. Versionless
+    tokens and every other algorithm are rejected. Helix does not accept
+    externally issued identity tokens.
+    """
+    if not token:
+        return None
+    header = _unverified_header(token)
+    if not header or header.get("alg") != HS256_ALGORITHM:
+        return None
+    return _verify_local_session(token)
+
 
 def create_access_token(
     subject: Union[str, Any],
     role: str = "customer",
     expires_delta: timedelta = None,
-    token_version: int = 1
+    token_version: int = 1,
+    extra_claims: Optional[dict] = None,
 ) -> str:
-    """Create local HS256 JWT token with session versioning."""
+    """Create a local HS256 session token with issuer, audience, and version."""
     now = datetime.now(timezone.utc)
     expire_minutes = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 60 * 24 * 7)
-    if expires_delta:
-        expire = now + expires_delta
-    else:
-        expire = now + timedelta(minutes=expire_minutes)
-    
+    expire = now + expires_delta if expires_delta else now + timedelta(minutes=expire_minutes)
     to_encode = {
         "exp": expire,
         "iat": int(now.timestamp()),
         "sub": str(subject),
         "role": role,
         "ver": int(token_version or 1),
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
+        "token_use": "session",
     }
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=HS256_ALGORITHM)
-    return encoded_jwt
+    for key, value in (extra_claims or {}).items():
+        if key in {"exp", "iat", "sub", "iss", "aud", "ver"}:
+            continue
+        to_encode[key] = value
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=HS256_ALGORITHM)
+
 
 def create_password_reset_token(user_id: str) -> str:
     """Single-purpose, short-lived JWT for the password reset flow.
@@ -109,18 +99,28 @@ def create_password_reset_token(user_id: str) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
     to_encode = {
         "exp": expire,
+        "iat": int(datetime.now(timezone.utc).timestamp()),
         "sub": str(user_id),
         "purpose": "password_reset",
         "jti": secrets.token_urlsafe(16),
+        "iss": settings.JWT_ISSUER,
+        "aud": settings.JWT_AUDIENCE,
     }
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=HS256_ALGORITHM)
+
 
 def decode_password_reset_token(token: str) -> Union[dict, None]:
     """Return the payload only for a valid, unexpired password_reset token."""
     if not token:
         return None
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[HS256_ALGORITHM], options={"verify_aud": False})
+        payload = jwt.decode(
+            token,
+            settings.SECRET_KEY,
+            algorithms=[HS256_ALGORITHM],
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER,
+        )
     except JWTError:
         return None
     if payload.get("purpose") != "password_reset" or not payload.get("sub"):
@@ -171,7 +171,9 @@ def _verify_password_sync(plain_password: str, hashed_password: str) -> bool:
 async def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a hash, off the event loop."""
     import asyncio
-    return await asyncio.to_thread(_verify_password_sync, plain_password, hashed_password)
+    from app.core.timing import aspan
+    async with aspan("hash"):
+        return await asyncio.to_thread(_verify_password_sync, plain_password, hashed_password)
 
 def verify_hmac_signature(body: bytes, signature: str, secret: str) -> bool:
     """Constant-time HMAC-SHA256 check for inbound webhook signatures.

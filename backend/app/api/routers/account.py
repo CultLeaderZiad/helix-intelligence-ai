@@ -1,25 +1,20 @@
-import os
-import uuid
 import datetime
-from fastapi import APIRouter, Depends, Body, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
-from typing import Dict, Any, List, Optional
+from sqlalchemy import select, func
+from typing import List, Optional
 from pydantic import BaseModel, field_validator
+from urllib.parse import unquote, urlsplit
 
-from app.schemas.account import TrialStatusResponse
 from app.core.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.usage_log import UsageLog
 from app.models.organization import Organization
-from app.services.ai.ai_router import TRIAL_DAILY_REQUEST_LIMIT
-from app.services import billing_service, api_key_service, team_service, storage_service
+from app.services import billing_service, team_service, storage_service
 from app.core.security import get_password_hash, verify_password
 
 router = APIRouter()
 
-class CreateApiKeyRequest(BaseModel):
-    name: str = "Default API Key"
 
 class InviteMemberRequest(BaseModel):
     email: str
@@ -27,6 +22,14 @@ class InviteMemberRequest(BaseModel):
 
 class AcceptInviteRequest(BaseModel):
     token: str
+
+class AccessRequestBody(BaseModel):
+    features: List[str]
+    note: Optional[str] = None
+    org_id: Optional[str] = None
+
+class WorkspaceSelectBody(BaseModel):
+    org_id: str
 
 class ProfileUpdateRequest(BaseModel):
     full_name: Optional[str] = None
@@ -44,16 +47,50 @@ class ProfileUpdateRequest(BaseModel):
                 raise ValueError('Password cannot exceed 128 characters')
         return v
 
+def _avatar_url(user: User) -> str:
+    avatar_ref = user.avatar_url or ""
+    if not avatar_ref:
+        return ""
+
+    metadata = user.signup_metadata or {}
+    try:
+        token_version = str(int(metadata.get("token_version", 1)))
+    except (TypeError, ValueError):
+        token_version = "1"
+
+    if avatar_ref.startswith("r2://avatars/"):
+        filename = avatar_ref.removeprefix("r2://avatars/")
+        if not storage_service.is_user_avatar_filename(filename, user.id):
+            return ""
+        return storage_service.resolve_stored_url(
+            avatar_ref, user_id=user.id, token_version=token_version,
+        ) or ""
+
+    try:
+        parsed = urlsplit(avatar_ref)
+    except ValueError:
+        return ""
+    if not parsed.scheme and not parsed.netloc and parsed.path.startswith("/uploads/"):
+        filename = unquote(parsed.path.removeprefix("/uploads/"))
+        if not storage_service.is_user_avatar_filename(filename, user.id):
+            return ""
+        return storage_service.resolve_stored_url(
+            avatar_ref, user_id=user.id, token_version=token_version,
+        ) or ""
+    if parsed.scheme == "https" and parsed.hostname and not parsed.username and not parsed.password:
+        return avatar_ref
+    return ""
+
+
 @router.get("/profile")
 async def get_profile(current_user: User = Depends(get_current_user)):
     return {
         "id": current_user.id,
         "email": current_user.email,
         "full_name": getattr(current_user, "full_name", "") or "",
-        "avatar_url": getattr(current_user, "avatar_url", "") or "",
+        "avatar_url": _avatar_url(current_user),
         "role": current_user.role,
         "has_completed_onboarding": getattr(current_user, "has_completed_onboarding", False),
-        "trial_expires_at": current_user.trial_expires_at.isoformat() if current_user.trial_expires_at else None,
         "created_at": current_user.created_at.isoformat() if current_user.created_at else ""
     }
 
@@ -63,10 +100,15 @@ async def update_profile(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    changed_fields = []
     if req.full_name is not None:
         current_user.full_name = req.full_name
+        changed_fields.append("full_name")
     if req.avatar_url is not None:
-        current_user.avatar_url = req.avatar_url
+        if not _acceptable_avatar_reference(req.avatar_url.strip(), current_user.id):
+            raise HTTPException(status_code=400, detail={"code": "avatar_rejected", "message": "Avatar URL must be an https URL or an uploaded file."})
+        current_user.avatar_url = req.avatar_url.strip()
+        changed_fields.append("avatar_url")
     if req.new_password:
         if not req.current_password:
             raise HTTPException(status_code=400, detail="Current password is required to set a new password")
@@ -74,8 +116,12 @@ async def update_profile(
             raise HTTPException(status_code=400, detail="Current password does not match")
         current_user.password_hash = get_password_hash(req.new_password)
         from app.services import auth_service
-        await auth_service.revoke_user_sessions(db, current_user)
+        await auth_service.revoke_user_sessions(db, current_user, commit=False)
+        changed_fields.append("password")
 
+    if changed_fields:
+        from app.services.account_service import record_account_mutation
+        await record_account_mutation(db, current_user, "account_profile_updated", changed_fields)
     await db.commit()
     await db.refresh(current_user)
     return {
@@ -84,10 +130,28 @@ async def update_profile(
             "id": current_user.id,
             "email": current_user.email,
             "full_name": current_user.full_name,
-            "avatar_url": current_user.avatar_url,
+            "avatar_url": _avatar_url(current_user),
             "role": current_user.role
         }
     }
+
+def _acceptable_avatar_reference(url: str, user_id: str) -> bool:
+    if url == "":
+        return True
+    try:
+        parsed = urlsplit(url)
+    except ValueError:
+        return False
+    if not parsed.scheme and not parsed.netloc and parsed.path.startswith("/uploads/"):
+        filename = unquote(parsed.path.removeprefix("/uploads/"))
+        return storage_service.is_user_avatar_filename(filename, user_id)
+    return (
+        parsed.scheme == "https"
+        and bool(parsed.hostname)
+        and not parsed.username
+        and not parsed.password
+    )
+
 
 @router.post("/avatar")
 async def upload_avatar(
@@ -95,16 +159,28 @@ async def upload_avatar(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    contents = await file.read()
-    ext = file.filename.split(".")[-1].lower() if "." in file.filename else "png"
-    filename = f"avatar_{current_user.id}_{int(datetime.datetime.utcnow().timestamp())}.{ext}"
-    
-    avatar_url = await storage_service.save_file(contents, filename, content_type=file.content_type)
+    from app.services.avatar_image import MAX_AVATAR_BYTES, AvatarRejected, prepare_avatar_image
+
+    buf = bytearray()
+    while True:
+        chunk = await file.read(64 * 1024)
+        if not chunk:
+            break
+        if len(buf) + len(chunk) > MAX_AVATAR_BYTES:
+            raise HTTPException(status_code=413, detail={"code": "avatar_too_large", "message": "Avatar exceeds the 2MB limit."})
+        buf.extend(chunk)
+    try:
+        encoded, mime, ext = prepare_avatar_image(bytes(buf))
+    except AvatarRejected as exc:
+        raise HTTPException(status_code=400, detail={"code": "avatar_rejected", "message": str(exc)}) from exc
+    from app.services.account_service import record_account_mutation
+    await record_account_mutation(db, current_user, "account_avatar_updated", ["avatar_url"])
+    avatar_url = await storage_service.save_avatar(encoded, mime, ext, current_user.id)
     current_user.avatar_url = avatar_url
     await db.commit()
     await db.refresh(current_user)
 
-    return {"status": "ok", "avatar_url": avatar_url}
+    return {"status": "ok", "avatar_url": _avatar_url(current_user)}
 
 @router.get("/usage/today")
 async def get_today_real_usage(
@@ -129,13 +205,6 @@ async def get_today_real_usage(
     )
     searches_today = await db.scalar(searches_stmt) or 0
 
-    # 3. Total images/media generated today
-    media_stmt = select(func.count(UsageLog.id)).where(
-        UsageLog.user_id == current_user.id,
-        UsageLog.created_at >= today_start,
-        UsageLog.operation.ilike("%generate%")
-    )
-    media_today = await db.scalar(media_stmt) or 0
 
     # 4. Org limits
     org = await billing_service.get_or_create_default_org(db, current_user)
@@ -146,71 +215,15 @@ async def get_today_real_usage(
         plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
 
     daily_credit_limit = getattr(plan, "daily_credit_limit", None) if plan else None
-    daily_image_limit = getattr(plan, "daily_image_limit", 5) if plan else 5
-    daily_video_limit = getattr(plan, "daily_video_limit", 3) if plan else 3
 
     return {
         "credits_consumed_today": credits_deducted_today,
         "searches_run_today": searches_today,
-        "images_generated_today": media_today,
         "daily_credit_limit": daily_credit_limit,
-        "daily_image_limit": daily_image_limit,
-        "daily_video_limit": daily_video_limit,
         "credit_balance": round(float(org.credit_balance or 0.0), 2),
         "as_of_utc": now.isoformat()
     }
 
-@router.get("/trial-status", response_model=TrialStatusResponse)
-async def get_trial_status(
-    db: AsyncSession = Depends(get_db), 
-    current_user: User = Depends(get_current_user)
-):
-    now = datetime.datetime.now(datetime.timezone.utc)
-    
-    is_active = False
-    days_remaining = 0
-    
-    if getattr(current_user, "role", "") == "admin":
-        is_active = True
-        days_remaining = 999
-    elif current_user.trial_expires_at:
-        if now < current_user.trial_expires_at:
-            is_active = True
-            delta = current_user.trial_expires_at - now
-            days_remaining = max(0, delta.days)
-
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    query = select(func.count(UsageLog.id)).where(
-        UsageLog.user_id == current_user.id,
-        UsageLog.created_at >= today_start
-    )
-    usage_count = await db.scalar(query) or 0
-
-    from app.services.billing_service import get_or_create_default_org, _ensure_daily_reset, _utc_midnight
-    org = await get_or_create_default_org(db, current_user)
-    from app.models.plan import Plan
-    plan_result = await db.execute(select(Plan).where(Plan.id == org.plan_id))
-    plan = plan_result.scalar_one_or_none()
-    if not plan:
-        plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
-
-    daily_limit = getattr(plan, "daily_credit_limit", None) if plan else None
-    daily_used = round(float(org.daily_credits_used_today or 0.0), 2)
-    daily_remaining = round(max(0, (daily_limit or 0) - daily_used), 2) if daily_limit else None
-    daily_resets_at = None
-    if daily_limit:
-        daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
-    
-    return TrialStatusResponse(
-        active=is_active,
-        days_remaining=days_remaining,
-        requests_used=usage_count,
-        requests_limit=TRIAL_DAILY_REQUEST_LIMIT,
-        daily_credit_limit=daily_limit,
-        daily_credits_used=daily_used,
-        daily_credits_remaining=daily_remaining,
-        daily_credits_resets_at_utc=daily_resets_at
-    )
 
 @router.post("/onboarding-complete")
 async def complete_onboarding(
@@ -221,6 +234,78 @@ async def complete_onboarding(
     await db.commit()
     return {"status": "ok"}
 
+@router.get("/access")
+async def get_access_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    org = await billing_service.get_or_create_default_org(db, current_user)
+    state = await billing_service.access_status_for_org(db, org.id)
+    state["org_id"] = org.id
+    state["org_name"] = org.name
+    return state
+
+
+@router.post("/access-requests")
+async def create_access_request(
+    body: AccessRequestBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    org_id = body.org_id
+    if not org_id:
+        org = await billing_service.get_or_create_default_org(db, current_user)
+        org_id = org.id
+    return await admin_service_submit(db, current_user, org_id, body.features, body.note)
+
+
+def admin_service_submit(db, user, org_id, features, note):
+    from app.services.admin_service import submit_access_request
+    return submit_access_request(db, user, org_id, features, note)
+
+
+@router.post("/access-grants")
+async def reject_self_grant(current_user: User = Depends(get_current_user)):
+    """Owners cannot grant themselves. Platform admins use the admin API."""
+    del current_user
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "code": "self_grant_denied",
+            "message": "Only a platform admin can grant workspace access.",
+        },
+    )
+
+
+@router.post("/workspace")
+async def select_workspace(
+    body: WorkspaceSelectBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.models.organization_member import OrganizationMember
+    from sqlalchemy import select as _select
+    org = (await db.execute(_select(Organization).where(Organization.id == body.org_id))).scalar_one_or_none()
+    if org is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    member = (
+        await db.execute(
+            _select(OrganizationMember).where(
+                OrganizationMember.org_id == org.id,
+                OrganizationMember.user_id == current_user.id,
+            )
+        )
+    ).scalar_one_or_none()
+    if org.owner_id != current_user.id and member is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    metadata = dict(current_user.signup_metadata or {})
+    metadata["active_org_id"] = org.id
+    current_user.signup_metadata = metadata
+    await db.commit()
+    from app.api.routers.auth import build_session_response
+    return await build_session_response(db, current_user)
+
+
 @router.get("/billing")
 async def get_billing(
     db: AsyncSession = Depends(get_db),
@@ -228,29 +313,16 @@ async def get_billing(
 ):
     return await billing_service.get_org_billing_summary(db, current_user)
 
-# --- Public API Keys (Gated by 'public_api') ---
-@router.get("/api-keys")
-async def list_api_keys(
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    return await api_key_service.list_api_keys(db, current_user)
 
-@router.post("/api-keys")
-async def create_api_key(
-    req: CreateApiKeyRequest,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+@router.post("/billing/provider-events")
+async def billing_provider_events(
+    current_user: User = Depends(get_current_user),
 ):
-    return await api_key_service.generate_api_key(db, current_user, req.name)
+    """Refuse provider billing events until the main-Helix contract exists."""
+    del current_user
+    from app.services.billing_contract import refuse_billing_provider_event
+    refuse_billing_provider_event(None)
 
-@router.delete("/api-keys/{key_id}")
-async def revoke_api_key(
-    key_id: str,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    return await api_key_service.revoke_api_key(db, current_user, key_id)
 
 # --- Team Multi-Seat (Gated by 'team_accounts') ---
 @router.get("/team")

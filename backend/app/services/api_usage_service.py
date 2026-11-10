@@ -1,5 +1,5 @@
+from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
 import datetime
 from app.models.api_usage import ExternalApiUsage
 import logging
@@ -30,7 +30,17 @@ async def check_global_cap_and_log_preflight(
     now = datetime.datetime.now(datetime.timezone.utc)
     start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
     
-    cap = daily_cap or DEFAULT_DAILY_ORG_API_CAP
+    cap = DEFAULT_DAILY_ORG_API_CAP if daily_cap is None else daily_cap
+
+    bind = getattr(db, "bind", None)
+    if (
+        bind is not None
+        and getattr(getattr(bind, "dialect", None), "name", None) == "postgresql"
+        and hasattr(db, "execute")
+    ):
+        # Serialize cap checks for this org/provider/day. Count-then-insert otherwise races.
+        lock_key = f"{org_id}:{provider}:{start_of_day.date().isoformat()}"
+        await db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"), {"lock_key": lock_key})
 
     # Check org-scoped cap for today (ignoring failed calls)
     count_query = select(func.count(ExternalApiUsage.id)).where(

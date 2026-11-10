@@ -1,0 +1,36 @@
+{
+  "scenario": "timeout",
+  "passed": true,
+  "provider_configured": "metapi",
+  "query": "puma",
+  "job_id": "0bd196dc-0196-4a27-a4d1-62211e5ca510",
+  "final_status": "timed_out",
+  "failure_kind": "deadline",
+  "deadline_at": "2026-11-07T14:53:28.180786Z",
+  "credits_before": 19.0,
+  "credits_after": 18.0,
+  "timeline": [
+    {
+      "at": "2026-11-07T14:53:13.037916+00:00",
+      "status": "queued",
+      "stage": "queued",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:53:27.612249+00:00",
+      "status": "running",
+      "stage": "init",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:53:37.876387+00:00",
+      "status": "timed_out",
+      "stage": "timed_out",
+      "records_found": 0,
+      "failure_kind": "deadline"
+    }
+  ],
+  "recorded_at": "2026-11-07T14:53:42.221185+00:00"
+}

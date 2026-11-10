@@ -1,0 +1,2 @@
+COMMAND=python -m compileall -q app
+EXIT_CODE=0

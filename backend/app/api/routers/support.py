@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Dict, Any, Optional
-from pydantic import BaseModel
+from typing import Any, Dict, Literal, Optional
+import json
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.deps import get_db, get_current_user
 from app.models.user import User
@@ -10,14 +11,27 @@ from app.services import support_service
 router = APIRouter()
 
 class TicketCreateRequest(BaseModel):
-    type: str = "feedback" # 'feedback' | 'bug' | 'other'
-    subject: str
-    message: str
-    tag: Optional[str] = None
+    type: Literal["feedback", "bug", "other"] = "feedback"
+    subject: str = Field(min_length=1, max_length=200)
+    message: str = Field(min_length=1, max_length=5000)
+    tag: Optional[str] = Field(default=None, max_length=100)
     context_data: Optional[Dict[str, Any]] = None
 
+    @field_validator("context_data")
+    @classmethod
+    def validate_context_size(cls, value: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        if value is None:
+            return value
+        try:
+            size = len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
+        except (TypeError, ValueError, UnicodeEncodeError, RecursionError) as exc:
+            raise ValueError("context_data must be JSON serializable") from exc
+        if size > 16 * 1024:
+            raise ValueError("context_data exceeds the 16 KB limit")
+        return value
+
 class TicketReplyRequest(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=5000)
 
 @router.post("/tickets")
 async def create_ticket(

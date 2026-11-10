@@ -1,62 +1,33 @@
-# User Guide: Frequently Asked Questions (FAQ)
+# Frequently asked questions
 
-Honest answers to the most common questions and confusion points encountered while using Helix.
+## How do I get access?
 
----
+Create an account, sign in, and request access from the workspace administrator. Approval is manual. There is no purchasable trial, public pricing plan, or payment upgrade flow.
 
-### Why did my search return no results?
+## What does access pending mean?
 
-There are three primary reasons a search might return zero records:
+Your account exists, but an administrator has not granted the requested feature access. Signing in or choosing a browser option cannot override the server's decision.
 
-1. **The brand has no active paid ads right now**:
-   - Ad transparency libraries (like Meta Ad Library) only catalog creatives that have been actively running within recent weeks. If a competitor paused their campaigns last month, the ad library marks them inactive and removes them from public queries.
-2. **The entity name does not match the advertiser's registered page**:
-   - For example, searching for a popular streamer or influencer might not return their personal brand if their ad campaigns are billed under a parent company, media holding company, or agency name. Try searching for their official product line (e.g., searching for their supplement or apparel brand rather than their personal alias).
-3. **Transient upstream library rate limiting**:
-   - If an ad network throttles public requests, Helix attempts deep fallback searches. If the network continues timing out, the search terminates and **your credits are automatically refunded**.
+## Why is a product area hidden?
 
----
+Discover is the primary workflow. Optional or unverified areas are hidden by default. A feature flag is not an access grant and does not prove an integration is available.
 
-### What is the difference between estimated and reported data?
+## Is a score the same as real advertising performance?
 
-- **Reported Data** is 100% factual, public record: the verbatim headlines, ad body copy, video MP4 files, thumbnail images, first-seen timestamps, and days active.
-- **Estimated Data** applies to metrics like Impressions (`impressions_est`) and Spend Bands. Ad networks never disclose private advertiser bank receipts. Helix models these numbers using public reach brackets, durability, and engagement signals. Estimated metrics are always explicitly tagged with an amber `(est)` badge so you always know what is directly reported versus modeled.
+No. Public source records, estimated reach or duration, and AI interpretations are different kinds of evidence. They are not verified conversion results or return-on-ad-spend measurements. Missing data remains unknown.
 
----
+## Why did a search stop?
 
-### What happens when my 7-day trial ends?
+Check the server outcome: failed, cancelled, and timed out are distinct from a successful empty result. A provider can be unavailable. Retry only after reviewing the displayed reason and access state.
 
-- During the 7-day trial, you receive 100 credits and up to 20 daily searches.
-- When the 7 days elapse, your account enters **Read-Only Mode**:
-  - All previously discovered creatives, saved swipe files, and generated briefs remain saved and accessible.
-  - New discovery searches, media generations, and monitor scrapes will be paused until you choose a paid plan (Starter, Pro, or Scale).
-  - You will never be automatically billed or charged without entering your payment details.
+## Does closing the screen cancel the server job?
 
----
+Use the cancellation control and wait for the server's response. A disconnected browser cannot confirm cancellation. The server deadline bounds work independently of the page.
 
-### Why did a search for a content creator return shoe or product ads?
+## Where are session tokens stored?
 
-Ad libraries index paid advertising campaigns, not organic social media posts or TikTok feeds. If a creator or public figure does not run paid ads for their own company, a generic keyword search may return unrelated advertisers who happened to mention similar keywords or who ran sponsored affiliate ads. 
+The current frontend keeps session tokens in JavaScript-readable browser storage. Sign out on shared devices. See the legal disclosures; encryption and end-to-end erasure are not promised by this guide.
 
-To audit a specific entity:
-- Search by the creator's exact **product line** or **brand name**.
-- Or use the **Organic Proxy** filter if looking for indexed public video assets.
+## Can I restart setup or the tour?
 
----
-
-### Are credits refunded if a job fails?
-
-**Yes, 100%.** If an ad-network timeout, service interruption, or network disconnect occurs while processing your request, the backend billing engine immediately refunds the deducted credits to your workspace balance. Helix never charges for unfinished work.
-
----
-
-### How do I translate foreign language ads into English?
-
-Helix automatically detects foreign language copy (Spanish, Chinese, Arabic, French, German, Dutch, etc.).
-- When viewing a creative in the **Intelligence** drawer or **Intelligence** page, use the language selector to immediately render an English translation of the headline, body text, and call to action.
-
----
-
-### Still have questions?
-
-Reach out directly to our team via the [Support & Feedback](/support) portal in your workspace.
+Use Help or the restart control in Settings. Completion and dismissal are stored for your user on the server so normal navigation does not reopen the tour.

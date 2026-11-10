@@ -1,25 +1,45 @@
 import React, { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
-import { Sparkles, Printer, ArrowUpRight, Share2, ExternalLink, ShieldCheck, Compass, CheckCircle2, Layers } from "lucide-react"
+import { Sparkles, Printer, Share2, ShieldCheck, Compass, CheckCircle2, Layers } from "lucide-react"
 import { playbookService } from "../services"
+import { getAccessToken } from "@/services/sessionStore"
 import { ScrollToTopButton } from "@/components/ui/ScrollToTopButton"
 import { SkipToContent } from "@/components/ui/SkipToContent"
+import { useLanguage } from "@/context/LanguageContext"
 
 export function PublicPlaybookPage() {
   const { publicId } = useParams()
+  const { t } = useLanguage()
   const [playbook, setPlaybook] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [accessState, setAccessState] = useState(null)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     async function load() {
       setIsLoading(true)
+      setPlaybook(null)
+      setError(null)
+      setAccessState(null)
+      if (!getAccessToken()) {
+        setAccessState("signin")
+        setIsLoading(false)
+        return
+      }
       try {
         const data = await playbookService.getPublicPlaybook(publicId)
         setPlaybook(data)
       } catch (err) {
-        setError(err?.message || "Playbook not found or expired")
+        const status = err?.status
+        if (status === 401) {
+          setAccessState("signin")
+        } else if (status === 403 || status === 404) {
+          setAccessState("denied")
+        } else {
+          setAccessState("error")
+          setError(err?.message || "Playbook could not be loaded")
+        }
       } finally {
         setIsLoading(false)
       }
@@ -46,6 +66,40 @@ export function PublicPlaybookPage() {
     )
   }
 
+  if (accessState === "signin") {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
+        <div className="max-w-md space-y-4">
+          <div className="w-12 h-12 rounded-full bg-teal-500/10 text-teal-300 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-white">Sign in to view this playbook</h2>
+          <p className="text-sm text-slate-400">This report is private. Sign in with an account that can access it.</p>
+          <Link to="/sign-in" className="inline-block px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-medium text-sm transition">
+            Sign in
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (accessState === "denied") {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
+        <div className="max-w-md space-y-4">
+          <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto">
+            <Compass className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-white">You don't have access</h2>
+          <p className="text-sm text-slate-400">This playbook belongs to another workspace, or the link is no longer valid.</p>
+          <Link to="/" className="inline-block px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-sm transition">
+            Go to Helix Home
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   if (error || !playbook) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
@@ -53,8 +107,8 @@ export function PublicPlaybookPage() {
           <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-400 flex items-center justify-center mx-auto">
             <Compass className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-bold text-white">Playbook Not Found</h2>
-          <p className="text-sm text-slate-400">{error || "This shared playbook URL is invalid or has expired."}</p>
+          <h2 className="text-xl font-bold text-white">Playbook could not be loaded</h2>
+          <p className="text-sm text-slate-400">{error || "This playbook could not be loaded."}</p>
           <Link to="/" className="inline-block px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-medium text-sm transition">
             Go to Helix Home
           </Link>
@@ -188,7 +242,7 @@ export function PublicPlaybookPage() {
           <div className="flex items-center justify-between print-avoid-break-after">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-teal-400 print:text-slate-900" aria-hidden="true" />
-              <h2 className="text-xl font-bold text-white print:text-slate-900 tracking-tight">Top High-Converting Creative Patterns</h2>
+              <h2 className="text-xl font-bold text-white print:text-slate-900 tracking-tight" dir="auto">{t("suppliedPatternsTitle")}</h2>
             </div>
             <span className="font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20 print:border-slate-400 print:text-slate-800">
               AI-Synthesized
@@ -202,11 +256,7 @@ export function PublicPlaybookPage() {
                   <span className="px-2.5 py-0.5 rounded text-[11px] font-semibold uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 print:border-slate-400 print:text-slate-900 print:bg-slate-100">
                     {pat.category || "Hook Pattern"}
                   </span>
-                  {pat.estimated_lift_percent != null && (
-                    <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 print:text-emerald-800">
-                      <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" /> +{pat.estimated_lift_percent}% Est. Lift
-                    </div>
-                  )}
+                  <span className="text-[11px] text-slate-400 print:text-slate-600" dir="auto">{t("notMeasured")}</span>
                 </div>
 
                 <h3 className="font-bold text-base text-white print:text-slate-900">{pat.name}</h3>

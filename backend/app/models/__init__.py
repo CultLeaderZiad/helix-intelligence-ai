@@ -23,3 +23,53 @@ from .simulation_report import SimulationReport
 from .monitor import Monitor, MonitorRun, MonitorCreative, MonitorEvent
 from .scout import ScoutJob, ScoutLead, ScoutMapsJob, ScoutMapsLead
 from .leadgen import LeadGenJob, LeadGenLead, LeadGenWorkerHeartbeat
+from .board_share_link import BoardShareLink
+from .search_draft import SearchDraft
+from .ad_archive import AdArchiveEntry
+from .provider_call_budget import ProviderCallBudget
+from .workspace_daily_usage import WorkspaceDailyUsage
+from .provider_record_budget import ProviderRecordBudget
+
+__all__ = [
+    "Base",
+    "ProviderCallBudget",
+    "WorkspaceDailyUsage",
+    "ProviderRecordBudget",
+    "User",
+    "Organization",
+    "ScrapeJob",
+    "Creative",
+    "CreativeScore",
+    "Pattern",
+    "AIInsight",
+    "UsageLog",
+    "Plan",
+    "SavedCreative",
+    "ApiKey",
+    "Notification",
+    "OrganizationMember",
+    "OrganizationInvite",
+    "ExternalApiUsage",
+    "MediaGenerationJob",
+    "WebhookEvent",
+    "AppUpdate",
+    "WorkspaceProviderCredential",
+    "SupportTicket",
+    "SupportTicketReply",
+    "Playbook",
+    "SimulationReport",
+    "Monitor",
+    "MonitorRun",
+    "MonitorCreative",
+    "MonitorEvent",
+    "ScoutJob",
+    "ScoutLead",
+    "ScoutMapsJob",
+    "ScoutMapsLead",
+    "LeadGenJob",
+    "LeadGenLead",
+    "LeadGenWorkerHeartbeat",
+    "BoardShareLink",
+    "AdArchiveEntry",
+    "SearchDraft",
+]

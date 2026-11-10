@@ -11,7 +11,7 @@ const TONES = {
  * Form-level status line for auth errors, service waking notifications,
  * and confirmations. Distinct from field errors: this speaks for the whole submission.
  */
-export function FormBanner({ tone = "danger", status, children, action, className }) {
+export function FormBanner({ tone = "danger", status, children, action = null, className = "" }) {
   const t = TONES[tone] ?? TONES.danger
   return (
     <div

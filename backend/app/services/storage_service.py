@@ -20,11 +20,11 @@ import hmac
 import logging
 import mimetypes
 import os
+import time
 import uuid
 from functools import lru_cache
 from typing import Optional
-
-import httpx
+from urllib.parse import quote, unquote
 
 from app.core.config import settings
 
@@ -45,6 +45,36 @@ _EXT_BY_MIME = {
     "video/webm": ".webm",
     "video/quicktime": ".mov",
 }
+
+
+_SAFE_MEDIA_TYPES = {
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mov": "video/quicktime",
+}
+
+_AVATAR_EXTENSIONS = {".gif", ".jpg", ".jpeg", ".png", ".webp"}
+
+
+def media_response_headers(filename: str) -> tuple[str, dict]:
+    """Restrictive headers for locally served bytes. R2 is the isolated origin when configured."""
+    ext = os.path.splitext(filename or "")[1].lower()
+    media_type = _SAFE_MEDIA_TYPES.get(ext, "application/octet-stream")
+    disposition = "inline" if media_type != "application/octet-stream" else "attachment"
+    safe_name = os.path.basename(filename).replace('"', "")
+    headers = {
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Referrer-Policy": "no-referrer",
+        "Cross-Origin-Resource-Policy": "cross-origin",
+        "Content-Disposition": f'{disposition}; filename="{safe_name}"',
+    }
+    return media_type, headers
 
 
 def _extension_for(mime_type: str) -> str:
@@ -115,7 +145,10 @@ def _r2_client():
     )
 
 
-def _r2_put(key: str, data: bytes, mime_type: str) -> None:
+def _r2_put(key: str, data: bytes, mime_type: str, content_disposition: Optional[str] = None) -> None:
+    extra = {}
+    if content_disposition:
+        extra["ContentDisposition"] = content_disposition
     _r2_client().put_object(
         Bucket=settings.R2_BUCKET,
         Key=key,
@@ -123,7 +156,8 @@ def _r2_put(key: str, data: bytes, mime_type: str) -> None:
         ContentType=mime_type or "application/octet-stream",
         # Media is immutable: the key contains a fresh random component on
         # every write, so it can be cached indefinitely.
-        CacheControl="public, max-age=31536000, immutable",
+        CacheControl="private, max-age=0, no-store",
+        **extra,
     )
 
 
@@ -137,18 +171,110 @@ def _r2_put(key: str, data: bytes, mime_type: str) -> None:
 # removes the "predictable filename, no owner check" hole.
 # ---------------------------------------------------------------------------
 
-def sign_local_filename(filename: str) -> str:
+# Short-lived capability. Full JWTs are not accepted as query parameters.
+CAPABILITY_TTL_SECONDS = 900
+
+
+def sign_capability(
+    filename: str,
+    exp: int,
+    org_id: str = "",
+    user_id: str = "",
+    token_version: str = "",
+) -> str:
+    message = f"{filename}|{int(exp)}|{org_id}|{user_id}|{token_version}"
     return hmac.new(
         settings.SECRET_KEY.encode("utf-8"),
-        filename.encode("utf-8"),
+        message.encode("utf-8"),
         hashlib.sha256,
-    ).hexdigest()[:32]
+    ).hexdigest()
+
+
+def sign_local_filename(filename: str) -> str:
+    """Mac fragment for a default-lifetime capability. Not a permanent signature."""
+    return sign_capability(filename, int(time.time()) + CAPABILITY_TTL_SECONDS)
 
 
 def verify_local_signature(filename: str, signature: Optional[str]) -> bool:
-    if not signature:
+    """Permanent filename-only signatures are rejected."""
+    del filename, signature
+    return False
+
+
+def verify_capability(
+    filename: str,
+    signature: Optional[str],
+    exp: Optional[str],
+    org_id: str = "",
+    user_id: str = "",
+    token_version: str = "",
+) -> bool:
+    if not signature or exp is None or exp == "":
         return False
-    return hmac.compare_digest(sign_local_filename(filename), signature)
+    try:
+        expires = int(exp)
+    except (TypeError, ValueError):
+        return False
+    if expires < int(time.time()):
+        return False
+    expected = sign_capability(filename, expires, org_id or "", user_id or "", str(token_version or ""))
+    return hmac.compare_digest(expected, signature)
+
+
+def issue_local_url(
+    filename: str,
+    *,
+    org_id: str = "",
+    user_id: str = "",
+    token_version: str = "",
+    ttl_seconds: int = CAPABILITY_TTL_SECONDS,
+) -> str:
+    exp = int(time.time()) + int(ttl_seconds)
+    signature = sign_capability(filename, exp, org_id or "", user_id or "", str(token_version or ""))
+    query = (
+        f"exp={exp}&org={quote(org_id or '')}&uid={quote(user_id or '')}"
+        f"&ver={quote(str(token_version or ''))}&sig={signature}"
+    )
+    return f"{_public_api_origin()}/uploads/{filename}?{query}"
+
+
+def _presign_r2_key(key: str, ttl_seconds: int = CAPABILITY_TTL_SECONDS) -> str:
+    if not r2_enabled():
+        raise RuntimeError("R2 is not configured")
+    return _r2_client().generate_presigned_url(
+        "get_object",
+        Params={"Bucket": settings.R2_BUCKET, "Key": key},
+        ExpiresIn=int(ttl_seconds),
+    )
+
+
+def resolve_stored_url(
+    url: Optional[str],
+    *,
+    org_id: str = "",
+    user_id: str = "",
+    token_version: str = "",
+    ttl_seconds: int = CAPABILITY_TTL_SECONDS,
+) -> Optional[str]:
+    """Turn a stored reference into a short-lived URL after the caller is authorized."""
+    if not url:
+        return url
+    if url.startswith("r2://"):
+        return _presign_r2_key(url[len("r2://"):], ttl_seconds)
+    public = (settings.R2_PUBLIC_BASE_URL or "").rstrip("/")
+    if public and (url == public or url.startswith(public + "/")):
+        key = url[len(public):].lstrip("/")
+        return _presign_r2_key(key, ttl_seconds)
+    filename = _local_upload_filename(url)
+    if filename is not None:
+        return issue_local_url(
+            filename,
+            org_id=org_id,
+            user_id=user_id,
+            token_version=token_version,
+            ttl_seconds=ttl_seconds,
+        )
+    return url
 
 
 def _public_api_origin() -> str:
@@ -160,6 +286,21 @@ def _public_api_origin() -> str:
     return origin.rstrip("/").removesuffix("/api")
 
 
+def _local_upload_filename(url: str) -> Optional[str]:
+    origin = _public_api_origin()
+    if url.startswith("/uploads/"):
+        path = url
+    elif origin and url.startswith(f"{origin}/uploads/"):
+        path = url[len(origin):]
+    else:
+        return None
+    encoded = path.split("?", 1)[0].split("#", 1)[0][len("/uploads/"):]
+    filename = unquote(encoded)
+    if not filename or filename.startswith(".") or "/" in filename or "\\" in filename:
+        return None
+    return filename
+
+
 def _store_local(filename: str, data: bytes) -> str:
     file_path = os.path.join(UPLOAD_DIR, filename)
     with open(file_path, "wb") as f:
@@ -169,11 +310,11 @@ def _store_local(filename: str, data: bytes) -> str:
         "This file will be lost on the next restart or deploy.",
         filename,
     )
-    return f"{_public_api_origin()}/uploads/{filename}?sig={sign_local_filename(filename)}"
+    return f"/uploads/{filename}"
 
 
 async def store_media_bytes(job_id: str, data: bytes, mime_type: str = "image/png") -> str:
-    """Persist binary media and return a durable public URL."""
+    """Persist binary media and return a storage reference for scoped resolution."""
     if not data:
         raise ValueError("store_media_bytes called with empty data")
 
@@ -185,9 +326,8 @@ async def store_media_bytes(job_id: str, data: bytes, mime_type: str = "image/pn
     if r2_enabled():
         key = f"media/{filename}"
         await asyncio.to_thread(_r2_put, key, data, mime_type)
-        url = f"{settings.R2_PUBLIC_BASE_URL}/{key}"
-        logger.info("Stored media for job %s in R2: %s", job_id, key)
-        return url
+        logger.info("Stored media for job %s in private R2: %s", job_id, key)
+        return f"r2://{key}"
 
     return _store_local(filename, data)
 
@@ -200,21 +340,23 @@ async def store_media_from_url(job_id: str, source_url: str) -> str:
     """
     try:
         logger.info("Downloading media for job %s from %s", job_id, source_url)
-        async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
-            response = await client.get(source_url)
-            response.raise_for_status()
-            content_type = response.headers.get("content-type", "")
-            return await store_media_bytes(job_id, response.content, content_type)
+        from app.services.safe_fetch import UnsafeFetch, safe_http_get_async
+
+        response = await safe_http_get_async(source_url, timeout=60.0, max_bytes=50 * 1024 * 1024)
+        if response.status_code >= 400:
+            raise RuntimeError(f"provider media download returned {response.status_code}")
+        content_type = response.headers.get("content-type", "")
+        return await store_media_bytes(job_id, response.content, content_type)
+    except UnsafeFetch:
+        logger.error("Refused to download media for job %s from a non-public URL", job_id)
+        raise
     except Exception as e:
         logger.error("Failed to download/store media for job %s: %s", job_id, e)
         return source_url
 
 
 async def save_file(data: bytes, filename: str, content_type: Optional[str] = None) -> str:
-    """Save raw file bytes and return a durable URL (F34).
-    
-    Compatible with existing callers expecting a filename-based save.
-    """
+    """Save raw bytes; local references need scoped resolution before display."""
     if not data:
         raise ValueError("save_file called with empty data")
 
@@ -225,10 +367,52 @@ async def save_file(data: bytes, filename: str, content_type: Optional[str] = No
 
     if r2_enabled():
         key = f"uploads/{unique_filename}"
-        await asyncio.to_thread(_r2_put, key, data, mime)
-        url = f"{settings.R2_PUBLIC_BASE_URL}/{key}"
-        logger.info("Saved file in R2: %s", key)
-        return url
+        await asyncio.to_thread(_r2_put, key, data, mime, f'inline; filename="{unique_filename}"')
+        logger.info("Saved file in private R2: %s", key)
+        return _presign_r2_key(key)
 
     return _store_local(unique_filename, data)
+
+
+async def save_avatar(data: bytes, mime_type: str, extension: str, user_id: str) -> str:
+    """Store a re-encoded avatar. R2 is a separate media origin when configured."""
+    if not data:
+        raise ValueError("save_avatar called with empty data")
+    extension = extension.lower().lstrip(".")
+    if f".{extension}" not in _AVATAR_EXTENSIONS:
+        raise ValueError("Unsupported avatar extension")
+    owner_tag = hashlib.sha256(str(user_id).encode("utf-8")).hexdigest()
+    filename = f"avatar_{owner_tag}_{uuid.uuid4().hex}.{extension}"
+    disposition = f'inline; filename="avatar.{extension}"'
+    if r2_enabled():
+        key = f"avatars/{filename}"
+        await asyncio.to_thread(_r2_put, key, data, mime_type, disposition)
+        return f"r2://{key}"
+    _store_local(filename, data)
+    return f"/uploads/{filename}"
+
+
+def is_user_avatar_filename(filename: str, user_id: str) -> bool:
+    """Match only avatar object names issued for this user, including legacy names."""
+    if not filename or os.path.basename(filename) != filename or "/" in filename or "\\" in filename:
+        return False
+    extension = os.path.splitext(filename)[1].lower()
+    if extension not in _AVATAR_EXTENSIONS:
+        return False
+
+    stem = filename[:-len(extension)]
+    owner_tag = hashlib.sha256(str(user_id).encode("utf-8")).hexdigest()
+    current_prefix = f"avatar_{owner_tag}_"
+    if stem.startswith(current_prefix):
+        suffix = stem[len(current_prefix):]
+        return len(suffix) == 32 and all(char in "0123456789abcdef" for char in suffix.lower())
+
+    legacy_user_id = str(user_id)
+    if not legacy_user_id or "/" in legacy_user_id or "\\" in legacy_user_id:
+        return False
+    legacy_prefix = f"avatar_{legacy_user_id}_"
+    if not stem.startswith(legacy_prefix):
+        return False
+    suffix = stem[len(legacy_prefix):]
+    return len(suffix) == 12 and all(char in "0123456789abcdef" for char in suffix.lower())
 

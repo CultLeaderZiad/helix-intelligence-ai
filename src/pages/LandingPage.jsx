@@ -1,8 +1,7 @@
 import { PublicHeader } from "@/app/PublicHeader"
 import { Hero } from "@/features/marketing/Hero"
 import { LoopsSection } from "@/features/marketing/LoopsSection"
-import { PricingSection } from "@/features/marketing/PricingSection"
-import { DocsSection } from "@/features/marketing/DocsSection"
+import { AccessSection } from "@/features/marketing/AccessSection"
 import { MarketingFooter } from "@/features/marketing/MarketingFooter"
 import { ScrollToTopButton } from "@/components/ui/ScrollToTopButton"
 import { SkipToContent } from "@/components/ui/SkipToContent"
@@ -13,7 +12,7 @@ import { SkipToContent } from "@/components/ui/SkipToContent"
  * ============================================================
  * The site's only fully public surface. It shares the pre-auth chrome
  * (PublicHeader / footer) with the auth pages, and its sections carry the
- * ids the header nav already points at (#product, #pricing, #docs) so those
+ * ids the header nav already points at (#product, #access) so those
  * links finally resolve. Nothing here is gated: visitors reach the auth
  * pages only by choosing Sign in / Get started.
  * ============================================================
@@ -28,8 +27,7 @@ export function LandingPage() {
       <main id="main-content" tabIndex={-1} className="flex-1 focus:outline-none">
         <Hero />
         <LoopsSection />
-        <PricingSection />
-        <DocsSection />
+        <AccessSection />
       </main>
       <MarketingFooter />
 

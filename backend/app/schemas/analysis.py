@@ -6,7 +6,10 @@ class Pattern(BaseModel):
     label: str
     family: str
     prevalence: float
-    lift_index: float
+    # Null means the product has no observed performance lift for this pattern.
+    lift_index: Optional[float] = None
+    model_version: Optional[str] = None
+    evidence_creative_ids: List[str] = []
 
 class Insight(BaseModel):
     id: str

@@ -3,7 +3,7 @@ import { scoreFillClass, scoreTextClass } from "@/lib/score"
 import { formatScore } from "@/lib/format"
 
 /** Tabular-nums readout. Numbers must never shift width between renders. */
-export function MetricValue({ value, unit, className, muted, ...props }) {
+export function MetricValue({ value, unit = null, className = "", muted = false, ...props }) {
   return (
     <span
       className={cn(
@@ -23,7 +23,7 @@ export function MetricValue({ value, unit, className, muted, ...props }) {
  * Thin score bar. Accent fill appears only above the "strong" threshold,
  * so a page of accent means something rather than nothing.
  */
-export function ScoreBar({ value, max = 10, showValue = true, className, width = "w-14" }) {
+export function ScoreBar({ value, max = 10, showValue = true, className = "", width = "w-14" }) {
   const pct =
     value === null || value === undefined ? 0 : Math.max(0, Math.min(100, (value / max) * 100))
 
@@ -52,7 +52,7 @@ export function ScoreBar({ value, max = 10, showValue = true, className, width =
 }
 
 /** Label-over-value stat block for detail surfaces. */
-export function StatBlock({ label, value, unit, className }) {
+export function StatBlock({ label, value, unit = undefined, className = "" }) {
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       <span className="label-mono">{label}</span>

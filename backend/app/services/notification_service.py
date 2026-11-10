@@ -1,8 +1,7 @@
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, desc
 from app.models.notification import Notification
-from app.models.user import User
 
 async def create_notification(
     db: AsyncSession,
@@ -39,12 +38,6 @@ async def list_notifications(
 
     result = await db.execute(query)
     items = result.scalars().all()
-
-    # Total unread count
-    unread_count = await db.scalar(
-        select(Notification)
-        .where(Notification.user_id == user_id, Notification.is_read == False)
-    )
 
     return {
         "items": [

@@ -4,18 +4,18 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react"
 import { authService } from "@/services"
+import { getAccessToken, getCachedUser, setCachedUser } from "@/services/sessionStore"
 
 /**
  * ============================================================
  * AUTH — session + role, the single source of identity truth
  * ============================================================
  * This context is the ONLY thing the app reads identity from. It talks
- * exclusively to `authService` (from `@/services`), which is the same
- * mock ⇄ API swap boundary every other domain uses — flipping
- * VITE_DATA_SOURCE=api needs zero changes here.
+ * exclusively to `authService` (from `@/services`), the FastAPI client.
  *
  * Role logic lives here and in the route guard, never inside a page. A
  * component asks "who is this / am I allowed", it does not compute the
@@ -34,11 +34,11 @@ export const AUTH_STATUS = {
 }
 
 export function AuthProvider({ children }) {
+  const authMutationRef = useRef(0)
   const [user, setUser] = useState(() => {
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem("helix_cached_user")
-        return raw ? JSON.parse(raw) : null
+        return getCachedUser()
       } catch {
         return null
       }
@@ -48,13 +48,17 @@ export function AuthProvider({ children }) {
 
   const [status, setStatus] = useState(() => {
     if (typeof window !== "undefined") {
-      const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
-      const cached = localStorage.getItem("helix_cached_user")
+      const token = getAccessToken()
+      const cached = getCachedUser()
       if (token && cached) return AUTH_STATUS.AUTHENTICATED
       if (token) return AUTH_STATUS.LOADING
     }
     return AUTH_STATUS.UNAUTHENTICATED
   })
+
+  useEffect(() => {
+    if (user && getAccessToken()) setCachedUser(user)
+  }, [user])
 
   /* Resolve the persisted session once on mount. Uses SWR to absorb cold starts. */
   useEffect(() => {
@@ -71,30 +75,20 @@ export function AuthProvider({ children }) {
       .getSession()
       .then((session) => {
         if (!active) return
+        if (authService.getStoredToken() !== token) return
         if (session?.user) {
           setUser(session.user)
           setStatus(AUTH_STATUS.AUTHENTICATED)
         } else {
-          // If token was wiped or no user in session, drop to unauthenticated (F45)
-          setUser((curr) => {
-            if (!authService.getStoredToken() || !curr) {
-              setStatus(AUTH_STATUS.UNAUTHENTICATED)
-              return null
-            }
-            return curr
-          })
+          setUser(null)
+          setStatus(AUTH_STATUS.UNAUTHENTICATED)
         }
       })
       .catch(() => {
         if (!active) return
-        // If token was wiped or no user in state, reach terminal unauthenticated state (F45)
-        setUser((curr) => {
-          if (!authService.getStoredToken() || !curr) {
-            setStatus(AUTH_STATUS.UNAUTHENTICATED)
-            return null
-          }
-          return curr
-        })
+        if (authService.getStoredToken() !== token) return
+        setUser(null)
+        setStatus(AUTH_STATUS.UNAUTHENTICATED)
       })
 
     const handleUnauthorized = () => {
@@ -102,11 +96,17 @@ export function AuthProvider({ children }) {
       setUser(null)
       setStatus(AUTH_STATUS.UNAUTHENTICATED)
     }
+    const handleSessionClearing = () => {
+      setUser(null)
+      setStatus(AUTH_STATUS.UNAUTHENTICATED)
+    }
     window.addEventListener("helix:unauthorized", handleUnauthorized)
+    window.addEventListener("helix:session-clearing", handleSessionClearing)
 
     return () => {
       active = false
       window.removeEventListener("helix:unauthorized", handleUnauthorized)
+      window.removeEventListener("helix:session-clearing", handleSessionClearing)
     }
   }, [])
 
@@ -116,21 +116,27 @@ export function AuthProvider({ children }) {
      failure so a page can render field/auth errors; they only own the
      durable outcome (who is signed in). */
   const signIn = useCallback(async (credentials) => {
+    const mutationId = ++authMutationRef.current
     const { user: nextUser } = await authService.signIn(credentials)
+    if (mutationId !== authMutationRef.current) return nextUser
     setUser(nextUser)
     setStatus(AUTH_STATUS.AUTHENTICATED)
     return nextUser
   }, [])
 
   const signUp = useCallback(async (params) => {
+    const mutationId = ++authMutationRef.current
     const { user: nextUser } = await authService.signUp(params)
+    if (mutationId !== authMutationRef.current) return nextUser
     setUser(nextUser)
     setStatus(AUTH_STATUS.AUTHENTICATED)
     return nextUser
   }, [])
 
   const signOut = useCallback(async () => {
+    const mutationId = ++authMutationRef.current
     await authService.signOut()
+    if (mutationId !== authMutationRef.current) return
     setUser(null)
     setStatus(AUTH_STATUS.UNAUTHENTICATED)
   }, [])
@@ -141,42 +147,51 @@ export function AuthProvider({ children }) {
   )
 
   const resetPassword = useCallback(async (params) => {
+    const mutationId = ++authMutationRef.current
     const { user: nextUser } = await authService.resetPassword(params)
+    if (mutationId !== authMutationRef.current) return nextUser
     setUser(nextUser)
     setStatus(AUTH_STATUS.AUTHENTICATED)
     return nextUser
   }, [])
 
-    const updateUser = useCallback((updater) => {
-      setUser((prev) => (typeof updater === 'function' ? updater(prev) : { ...prev, ...updater }))
-    }, [])
+  const updateUser = useCallback((updater) => {
+    setUser((prev) => (typeof updater === "function" ? updater(prev) : { ...prev, ...updater }))
+  }, [])
 
-    const completeOnboarding = useCallback(async () => {
-      try {
-        await authService.completeOnboarding()
-        updateUser({ has_completed_onboarding: true })
-      } catch (err) {
-        console.error("Failed to complete onboarding:", err)
-      }
-    }, [updateUser])
+  const refreshSession = useCallback(async () => {
+    const token = authService.getStoredToken()
+    const session = await authService.getSession()
+    if (token && token === authService.getStoredToken() && session?.user) {
+      setUser(session.user)
+      setStatus(AUTH_STATUS.AUTHENTICATED)
+    }
+    return session?.user ?? null
+  }, [])
 
-    const value = useMemo(
-      () => ({
-        user,
-        role: user?.role ?? null,
-        status,
-        isAuthenticated: status === AUTH_STATUS.AUTHENTICATED,
-        isResolving: status === AUTH_STATUS.LOADING,
-        signIn,
-        signUp,
-        signOut,
-        requestPasswordReset,
-        resetPassword,
-        updateUser,
-        completeOnboarding,
-      }),
-      [user, status, signIn, signUp, signOut, requestPasswordReset, resetPassword, updateUser, completeOnboarding],
-    )
+  const completeOnboarding = useCallback(async () => {
+    await authService.completeOnboarding()
+    updateUser({ has_completed_onboarding: true })
+  }, [updateUser])
+
+  const value = useMemo(
+    () => ({
+      user,
+      role: user?.role ?? null,
+      status,
+      isAuthenticated: status === AUTH_STATUS.AUTHENTICATED,
+      isResolving: status === AUTH_STATUS.LOADING,
+      signIn,
+      signUp,
+      signOut,
+      requestPasswordReset,
+      resetPassword,
+      updateUser,
+      completeOnboarding,
+      refreshSession,
+    }),
+    [user, status, signIn, signUp, signOut, requestPasswordReset, resetPassword, updateUser, completeOnboarding, refreshSession],
+  )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

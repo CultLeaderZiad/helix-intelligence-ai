@@ -1,26 +1,26 @@
 import React, { useState, useEffect } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import { useW8Copy } from "@/i18n/w8Product"
+import { BoardSharePanel } from "@/features/boards/BoardSharePanel"
+import { TeamBoardsPanel } from "@/features/boards/TeamBoardsPanel"
 import { creativeService } from "@/services"
 import { useAuth } from "@/context/AuthContext"
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
 import { API_BASE_URL } from "@/services/config"
-import { 
-  Bookmark, 
-  Trash2, 
-  ExternalLink, 
-  RefreshCw, 
-  SearchX, 
-  FolderPlus, 
-  CheckCircle2, 
-  Tag, 
-  Film, 
+import { getAccessToken } from "@/services/sessionStore"
+import {
+  Bookmark,
+  Trash2,
+  RefreshCw,
+  SearchX,
+  CheckCircle2,
+  Film,
   Image as ImageIcon,
   Plus,
   Link as LinkIcon,
   Sparkles,
   Download,
-  Play,
-  ArrowRight
 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
@@ -29,12 +29,14 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 export function SwipeFilesPage() {
   const { user } = useAuth()
   const { latestSearch } = useSearchContext()
-  const { t, isRtl } = useLanguage()
+  const { t } = useLanguage()
+  const w8 = useW8Copy()
+  const navigate = useNavigate()
 
   const [creatives, setCreatives] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [activeCollection, setActiveCollection] = useState("all")
+  const [, setError] = useState(null)
+  const [activeCollection] = useState("all")
   const [toast, setToast] = useState(null)
   const [deleteTargetCreative, setDeleteTargetCreative] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -50,7 +52,7 @@ export function SwipeFilesPage() {
   const [isUploading, setIsUploading] = useState(false)
 
   // Check if swipe_files feature flag is enabled
-  const isFeatureEnabled = user?.feature_flags?.swipe_files !== false
+  const isFeatureEnabled = user?.feature_flags?.swipe_files === true
 
   const fetchSaved = async () => {
     if (!isFeatureEnabled) {
@@ -113,7 +115,7 @@ export function SwipeFilesPage() {
     formData.append("file", file)
 
     try {
-      const token = localStorage.getItem("helix_access_token") || localStorage.getItem("helix_auth_token")
+      const token = getAccessToken()
       const response = await fetch(`${API_BASE_URL}/media/upload`, {
         method: "POST",
         headers: {
@@ -186,10 +188,9 @@ export function SwipeFilesPage() {
     return (
       <div className="p-12 max-w-4xl mx-auto text-center space-y-4 font-sans">
         <Bookmark className="w-12 h-12 text-slate-500 mx-auto" />
-        <h2 className="text-xl font-bold text-text">Swipe Files Feature Locked</h2>
-        <p className="text-sm text-text-muted max-w-md mx-auto">
-          Your current organization plan does not have the Swipe Files & Saved Collections feature enabled. Upgrade your plan or contact your workspace admin to unlock it.
-        </p>
+        <h2 className="text-xl font-bold text-text">{w8.boardsLockedTitle}</h2>
+        <p className="text-sm text-text-muted max-w-md mx-auto">{w8.boardsLockedBody}</p>
+        <Link to="/access" className="text-sm text-accent hover:underline">{w8.requestAccess}</Link>
       </div>
     )
   }
@@ -401,6 +402,9 @@ export function SwipeFilesPage() {
         </div>
       )}
 
+      {!loading && creatives.length > 0 ? <BoardSharePanel /> : null}
+      {user?.feature_flags?.team_accounts === true ? <TeamBoardsPanel /> : null}
+
       {/* Grid of Saved Creatives */}
       {loading ? (
         <div className="py-16 text-center text-text-muted font-mono text-xs">
@@ -409,10 +413,9 @@ export function SwipeFilesPage() {
       ) : creatives.length === 0 ? (
         <div className="py-16 text-center bg-surface border border-border rounded-xl space-y-3">
           <SearchX className="w-10 h-10 text-text-faint mx-auto" />
-          <h3 className="text-base font-bold text-text">{t("swipeEmpty", "Your swipe file is empty")}</h3>
-          <p className="text-xs text-text-muted max-w-sm mx-auto">
-            {t("swipeEmptyDesc", "Bookmark winning creatives while researching on Discover or click 'Add Ad Link' above to build your collection.")}
-          </p>
+          <h3 className="text-base font-bold text-text">{w8.boardsEmptyTitle}</h3>
+          <p className="text-xs text-text-muted max-w-sm mx-auto">{w8.boardsEmptyBody}</p>
+          <Button size="sm" variant="primary" onClick={() => navigate("/discover")}>{w8.boardsEmptyCta}</Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

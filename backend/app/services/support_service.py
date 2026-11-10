@@ -1,13 +1,64 @@
-import datetime
+from contextlib import asynccontextmanager
+from app.core.state_machines import SUPPORT_TICKET_STATUSES
+import re
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, update, func
-from fastapi import HTTPException, status
+from sqlalchemy import select, desc, func
+from fastapi import HTTPException
 
 from app.models.support_ticket import SupportTicket, SupportTicketReply
 from app.models.user import User
 from app.models.organization import Organization
 from app.models.notification import Notification
+from app.core.tenancy import (
+    TenantContext,
+    apply_tenant_context,
+    bind_tenant,
+    current_tenant,
+    reset_tenant,
+)
+
+
+def _is_support_staff(user: User) -> bool:
+    if user.role == "admin":
+        return True
+    if user.role != "assistant-admin":
+        return False
+    permissions = getattr(user, "admin_permissions", None)
+    if not isinstance(permissions, dict) or permissions.get("support") is False:
+        return False
+    sections = permissions.get("sections")
+    return permissions.get("support") is True or (
+        isinstance(sections, (list, tuple)) and "support" in sections
+    )
+
+
+def _sanitize_context_data(value: Any) -> Any:
+    sensitive_markers = ("apikey", "authentication", "authorization", "cookie", "credential", "jwt", "password", "secret", "token")
+    if isinstance(value, dict):
+        sanitized = {}
+        for key, item in value.items():
+            normalized_key = re.sub(r"[^a-z0-9]", "", str(key).lower())
+            sensitive = normalized_key == "auth" or any(marker in normalized_key for marker in sensitive_markers)
+            sanitized[key] = "[REDACTED]" if sensitive else _sanitize_context_data(item)
+        return sanitized
+    if isinstance(value, list):
+        return [_sanitize_context_data(item) for item in value]
+    return value
+
+
+@asynccontextmanager
+async def _support_staff_scope(db: AsyncSession, user: User):
+    """Temporarily scope an authorized support action across tenant tickets."""
+    token = bind_tenant(None, user.id, platform_admin=True, enforce=True)
+    try:
+        await apply_tenant_context(db)
+        yield
+    finally:
+        reset_tenant(token)
+        previous = current_tenant() or TenantContext([], user.id, platform_admin=False, enforce=True)
+        await apply_tenant_context(db, previous)
+
 
 async def create_ticket(
     db: AsyncSession,
@@ -30,20 +81,16 @@ async def create_ticket(
         message=message,
         status="open",
         tag=tag,
-        context_data=context_data or {}
+        context_data=_sanitize_context_data(context_data or {})
     )
     db.add(ticket)
     await db.commit()
     await db.refresh(ticket)
 
     # Generate admin-targeted notification for all admins
-    admin_users = (await db.execute(
-        select(User).where(User.role.in_(["admin", "assistant-admin"]))
-    )).scalars().all()
-
-    for admin in admin_users:
+    for admin_id in await _support_staff_ids(db):
         notif = Notification(
-            user_id=admin.id,
+            user_id=admin_id,
             org_id=org_id,
             type="support",
             title=f"New {ticket_type.capitalize()} Ticket: {subject[:40]}",
@@ -55,6 +102,31 @@ async def create_ticket(
 
     await db.commit()
     return ticket
+
+async def _support_staff_ids(db: AsyncSession) -> List[str]:
+    """Ids of support staff, for notifying them about a ticket.
+
+    Staff accounts are outside the customer's workspace, so the users policy
+    hides them from the caller's scope. This one lookup reads ids only, in a
+    short platform scope, and restores the caller's scope afterwards.
+    """
+    from app.core.tenancy import current_tenant, tenant_db_scope
+
+    ctx = current_tenant()
+    async with tenant_db_scope(db, None, ctx.user_id if ctx else "", platform_admin=True):
+        rows = await db.execute(select(User.id).where(User.role.in_(["admin", "assistant-admin"])))
+        return list(rows.scalars().all())
+
+
+async def _emails_for(db: AsyncSession, user_ids: List[str]) -> Dict[str, str]:
+    """Display emails for the authors of tickets or replies the caller may already see."""
+    from app.core.tenancy import current_tenant, tenant_db_scope
+
+    ctx = current_tenant()
+    async with tenant_db_scope(db, None, ctx.user_id if ctx else "", platform_admin=True):
+        rows = await db.execute(select(User.id, User.email).where(User.id.in_(list(user_ids))))
+        return {row.id: row.email for row in rows.all()}
+
 
 async def list_user_tickets(
     db: AsyncSession,
@@ -99,16 +171,27 @@ async def list_user_tickets(
     return out
 
 async def get_ticket_details(db: AsyncSession, ticket_id: str, current_user: User) -> Dict[str, Any]:
+    if _is_support_staff(current_user):
+        async with _support_staff_scope(db, current_user):
+            return await _get_ticket_details_in_scope(db, ticket_id, current_user)
+    return await _get_ticket_details_in_scope(db, ticket_id, current_user)
+
+
+async def _get_ticket_details_in_scope(
+    db: AsyncSession,
+    ticket_id: str,
+    current_user: User,
+) -> Dict[str, Any]:
     ticket = (await db.execute(select(SupportTicket).where(SupportTicket.id == ticket_id))).scalar_one_or_none()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    is_staff = current_user.role in ["admin", "assistant-admin"]
+    is_staff = _is_support_staff(current_user)
     if not is_staff and ticket.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to view this ticket")
 
     # Fetch user email & author
-    author = (await db.execute(select(User).where(User.id == ticket.user_id))).scalar_one_or_none()
+    author_email = (await _emails_for(db, [ticket.user_id])).get(ticket.user_id) if ticket.user_id else None
 
     # Fetch replies
     replies_res = await db.execute(
@@ -122,8 +205,7 @@ async def get_ticket_details(db: AsyncSession, ticket_id: str, current_user: Use
     users_map = {}
     sender_ids = list({r.user_id for r in replies if r.user_id})
     if sender_ids:
-        users_res = await db.execute(select(User).where(User.id.in_(sender_ids)))
-        users_map = {u.id: u.email for u in users_res.scalars().all()}
+        users_map = await _emails_for(db, sender_ids)
 
     formatted_replies = []
     for r in replies:
@@ -141,7 +223,7 @@ async def get_ticket_details(db: AsyncSession, ticket_id: str, current_user: Use
     return {
         "id": ticket.id,
         "user_id": ticket.user_id,
-        "user_email": author.email if author else "Unknown",
+        "user_email": author_email or "Unknown",
         "type": ticket.type,
         "subject": ticket.subject,
         "message": ticket.message,
@@ -159,11 +241,23 @@ async def add_reply(
     user: User,
     message: str
 ) -> Dict[str, Any]:
+    if _is_support_staff(user):
+        async with _support_staff_scope(db, user):
+            return await _add_reply_in_scope(db, ticket_id, user, message)
+    return await _add_reply_in_scope(db, ticket_id, user, message)
+
+
+async def _add_reply_in_scope(
+    db: AsyncSession,
+    ticket_id: str,
+    user: User,
+    message: str,
+) -> Dict[str, Any]:
     ticket = (await db.execute(select(SupportTicket).where(SupportTicket.id == ticket_id))).scalar_one_or_none()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
-    is_staff = user.role in ["admin", "assistant-admin"]
+    is_staff = _is_support_staff(user)
     if not is_staff and ticket.user_id != user.id:
         raise HTTPException(status_code=403, detail="Not authorized to reply to this ticket")
 
@@ -199,12 +293,9 @@ async def add_reply(
         db.add(notif)
     else:
         # User replied -> notify admins
-        admin_users = (await db.execute(
-            select(User).where(User.role.in_(["admin", "assistant-admin"]))
-        )).scalars().all()
-        for admin in admin_users:
+        for admin_id in await _support_staff_ids(db):
             notif = Notification(
-                user_id=admin.id,
+                user_id=admin_id,
                 org_id=ticket.org_id,
                 type="support_reply",
                 title=f"User Reply on Ticket: {ticket.subject[:40]}",
@@ -225,8 +316,26 @@ async def add_reply(
         "created_at": reply.created_at.isoformat() if reply.created_at else ""
     }
 
-async def update_ticket_status(db: AsyncSession, ticket_id: str, new_status: str) -> Dict[str, Any]:
-    if new_status not in ["open", "in_progress", "resolved"]:
+async def update_ticket_status(
+    db: AsyncSession,
+    ticket_id: str,
+    new_status: str,
+    actor: Optional[User] = None,
+) -> Dict[str, Any]:
+    if actor is not None:
+        if not _is_support_staff(actor):
+            raise HTTPException(status_code=403, detail="Not authorized to update support tickets")
+        async with _support_staff_scope(db, actor):
+            return await _update_ticket_status_in_scope(db, ticket_id, new_status)
+    return await _update_ticket_status_in_scope(db, ticket_id, new_status)
+
+
+async def _update_ticket_status_in_scope(
+    db: AsyncSession,
+    ticket_id: str,
+    new_status: str,
+) -> Dict[str, Any]:
+    if new_status not in SUPPORT_TICKET_STATUSES:
         raise HTTPException(status_code=400, detail="Invalid status. Choose open, in_progress, or resolved.")
 
     ticket = (await db.execute(select(SupportTicket).where(SupportTicket.id == ticket_id))).scalar_one_or_none()
@@ -242,7 +351,29 @@ async def list_admin_tickets(
     status_filter: Optional[str] = None,
     type_filter: Optional[str] = None,
     limit: int = 50,
-    offset: int = 0
+    offset: int = 0,
+    actor: Optional[User] = None,
+) -> List[Dict[str, Any]]:
+    if actor is not None:
+        if not _is_support_staff(actor):
+            raise HTTPException(status_code=403, detail="Not authorized to view support tickets")
+        async with _support_staff_scope(db, actor):
+            return await _list_admin_tickets_in_scope(
+                db, status_filter=status_filter, type_filter=type_filter,
+                limit=limit, offset=offset,
+            )
+    return await _list_admin_tickets_in_scope(
+        db, status_filter=status_filter, type_filter=type_filter,
+        limit=limit, offset=offset,
+    )
+
+
+async def _list_admin_tickets_in_scope(
+    db: AsyncSession,
+    status_filter: Optional[str] = None,
+    type_filter: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0,
 ) -> List[Dict[str, Any]]:
     query = select(SupportTicket).order_by(desc(SupportTicket.created_at))
     if status_filter and status_filter != "all":
@@ -258,8 +389,7 @@ async def list_admin_tickets(
     users_map = {}
     user_ids = list({t.user_id for t in tickets if t.user_id})
     if user_ids:
-        users_res = await db.execute(select(User).where(User.id.in_(user_ids)))
-        users_map = {u.id: u.email for u in users_res.scalars().all()}
+        users_map = await _emails_for(db, user_ids)
 
     out = []
     for t in tickets:

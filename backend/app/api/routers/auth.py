@@ -1,41 +1,41 @@
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select
 import datetime
 
-from app.db.session import async_session_maker
-from app.schemas.auth import UserCreate, UserLogin, SessionResponse, PasswordResetRequest, PasswordResetConfirm
+from app.core.observability import log_event
+from app.schemas.auth import UserCreate, UserLogin, SessionResponse, SignUpAccepted, PasswordResetRequest, PasswordResetConfirm
 from app.services import auth_service, billing_service
-from app.core.deps import get_db, get_current_user, oauth2_scheme
+from app.core.deps import _bind_request_tenant, get_db, get_current_user, oauth2_scheme
 from app.models.user import User
-from app.models.organization import Organization
 from app.models.plan import Plan
 from app.core.config import settings
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 async def build_session_response(db: AsyncSession, user: User, access_token: str = None) -> SessionResponse:
-    import logging
-    logger = logging.getLogger(__name__)
-
     org = None
     try:
-        org = await billing_service.get_or_create_default_org(db, user)
+        # Read-only: this response is never committed, so daily counters are
+        # evaluated in memory instead of being flushed and rolled back.
+        org = await billing_service.get_or_create_default_org(db, user, apply_daily_reset=False)
     except Exception as org_err:
-        logger.warning(f"Default org retrieval failed for user {user.id}: {org_err}")
+        log_event(logger, "session_org_lookup_failed", error=org_err, actor_id=user.id)
 
     plan = None
     if org and org.plan_id:
         try:
-            plan = (await db.execute(select(Plan).where(Plan.id == org.plan_id))).scalar_one_or_none()
-        except Exception:
-            pass
+            plan = await db.get(Plan, org.plan_id)
+        except Exception as exc:
+            log_event(logger, "session_plan_lookup_failed", error=exc, actor_id=user.id, tenant_id=org.id)
     if not plan:
         try:
-            plan = (await db.execute(select(Plan).where(Plan.id == "plan_trial_default"))).scalar_one_or_none()
-        except Exception:
-            pass
+            plan = await db.get(Plan, "plan_trial_default")
+        except Exception as exc:
+            log_event(logger, "session_default_plan_lookup_failed", error=exc, actor_id=user.id)
 
     effective_flags = dict(plan.feature_flags or {}) if plan and plan.feature_flags else {}
     if org and org.custom_feature_flags:
@@ -51,56 +51,49 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
     }
 
     now = datetime.datetime.now(datetime.timezone.utc)
-    trial_days_remaining = None
-    if user.trial_expires_at:
-        trial_exp = user.trial_expires_at
-        if trial_exp.tzinfo is None:
-            trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
-        trial_days_remaining = max(0, (trial_exp - now).days) if trial_exp > now else 0
 
     daily_limit = getattr(plan, "daily_credit_limit", None) if plan else None
-    daily_used = round(float(getattr(org, "daily_credits_used_today", 0.0) or 0.0), 2) if org else 0.0
+    daily_used = round(billing_service.effective_daily_credits_used(org), 2) if org else 0.0
     daily_remaining = round(max(0.0, (daily_limit or 0.0) - daily_used), 2) if daily_limit is not None else None
     daily_resets_at = None
 
-    try:
-        if org:
-            from app.services.billing_service import _ensure_daily_reset, _utc_midnight
-            await _ensure_daily_reset(db, org)
-            if daily_limit:
-                daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
-    except Exception as reset_err:
-        logger.warning(f"Daily reset check error for user {user.id}: {reset_err}")
+    if org and daily_limit:
+        from app.services.billing_service import _utc_midnight
+        daily_resets_at = (_utc_midnight(now) + datetime.timedelta(days=1)).isoformat()
 
-    trial_summary = {}
-    try:
-        if org:
-            from app.services.billing_service import get_trial_usage_summary
-            trial_summary = await get_trial_usage_summary(db, user, org)
-    except Exception as trial_err:
-        logger.warning(f"Trial usage summary error for user {user.id}: {trial_err}")
 
     # Administrator Full Privilege Override
     credit_balance = round(float(getattr(org, "credit_balance", 25.0) or 0.0), 2) if org else 25.0
-    if user.role == "admin":
+    platform_admin = billing_service.is_platform_admin(user)
+    if platform_admin:
         effective_flags = {
             "discover": True,
-            "intelligence": True,
-            "create": True,
-            "performance": True,
             "swipe_files": True,
             "team_accounts": True,
-            "public_api": True,
-            "ai_insights": True,
-            "create_media": True,
-            "advanced_scoring": True,
-            "bulk_export": True,
-            "custom_webhooks": True,
+            "monitors": True,
         }
-        trial_days_remaining = None
         daily_limit = None
         daily_remaining = 999999.0
         credit_balance = max(credit_balance, 999999.0)
+
+    access_status = "approved" if platform_admin else "pending"
+    access_expires_at = None
+    if org and access_status != "approved":
+        try:
+            access_state = await billing_service.access_status_for_org(db, org.id)
+            access_status = access_state["status"]
+            if access_status == "approved":
+                access_expires_at = access_state.get("expires_at")
+                # Same merge as assert_can_spend: the active grant's flags
+                # win over the plan's, so the app shows what the server allows.
+                effective_flags.update({
+                    k: v is True for k, v in (access_state.get("feature_flags") or {}).items()
+                })
+        except Exception as access_err:
+            log_event(logger, "session_access_status_failed", error=access_err, actor_id=user.id, tenant_id=org.id)
+            access_status = "pending"
+    if access_status != "approved":
+        effective_flags = {key: False for key in effective_flags}
 
     display_name = getattr(user, "full_name", None) or (user.email.split("@")[0] if user.email else "user")
 
@@ -113,70 +106,64 @@ async def build_session_response(db: AsyncSession, user: User, access_token: str
         access_token=access_token,
         feature_flags=effective_flags,
         credit_balance=credit_balance,
-        trial_days_remaining=trial_days_remaining,
         daily_credit_limit=daily_limit,
         daily_credits_used=daily_used,
         daily_credits_remaining=daily_remaining,
         daily_credits_resets_at_utc=daily_resets_at,
-        trial_active=trial_summary.get("trial_active", True),
-        images_used_today=trial_summary.get("images_used_today", 0),
-        images_daily_limit=trial_summary.get("images_daily_limit", 5),
-        images_remaining_today=trial_summary.get("images_remaining_today", 5),
-        images_trial_total=trial_summary.get("images_trial_total", 0),
-        trial_ends_at=trial_summary.get("trial_ends_at"),
-        requires_plan=trial_summary.get("requires_plan", False),
         plan_id=(org.plan_id if org else None) or "plan_trial_default",
+        org_id=org.id if org else None,
+        org_name=org.name if org else None,
+        access_status=access_status,
+        access_expires_at=access_expires_at,
+        is_platform_admin=platform_admin,
         has_completed_onboarding=getattr(user, "has_completed_onboarding", False)
     )
 
-@router.post("/sign-up", response_model=SessionResponse)
+# One response for every accepted sign-up, whether or not the email was
+# already registered: same status, same body, no token. The client signs in
+# next. Fully closing account discovery needs email verification, which is
+# not built (no mail provider is configured).
+SIGN_UP_ACCEPTED = SignUpAccepted(
+    message="If this email can be used, the account is ready. Sign in with the same email and password.",
+)
+
+
+@router.post("/sign-up", response_model=SignUpAccepted, status_code=status.HTTP_202_ACCEPTED)
 async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
-    import logging
-    logger = logging.getLogger(__name__)
     try:
         user = await auth_service.register_user(db, user_in)
-        from app.core.security import create_access_token
-        token_ver = (user.signup_metadata or {}).get("token_version", 1)
-        token = create_access_token(subject=user.id, role=user.role, token_version=token_ver)
-        # Fire-and-forget welcome email — completely decoupled from SQLAlchemy session
-        try:
-            import asyncio
-            from app.services import lifecycle_email_service
-            asyncio.create_task(lifecycle_email_service.send_welcome_email(user.email, user.full_name or ""))
-        except Exception as mail_err:
-            logger.warning(f"Welcome email scheduling failed for {user.email}: {mail_err}")
-        return await build_session_response(db, user, access_token=token)
+    except auth_service.EmailAlreadyRegistered:
+        return SIGN_UP_ACCEPTED
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Sign-up failed for {user_in.email}: {e}")
-        err_msg = str(e).lower()
-        if "unique" in err_msg or "integrity" in err_msg or "already exists" in err_msg:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="An account with this email already exists."
-            )
+        log_event(logger, "signup_failed", error=e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Account registration is temporarily unavailable. Please try again in a few moments."
-        )
+        ) from None
+    # Fire-and-forget welcome email, decoupled from the request session.
+    try:
+        import asyncio
+        from app.services import lifecycle_email_service
+        asyncio.create_task(lifecycle_email_service.send_welcome_email(user.email, user.full_name or ""))
+    except Exception as mail_err:
+        log_event(logger, "welcome_email_scheduling_failed", error=mail_err, actor_id=user.id)
+    return SIGN_UP_ACCEPTED
+
 
 @router.post("/sign-in", response_model=SessionResponse)
 async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
-    import logging
-    logger = logging.getLogger(__name__)
     try:
-        token = await auth_service.authenticate_user(db, user_in)
-        from app.models.user import User as UserModel
-        result = await db.execute(select(UserModel).where(func.lower(UserModel.email) == user_in.email.lower().strip()))
-        user = result.scalar_one_or_none()
+        token, user = await auth_service.authenticate_user_and_load(db, user_in)
         if not user:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+        await _bind_request_tenant(db, user)
         return await build_session_response(db, user, access_token=token)
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Sign-in failed for {user_in.email}: {e}")
+        log_event(logger, "signin_failed", error=e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Sign-in temporarily unavailable. Please try again shortly.",
@@ -189,17 +176,27 @@ async def signout(
     token: Optional[str] = Depends(oauth2_scheme)
 ):
     """Revoke active user sessions and sign out."""
+    actor_id = None
     if token:
         try:
-            from app.core.security import verify_neon_token
-            payload = await verify_neon_token(token)
+            from app.core.security import verify_session_token
+            payload = await verify_session_token(token)
             if payload and payload.get("sub"):
+                actor_id = payload["sub"]
+                from app.core.tenancy import bind_request_lookup
+
+                await bind_request_lookup(db, user_id=str(payload["sub"]))
                 res = await db.execute(select(User).where(User.id == payload["sub"]))
                 user = res.scalar_one_or_none()
                 if user:
                     await auth_service.revoke_user_sessions(db, user)
-        except Exception:
-            pass
+                    log_event(logger, "sessions_revoked", actor_id=user.id, level=logging.INFO)
+        except Exception as exc:
+            log_event(logger, "session_revocation_failed", error=exc, actor_id=actor_id)
+            raise HTTPException(status_code=503, detail={
+                "code": "session_revocation_unavailable",
+                "message": "Server-side sign-out could not be confirmed. Please retry.",
+            }) from None
     return {"message": "Successfully signed out"}
 
 @router.post("/forgot-password")
@@ -207,21 +204,19 @@ async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(
     """Start a password reset. The public response is identical whether or
     not the account exists (no account enumeration). The reset link is sent via
     transactional email when email is configured, and never logged in plain text."""
-    import logging
-    logger = logging.getLogger(__name__)
     try:
         user_and_token = await auth_service.request_password_reset(db, req.email)
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Password reset request failed for {req.email}: {e}")
+        log_event(logger, "password_reset_request_failed", error=e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Password reset request failed")
 
     if user_and_token:
         user, raw_token = user_and_token
         reset_url = f"{settings.PUBLIC_APP_BASE_URL}/reset-password?token={raw_token}"
         # F17: Never log plain reset token or URL
-        logger.info("Password reset token generated for user %s", user.email)
+        log_event(logger, "password_reset_requested", actor_id=user.id, level=logging.INFO)
         
         from app.services.email_service import send_email, email_enabled
         if email_enabled():
@@ -240,10 +235,8 @@ async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(
             try:
                 await send_email(to=user.email, subject=subject, html=html_body)
             except Exception as mail_err:
-                logger.error("Failed to deliver reset email to %s: %s", user.email, mail_err)
+                log_event(logger, "password_reset_delivery_failed", error=mail_err, actor_id=user.id)
 
-        if getattr(settings, "AUTH_DEV_RESET_RETURN", False):
-            return {"ok": True, "reset_url": reset_url, "expires_in_minutes": settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES}
         return {"ok": True}
     return {"ok": True}
 
@@ -251,19 +244,17 @@ async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(
 async def reset_password(req: PasswordResetConfirm, db: AsyncSession = Depends(get_db)):
     """Redeem a reset token and set a new password. Returns a fresh session
     so the frontend can move straight into the app."""
-    import logging
-    logger = logging.getLogger(__name__)
     try:
         user = await auth_service.reset_password(db, req.token, req.new_password)
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception(f"Password reset failed: {e}")
+        log_event(logger, "password_reset_failed", error=e)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Password reset failed")
 
-    from app.core.security import create_access_token
-    token_ver = (user.signup_metadata or {}).get("token_version", 1)
-    token = create_access_token(subject=user.id, role=user.role, token_version=token_ver)
+    log_event(logger, "password_reset_completed", actor_id=user.id, level=logging.INFO)
+    await _bind_request_tenant(db, user)
+    token = auth_service.session_token_for(user)
     return await build_session_response(db, user, access_token=token)
 
 @router.get("/session", response_model=SessionResponse)
@@ -274,75 +265,12 @@ async def get_session(current_user: User = Depends(get_current_user), db: AsyncS
 async def complete_onboarding(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     current_user.has_completed_onboarding = True
     await db.commit()
+    log_event(logger, "onboarding_completed", actor_id=current_user.id, level=logging.INFO)
     return {"message": "Onboarding marked as complete"}
 
-from fastapi import Request
-import hmac
-import hashlib
-
-@router.post("/webhook")
-async def neon_auth_webhook(request: Request, db: AsyncSession = Depends(get_db)):
-    body = await request.body()
-    
-    # SECURITY: this endpoint creates users and organizations, so the caller MUST
-    # be authenticated. Fail CLOSED: no secret configured -> refuse (503);
-    # missing/invalid signature -> 401. Previously the expected digest was only
-    # computed and logged, so anyone could forge user.created events.
-    if not settings.NEON_WEBHOOK_SECRET:
-        raise HTTPException(status_code=503, detail="Auth webhook is not configured")
-    supplied = (
-        request.headers.get("better-auth-signature")
-        or request.headers.get("x-signature")
-        or ""
-    ).strip()
-    if supplied.lower().startswith("sha256="):
-        supplied = supplied[7:]
-    expected_signature = hmac.new(
-        settings.NEON_WEBHOOK_SECRET.encode(), body, hashlib.sha256
-    ).hexdigest()
-    if not supplied or not hmac.compare_digest(expected_signature, supplied):
-        import logging
-        logging.getLogger(__name__).warning("Rejected auth webhook with invalid signature")
-        raise HTTPException(status_code=401, detail="Invalid webhook signature")
-
-    try:
-        import json
-        payload = json.loads(body.decode())
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
-    event = payload.get("event")
-    data = payload.get("data", {})
-    user_data = data.get("user", {})
-    
-    if event == "user.created" and user_data:
-        user_id = user_data.get("id")
-        email = user_data.get("email")
-        name = user_data.get("name", "")
-        
-        if not user_id or not email:
-            raise HTTPException(status_code=400, detail="Missing user_id or email")
-            
-        result = await db.execute(select(User).where(User.id == user_id))
-        existing_user = result.scalar_one_or_none()
-        
-        if not existing_user:
-            now = datetime.datetime.now(datetime.timezone.utc)
-            trial_expires = now + datetime.timedelta(days=14)
-
-            new_user = User(
-                id=user_id,
-                email=email,
-                password_hash="EXTERNAL_AUTH_MANAGED",
-                role="customer",
-                trial_started_at=now,
-                trial_expires_at=trial_expires
-            )
-            db.add(new_user)
-            await db.commit()
-            
-            await billing_service.get_or_create_default_org(db, new_user)
-            
-            return {"message": "User synchronized successfully"}
-            
-    return {"message": "Webhook received"}
+@router.post("/session/onboarding/restart")
+async def restart_onboarding(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    current_user.has_completed_onboarding = False
+    await db.commit()
+    log_event(logger, "onboarding_restarted", actor_id=current_user.id, level=logging.INFO)
+    return {"message": "Onboarding marked as incomplete"}

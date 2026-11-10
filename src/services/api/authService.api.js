@@ -1,81 +1,68 @@
 import { request, ServiceError } from "../http"
+import {
+  clearSession,
+  getAccessToken,
+  getCachedUser as readCachedUser,
+  setAccessToken,
+  setCachedUser,
+} from "../sessionStore"
+
+let sessionOperationVersion = 0
+
+function beginSessionOperation() {
+  sessionOperationVersion += 1
+  return sessionOperationVersion
+}
+
+function assertCurrentSessionOperation(version) {
+  if (version !== sessionOperationVersion) {
+    throw new ServiceError("Session changed while authentication was in progress", {
+      code: "session_changed",
+    })
+  }
+}
 
 /**
  * FastAPI-backed auth service.
  *
  * All auth goes to the Helix FastAPI backend (Render).
  * Zero dependency on better-auth / Neon Auth / VITE_NEON_AUTH_URL.
- *
- * Interface is identical to authService.mock.js so AuthContext and
- * every page works unchanged regardless of VITE_DATA_SOURCE.
  */
 
-const TOKEN_KEY = "helix_access_token"
-const CACHED_USER_KEY = "helix_cached_user"
-
-let inMemoryToken = null
-
 export function getStoredToken() {
-  if (typeof window === "undefined") return null
-  if (inMemoryToken) return inMemoryToken
-  const token = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY) || localStorage.getItem("helix_auth_token")
-  if (token) {
-    inMemoryToken = token
-  }
-  return token
+  return getAccessToken()
 }
 
 export function getCachedUser() {
-  if (typeof window === "undefined") return null
-  try {
-    const raw = sessionStorage.getItem(CACHED_USER_KEY) || localStorage.getItem(CACHED_USER_KEY)
-    return raw ? JSON.parse(raw) : null
-  } catch {
-    return null
-  }
+  return readCachedUser()
 }
 
 function storeUser(user) {
-  if (typeof window === "undefined" || !user) return
-  try {
-    const raw = JSON.stringify(user)
-    sessionStorage.setItem(CACHED_USER_KEY, raw)
-    localStorage.setItem(CACHED_USER_KEY, raw)
-  } catch {}
+  setCachedUser(user)
 }
 
 function storeToken(token) {
-  if (typeof window === "undefined") return
-  inMemoryToken = token || null
-  if (token) {
-    try {
-      sessionStorage.setItem(TOKEN_KEY, token)
-      localStorage.setItem(TOKEN_KEY, token)
-    } catch {}
-  }
+  setAccessToken(token)
 }
 
 export function clearAllTenantStorage() {
+  notifySessionClearing()
+  clearSession()
+}
+
+function notifySessionClearing() {
   if (typeof window === "undefined") return
-  inMemoryToken = null
-  const keysToRemove = [
-    TOKEN_KEY,
-    "helix_auth_token",
-    CACHED_USER_KEY,
-    "helix_latest_search",
-    "helix_search_history",
-    "helix_active_creative",
-    "helix_saved_drafts",
-    "helix_admin_token",
-    "helix_impersonation",
-    "helix_impersonated_user"
-  ]
-  for (const k of keysToRemove) {
-    try {
-      localStorage.removeItem(k)
-      sessionStorage.removeItem(k)
-    } catch {}
+  try {
+    window.dispatchEvent(new Event("helix:session-clearing"))
+  } catch {
+    // Session cleanup must still proceed if event dispatch is unavailable.
   }
+}
+
+function storeSession(token, user) {
+  clearAllTenantStorage()
+  if (user) storeUser(user)
+  storeToken(token)
 }
 
 function clearToken() {
@@ -92,11 +79,11 @@ function sessionToUser(session, fallbackName) {
   return {
     id: session.user_id,
     email: session.email,
+    organization_id: session.organization_id ?? session.org_id ?? null,
     role: session.role ?? "customer",
     name: displayName,
     full_name: session.full_name ?? null,
     credit_balance: session.credit_balance ?? 0,
-    trial_days_remaining: session.trial_days_remaining ?? null,
     daily_credit_limit: session.daily_credit_limit ?? null,
     daily_credits_used: session.daily_credits_used ?? 0,
     daily_credits_remaining: session.daily_credits_remaining ?? null,
@@ -104,6 +91,9 @@ function sessionToUser(session, fallbackName) {
     plan_id: session.plan_id ?? null,
     has_completed_onboarding: session.has_completed_onboarding ?? false,
     feature_flags: session.feature_flags ?? {},
+    access_status: session.access_status ?? null,
+    access_expires_at: session.access_expires_at ?? null,
+    is_platform_admin: session.is_platform_admin ?? false,
   }
 }
 
@@ -121,9 +111,11 @@ const authService = {
       clearToken()
       return null
     }
+    const operationVersion = sessionOperationVersion
 
     try {
       const session = await request("/auth/session")
+      if (getStoredToken() !== token || operationVersion !== sessionOperationVersion) return null
       const user = sessionToUser(session)
       if (user) {
         storeUser(user)
@@ -132,10 +124,16 @@ const authService = {
       return null
     } catch (err) {
       // Only wipe session if credentials were actively rejected by the backend authority
-      if (err?.status === 401 || err?.status === 403) {
+      if (
+        (err?.status === 401 || err?.status === 403) &&
+        getStoredToken() === token &&
+        operationVersion === sessionOperationVersion
+      ) {
         clearToken()
         return null
       }
+
+      if (getStoredToken() !== token || operationVersion !== sessionOperationVersion) return null
 
       // If backend is sleeping (502/503/504) or network glitched, preserve cached user
       const cached = getCachedUser()
@@ -150,7 +148,9 @@ const authService = {
    * Sign in with email + password.
    * Stores the returned JWT and returns the user shape.
    */
+  /** @param {{ email?: string, password?: string }} [credentials] */
   async signIn({ email, password } = {}) {
+    const operationVersion = beginSessionOperation()
     const session = await request("/auth/sign-in", {
       method: "POST",
       body: { email: String(email ?? "").trim().toLowerCase(), password },
@@ -161,22 +161,28 @@ const authService = {
         code: "no_token",
       })
     }
+    assertCurrentSessionOperation(operationVersion)
 
-    storeToken(session.access_token)
     const user = sessionToUser(session)
-    storeUser(user)
+    storeSession(session.access_token, user)
     return { user }
   },
 
   /**
-   * Register a new account.
-   * Stores the returned JWT and returns the user shape.
+   * Register a new account, then sign in with the same credentials.
+   *
+   * The server answers sign-up identically whether or not the email was
+   * already registered (no token, same body), so the session comes from the
+   * sign-in that follows. An existing account with a different password
+   * therefore surfaces as the usual generic sign-in error.
    */
+  /** @param {{ name?: string, email?: string, password?: string, utm_source?: string, utm_medium?: string, utm_campaign?: string, utm_term?: string, utm_content?: string, referrer?: string }} [params] */
   async signUp({ name, email, password, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer } = {}) {
+    const operationVersion = beginSessionOperation()
     const cleanName = name ? String(name).trim() : undefined
     const cleanEmail = String(email ?? "").trim().toLowerCase()
 
-    const session = await request("/auth/sign-up", {
+    await request("/auth/sign-up", {
       method: "POST",
       body: {
         name: cleanName,
@@ -190,16 +196,22 @@ const authService = {
         referrer,
       },
     })
+    assertCurrentSessionOperation(operationVersion)
+
+    const session = await request("/auth/sign-in", {
+      method: "POST",
+      body: { email: cleanEmail, password },
+    })
 
     if (!session?.access_token) {
-      throw new ServiceError("Sign-up succeeded but no access token returned", {
+      throw new ServiceError("Sign-in succeeded but no access token returned", {
         code: "no_token",
       })
     }
+    assertCurrentSessionOperation(operationVersion)
 
-    storeToken(session.access_token)
     const user = sessionToUser(session, cleanName)
-    storeUser(user)
+    storeSession(session.access_token, user)
     return { user }
   },
 
@@ -207,12 +219,15 @@ const authService = {
    * Sign out — always clears local token and cached profile.
    */
   async signOut() {
+    const operationVersion = beginSessionOperation()
+    const token = getStoredToken()
+    notifySessionClearing()
     try {
       await request("/auth/sign-out", { method: "POST" })
     } catch {
       // Ignore server errors; local token must be cleared either way.
     } finally {
-      clearToken()
+      if (operationVersion === sessionOperationVersion && getStoredToken() === token) clearToken()
     }
     return null
   },
@@ -221,9 +236,9 @@ const authService = {
   /**
    * Start a password reset. Always resolves with the same generic shape
    * whether or not the account exists (no account enumeration). Returns
-   * `reset_url` when the backend runs in dev-delivery mode (no mail
-   * provider configured) so the UI can surface it.
+   * The backend does not return a reset URL. Delivery is email-only.
    */
+  /** @param {{ email?: string }} [params] */
   async requestPasswordReset({ email } = {}) {
     const payload = await request("/auth/forgot-password", {
       method: "POST",
@@ -236,7 +251,9 @@ const authService = {
    * Redeem a reset token with a new password. The backend returns a fresh
    * session, so a successful reset signs the user straight in.
    */
+  /** @param {{ token?: string, newPassword?: string }} [params] */
   async resetPassword({ token, newPassword } = {}) {
+    const operationVersion = beginSessionOperation()
     const session = await request("/auth/reset-password", {
       method: "POST",
       body: { token: String(token ?? ""), new_password: newPassword },
@@ -246,8 +263,22 @@ const authService = {
         code: "no_token",
       })
     }
-    storeToken(session.access_token)
-    return { user: sessionToUser(session) }
+    assertCurrentSessionOperation(operationVersion)
+    const user = sessionToUser(session)
+    storeSession(session.access_token, user)
+    return { user }
+  },
+
+  /** @param {string} token */
+  switchToImpersonatedSession(token) {
+    beginSessionOperation()
+    if (!token) {
+      throw new ServiceError("Impersonation did not return an access token", {
+        code: "no_token",
+      })
+    }
+    clearAllTenantStorage()
+    storeToken(token)
   },
 
   /**
@@ -255,6 +286,11 @@ const authService = {
    */
   completeOnboarding() {
     return request("/auth/session/onboarding/complete", { method: "POST" })
+  },
+
+  /** Reset the server-side onboarding flag so the user can replay the tour. */
+  restartOnboarding() {
+    return request("/auth/session/onboarding/restart", { method: "POST" })
   },
 }
 

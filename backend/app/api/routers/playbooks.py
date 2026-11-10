@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel
 
-from app.core.deps import get_db, get_current_user
+from app.core.deps import get_db, get_current_user, require_feature
 from app.models.user import User
 from app.services import playbook_service
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_feature("swipe_files"))])
 
 class PlaybookCompileRequest(BaseModel):
     brand_name: str
@@ -56,7 +56,7 @@ async def list_playbooks(
 @router.get("/public/{public_id}")
 async def get_public_playbook(
     public_id: str,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    # Notice: NO current_user requirement -> public unauthenticated read-only endpoint
-    return await playbook_service.get_public_playbook(db, public_id)
+    return await playbook_service.get_public_playbook(db, public_id, current_user)

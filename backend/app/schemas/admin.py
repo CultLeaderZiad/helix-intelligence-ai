@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from app.schemas.pricing import PlanLimits, PlanPricing
 from typing import List, Optional, Dict, Any
 
 class AdminOverviewStats(BaseModel):
@@ -9,7 +10,6 @@ class AdminOverviewStats(BaseModel):
     window_label: str
     total_credits_consumed: float = 0.0
     total_provider_cost_usd: float = 0.0
-    active_trials: int = 0
     today_api_calls: int = 0
     today_api_spend: float = 0.0
 
@@ -46,6 +46,8 @@ class PlanSchema(BaseModel):
     price_monthly: Optional[float] = 0.0
     price_per_credit: Optional[float] = None
     feature_flags: Dict[str, bool]
+    pricing: Optional[PlanPricing] = None
+    limits: Optional[PlanLimits] = None
     created_by_admin_id: Optional[str] = None
     created_at: Optional[str] = None
 
@@ -60,13 +62,12 @@ class PlanCreate(BaseModel):
     price_per_credit: Optional[float] = 0.01
     feature_flags: Dict[str, bool] = {
         "discover": True,
-        "intelligence": True,
-        "create": True,
-        "performance": True,
         "swipe_files": True,
-        "team_accounts": True,
-        "public_api": False
+        "monitors": True,
+        "team_accounts": False,
     }
+    pricing: Optional[PlanPricing] = None
+    limits: Optional[PlanLimits] = None
 
 class PlanUpdate(BaseModel):
     name: Optional[str] = None
@@ -78,6 +79,8 @@ class PlanUpdate(BaseModel):
     price_monthly: Optional[float] = None
     price_per_credit: Optional[float] = None
     feature_flags: Optional[Dict[str, bool]] = None
+    pricing: Optional[PlanPricing] = None
+    limits: Optional[PlanLimits] = None
 
 # --- Organization Schemas ---
 class AdminOrganizationRow(BaseModel):
@@ -93,7 +96,10 @@ class AdminOrganizationRow(BaseModel):
     custom_feature_flags: Dict[str, Any]
     effective_feature_flags: Dict[str, Any]
     status: str
-    trial_expires_at: Optional[str] = None
+    access_status: Optional[str] = None
+    # Active grant: when it ends (None = no end date) and which features it allows.
+    access_expires_at: Optional[str] = None
+    access_features: Dict[str, bool] = {}
     total_jobs: int = 0
 
 class GrantCreditsRequest(BaseModel):
@@ -154,8 +160,7 @@ class AdminUserRow(BaseModel):
     organization_name: Optional[str] = None
     plan_id: Optional[str] = None
     plan_name: Optional[str] = None
-    trial_started_at: Optional[str] = None
-    trial_expires_at: Optional[str] = None
+    access_status: Optional[str] = None
     created_at: str
     is_suspended: Optional[bool] = False
     is_banned: Optional[bool] = False

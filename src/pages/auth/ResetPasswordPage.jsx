@@ -7,9 +7,10 @@ import { AuthLayout } from "@/features/auth/AuthLayout"
 import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
 import { PasswordStrength } from "@/features/auth/PasswordStrength"
-import { Input, PasswordInput } from "@/components/ui/Field"
+import { PasswordInput } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
-import { ServiceError } from "@/services"
+import { useLanguage } from "@/context/LanguageContext"
+import { formatAuthFieldError } from "@/features/auth/validation"
 
 /**
  * Sets a new password from a reset link (/reset-password?token=…).
@@ -19,6 +20,7 @@ import { ServiceError } from "@/services"
  */
 export function ResetPasswordPage() {
   const { resetPassword, isAuthenticated } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const token = searchParams.get("token") ?? ""
@@ -31,15 +33,16 @@ export function ResetPasswordPage() {
 
   if (isAuthenticated) return <Navigate to={APP_HOME} replace />
 
+  /** @param {import("react").FormEvent<HTMLFormElement>} [event] */
   async function onSubmit(event) {
     if (event?.preventDefault) event.preventDefault()
     setAuthError(null)
 
     if (!token) {
       setAuthError({
-        status: "missing token",
+        status: t("authResetTokenRequired", "This reset link is missing its token."),
         tone: "danger",
-        message: "This reset link is incomplete. Request a new one from the forgot-password page.",
+        message: t("authResetTokenRequired", "This reset link is missing its token."),
       })
       return
     }
@@ -61,16 +64,10 @@ export function ResetPasswordPage() {
       await resetPassword({ token, newPassword: password })
       navigate(APP_HOME, { replace: true })
     } catch (err) {
-      const message =
-        typeof err?.detail === "string"
-          ? err.detail
-          : err instanceof ServiceError
-            ? err.message
-            : err?.message || "Could not reset your password. Please try again."
       setAuthError({
-        status: "reset failed",
+        status: t("authResetFailed", "Unable to reset the password. Request a new reset link and try again."),
         tone: "danger",
-        message,
+        message: t("authResetFailed", "Unable to reset the password. Request a new reset link and try again."),
         isColdStart: false,
       })
       setSubmitting(false)
@@ -79,16 +76,16 @@ export function ResetPasswordPage() {
 
   return (
     <AuthLayout
-      eyebrow="Recovery"
-      title="Set a new password"
-      description="Choose a new password for your account."
+      eyebrow={t("authRecovery", "Recovery")}
+      title={t("authSetPasswordTitle", "Choose a new password")}
+      description={t("authSetPasswordDescription", "Enter and confirm your new password.")}
       footer={
         <Link
           to="/sign-in"
           className="inline-flex items-center gap-1 text-accent transition-colors hover:text-accent-dim"
         >
           <ArrowLeft className="h-3 w-3" aria-hidden="true" />
-          Back to sign in
+          {t("authBackToSignIn", "Back to sign in")}
         </Link>
       }
     >
@@ -101,15 +98,15 @@ export function ResetPasswordPage() {
 
         <AuthField
           id="password"
-          label="New password"
-          error={fieldError}
+          label={t("authNewPassword", "New password")}
+          error={formatAuthFieldError(fieldError, t)}
         >
           <PasswordInput
             id="password"
             name="password"
             autoComplete="new-password"
             autoFocus
-            placeholder="••••••••"
+            placeholder={t("authPasswordPlaceholder", "••••••••")}
             value={password}
             disabled={submitting}
             aria-invalid={Boolean(fieldError)}
@@ -124,12 +121,12 @@ export function ResetPasswordPage() {
 
         <PasswordStrength value={password} />
 
-        <AuthField id="confirm" label="Confirm password">
+        <AuthField id="confirm" label={t("authConfirmPassword", "Confirm password")}>
           <PasswordInput
             id="confirm"
             name="confirm"
             autoComplete="new-password"
-            placeholder="••••••••"
+            placeholder={t("authPasswordPlaceholder", "••••••••")}
             value={confirm}
             disabled={submitting}
             aria-invalid={Boolean(fieldError && fieldError === "passwords must match")}
@@ -152,10 +149,10 @@ export function ResetPasswordPage() {
           {submitting ? (
             <>
               <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-              Updating…
+              {t("authUpdatingPassword", "Updating password…")}
             </>
           ) : (
-            "Set new password"
+            t("authResetPasswordButton", "Update password")
           )}
         </Button>
 
@@ -163,9 +160,9 @@ export function ResetPasswordPage() {
           <p className="flex items-start gap-2 text-xs leading-relaxed text-text-muted">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-text-faint" aria-hidden="true" />
             <span>
-              No reset code detected in this link. Go to{" "}
+              {t("authResetTokenHelp", "No reset token was detected in this link.")} {" "}
               <Link to="/forgot-password" className="text-accent transition-colors hover:text-accent-dim">
-                forgot password
+                {t("authRequestNewLink", "Request a new reset link")}
               </Link>{" "}
               to request a fresh one.
             </span>

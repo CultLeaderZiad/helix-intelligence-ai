@@ -30,6 +30,7 @@ from sqlalchemy import select, text, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.tenancy import apply_monitor_claim_context, tenant_scope
 from app.db.session import async_session_maker
 from app.models.creative import Creative
 from app.models.monitor import Monitor, MonitorCreative, MonitorEvent, MonitorRun
@@ -49,6 +50,7 @@ from app.services.creative_fingerprint import (
 )
 from app.services.email_service import SendResult, email_enabled, send_email
 from app.services.notification_service import create_notification
+from app.services.query_bounds import MAX_PAGE_SIZE, MONITOR_LIST_CAP
 
 logger = logging.getLogger(__name__)
 
@@ -182,6 +184,8 @@ async def create_monitor(
             detail=f"Unknown cadence '{cadence}'. Expected one of {sorted(CADENCE_INTERVALS)}.",
         )
 
+    await _enforce_plan_monitor_limits(db, org_id, cadence, activating=True)
+
     existing = await db.scalar(
         select(func.count(Monitor.id)).where(
             Monitor.org_id == org_id, Monitor.query == clean_query, Monitor.status == "active"
@@ -218,7 +222,7 @@ async def create_monitor(
 
 async def list_monitors(db: AsyncSession, org_id: str) -> List[Dict[str, Any]]:
     result = await db.execute(
-        select(Monitor).where(Monitor.org_id == org_id).order_by(Monitor.created_at.desc())
+        select(Monitor).where(Monitor.org_id == org_id).order_by(Monitor.created_at.desc()).limit(MONITOR_LIST_CAP)
     )
     monitors = list(result.scalars().all())
     if not monitors:
@@ -237,10 +241,49 @@ async def list_monitors(db: AsyncSession, org_id: str) -> List[Dict[str, Any]]:
     return [serialize_monitor(m, latest.get(m.id)) for m in monitors]
 
 
+async def _enforce_plan_monitor_limits(
+    db: AsyncSession, org_id: str, cadence: Optional[str], activating: bool, exclude_id: Optional[str] = None
+) -> None:
+    """Plan limits (plans.limits): allowed cadences and active monitor count. 403 when over."""
+    from app.services.provider_budget import plan_limits
+
+    limits = await plan_limits(db, org_id)
+    allowed = limits.get("monitor_cadences")
+    if cadence and allowed and cadence not in allowed:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_cadence_not_allowed",
+                "message": f"Your plan allows {', '.join(allowed)} monitors.",
+                "allowed": allowed,
+            },
+        )
+    cap = limits.get("monitors")
+    if activating and cap is not None:
+        query = select(func.count(Monitor.id)).where(Monitor.org_id == org_id, Monitor.status == "active")
+        if exclude_id:
+            query = query.where(Monitor.id != exclude_id)
+        active = await db.scalar(query) or 0
+        if active >= int(cap):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "plan_monitor_limit",
+                    "message": f"Your plan allows {cap} active monitors. Pause or delete one first.",
+                    "limit": int(cap),
+                },
+            )
+
+
 async def update_monitor(
     db: AsyncSession, monitor_id: str, org_id: str, changes: Dict[str, Any]
 ) -> Dict[str, Any]:
     monitor = await _load_owned(db, monitor_id, org_id)
+
+    new_cadence = changes.get("cadence")
+    activating = changes.get("status") == "active" and monitor.status != "active"
+    if new_cadence is not None or activating:
+        await _enforce_plan_monitor_limits(db, org_id, new_cadence, activating, exclude_id=monitor.id)
 
     if "cadence" in changes and changes["cadence"] is not None:
         if changes["cadence"] not in CADENCE_INTERVALS:
@@ -286,7 +329,7 @@ async def get_monitor_events(
         .join(Monitor, Monitor.id == MonitorEvent.monitor_id)
         .where(Monitor.org_id == org_id)
         .order_by(MonitorEvent.created_at.desc())
-        .limit(min(limit, 200))
+        .limit(min(limit, MAX_PAGE_SIZE))
     )
     if monitor_id:
         query = query.where(MonitorEvent.monitor_id == monitor_id)
@@ -298,7 +341,7 @@ async def get_monitor_events(
 # Scheduling
 # ---------------------------------------------------------------------------
 
-async def claim_due_monitors(db: AsyncSession, limit: int) -> List[str]:
+async def claim_due_monitors(db: AsyncSession, limit: int) -> List[Dict[str, str]]:
     """Atomically take ownership of monitors that are due.
 
     ``next_run_at`` is pushed forward in the same statement that selects the
@@ -325,14 +368,14 @@ async def claim_due_monitors(db: AsyncSession, limit: int) -> List[str]:
                 FOR UPDATE SKIP LOCKED
             ) AS due
             WHERE monitors.id = due.id
-            RETURNING monitors.id
+            RETURNING monitors.id, monitors.org_id, monitors.user_id
             """
         ),
         {"limit": limit},
     )
-    ids = [row[0] for row in result.fetchall()]
+    rows = [dict(row) for row in result.mappings().all()]
     await db.commit()
-    return ids
+    return rows
 
 
 async def tick(max_monitors: Optional[int] = None) -> Dict[str, Any]:
@@ -343,18 +386,48 @@ async def tick(max_monitors: Optional[int] = None) -> Dict[str, Any]:
     the same instance and the tick reports only what it started. Crash safety
     comes from the existing job heartbeat and reconciliation sweep.
     """
+    from app.services.provider_budget import discover_paused
+
+    if discover_paused():
+        # Leave due monitors unclaimed (and uncharged) until Discover resumes.
+        return {"dispatched": 0, "monitor_ids": [], "paused": True}
     limit = max_monitors or settings.MONITOR_MAX_PER_TICK
     async with async_session_maker() as db:
-        monitor_ids = await claim_due_monitors(db, limit)
+        await apply_monitor_claim_context(db)
+        claimed = await claim_due_monitors(db, limit)
 
-    for monitor_id in monitor_ids:
-        asyncio.create_task(run_monitor(monitor_id))
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
+    monitor_ids = [row["id"] for row in claimed]
+    for row in claimed:
+        monitor_id = row["id"]
+        with tenant_scope([row["org_id"]], row.get("user_id") or "", platform_admin=False, enforce=True):
+            async with async_session_maker() as db:
+                try:
+                    await enqueue_work(
+                        db,
+                        kind="monitor",
+                        job_id=monitor_id,
+                        org_id=row["org_id"],
+                        user_id=row.get("user_id"),
+                        payload={"monitor_id": monitor_id},
+                    )
+                except Exception:
+                    logger.exception("monitor work item was not enqueued for %s", monitor_id)
+            if inline_execution_enabled():
+                asyncio.create_task(run_monitor(monitor_id))
 
     return {"dispatched": len(monitor_ids), "monitor_ids": monitor_ids}
 
 
 async def run_now(db: AsyncSession, monitor_id: str, org_id: str) -> Dict[str, Any]:
     monitor = await _load_owned(db, monitor_id, org_id)
+    from app.services.provider_budget import discover_paused
+
+    if discover_paused():
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "discover_paused", "message": "Discover is paused. No credit was used; try again later."},
+        )
     running = await db.scalar(
         select(func.count(MonitorRun.id)).where(
             MonitorRun.monitor_id == monitor.id, MonitorRun.status == "running"
@@ -367,7 +440,20 @@ async def run_now(db: AsyncSession, monitor_id: str, org_id: str) -> Dict[str, A
     monitor.next_run_at = _utcnow() + _interval(monitor.cadence)
     await db.commit()
 
-    asyncio.create_task(run_monitor(monitor.id))
+    from app.services.work_outbox import enqueue_work, inline_execution_enabled
+    try:
+        await enqueue_work(
+            db,
+            kind="monitor",
+            job_id=monitor.id,
+            org_id=monitor.org_id,
+            user_id=monitor.user_id,
+            payload={"monitor_id": monitor.id},
+        )
+    except Exception:
+        logger.exception("monitor work item was not enqueued for %s", monitor.id)
+    if inline_execution_enabled():
+        asyncio.create_task(run_monitor(monitor.id))
     return {"success": True, "monitor_id": monitor.id}
 
 
@@ -413,6 +499,11 @@ async def run_monitor(monitor_id: str) -> None:
 
 async def _run_monitor(monitor_id: str) -> None:
     from app.services.discover_service import run_discovery_pipeline
+    from app.services.provider_budget import discover_paused
+
+    if discover_paused():
+        logger.info("Monitor %s not run: Discover is paused", monitor_id)
+        return
 
     async with async_session_maker() as db:
         monitor = (await db.execute(select(Monitor).where(Monitor.id == monitor_id))).scalar_one_or_none()
@@ -430,15 +521,8 @@ async def _run_monitor(monitor_id: str) -> None:
         org_id = monitor.org_id
         is_baseline = monitor.baseline_at is None
 
-        run = MonitorRun(monitor_id=monitor.id, status="running", started_at=_utcnow(), is_baseline=is_baseline)
-        db.add(run)
-        await db.commit()
-        await db.refresh(run)
-        run_id = run.id
-
-        # Credits, trial state and the 'monitors' feature flag are all enforced
-        # by the same gatekeeper the interactive Discover page uses, against the
-        # monitor owner's plan.
+        # Entitlement is checked before the run and the job are committed.
+        # The charge below commits that same transaction.
         try:
             org, _plan = await assert_can_spend(
                 db,
@@ -451,10 +535,22 @@ async def _run_monitor(monitor_id: str) -> None:
             detail = exc.detail if isinstance(exc.detail, dict) else {"message": str(exc.detail)}
             reason = detail.get("code", "blocked")
             message = detail.get("message", "This monitor could not run.")
-            await _finish_run(run_id, status="skipped", skipped_reason=reason, error=message)
+            await db.rollback()
+            async with async_session_maker() as skipped_db:
+                skipped = MonitorRun(
+                    monitor_id=monitor_id,
+                    status="skipped",
+                    started_at=_utcnow(),
+                    is_baseline=is_baseline,
+                    skipped_reason=reason,
+                    error=message,
+                )
+                skipped_db.add(skipped)
+                await skipped_db.commit()
             await _handle_blocked(monitor_id, reason, message)
             return
 
+        run = MonitorRun(monitor_id=monitor.id, status="running", started_at=_utcnow(), is_baseline=is_baseline)
         job = ScrapeJob(
             org_id=org_id,
             query=query,
@@ -468,10 +564,12 @@ async def _run_monitor(monitor_id: str) -> None:
             elapsed_ms=0,
             record_count=0,
         )
+        db.add(run)
         db.add(job)
-        await db.commit()
-        await db.refresh(job)
+        await db.flush()
         job_id = job.id
+        run_id = run.id
+        run.job_id = job_id
 
         await charge(
             db=db,
@@ -634,6 +732,17 @@ async def _apply_diff(monitor_id: str, run_id: str, job_id: str, is_baseline: bo
 
     if result.total_events:
         await _fan_out(monitor_id, run_id, result)
+        await _send_digest_if_due(monitor_id)
+
+
+async def _send_digest_if_due(monitor_id: str) -> None:
+    """Roll this owner's monitors into the daily digest when one is due."""
+    async with async_session_maker() as db:
+        row = (await db.execute(select(Monitor.org_id, Monitor.user_id).where(Monitor.id == monitor_id))).first()
+    if row is None:
+        return
+    from app.services.monitor_digest_service import maybe_send_digest
+    await maybe_send_digest(row.org_id, row.user_id)
 
 
 # ---------------------------------------------------------------------------
@@ -800,7 +909,7 @@ async def _handle_blocked(monitor_id: str, reason: str, message: str) -> None:
         if not monitor:
             return
         already_paused = monitor.status == "paused"
-        if reason in ("trial_expired", "feature_disabled", "insufficient_credits"):
+        if reason in ("feature_disabled", "insufficient_credits"):
             monitor.status = "paused"
             monitor.paused_reason = message
         else:

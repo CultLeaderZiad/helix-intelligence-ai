@@ -1,0 +1,64 @@
+{
+  "scenario": "success",
+  "passed": false,
+  "provider_configured": "metapi",
+  "query": "nike",
+  "job_id": "7d08f6e1-5ffe-4a06-b258-4ecb367e1130",
+  "final_status": "succeeded",
+  "failure_kind": null,
+  "deadline_at": "2026-11-07T14:55:32.314088Z",
+  "credits_before": 22.0,
+  "credits_after": 21.0,
+  "timeline": [
+    {
+      "at": "2026-11-07T14:45:36.515646+00:00",
+      "status": "queued",
+      "stage": "queued",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:45:49.836895+00:00",
+      "status": "running",
+      "stage": "init",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:45:55.170644+00:00",
+      "status": "running",
+      "stage": "scraping",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:46:05.905464+00:00",
+      "status": "running",
+      "stage": "enriching",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:46:11.317206+00:00",
+      "status": "running",
+      "stage": "scoring",
+      "records_found": 0,
+      "failure_kind": null
+    },
+    {
+      "at": "2026-11-07T14:46:17.286638+00:00",
+      "status": "succeeded",
+      "stage": "complete",
+      "records_found": 0,
+      "failure_kind": null
+    }
+  ],
+  "results": {
+    "total": 0,
+    "first_page": 0,
+    "with_days_active": 0,
+    "with_meta_reach": 0,
+    "platforms": []
+  },
+  "recorded_at": "2026-11-07T14:46:23.635859+00:00"
+}

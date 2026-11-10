@@ -1,24 +1,22 @@
 import React, { useState, useEffect } from "react"
 import { adminService } from "@/services"
-import { 
-  Gauge, 
-  DollarSign, 
-  Coins, 
-  Activity, 
-  Cpu, 
-  Globe, 
-  Sparkles, 
+import {
+  Gauge,
+  DollarSign,
+  Coins,
+  Activity,
+  Cpu,
+  Globe,
+  Sparkles,
   RefreshCw,
   Search,
   Filter,
-  User,
-  Building
 } from "lucide-react"
 
 export function UsagePage() {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [, setError] = useState(null)
   const [filterProvider, setFilterProvider] = useState("all")
   const [searchTerm, setSearchTerm] = useState("")
 

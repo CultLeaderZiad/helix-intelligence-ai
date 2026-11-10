@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import {
   Eye,
@@ -23,7 +23,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 import { useMonitors } from "@/hooks/useMonitors"
 import { useSearchContext } from "@/context/SearchContext"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
-import { useEffect } from "react"
+import { useW8Copy } from "@/i18n/w8Product"
 
 const CADENCES = [
   { value: "every_6h", label: "Every 6 hours" },
@@ -86,9 +86,9 @@ function RunSummary({ monitor }) {
   }
   return (
     <span className="flex flex-wrap items-center gap-1.5">
-      {run.new_count > 0 ? <Tag tone="success">{run.new_count} new</Tag> : null}
-      {run.changed_count > 0 ? <Tag tone="warning">{run.changed_count} changed</Tag> : null}
-      {run.killed_count > 0 ? <Tag tone="danger">{run.killed_count} stopped</Tag> : null}
+      {run.new_count > 0 ? <Tag className="" tone="success">{run.new_count} new</Tag> : null}
+      {run.changed_count > 0 ? <Tag className="" tone="warning">{run.changed_count} changed</Tag> : null}
+      {run.killed_count > 0 ? <Tag className="" tone="danger">{run.killed_count} stopped</Tag> : null}
       <span className="text-text-faint">of {run.creatives_seen} ads</span>
     </span>
   )
@@ -125,7 +125,7 @@ function CreateMonitorForm({ onCreate, busy, initialQuery = "" }) {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Brand or keyword to watch (e.g. gymshark)"
+        placeholder="Brand or keyword you want to watch"
         className="h-8 min-w-[240px] flex-1 rounded-sm border border-border bg-surface-2 px-2.5 text-xs text-text placeholder:text-text-faint focus:border-border-strong focus:outline-none"
       />
       <select
@@ -170,8 +170,8 @@ function MonitorRow({ monitor, onRun, onToggle, onDelete, focused }) {
     >
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[13px] font-medium text-text">{monitor.name}</span>
-        <Tag tone={paused ? "default" : "accent"}>{paused ? "Paused" : monitor.cadence.replace("_", " ")}</Tag>
-        {monitor.notify_email ? <Tag tone="info">Email</Tag> : null}
+        <Tag className="" tone={paused ? "default" : "accent"}>{paused ? "Paused" : monitor.cadence.replace("_", " ")}</Tag>
+        {monitor.notify_email ? <Tag className="" tone="info">Email</Tag> : null}
         <span className="ml-auto font-mono text-[11px] text-text-faint">
           {paused ? "—" : `Next ${formatWhen(monitor.next_run_at)}`}
         </span>
@@ -230,7 +230,7 @@ function EventRow({ event }) {
       <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-text-faint" />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex flex-wrap items-center gap-2">
-          <Tag tone={meta.tone}>{meta.label}</Tag>
+          <Tag className="" tone={meta.tone}>{meta.label}</Tag>
           <span className="font-mono text-[11px] text-text-faint">{formatWhen(event.created_at)}</span>
           {event.landing_domain ? (
             <span className="font-mono text-[11px] text-text-faint">{event.landing_domain}</span>
@@ -255,6 +255,7 @@ function EventRow({ event }) {
 
 export function MonitorsPage() {
   const navigate = useNavigate()
+  const w8 = useW8Copy()
   const [searchParams] = useSearchParams()
   const focusId = searchParams.get("id")
   const { latestSearch } = useSearchContext()
@@ -408,7 +409,7 @@ export function MonitorsPage() {
         </Panel>
 
         {error ? (
-          <ErrorState error={error} onRetry={() => refresh()} />
+          <ErrorState className="" description="Monitor data could not be loaded. Retry to reload the monitors." error={error} onRetry={() => refresh()} />
         ) : loading ? (
           <SkeletonRows rows={4} />
         ) : (
@@ -417,16 +418,21 @@ export function MonitorsPage() {
               <PanelHeader>
                 <PanelTitle>Monitors</PanelTitle>
               </PanelHeader>
+              {monitors.length > 0 ? (
+                <p className="border-b border-border px-4 py-2 text-[11px] leading-relaxed text-text-faint">{w8.monitorsDigestNote}</p>
+              ) : null}
               {monitors.length === 0 ? (
                 <EmptyState
                   icon={Eye}
-                  status="nothing watched"
-                  title="No monitors yet"
-                  description="A monitor re-runs a Discover search on a schedule and tells you what changed since last time — new ads, copy edits, and ads that stopped running."
+                  status={w8.monitorsEmptyStatus}
+                  title={w8.monitorsEmptyTitle}
+                  description={latestSearch?.query ? w8.monitorsEmptyBodyWithSearch : w8.monitorsEmptyBody}
                   action={
-                    <Button size="sm" variant="outline" onClick={() => navigate("/discover")}>
-                      Explore in Discover first
-                    </Button>
+                    latestSearch?.query ? null : (
+                      <Button size="sm" variant="primary" onClick={() => navigate("/discover")}>
+                        {w8.monitorsEmptyCta}
+                      </Button>
+                    )
                   }
                 />
               ) : (
@@ -454,7 +460,7 @@ export function MonitorsPage() {
                 <span className="font-mono text-[11px] text-text-faint">{events.length} events</span>
               </PanelHeader>
               {events.length === 0 ? (
-                <EmptyState
+                <EmptyState action={null}
                   icon={Sparkles}
                   status="no changes yet"
                   title="Nothing has changed yet"

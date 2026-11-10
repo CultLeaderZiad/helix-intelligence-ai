@@ -1,7 +1,7 @@
 import React from 'react'
 import { cn } from '@/lib/utils'
 
-export function SkipToContent({ targetId = 'main-content', label = 'Skip to main content', className }) {
+export function SkipToContent({ targetId = 'main-content', label = 'Skip to main content', className = "" }) {
   const handleClick = (e) => {
     const target = document.getElementById(targetId)
     if (target) {

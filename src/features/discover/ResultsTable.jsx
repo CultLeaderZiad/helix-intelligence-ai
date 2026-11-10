@@ -1,14 +1,13 @@
 import { cn } from "@/lib/utils"
+import { useW8Copy } from "@/i18n/w8Product"
 import { Tag } from "@/components/ui/Tag"
 import { ScoreBar } from "@/components/ui/Metric"
-import { brandsById } from "@/data/brands"
 import {
   formatCompact,
   formatDays,
   formatInt,
   formatPercent,
   formatSpendBand,
-  formatRelative,
 } from "@/lib/format"
 
 const PLATFORM_LABEL = {
@@ -23,12 +22,9 @@ const PLATFORM_LABEL = {
  * Dense result table — the default view, because scanning 20 rows beats
  * scrolling 20 cards. Row selection is keyboard-navigable and the header
  * is sticky so the column meaning never scrolls away.
- *
- * NOTE: brand lookup reads a fixture map here purely to resolve display
- * names the list endpoint does not embed. When FastAPI ships, the list
- * response will include `brand_name` and this import disappears.
  */
 export function ResultsTable({ items, selectedId, onSelect }) {
+  const w8 = useW8Copy()
   function handleKeyDown(event, index) {
     if (event.key === "ArrowDown") {
       event.preventDefault()
@@ -57,10 +53,10 @@ export function ResultsTable({ items, selectedId, onSelect }) {
               Platform
             </th>
             <th scope="col" className="label-mono w-[112px] px-2 py-2 font-normal">
-              Composite
+              Text rubric
             </th>
-            <th scope="col" className="label-mono w-[80px] px-2 py-2 text-right font-normal" title="Estimated impressions from engagement proxy metrics">
-              Impr. (Est.)
+            <th scope="col" className="label-mono w-[80px] px-2 py-2 text-right font-normal" title="Upper bound of the impression range Meta reports. Shown only for ads from Meta's official Ad Library API.">
+              Meta reach ≤
             </th>
             <th scope="col" className="label-mono w-[52px] px-2 py-2 text-right font-normal">
               ER
@@ -75,7 +71,6 @@ export function ResultsTable({ items, selectedId, onSelect }) {
         </thead>
         <tbody>
           {items.map((c, i) => {
-            const brand = brandsById[c.brand_id]
             const active = c.id === selectedId
             return (
               <tr
@@ -103,8 +98,8 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                       <p className="truncate text-[13px] text-text">{c.headline}</p>
                       <p className="truncate text-[11px] text-text-faint">
                         {c.landing_domain ?? "no landing page"}
-                        {c.variant_count
-                          ? ` · ${formatInt(c.variant_count)} variants`
+                        {c.variant_count > 1
+                          ? ` · ${w8.sharedCopy(formatInt(c.variant_count))}`
                           : ""}
                       </p>
                     </div>
@@ -112,7 +107,7 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                 </td>
                 <td className="px-2 py-2">
                   <span className="block truncate text-xs text-text-muted">
-                    {c.brand_name || brand?.name || "Unknown"}
+                    {c.brand_name || "Unknown"}
                   </span>
                 </td>
                 <td className="px-2 py-2">
@@ -132,9 +127,10 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                     <ScoreBar value={c.scores.composite} />
                   )}
                 </td>
-                <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted" title="Estimated impressions">
-                  ~{formatCompact(c.metrics?.impressions_est)}
-                  {c.metrics?.is_impression_estimate && <span className="ml-1 text-[9px] text-amber-500" title="Estimated from engagement">(est)</span>}
+                <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted">
+                  {c.metrics?.impressions_est === null || c.metrics?.impressions_est === undefined
+                    ? "—"
+                    : `≤ ${formatCompact(c.metrics.impressions_est)}`}
                 </td>
                 <td className="tnum px-2 py-2 text-right font-mono text-[11px] text-text-muted">
                   {c.metrics?.engagement_rate === null ||
@@ -146,7 +142,7 @@ export function ResultsTable({ items, selectedId, onSelect }) {
                   {formatSpendBand(c.metrics?.spend_band)}
                 </td>
                 <td className="tnum px-3 py-2 text-right font-mono text-[11px] text-text-faint">
-                  {c.days_active ? formatDays(c.days_active) : formatRelative(c.first_seen)}
+                  {c.days_active != null ? formatDays(c.days_active) : w8.runLengthUnknown}
                 </td>
               </tr>
             )

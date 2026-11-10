@@ -115,7 +115,7 @@ class ScoutMapsLead(Base):
     address = Column(String, nullable=True)
     city = Column(String, nullable=True)
     rating = Column(Float, nullable=True)
-    reviews_count = Column(Integer, default=0, server_default="0")
+    reviews_count = Column(Integer, nullable=True)
     instagram = Column(String, nullable=True)
     facebook = Column(String, nullable=True)
     linkedin = Column(String, nullable=True)

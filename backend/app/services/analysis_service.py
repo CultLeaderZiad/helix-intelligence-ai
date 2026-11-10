@@ -1,7 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from fastapi import HTTPException
-import datetime
 import logging
 from typing import List, Optional
 
@@ -9,171 +7,47 @@ from app.schemas.analysis import Insight
 from app.models.ai_insight import AIInsight
 from app.models.creative import Creative
 from app.models.scrape_job import ScrapeJob
-from app.core.config import settings
 from app.schemas.common import Paginated
-from app.services.ai.ai_router import AIRouter
-from app.models.user import User
-from app.services.billing_service import (
-    assert_can_spend,
-    charge,
-    refund,
-    ANALYSIS_PATTERN_CREDIT_COST,
-    ESTIMATED_PROVIDER_COSTS
-)
+from app.services.query_bounds import pagination_bounds
 
 logger = logging.getLogger(__name__)
 
-async def generate_insight_for_creative(
-    db: AsyncSession,
-    creative_id: str,
-    user: User,
-    byok_key: str = None,
-    byok_provider: str = None,
-    user_org_ids: Optional[List[str]] = None
-) -> Insight:
-    # 1. Fetch creative
-    result = await db.execute(select(Creative).where(Creative.id == creative_id))
-    creative_model = result.scalar_one_or_none()
-    if not creative_model:
-        raise HTTPException(status_code=404, detail="Creative not found")
 
-    # Tenant isolation: ensure creative belongs to caller's org(s) (F06)
-    if user_org_ids is not None:
-        job_org = (await db.execute(
-            select(ScrapeJob.org_id).where(ScrapeJob.id == creative_model.job_id)
-        )).scalar_one_or_none()
-        if job_org not in user_org_ids:
-            raise HTTPException(status_code=404, detail="Creative not found")
-
-    # 2. Server-side credit & feature gate (if not using BYOK)
-    cost = 0.0 if (byok_key and byok_provider) else ANALYSIS_PATTERN_CREDIT_COST
-    org, plan = await assert_can_spend(
-        db,
-        user=user,
-        required_credits=cost,
-        feature_name="intelligence",
-        lock_row=False
-    )
-        
-    provider = await AIRouter.get_provider_for_user(db, user, byok_key, byok_provider)
-    
-    from app.schemas.creative import Creative as CreativeSchema, Scores, CreativeMetrics
-    creative_schema = CreativeSchema(
-        id=creative_model.id,
-        brand_id=creative_model.brand_id,
-        platform=creative_model.platform,
-        format=creative_model.format,
-        headline=creative_model.headline or "",
-        body=creative_model.body or "",
-        cta=creative_model.cta or "",
-        first_seen=creative_model.first_seen or "",
-        last_seen=creative_model.last_seen or "",
-        days_active=creative_model.days_active or 1,
-        variant_count=creative_model.variant_count or 1,
-        scores=Scores(),
-        metrics=CreativeMetrics(),
-        pattern_ids=[]
-    )
-    
+async def _release_insight_hold(db, reservation, org) -> None:
+    if reservation is None:
+        return
+    from app.services.billing_service import release_reservation
     try:
-        insight_schema = await provider.generate_insight(creative_schema)
-        provider_name = getattr(provider, "model", "unknown")
+        released = await release_reservation(db, reservation.id, "insight_provider_failed")
+    except Exception:
+        released = False
+    if not released and getattr(reservation, "status", None) != "refunded":
+        if org is not None and getattr(org, "credit_balance", None) is not None:
+            org.credit_balance = float(org.credit_balance) + float(reservation.amount)
+
         
-        # 3. Deduct credit and log usage (only after a real insight exists)
-        if cost > 0:
-            await charge(
-                db=db,
-                org=org,
-                user_id=user.id,
-                amount=cost,
-                provider=provider_name,
-                operation="ai_insight",
-                units=1.0,
-                cost_usd=ESTIMATED_PROVIDER_COSTS.get("groq_tokens", 0.0006) * 1000,
-                job_id=None,
-                metadata={"creative_id": creative_id, "kind": insight_schema.kind}
-            )
-        else:
-            await AIRouter.log_usage(db, user.id, provider_name, org_id=org.id, tokens=0)
-        
-        # 4. Save to DB. If persistence fails after a charge, refund —
-        # the user must never pay for an insight they did not receive.
-        try:
-            reasons_payload = {
-                "emotional_resonance": getattr(insight_schema, "emotional_resonance", None),
-                "script_teardown": getattr(insight_schema, "script_teardown", None),
-                "fatigue_prediction": getattr(insight_schema, "fatigue_prediction", None),
-                "key_elements": getattr(insight_schema, "key_elements", None),
-                "recommendations": getattr(insight_schema, "recommendations", None),
-            }
-            new_insight = AIInsight(
-                id=insight_schema.id,
-                creative_id=creative_id,
-                kind=insight_schema.kind,
-                title=insight_schema.title,
-                summary=insight_schema.summary,
-                reasons=reasons_payload,
-                confidence=insight_schema.confidence,
-                evidence_creative_ids=insight_schema.evidence_creative_ids or [creative_id],
-                model_version=insight_schema.model_version
-            )
-            db.add(new_insight)
-            await db.commit()
-        except Exception:
-            if cost > 0:
-                await refund(db, org.id, cost, "analysis_persist_failed", None)
-            raise
-        
-        return insight_schema
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(
-            "AI insight generation provider failed (creative=%s user=%s): %s",
-            creative_id, user.id, e,
-        )
-        raise HTTPException(
-            status_code=503,
-            detail=f"AI insight generation service is temporarily unavailable: {str(e)}"
-        )
-        
-async def scoped_creative_ids(db: AsyncSession, user_org_ids: List[str]) -> List[str]:
-    """Creative ids belonging to the caller's org(s) - the join path for insight
-    isolation, because AIInsight only stores creative_id."""
-    rows = await db.execute(
+def scoped_creative_ids(user_org_ids: List[str]):
+    """Keep the ownership join in SQL, never load a tenant's full ID set."""
+    return (
         select(Creative.id)
         .join(ScrapeJob, Creative.job_id == ScrapeJob.id)
         .where(ScrapeJob.org_id.in_(user_org_ids))
     )
-    return list(rows.scalars().all())
 
 
-async def get_creative_insight(db: AsyncSession, creative_id: str, user_org_ids: Optional[List[str]] = None) -> Paginated[Insight]:
-    if settings.USE_MOCKS:
-        mock_insight = Insight(
-            id="mock-insight-1",
-            creative_id=creative_id,
-            kind="opportunity",
-            title="High Hook Potential",
-            summary="The first 3 seconds are highly engaging and likely to retain viewers.",
-            confidence=0.9,
-            evidence_creative_ids=[creative_id],
-            generated_at=datetime.datetime.utcnow().isoformat() + "Z",
-            model_version="v1.0"
-        )
-        return Paginated(
-            items=[mock_insight],
-            total=1,
-            page=1,
-            page_size=1,
-            has_more=False
-        )
-        
+async def get_creative_insight(
+    db: AsyncSession, creative_id: str, user_org_ids: Optional[List[str]] = None,
+    page: int = 1, page_size: int = 20,
+) -> Paginated[Insight]:
+    offset, page_size = pagination_bounds(page, page_size)
+    filters = [AIInsight.creative_id == creative_id]
     # Tenant isolation: insights hang off creatives, which hang off jobs.
     if user_org_ids is not None:
-        if creative_id not in await scoped_creative_ids(db, user_org_ids):
-            return Paginated(items=[], total=0, page=1, page_size=20, has_more=False)
-    result = await db.execute(select(AIInsight).where(AIInsight.creative_id == creative_id))
+        filters.append(AIInsight.creative_id.in_(scoped_creative_ids(user_org_ids)))
+    total = await db.scalar(select(func.count(AIInsight.id)).where(*filters)) or 0
+    result = await db.execute(
+        select(AIInsight).where(*filters).order_by(AIInsight.id).offset(offset).limit(page_size)
+    )
     insights = result.scalars().all()
     
     items = []
@@ -200,40 +74,20 @@ async def get_creative_insight(db: AsyncSession, creative_id: str, user_org_ids:
     
     return Paginated(
         items=items,
-        total=len(items),
-        page=1,
-        page_size=len(items) if items else 20,
-        has_more=False
+        total=total,
+        page=page,
+        page_size=page_size,
+        has_more=(offset + page_size) < total
     )
 
 async def list_insights(db: AsyncSession, page: int = 1, page_size: int = 20, user_org_ids: Optional[List[str]] = None) -> Paginated[Insight]:
-    if settings.USE_MOCKS:
-        mock_insight = Insight(
-            id="mock-insight-1",
-            creative_id="mock-creative-1",
-            kind="opportunity",
-            title="High Hook Potential",
-            summary="The first 3 seconds are highly engaging and likely to retain viewers.",
-            confidence=0.9,
-            evidence_creative_ids=["mock-creative-1"],
-            generated_at=datetime.datetime.utcnow().isoformat() + "Z",
-            model_version="v1.0"
-        )
-        return Paginated(
-            items=[mock_insight],
-            total=1,
-            page=page,
-            page_size=page_size,
-            has_more=False
-        )
-
+    offset, page_size = pagination_bounds(page, page_size)
     count_query = select(func.count(AIInsight.id))
-    offset = (page - 1) * page_size
-    query = select(AIInsight).offset(offset).limit(page_size)
+    query = select(AIInsight).order_by(AIInsight.id).offset(offset).limit(page_size)
 
     # Tenant isolation: only insights whose creative belongs to the caller's org(s).
     if user_org_ids is not None:
-        allowed = await scoped_creative_ids(db, user_org_ids)
+        allowed = scoped_creative_ids(user_org_ids)
         count_query = count_query.where(AIInsight.creative_id.in_(allowed))
         query = query.where(AIInsight.creative_id.in_(allowed))
 

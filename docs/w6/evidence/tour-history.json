@@ -1,0 +1,136 @@
+[
+  {
+    "action": "settings restart starts one EN desktop tour without questionnaire",
+    "result": {
+      "direction": "ltr",
+      "language": "en",
+      "overflow": false,
+      "overlays": 1,
+      "path": "/discover",
+      "title": "Discover",
+      "tour": 1,
+      "wizard": false
+    }
+  },
+  {
+    "action": "tour skip/close persists across refresh",
+    "result": {
+      "direction": "ltr",
+      "language": "en",
+      "overflow": false,
+      "overlays": 0,
+      "path": "/discover",
+      "tour": 0,
+      "wizard": false
+    }
+  },
+  {
+    "action": "sidebar restart starts one tour",
+    "result": {
+      "direction": "ltr",
+      "language": "en",
+      "overflow": false,
+      "overlays": 1,
+      "path": "/discover",
+      "title": "Discover",
+      "tour": 1,
+      "wizard": false
+    }
+  },
+  {
+    "action": "tour finished; no replay after reload",
+    "result": {
+      "direction": "ltr",
+      "language": "en",
+      "overflow": false,
+      "overlays": 0,
+      "path": "/discover",
+      "tour": 0,
+      "wizard": false
+    }
+  },
+  {
+    "action": "AR mobile settings restart",
+    "result": {
+      "direction": "rtl",
+      "language": "ar",
+      "overflow": false,
+      "overlays": 1,
+      "path": "/discover",
+      "title": "ابحث عن علامة تجارية",
+      "tour": 1,
+      "wizard": false
+    }
+  },
+  {
+    "action": "AR mobile close leaves no overlay/questionnaire",
+    "result": {
+      "direction": "rtl",
+      "language": "ar",
+      "overflow": false,
+      "overlays": 0,
+      "path": "/discover",
+      "tour": 0,
+      "wizard": false
+    }
+  },
+  {
+    "action": "mobile drawer opens",
+    "result": {
+      "direction": "rtl",
+      "language": "ar",
+      "overflow": false,
+      "overlays": 0,
+      "path": "/discover",
+      "tour": 0,
+      "wizard": false
+    }
+  },
+  {
+    "action": "mobile drawer escape cleanup",
+    "result": {
+      "direction": "rtl",
+      "language": "ar",
+      "overflow": false,
+      "overlays": 0,
+      "path": "/discover",
+      "tour": 0,
+      "wizard": false
+    }
+  },
+  {
+    "action": "member back",
+    "result": {
+      "direction": "rtl",
+      "language": "ar",
+      "overflow": false,
+      "overlays": 0,
+      "path": "/settings",
+      "tour": 0,
+      "wizard": false
+    }
+  },
+  {
+    "action": "member forward",
+    "result": {
+      "direction": "rtl",
+      "language": "ar",
+      "overflow": false,
+      "overlays": 0,
+      "path": "/support",
+      "tour": 0,
+      "wizard": false
+    }
+  },
+  {
+    "action": "mobile drawer open and Escape observable cleanup",
+    "before": {
+      "dialogs": 1,
+      "locked": true
+    },
+    "after": {
+      "dialogs": 0,
+      "locked": false
+    }
+  }
+]

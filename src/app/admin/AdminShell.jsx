@@ -1,10 +1,13 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useLocation } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import { AdminSidebar } from "./AdminSidebar"
 import { StatusBar } from "@/app/StatusBar"
 import { Button } from "@/components/ui/Button"
 import { UpdatesBanner } from "@/components/UpdatesBanner"
+import { useRoutePosition } from "@/hooks/useRoutePosition"
+import { useDialogFocus } from "@/hooks/useDialogFocus"
+import { useLanguage } from "@/context/LanguageContext"
 
 /**
  * Operations console chrome — the structural twin of AppShell, with its
@@ -16,8 +19,14 @@ import { UpdatesBanner } from "@/components/UpdatesBanner"
  * get the full viewport width on small screens.
  */
 export function AdminShell({ children }) {
+  const { t } = useLanguage()
+  const drawerRef = useRef(null)
+  const mainRef = useRef(null)
   const [navOpen, setNavOpen] = useState(false)
+  useDialogFocus(drawerRef, navOpen, () => setNavOpen(false))
   const location = useLocation()
+
+  useRoutePosition(mainRef)
 
   // Auto-close mobile drawer on route change
   useEffect(() => {
@@ -41,20 +50,20 @@ export function AdminShell({ children }) {
         <AdminSidebar className="hidden md:flex" />
 
         {navOpen ? (
-          <div className="fixed inset-0 z-50 flex md:hidden" role="dialog" aria-modal="true" aria-label="Console Navigation">
+          <div ref={drawerRef} className="fixed inset-0 z-50 flex md:hidden" role="dialog" aria-modal="true" aria-label={t("adminNavigation")}>
             <div
               className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity duration-200"
               onClick={() => setNavOpen(false)}
               aria-hidden="true"
             />
-            <div className="relative flex flex-col z-10 w-[240px] max-w-[85vw] h-full shadow-2xl bg-surface border-r border-border animate-in slide-in-from-left duration-200">
+            <div className="relative flex flex-col z-10 w-[240px] max-w-[85vw] h-full shadow-2xl bg-surface border-e border-border">
               <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3 bg-surface-2">
-                <span className="font-mono text-xs font-bold text-text">Console Navigation</span>
+                <span className="font-mono text-xs font-bold text-text">{t("adminNavigation")}</span>
                 <button
                   type="button"
                   onClick={() => setNavOpen(false)}
                   className="rounded p-1 text-text-muted hover:text-text hover:bg-surface-3 transition-colors cursor-pointer"
-                  aria-label="Close navigation"
+                  aria-label={t("closeMenu")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -62,7 +71,7 @@ export function AdminShell({ children }) {
               <div
                 className="flex-1 overflow-y-auto"
                 onClick={(e) => {
-                  if (e.target.closest('a')) setNavOpen(false)
+                  if (e.target instanceof Element && e.target.closest('a')) setNavOpen(false)
                 }}
               >
                 <AdminSidebar className="w-full border-r-0" />
@@ -71,14 +80,14 @@ export function AdminShell({ children }) {
           </div>
         ) : null}
 
-        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">
+        <main ref={mainRef} tabIndex={-1} className="flex min-w-0 flex-1 flex-col overflow-y-auto">
           {/* Sticky Mobile Header */}
           <div className="sticky top-0 z-30 flex h-11 shrink-0 items-center gap-2 border-b border-border bg-surface/95 backdrop-blur-md px-2.5 md:hidden">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setNavOpen(true)}
-              aria-label="Open navigation"
+              aria-label={t("openMenu")}
               className="h-8 w-8 text-text-muted hover:text-text"
             >
               {navOpen ? (

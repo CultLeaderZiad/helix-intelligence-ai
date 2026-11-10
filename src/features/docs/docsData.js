@@ -3,12 +3,12 @@
  * Statically bundles all markdown documents from /docs with zero runtime CMS or database overhead.
  */
 
-// Eagerly load raw markdown strings from docs/ directory
-const markdownFiles = import.meta.glob('/docs/**/*.md', { query: '?raw', eager: true })
+// Only public articles belong in the browser bundle, not internal evidence reports.
+const markdownFiles = import.meta.glob(['/docs/user-guide/**/*.md', '/docs/api-reference/**/*.md'], { query: '?raw', eager: true })
 
 function getRawContent(relativePath) {
   const resolved = markdownFiles[`/docs/${relativePath}`]
-  return typeof resolved === 'string' ? resolved : (resolved?.default || '')
+  return typeof resolved === 'string' ? resolved : (resolved && typeof resolved === 'object' && 'default' in resolved && typeof resolved.default === 'string' ? resolved.default : '')
 }
 
 export const DOCS_REGISTRY = [
@@ -24,10 +24,10 @@ export const DOCS_REGISTRY = [
         groupTitle: 'Quick Start',
         items: [
           {
-            slug: 'quickstart-account-and-trial',
-            title: 'Account & 7-Day Trial',
-            description: 'Create an account and learn what is included in the 7-day trial.',
-            file: 'user-guide/quickstart-account-and-trial.md',
+            slug: 'quickstart-account-and-access',
+            title: 'Account & Access',
+            description: 'Create an account and request administrator-approved access.',
+            file: 'user-guide/quickstart-account-and-access.md',
             readTime: '3 min',
           },
           {
@@ -35,20 +35,6 @@ export const DOCS_REGISTRY = [
             title: 'Your First Discover Search',
             description: 'Run targeted competitor queries and customize extraction filters.',
             file: 'user-guide/quickstart-first-search.md',
-            readTime: '4 min',
-          },
-          {
-            slug: 'quickstart-reading-intelligence',
-            title: 'Reading the Intelligence Breakdown',
-            description: 'Interpret Hook, Clarity, Retention, and Composite scores.',
-            file: 'user-guide/quickstart-reading-intelligence.md',
-            readTime: '4 min',
-          },
-          {
-            slug: 'quickstart-remix-studio',
-            title: 'Remix in Create Studio',
-            description: 'Transform winning competitor patterns into original ad scripts.',
-            file: 'user-guide/quickstart-remix-studio.md',
             readTime: '4 min',
           },
           {
@@ -91,20 +77,6 @@ export const DOCS_REGISTRY = [
             file: 'user-guide/concept-competitor-monitors.md',
             readTime: '4 min',
           },
-          {
-            slug: 'concept-audience-simulation',
-            title: 'Audience Simulation Rehearsal',
-            description: 'What synthetic persona rehearsal is and why it is not a statistical predictor.',
-            file: 'user-guide/concept-audience-simulation.md',
-            readTime: '4 min',
-          },
-          {
-            slug: 'lead-generation',
-            title: 'Scout Lead Generation (Scrapling)',
-            description: 'Public-web lead generation: ICP brief, seeds, engines, recipes, provenance, and export.',
-            file: 'user-guide/lead-generation.md',
-            readTime: '7 min',
-          },
 
         ],
       },
@@ -114,7 +86,7 @@ export const DOCS_REGISTRY = [
           {
             slug: 'faq',
             title: 'Frequently Asked Questions',
-            description: 'Honest answers to common questions, empty searches, and trial expiration.',
+            description: 'Honest answers to access, empty results, and job outcomes.',
             file: 'user-guide/faq.md',
             readTime: '5 min',
           },
@@ -143,8 +115,8 @@ export const DOCS_REGISTRY = [
           },
           {
             slug: 'credit-costs-and-limits',
-            title: 'Credit Costs & Rate Limits',
-            description: 'Official CREDIT_COSTS table synced with backend billing logic.',
+            title: 'Access and Usage Controls',
+            description: 'Server-enforced access grants, usage limits, and job outcomes.',
             file: 'api-reference/credit-costs-and-limits.md',
             readTime: '4 min',
           },

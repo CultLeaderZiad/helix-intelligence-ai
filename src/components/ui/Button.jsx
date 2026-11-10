@@ -26,11 +26,12 @@ const SIZES = {
   "icon-sm": "h-6 w-6 p-0",
 }
 
+/** @param {import("react").ButtonHTMLAttributes<HTMLButtonElement> & { ref?: import("react").Ref<HTMLButtonElement>, as?: import("react").ElementType, to?: import("react-router-dom").To, replace?: boolean, href?: string, variant?: keyof typeof VARIANTS, size?: keyof typeof SIZES }} props */
 export function Button({
   as: Tag = "button",
   variant = "default",
   size = "md",
-  className,
+  className = "",
   children,
   ...props
 }) {

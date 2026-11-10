@@ -1,33 +1,18 @@
 import React, { useState, useEffect } from "react"
 import { adminService } from "@/services"
-import { Flag, Sliders, CheckCircle2, RefreshCw, ShieldCheck, Zap } from "lucide-react"
+import { Flag, RefreshCw, Zap } from "lucide-react"
 
 export function FeatureFlagsPage() {
   const [plans, setPlans] = useState([])
-  const [orgs, setOrgs] = useState([])
+  const [, setOrgs] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [, setError] = useState(null)
 
   const ALL_FEATURES = [
     { 
       key: "discover", 
       label: "Discover Search & Scraper Network", 
       description: "Allows running searches across Meta Ad Library, Bright Data, and Apify scraper backends." 
-    },
-    { 
-      key: "intelligence", 
-      label: "Brand Intelligence & Competitor Tracking", 
-      description: "Aggregates multi-brand positioning, timeline velocity, and creative fatigue radar." 
-    },
-    { 
-      key: "create", 
-      label: "AI Creative Generation & Remix Engine", 
-      description: "Generates variations, ad copy hooks, and visual scripts using Groq LLM." 
-    },
-    { 
-      key: "performance", 
-      label: "Performance Analytics & Hook Scoring", 
-      description: "Calculates virality scores, estimated impression heatmaps, and format ratios." 
     },
     { 
       key: "swipe_files", 
@@ -38,11 +23,6 @@ export function FeatureFlagsPage() {
       key: "team_accounts", 
       label: "Multi-Seat Team Accounts", 
       description: "Allows inviting team members with role-based access control under one organization." 
-    },
-    { 
-      key: "public_api", 
-      label: "Public Developer API & Webhooks", 
-      description: "Exposes REST endpoints and webhooks for programmatic pipeline execution." 
     },
   ]
 

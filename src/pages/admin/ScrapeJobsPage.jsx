@@ -6,18 +6,10 @@ import { Tag } from "@/components/ui/Tag"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { adminService } from "@/services"
 import { formatInt, formatDuration, formatRelative } from "@/lib/format"
-import { 
-  ListChecks, 
-  Search, 
-  RefreshCw, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  Play, 
-  ExternalLink,
-  Layers,
-  Database,
-  ArrowUpDown
+import {
+  ListChecks,
+  Search,
+  RefreshCw,
 } from "lucide-react"
 
 const STATUS_TONE = {
@@ -183,7 +175,7 @@ export function ScrapeJobsPage() {
           <Panel className="flex min-w-0 flex-col overflow-hidden border border-border">
             <PanelHeader>
               <PanelTitle>Live Execution Table</PanelTitle>
-              <Tag tone="default">{`${filteredJobs.length} of ${jobs.length} jobs`}</Tag>
+              <Tag className="" tone="default">{`${filteredJobs.length} of ${jobs.length} jobs`}</Tag>
             </PanelHeader>
 
             {loading ? (
@@ -193,7 +185,7 @@ export function ScrapeJobsPage() {
                 ))}
               </div>
             ) : error ? (
-              <ErrorState error={error} onRetry={() => fetchJobs(false)} />
+              <ErrorState className="" description="Scrape jobs could not be loaded. Retry to reload the job list." error={error} onRetry={() => fetchJobs(false)} />
             ) : filteredJobs.length === 0 ? (
               <div className="py-16 text-center text-text-muted">
                 <ListChecks className="w-8 h-8 text-text-faint mx-auto mb-2 opacity-50" />
@@ -237,7 +229,7 @@ export function ScrapeJobsPage() {
                           </div>
                         </td>
                         <td className="px-3 py-3">
-                          <Tag tone={STATUS_TONE[job.status] ?? "default"}>
+                          <Tag className="" tone={STATUS_TONE[job.status] ?? "default"}>
                             {job.status}
                           </Tag>
                         </td>
@@ -288,7 +280,7 @@ export function ScrapeJobsPage() {
               </div>
               <div className="flex justify-between py-1 border-b border-border/40">
                 <span className="text-text-muted">Status</span>
-                <Tag tone={STATUS_TONE[selectedJob.status] ?? "default"}>{selectedJob.status}</Tag>
+                <Tag className="" tone={STATUS_TONE[selectedJob.status] ?? "default"}>{selectedJob.status}</Tag>
               </div>
               <div className="flex justify-between py-1 border-b border-border/40">
                 <span className="text-text-muted">Records Ingested</span>

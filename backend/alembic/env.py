@@ -88,6 +88,7 @@ def run_migrations_offline() -> None:
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
+        transaction_per_migration=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
         compare_server_default=custom_compare_server_default,
@@ -104,6 +105,7 @@ def do_run_migrations(connection: Connection) -> None:
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
+        transaction_per_migration=True,
         compare_type=True,
         compare_server_default=custom_compare_server_default,
         include_object=include_object,

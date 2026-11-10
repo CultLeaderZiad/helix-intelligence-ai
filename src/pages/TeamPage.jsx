@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from "react"
+import { Link, useSearchParams } from "react-router-dom"
 import { accountService } from "@/services"
 import { useAuth } from "@/context/AuthContext"
-import { 
-  Users, 
-  UserPlus, 
-  Mail, 
-  Trash2, 
-  RefreshCw, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Copy,
+import { useLanguage } from "@/context/LanguageContext"
+import {
+  Users,
+  UserPlus,
+  Trash2,
+  RefreshCw,
+  CheckCircle2,
   AlertCircle,
 } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog"
 
 export function TeamPage() {
+  const { t } = useLanguage()
   const { user } = useAuth()
   const [team, setTeam] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -109,7 +109,7 @@ export function TeamPage() {
   }
 
   const copyInviteLink = (token) => {
-    const link = `${window.location.origin}/sign-up?invite=${token}`
+    const link = `${window.location.origin}/team/accept?token=${token}`
     navigator.clipboard.writeText(link)
     showToast("Invite link copied to clipboard!")
   }
@@ -120,8 +120,9 @@ export function TeamPage() {
         <Users className="w-12 h-12 text-slate-600 mx-auto" />
         <h2 className="text-xl font-bold text-slate-200">Team Accounts Locked</h2>
         <p className="text-sm text-slate-400 max-w-md mx-auto">
-          Your current organization plan is limited to a single user seat. Upgrade your plan or enable the Team Accounts feature flag to invite colleagues.
+          {t("teamNeedsAccess")}
         </p>
+        <Link to="/billing" className="text-sm text-indigo-300 hover:underline">{t("requestAccess")}</Link>
       </div>
     )
   }
@@ -186,7 +187,7 @@ export function TeamPage() {
             <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan="4" className="py-8 text-center text-slate-500">
+                  <td colSpan={4} className="py-8 text-center text-slate-500">
                     Loading team...
                   </td>
                 </tr>
@@ -352,6 +353,63 @@ export function TeamPage() {
       />
 
       </div>
+    </div>
+  )
+}
+
+export function TeamAcceptPage() {
+  const [params] = useSearchParams()
+  const storedSearch = (() => {
+    try {
+      return sessionStorage.getItem("helix.invite_search") || ""
+    } catch {
+      return ""
+    }
+  })()
+  const token = params.get("token") || new URLSearchParams(storedSearch).get("token")
+  const [state, setState] = useState(token ? "working" : "missing")
+  const [message, setMessage] = useState("")
+
+  useEffect(() => {
+    if (!token) return undefined
+    let cancelled = false
+    accountService.acceptTeamInvite(token)
+      .then((res) => {
+        if (cancelled) return
+        try {
+          sessionStorage.removeItem("helix.invite_search")
+        } catch {
+          // Ignore storage failures after a successful accept.
+        }
+        setState("accepted")
+        setMessage(res?.message || "Invitation accepted")
+      })
+      .catch((err) => {
+        if (cancelled) return
+        const detail = err?.response?.data?.detail || err?.message || "Invitation could not be accepted"
+        setState("error")
+        setMessage(typeof detail === "string" ? detail : "Invitation could not be accepted")
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  return (
+    <div className="p-12 max-w-xl mx-auto font-sans space-y-4">
+      <h1 className="text-xl font-bold text-slate-100">Workspace invitation</h1>
+      {state === "missing" && (
+        <p className="text-sm text-slate-400">This invitation link is missing its token.</p>
+      )}
+      {state === "working" && (
+        <p className="text-sm text-slate-400">Accepting invitation…</p>
+      )}
+      {state === "accepted" && (
+        <p className="text-sm text-slate-200">{message}</p>
+      )}
+      {state === "error" && (
+        <p className="text-sm text-rose-300">{message}</p>
+      )}
     </div>
   )
 }

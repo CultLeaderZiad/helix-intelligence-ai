@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 
 class SearchParams(BaseModel):
     query: Optional[str] = None
@@ -9,6 +9,13 @@ class SearchParams(BaseModel):
     page_size: Optional[int] = 20
     # Which language the ad-library query should be sent in.
     query_language: Optional[str] = "en"
+
+    @field_validator("filters")
+    @classmethod
+    def _search_filters(cls, value: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        from app.services.scraping.search_filters import normalize_search_filters
+
+        return normalize_search_filters(value)
 
     @field_validator("query_language")
     @classmethod
@@ -20,6 +27,9 @@ class SearchParams(BaseModel):
 
 class Job(BaseModel):
     job_id: str
+    # The searched text, so a client can list and re-open past searches
+    # from the server instead of only from browser storage.
+    query: Optional[str] = None
     status: str
     progress: float
     stage: str
@@ -30,6 +40,7 @@ class Job(BaseModel):
     elapsed_ms: int
     created_at: str
     completed_at: Optional[str] = None
+    deadline_at: Optional[str] = None
     error: Optional[str] = None
     # 'service_restart' when the process died mid-run, 'error' when the
     # pipeline itself failed. Lets the UI say which happened instead of

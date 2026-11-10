@@ -4,6 +4,7 @@ import { ArrowLeft, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { Tag } from "@/components/ui/Tag"
+import { useLanguage } from "@/context/LanguageContext"
 import { ADMIN_NAV_GROUPS } from "./adminNavigation"
 
 /**
@@ -15,7 +16,8 @@ import { ADMIN_NAV_GROUPS } from "./adminNavigation"
  * The footer carries a route back into the customer app, because an
  * operator is also a user and the console is a mode, not a dead end.
  */
-export function AdminSidebar({ className }) {
+export function AdminSidebar({ className = "" }) {
+  const { t } = useLanguage()
   const { user, signOut } = useAuth()
   const [signingOut, setSigningOut] = useState(false)
 
@@ -31,10 +33,10 @@ export function AdminSidebar({ className }) {
   return (
     <nav
       className={cn(
-        "flex w-[188px] shrink-0 flex-col border-r border-border bg-surface",
+        "flex w-[188px] shrink-0 flex-col border-e border-border bg-surface",
         className,
       )}
-      aria-label="Admin"
+      aria-label={t("adminConsoleLabel")}
     >
       <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border px-3">
         <span
@@ -46,14 +48,14 @@ export function AdminSidebar({ className }) {
           Helix Console
         </span>
         <Tag tone="accent" className="ml-auto">
-          Admin
+          {t("adminConsoleLabel")}
         </Tag>
       </div>
 
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto p-2">
         {ADMIN_NAV_GROUPS.map((group) => (
           <div key={group.label} className="flex flex-col gap-0.5">
-            <p className="label-mono px-1.5 pb-1 pt-1">{`// ${group.label}`}</p>
+            <p className="label-mono px-1.5 pb-1 pt-1">{`// ${t(`adminGroup_${group.label}`, group.label)}`}</p>
             {group.items.map((item) => (
               <NavLink
                 key={item.key}
@@ -77,7 +79,7 @@ export function AdminSidebar({ className }) {
                       )}
                       aria-hidden="true"
                     />
-                    <span className="flex-1 truncate">{item.label}</span>
+                    <span className="flex-1 truncate">{t(`adminNav_${item.key}`, item.label)}</span>
                     {!item.built ? (
                       <span
                         className="h-1 w-1 shrink-0 rounded-full bg-border-strong"
@@ -99,7 +101,7 @@ export function AdminSidebar({ className }) {
           className="flex w-full items-center gap-2 rounded-sm border border-border bg-surface-2 px-1.5 py-[6px] text-xs text-text-muted transition-colors hover:border-border-strong hover:text-text"
         >
           <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span className="flex-1 truncate">Back to app</span>
+          <span className="flex-1 truncate">{t("backToWorkspace")}</span>
         </NavLink>
 
         <div className="flex items-center gap-2 px-1.5">
@@ -114,8 +116,8 @@ export function AdminSidebar({ className }) {
             onClick={handleSignOut}
             disabled={signingOut}
             className="rounded-sm p-1.5 text-text-faint transition-colors hover:bg-surface-2 hover:text-text disabled:cursor-wait disabled:opacity-50"
-            aria-label={signingOut ? "Signing out" : "Sign out"}
-            title="Sign out"
+            aria-label={t(signingOut ? "signingOut" : "logout")}
+            title={t("logout")}
           >
             <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
           </button>

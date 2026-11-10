@@ -1,100 +1,75 @@
-import React, { useState, useEffect } from "react"
-import { MessageSquare, Plus, CheckCircle2, Clock, AlertCircle, Send, ChevronRight, User, Shield, Sparkles, Bug } from "lucide-react"
-import { supportService } from "../services"
-import { useAuth } from "../context/AuthContext"
+import React, { useState } from "react"
+import { MessageSquare, Plus, CheckCircle2, Clock, AlertCircle, Send, User, Shield, Sparkles, Bug } from "lucide-react"
+import { useLanguage } from "@/context/LanguageContext"
 import { SupportFeedbackModal } from "../components/SupportFeedbackModal"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
+import { w5Support } from "@/i18n/w5Support"
+import { formatMemberDate } from "@/i18n/memberMessages"
+import { useSupport } from "@/hooks/useSupport"
+import { SupportMailto } from "@/components/SupportMailto"
 
 export function SupportPage() {
-  const { user } = useAuth()
-  const [tickets, setTickets] = useState([])
-  const [selectedTicket, setSelectedTicket] = useState(null)
-  const [ticketDetails, setTicketDetails] = useState(null)
+  const { lang, t } = useLanguage()
+  const words = w5Support[lang] || w5Support.en
+  const text = (key) => t(key, words[key] || w5Support.en[key] || key)
+  const {
+    tickets,
+    selectedTicket,
+    ticketDetails,
+    isLoading,
+    isLoadingDetails,
+    isSendingReply,
+    errorCode,
+    refreshTickets,
+    selectTicket,
+    sendReply,
+  } = useSupport()
   const [replyMessage, setReplyMessage] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSendingReply, setIsSendingReply] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [error, setError] = useState(null)
+  const [localError, setLocalError] = useState("")
   const [toast, setToast] = useState(null)
+  const errorMessage = localError || (errorCode ? text(errorCode) : "")
 
   const showToast = (msg) => {
     setToast(msg)
     setTimeout(() => setToast(null), 4000)
   }
 
-  const loadTickets = async () => {
-    setIsLoading(true)
-    try {
-      const data = await supportService.listTickets()
-      setTickets(Array.isArray(data) ? data : [])
-      if (data && data.length > 0 && !selectedTicket) {
-        loadTicketDetails(data[0].id)
-      }
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message || "Failed to load support tickets"
-      setError(typeof detail === "string" ? detail : "Failed to load support tickets")
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const loadTicketDetails = async (id) => {
-    setSelectedTicket(id)
-    try {
-      const details = await supportService.getTicket(id)
-      setTicketDetails(details)
-    } catch (err) {
-      console.error("Error loading ticket thread:", err)
-    }
-  }
-
-  useEffect(() => {
-    loadTickets()
-  }, [])
-
   const handleSendReply = async (e) => {
     e.preventDefault()
     if (!replyMessage.trim()) {
-      setError("Please type a message before sending.")
+      setLocalError(text("replyEmpty"))
       return
     }
     if (!selectedTicket) return
 
-    setIsSendingReply(true)
-    setError(null)
-    try {
-      const newReply = await supportService.replyTicket(selectedTicket, replyMessage.trim())
-      setTicketDetails((prev) => ({
-        ...prev,
-        replies: [...(prev.replies || []), newReply]
-      }))
-      setReplyMessage("")
-      showToast("Reply sent successfully!")
-    } catch (err) {
-      const detail = err?.response?.data?.detail || err?.message || "Failed to send reply"
-      setError(typeof detail === "string" ? detail : "Failed to send reply")
-    } finally {
-      setIsSendingReply(false)
-    }
+    setLocalError("")
+    const newReply = await sendReply(selectedTicket, replyMessage.trim())
+    if (!newReply) return
+    setReplyMessage("")
+    showToast(text("replySent"))
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 font-sans">
-      <BreadcrumbBar trail={["Helix", "Help", "Support & Feedback"]} />
+    <div className="flex flex-col flex-1 min-h-0 font-sans" dir={lang === "ar" ? "rtl" : "ltr"}>
+      <BreadcrumbBar trail={["Helix", text("help"), text("supportTitle")]} />
       <div className="w-full max-w-7xl mx-auto p-4 md:p-8 space-y-6 font-sans">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Support & Feedback</h1>
+          <h1 className="text-2xl font-bold text-white tracking-tight">{text("supportTitle")}</h1>
           <p className="text-sm text-slate-400 mt-1">
-            Submit bug reports, feature suggestions, or chat directly with our product team.
+            {text("supportSubtitle")}
+          </p>
+          <p className="text-sm text-slate-400 mt-1">
+            {text("supportEmailLead")} <SupportMailto />
           </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
           className="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-semibold text-sm flex items-center gap-2 transition self-start sm:self-auto"
         >
-          <Plus className="w-4 h-4" /> New Ticket
+          <Plus className="w-4 h-4" /> {text("newTicket")}
         </button>
       </div>
 
@@ -105,10 +80,10 @@ export function SupportPage() {
         </div>
       )}
 
-      {error && (
+      {errorMessage && (
         <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-rose-400 text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
-          {error}
+          {errorMessage}
         </div>
       )}
 
@@ -117,21 +92,21 @@ export function SupportPage() {
         {/* Left Column: Tickets List */}
         <div className="lg:col-span-5 bg-slate-900/60 border border-slate-800/80 rounded-2xl p-4 space-y-3">
           <div className="text-xs font-semibold uppercase tracking-wider text-slate-400 px-2 py-1">
-            Your Tickets ({tickets.length})
+            {text("yourTickets").replace("{count}", String(tickets.length))}
           </div>
 
           {isLoading ? (
-            <div className="p-8 text-center text-slate-500 text-sm">Loading tickets...</div>
+            <div role="status" className="p-8 text-center text-slate-500 text-sm">{text("loadingTickets")}</div>
           ) : tickets.length === 0 ? (
             <div className="p-8 text-center space-y-3">
               <MessageSquare className="w-8 h-8 text-slate-600 mx-auto" />
-              <div className="text-sm font-semibold text-slate-300">No support tickets yet</div>
-              <p className="text-xs text-slate-500">Have an issue or idea? Open a ticket anytime.</p>
+              <div className="text-sm font-semibold text-slate-300">{text("noTicketsTitle")}</div>
+              <p className="text-xs text-slate-500">{text("noTicketsDescription")}</p>
               <button
                 onClick={() => setIsModalOpen(true)}
                 className="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition"
               >
-                Create First Ticket
+                {text("createFirstTicket")}
               </button>
             </div>
           ) : (
@@ -141,7 +116,7 @@ export function SupportPage() {
                 return (
                   <button
                     key={t.id}
-                    onClick={() => loadTicketDetails(t.id)}
+                    onClick={() => { setLocalError(""); selectTicket(t.id) }}
                     className={`w-full p-3.5 rounded-xl border text-left transition-all ${
                       isSelected
                         ? "bg-slate-800/90 border-teal-500/50 shadow-md ring-1 ring-teal-500/20"
@@ -155,7 +130,7 @@ export function SupportPage() {
                           : "bg-teal-500/10 text-teal-400 border border-teal-500/20"
                       }`}>
                         {t.type === "bug" ? <Bug className="w-2.5 h-2.5" /> : <Sparkles className="w-2.5 h-2.5" />}
-                        {t.type}
+                        {t.type === "bug" ? text("ticketTypeBug") : t.type === "other" ? text("ticketTypeOther") : text("ticketTypeFeedback")}
                       </span>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
                         t.status === "resolved"
@@ -165,14 +140,14 @@ export function SupportPage() {
                           : "bg-amber-500/10 text-amber-400"
                       }`}>
                         {t.status === "resolved" ? <CheckCircle2 className="w-2.5 h-2.5" /> : <Clock className="w-2.5 h-2.5" />}
-                        {t.status.replace("_", " ")}
+                        {text(t.status === "resolved" ? "statusResolved" : t.status === "in_progress" ? "statusInProgress" : t.status === "waiting" ? "statusWaiting" : "statusOpen")}
                       </span>
                     </div>
 
                     <div className="font-semibold text-sm text-slate-200 truncate">{t.subject}</div>
                     <div className="text-xs text-slate-400 line-clamp-1 mt-0.5">{t.message}</div>
                     <div className="text-[10px] text-slate-500 mt-2">
-                      {new Date(t.created_at).toLocaleDateString()} at {new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {formatMemberDate(t.created_at, lang, text("recently"), { dateStyle: "medium", timeStyle: "short" })}
                     </div>
                   </button>
                 )
@@ -183,7 +158,9 @@ export function SupportPage() {
 
         {/* Right Column: Thread View */}
         <div className="lg:col-span-7 bg-slate-900/60 border border-slate-800/80 rounded-2xl overflow-hidden flex flex-col min-h-[520px]">
-          {ticketDetails ? (
+          {isLoadingDetails ? (
+            <div role="status" className="flex-1 flex items-center justify-center p-8 text-sm text-slate-500">{text("loadingTickets")}</div>
+          ) : ticketDetails ? (
             <>
               {/* Thread Header */}
               <div className="p-6 border-b border-slate-800 bg-slate-900/80">
@@ -193,7 +170,7 @@ export function SupportPage() {
                       <span className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
                         ticketDetails.type === "bug" ? "bg-rose-500/10 text-rose-400" : "bg-teal-500/10 text-teal-400"
                       }`}>
-                        {ticketDetails.type}
+                        {ticketDetails.type === "bug" ? text("ticketTypeBug") : ticketDetails.type === "other" ? text("ticketTypeOther") : text("ticketTypeFeedback")}
                       </span>
                       <span className="text-xs text-slate-500">#{ticketDetails.id.slice(0, 8)}</span>
                     </div>
@@ -205,7 +182,7 @@ export function SupportPage() {
                       ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                       : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
                   }`}>
-                    {ticketDetails.status.replace("_", " ")}
+                    {text(ticketDetails.status === "resolved" ? "statusResolved" : ticketDetails.status === "in_progress" ? "statusInProgress" : ticketDetails.status === "waiting" ? "statusWaiting" : "statusOpen")}
                   </span>
                 </div>
               </div>
@@ -216,9 +193,9 @@ export function SupportPage() {
                 <div className="p-4 rounded-xl bg-slate-800/40 border border-slate-800 space-y-2">
                   <div className="flex items-center justify-between text-xs text-slate-400">
                     <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-teal-400" /> You (Original Request)
+                      <User className="w-3.5 h-3.5 text-teal-400" /> {text("you")} ({text("originalRequest")})
                     </span>
-                    <span>{new Date(ticketDetails.created_at).toLocaleString()}</span>
+                    <span>{formatMemberDate(ticketDetails.created_at, lang, text("recently"), { dateStyle: "medium", timeStyle: "short" })}</span>
                   </div>
                   <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
                     {ticketDetails.message}
@@ -239,15 +216,15 @@ export function SupportPage() {
                       <span className={`font-semibold flex items-center gap-1.5 ${reply.is_admin ? "text-indigo-400" : "text-slate-300"}`}>
                         {reply.is_admin ? (
                           <>
-                            <Shield className="w-3.5 h-3.5 text-indigo-400" /> Helix Support Team
+                            <Shield className="w-3.5 h-3.5 text-indigo-400" /> {text("supportTeam")}
                           </>
                         ) : (
                           <>
-                            <User className="w-3.5 h-3.5 text-teal-400" /> You
+                            <User className="w-3.5 h-3.5 text-teal-400" /> {text("you")}
                           </>
                         )}
                       </span>
-                      <span className="text-slate-500">{new Date(reply.created_at).toLocaleString()}</span>
+                      <span className="text-slate-500">{formatMemberDate(reply.created_at, lang, text("recently"), { dateStyle: "medium", timeStyle: "short" })}</span>
                     </div>
                     <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">
                       {reply.message}
@@ -262,7 +239,8 @@ export function SupportPage() {
                   type="text"
                   value={replyMessage}
                   onChange={(e) => setReplyMessage(e.target.value)}
-                  placeholder="Type your reply..."
+                  aria-label={text("replyPlaceholder")}
+                  placeholder={text("replyPlaceholder")}
                   className="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:border-teal-500/60 transition"
                 />
                 <button
@@ -270,14 +248,14 @@ export function SupportPage() {
                   disabled={isSendingReply || !replyMessage.trim()}
                   className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 disabled:opacity-50 text-slate-950 font-semibold text-sm flex items-center gap-2 transition"
                 >
-                  {isSendingReply ? "..." : <><Send className="w-4 h-4" /> Send</>}
+                  {isSendingReply ? text("sending") : <><Send className="w-4 h-4" /> {text("send")}</>}
                 </button>
               </form>
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500 space-y-2">
               <MessageSquare className="w-10 h-10 text-slate-700" />
-              <p className="text-sm">Select a ticket from the left to view the thread</p>
+              <p className="text-sm">{text("selectTicket")}</p>
             </div>
           )}
         </div>
@@ -285,15 +263,13 @@ export function SupportPage() {
 
       <SupportFeedbackModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false)
-          loadTickets()
-        }}
+        onClose={() => setIsModalOpen(false)}
         onSuccess={(ticket) => {
-          loadTickets()
-          showToast(`Ticket #${ticket.id.slice(0, 8)} created successfully!`)
+          void refreshTickets()
+          const id = ticket?.id ? `#${String(ticket.id).slice(0, 8)}` : ""
+          showToast(id ? text("ticketCreated").replace("{id}", id) : text("ticketSubmitted"))
         }}
-        initialContext={{ page: "Support Dashboard", tag: "general" }}
+        initialContextRecord={{ page: "Support Dashboard", tag: "general" }}
       />
       </div>
     </div>

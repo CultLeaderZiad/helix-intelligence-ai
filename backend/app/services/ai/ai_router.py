@@ -1,38 +1,18 @@
-import os
-import datetime
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
-from fastapi import HTTPException
 from app.models.user import User
 from app.models.usage_log import UsageLog
 from app.services.ai.base import AIProvider
 from app.services.ai.groq_provider import GroqProvider
 from app.services.ai.openrouter_provider import OpenRouterProvider
 from app.services.ai.gemini_provider import GeminiProvider
-from app.services.ai.byok_provider import BYOKProvider
-from app.services.ai.openai_compatible_provider import OpenAICompatibleProvider
-from app.core.config import settings
 
-TRIAL_DAILY_REQUEST_LIMIT = 20
 
 class MultiTierAIProvider(AIProvider):
     def __init__(self):
         self.groq = GroqProvider()
         self.openrouter = OpenRouterProvider(trial_mode=True)
         self.gemini = GeminiProvider()
-        aihubmix_key = getattr(settings, "AIHUBMIX_API_KEY", None) or os.getenv("AIHUBMIX_API_KEY")
-        tokenharbor_key = getattr(settings, "TOKENHARBOR_API_KEY", None) or os.getenv("TOKENHARBOR_API_KEY")
-        self.aihubmix = OpenAICompatibleProvider(
-            base_url="https://aihubmix.com/v1",
-            api_key=aihubmix_key,
-            default_model="glm-4.7-flash-free"
-        ) if aihubmix_key else None
-        self.tokenharbor = OpenAICompatibleProvider(
-            base_url="https://tokenharbor.ai/v1",
-            api_key=tokenharbor_key,
-            default_model="qwen3.8-27b:free"
-        ) if tokenharbor_key else None
         self.model = "groq/openai/gpt-oss-120b"
 
         
@@ -41,7 +21,8 @@ class MultiTierAIProvider(AIProvider):
         # Tier 1: Groq (Primary)
         try:
             res = await self.groq._call_api(messages)
-            self.model = "groq/openai/gpt-oss-120b"
+            self.model = self.groq.model
+            self.last_usage = getattr(self.groq, "last_usage", None)
             return res
         except Exception as e_groq:
             errors["groq"] = str(e_groq)
@@ -49,37 +30,18 @@ class MultiTierAIProvider(AIProvider):
             # Tier 2: OpenRouter (Fallback)
             try:
                 res = await self.openrouter._call_api(messages)
-                self.model = f"openrouter/{self.openrouter.model}"
+                self.model = self.openrouter.model
+                self.last_usage = getattr(self.openrouter, "last_usage", None)
                 return res
             except Exception as e_or:
                 errors["openrouter"] = str(e_or)
                 
-                # Tier 3: AIHubMix (Tertiary Fallback)
-                if self.aihubmix:
-                    try:
-                        res = await self.aihubmix._call_api(messages)
-                        self.model = f"aihubmix/{self.aihubmix.model}"
-                        return res
-                    except Exception as e_ah:
-                        errors["aihubmix"] = str(e_ah)
-                else:
-                    errors["aihubmix"] = "skipped (no API key)"
                     
-                # Tier 4: Token Harbor (Quaternary Fallback)
-                if self.tokenharbor:
-                    try:
-                        res = await self.tokenharbor._call_api(messages)
-                        self.model = f"tokenharbor/{self.tokenharbor.model}"
-                        return res
-                    except Exception as e_th:
-                        errors["tokenharbor"] = str(e_th)
-                else:
-                    errors["tokenharbor"] = "skipped (no API key)"
-                    
-                # Tier 5: Gemini (Final Fallback)
+                # Tier 3: Gemini (Final Fallback)
                 try:
                     res = await self.gemini._call_api(messages)
                     self.model = f"gemini/{self.gemini.model}"
+                    self.last_usage = getattr(self.gemini, "last_usage", None)
                     return res
                 except Exception as e_gem:
                     errors["gemini"] = str(e_gem)
@@ -87,83 +49,14 @@ class MultiTierAIProvider(AIProvider):
 
 class AIRouter:
     @staticmethod
-    async def get_provider_for_user(db: AsyncSession, user: User, byok_key: str = None, byok_provider: str = None) -> AIProvider:
-        now = datetime.datetime.now(datetime.timezone.utc)
-        
-        # 1. Check if BYOK is provided
-        if byok_key and byok_provider:
-            return BYOKProvider(api_key=byok_key, provider_choice=byok_provider)
+    async def get_provider_for_user(db: AsyncSession, user: User) -> AIProvider:
             
-        # 2. Admins have unlimited access
-        if getattr(user, "role", "") == "admin":
-            return MultiTierAIProvider()
-
-        # 3. Check Organization Plan: Paid plans bypass trial gates and limits (F32)
-        from app.models.organization import Organization
-        from app.models.plan import Plan
-
-        is_paid = False
-        try:
-            org_res = await db.execute(select(Organization).where(Organization.owner_id == user.id))
-            org = org_res.scalar_one_or_none() if hasattr(org_res, "scalar_one_or_none") else None
-            if org:
-                if org.plan and org.plan != "trial":
-                    is_paid = True
-                elif org.plan_id:
-                    plan_res = await db.execute(select(Plan).where(Plan.id == org.plan_id))
-                    plan = plan_res.scalar_one_or_none() if hasattr(plan_res, "scalar_one_or_none") else None
-                    if plan and plan.type not in ("trial", None):
-                        is_paid = True
-        except Exception:
-            is_paid = False
-
-        if is_paid:
-            return MultiTierAIProvider()
-
-        # 4. Check Trial Status for standard trial users
-        trial_exp = user.trial_expires_at
-        if trial_exp:
-            if trial_exp.tzinfo is None:
-                trial_exp = trial_exp.replace(tzinfo=datetime.timezone.utc)
-            if now > trial_exp:
-                raise HTTPException(
-                    status_code=403, 
-                    detail={
-                        "error": "trial_expired", 
-                        "message": "Your 7-day free trial has expired. Please upgrade your plan or provide your own API key."
-                    }
-                )
-            
-        # Enforce Trial Limits
-        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        query = select(func.count(UsageLog.id)).where(
-            UsageLog.user_id == user.id,
-            UsageLog.created_at >= today_start
-        )
-        usage_count = 0
-        try:
-            if hasattr(db, "scalar"):
-                usage_count = (await db.scalar(query)) or 0
-            else:
-                res = await db.execute(query)
-                usage_count = res.scalar() if hasattr(res, "scalar") else 0
-        except Exception:
-            usage_count = 0
-
-        if usage_count >= TRIAL_DAILY_REQUEST_LIMIT:
-            raise HTTPException(
-                status_code=429,
-                detail={
-                    "error": "trial_limit_reached",
-                    "message": f"You have reached the daily limit of {TRIAL_DAILY_REQUEST_LIMIT} requests during your trial."
-                }
-            )
-            
-        # Return resilient multi-tier provider (Groq -> OpenRouter -> Gemini)
+        # Access, feature flags and credits are enforced before the AI layer
+        # (assert_can_spend); there is no separate trial gate here.
         return MultiTierAIProvider()
 
     @staticmethod
-    async def log_usage(db: AsyncSession, user_id: str, provider_name: str, org_id: str = None, tokens: int = 0):
+    async def log_usage(db: AsyncSession, user_id: str, provider_name: str, org_id: str, tokens: int = 0):
         log = UsageLog(
             user_id=user_id,
             org_id=org_id,
@@ -180,7 +73,7 @@ class AIRouter:
         user_id: str,
         provider_name: str,
         operation: str,
-        org_id: str = None,
+        org_id: str,
         error: str = "",
     ):
         """Records a provider failure so it is visible in the admin

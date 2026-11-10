@@ -1,0 +1,62 @@
+{
+  "implementationCommit": "6d3f3ba912c7780a7685c1c54aaf8bfc98684933",
+  "localEvidence": "Pre-commit candidate logs; exact implementation head separately passed CI run 41819918774. Migration/model files are unchanged in W7.",
+  "backend": {
+    "tests": 276,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "frontend": {
+    "filesPassed": 37,
+    "testsPassed": 202
+  },
+  "exitCodes": {
+    "compileall": 0,
+    "pyflakes": 0,
+    "test-db-upgrade": 0,
+    "pytest-retry": 0,
+    "zero-skips-retry": 0,
+    "backend-final": 0,
+    "zero-skips-final": 0,
+    "typecheck": 0,
+    "lint": 0,
+    "test": 0,
+    "build": 0,
+    "migrate-upgrade": 0,
+    "migrate-check": 0,
+    "migrate-downgrade": 0,
+    "migrate-reupgrade": 0,
+    "migrate-final-check": 0,
+    "compileall-final": 0,
+    "pyflakes-final": 0
+  },
+  "migrationSequence": [
+    "upgrade head",
+    "check",
+    "downgrade -1",
+    "upgrade head",
+    "check"
+  ],
+  "ciRun": "https://github.com/CultLeaderZiad/helix-intelligence-ai/actions/runs/41819918774",
+  "video": {
+    "durationSeconds": 69.833,
+    "decodeExitCode": 0,
+    "representativeFramesInspectedSeconds": [
+      2,
+      15,
+      30,
+      45,
+      67
+    ],
+    "audio": false
+  },
+  "managedPreview": {
+    "reference": "agent-preview:3000/",
+    "httpStatus": 200,
+    "verdict": "ready",
+    "consoleErrorCount": 0,
+    "uncaughtExceptionCount": 0
+  },
+  "liveProviderProof": "blocked; no authorized non-production credentials; no provider calls attempted"
+}
