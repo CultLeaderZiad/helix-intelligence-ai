@@ -41,6 +41,15 @@ async def readiness(response: Response):
         return {"status": "unready", "database": "disconnected", "providers": "not_checked", "code": "database_unavailable", "detail": "Database is unavailable"}
 
 
+def _worker_status() -> dict:
+    try:
+        from app.services import embedded_worker
+
+        return embedded_worker.status()
+    except Exception:  # health must never fail because of this
+        return {"mode": "unknown", "running": None, "last_poll_seconds_ago": None}
+
+
 @router.get("")
 @router.get("/")
 async def health_check(
@@ -81,6 +90,7 @@ async def health_check(
         "service": "helix-backend",
         "db": db_status,
         "providers": "not_checked",
+        "worker": _worker_status(),
     }
     if db_error and is_admin_req:
         res["db_detail"] = db_error

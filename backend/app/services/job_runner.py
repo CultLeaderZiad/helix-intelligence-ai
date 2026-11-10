@@ -25,8 +25,20 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
+from typing import Optional
 
 logger = logging.getLogger("helix.worker")
+
+# Monotonic time of the loop's last poll. /api/health reads it to prove the
+# loop is cycling, not just started.
+last_poll_monotonic: Optional[float] = None
+
+
+def seconds_since_last_poll() -> Optional[int]:
+    if last_poll_monotonic is None:
+        return None
+    return int(time.monotonic() - last_poll_monotonic)
 
 
 async def _wait(stop: asyncio.Event, seconds: float) -> None:
@@ -59,6 +71,7 @@ async def monitor_scheduler_loop(stop: asyncio.Event) -> None:
 
 
 async def run_jobs(stop: asyncio.Event, worker_id: str, poll_interval_s: float = 2.0) -> None:
+    global last_poll_monotonic
     from app.services.job_reconciliation import reconcile_once, reconciliation_loop
     from app.services.work_outbox import claim_next_work_item, execute_work_item
 
@@ -70,6 +83,7 @@ async def run_jobs(stop: asyncio.Event, worker_id: str, poll_interval_s: float =
     scheduler = asyncio.create_task(monitor_scheduler_loop(stop))
     try:
         while not stop.is_set():
+            last_poll_monotonic = time.monotonic()
             try:
                 work_id = await claim_next_work_item(worker_id)
                 if work_id:
