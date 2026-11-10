@@ -8,15 +8,15 @@ engine = create_async_engine(
     settings.async_database_url,
     echo=False,
     future=True,
-    pool_size=5,
-    max_overflow=10,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_timeout=settings.DB_POOL_TIMEOUT_S,
     pool_pre_ping=True,
-    pool_recycle=1800,
+    pool_recycle=settings.DB_POOL_RECYCLE_S,
     connect_args={
-        # Neon pooler (PgBouncer) doesn't support prepared statements
+        # Neon pooler (PgBouncer, transaction mode) doesn't support prepared statements.
         "statement_cache_size": 0,
-        # Allow 30s for Neon free-tier cold-start wake-up
-        "command_timeout": 30,
+        "command_timeout": settings.DB_COMMAND_TIMEOUT_S,
     },
 )
 
@@ -32,7 +32,7 @@ worker_engine = create_async_engine(
     poolclass=NullPool,
     connect_args={
         "statement_cache_size": 0,
-        "command_timeout": 30,
+        "command_timeout": settings.DB_COMMAND_TIMEOUT_S,
     },
 )
 

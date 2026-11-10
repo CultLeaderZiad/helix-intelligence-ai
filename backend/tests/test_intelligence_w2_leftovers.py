@@ -179,13 +179,13 @@ async def test_unmeasured_lift_persists_as_null():
 
 
 @pytest.mark.asyncio
-async def test_curated_dossier_does_not_ship_unfetched_profile_urls():
-    from app.services.entity_intelligence import analyze_entity_intent
+async def test_curated_dossier_does_not_ship_unfetched_profile_urls(monkeypatch):
+    from app.core.config import settings
+    from app.services import entity_intelligence
 
-    profile = await analyze_entity_intent("sneako")
-    assert profile["evidence_status"] == "curated_unverified"
-    assert profile["social_links"]
-    for entry in profile["social_links"].values():
-        assert entry["fetched"] is False
-        assert entry["profile_url"] is None
-        assert entry["search_url"] is None
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "")
+    monkeypatch.setattr(entity_intelligence, "env_secret", lambda *args, **kwargs: "")
+    profile = await entity_intelligence.analyze_entity_intent("example-query")
+    assert profile["evidence_status"] == "unverified_heuristic"
+    assert profile.get("social_links") in ({}, None)
+    assert "sneako" not in str(profile).lower()

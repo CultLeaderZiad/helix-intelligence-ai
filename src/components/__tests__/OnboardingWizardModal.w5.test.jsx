@@ -41,18 +41,18 @@ describe("onboarding wizard", () => {
     expect(onClose).toHaveBeenCalledWith("Duolingo")
   })
 
-  it("uses the selected industry as an editable initial search", () => {
+  it("does not prefill a search from the industry choice", () => {
     const onClose = vi.fn()
     renderWizard({ onClose })
     fireEvent.click(screen.getByRole("button", { name: "Software & apps" }))
     fireEvent.click(screen.getByRole("button", { name: "Continue" }))
     const input = /** @type {HTMLInputElement} */ (screen.getByLabelText("Search query (optional)"))
-    expect(input.value).toBe("Software & apps")
+    expect(input.value).toBe("")
     fireEvent.click(screen.getByRole("button", { name: "Go to Discover" }))
-    expect(onClose).toHaveBeenCalledWith("Software & apps")
+    expect(onClose).toHaveBeenCalledWith(null)
   })
 
-  it("allows clearing the suggested query without running a search", () => {
+  it("does not run a search when the query is left empty", () => {
     const onClose = vi.fn()
     renderWizard({ onClose })
     fireEvent.click(screen.getByRole("button", { name: "Software & apps" }))

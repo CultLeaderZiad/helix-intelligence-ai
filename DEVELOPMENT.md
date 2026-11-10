@@ -96,7 +96,6 @@ absolute Render URL.
 `.env.production` (committed, not a secret) already sets:
 
 ```
-VITE_DATA_SOURCE=api
 VITE_API_BASE_URL=https://helix-intelligence-ai.onrender.com/api
 ```
 

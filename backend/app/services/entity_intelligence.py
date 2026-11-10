@@ -1,9 +1,8 @@
-"""Entity Intelligence & Search Disambiguation Service.
+"""Entity classification for a search the caller typed.
 
-Differentiates entities (Content Creators, Streamers, DTC Brands, SaaS, etc.)
-and generates deep PR & marketing dossiers. Prunes false-positive phonetic
-matches (e.g. shoe stores appearing under a search for Sneako) to protect
-intelligence integrity.
+There is no curated brand or person list. With a model key, the dossier is
+built from that query. Without one, the result is a generic heuristic and is
+labeled as such.
 """
 
 from __future__ import annotations
@@ -38,310 +37,11 @@ def _drop_unfetched_urls(profile: Dict[str, Any]) -> Dict[str, Any]:
     return copied
 
 
-def build_social_links(query: str, custom_handles: Optional[Dict[str, str]] = None) -> Dict[str, Dict[str, str]]:
-    q_enc = query.replace(" ", "%20")
-    h_default = query.split(" ")[0].lower().replace("@", "")
-    handles = custom_handles or {}
-
-    x_h = handles.get("x", f"@{h_default}")
-    ig_h = handles.get("instagram", f"@{h_default}")
-    kick_h = handles.get("kick", h_default)
-    rumble_h = handles.get("rumble", h_default.title())
-    yt_h = handles.get("youtube", f"@{h_default}")
-    tt_h = handles.get("tiktok", f"@{h_default}")
-
-    return {
-        "x": {
-            "name": "X (Twitter)",
-            "handle": x_h,
-            "profile_url": handles.get("x_profile") or f"https://x.com/{x_h.replace('@', '')}",
-            "search_url": f"https://x.com/search?q={q_enc}&src=typed_query",
-        },
-        "instagram": {
-            "name": "Instagram",
-            "handle": ig_h,
-            "profile_url": handles.get("ig_profile") or f"https://instagram.com/{ig_h.replace('@', '')}",
-            "search_url": f"https://www.instagram.com/explore/search/keyword/?q={q_enc}",
-        },
-        "kick": {
-            "name": "Kick",
-            "handle": kick_h,
-            "profile_url": handles.get("kick_profile") or f"https://kick.com/{kick_h}",
-            "search_url": f"https://kick.com/search?q={q_enc}",
-        },
-        "rumble": {
-            "name": "Rumble",
-            "handle": rumble_h,
-            "profile_url": handles.get("rumble_profile") or f"https://rumble.com/c/{rumble_h}",
-            "search_url": f"https://rumble.com/search/all?q={q_enc}",
-        },
-        "youtube": {
-            "name": "YouTube",
-            "handle": yt_h,
-            "profile_url": handles.get("yt_profile") or f"https://www.youtube.com/results?search_query={q_enc}",
-            "search_url": f"https://www.youtube.com/results?search_query={q_enc}",
-        },
-        "tiktok": {
-            "name": "TikTok",
-            "handle": tt_h,
-            "profile_url": handles.get("tt_profile") or f"https://www.tiktok.com/tag/{tt_h.replace('@', '')}",
-            "search_url": f"https://www.tiktok.com/search?q={q_enc}",
-        },
-    }
-
-# Curated high-precision knowledge base for instant 0ms responses on key entities
-KNOWN_ENTITIES: Dict[str, Dict[str, Any]] = {
-    "sneako": {
-        "entity_name": "Sneako (Nicolas Kenn De Balinthazy)",
-        "entity_type": "creator_streamer",
-        "category_label": "Content Creator & Streamer",
-        "primary_platforms": ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"],
-        "summary": "High-profile online creator, livestreamer, and commentator known for IRL streams, commentary, ideological debates, and multi-platform broadcasting.",
-        "runs_direct_meta_ads": False,
-        "marketing_archetype": "Controversy-Driven Organic Clipping & Multi-Platform Streaming",
-        "social_links": {
-            "x": {
-                "name": "X (Twitter)",
-                "handle": "@TheSneako",
-                "profile_url": "https://x.com/TheSneako",
-                "search_url": "https://x.com/search?q=sneako&src=typed_query",
-            },
-            "instagram": {
-                "name": "Instagram",
-                "handle": "@sneako",
-                "profile_url": "https://instagram.com/sneako",
-                "search_url": "https://www.instagram.com/explore/search/keyword/?q=sneako",
-            },
-            "kick": {
-                "name": "Kick",
-                "handle": "sneako",
-                "profile_url": "https://kick.com/sneako",
-                "search_url": "https://kick.com/search?q=sneako",
-            },
-            "rumble": {
-                "name": "Rumble",
-                "handle": "Sneako",
-                "profile_url": "https://rumble.com/c/Sneako",
-                "search_url": "https://rumble.com/search/all?q=sneako",
-            },
-            "youtube": {
-                "name": "YouTube",
-                "handle": "@TheUnfiltered",
-                "profile_url": "https://www.youtube.com/results?search_query=sneako",
-                "search_url": "https://www.youtube.com/results?search_query=sneako",
-            },
-            "tiktok": {
-                "name": "TikTok",
-                "handle": "@sneako",
-                "profile_url": "https://www.tiktok.com/tag/sneako",
-                "search_url": "https://www.tiktok.com/search?q=sneako",
-            },
-        },
-        "online_presence": {
-            "reach_overview": "Hundreds of thousands of concurrent livestream viewers and millions of organic short-form video impressions across social platforms.",
-            "viral_engine": "Decentralized short-form clipping network (TikTok, YouTube Shorts, X) where fan channels syndicate livestream highlights.",
-            "community_hubs": "Kick/Rumble live chat, X community spaces, Discord/Telegram subscriber groups."
-        },
-        "ad_and_monetization_footprint": {
-            "strategy": "Does not run self-serve Meta product feed ads. Growth is powered by organic clip syndication and livestreams.",
-            "primary_monetization": [
-                "Exclusive multi-million dollar streaming contracts (Kick, Rumble)",
-                "In-stream native live sponsor reads (VPNs, gaming, lifestyle, supplements)",
-                "Affiliate marketing links & creator codes",
-                "Direct merchandise drops and subscriber donations"
-            ]
-        },
-        "disambiguation": {
-            "has_confusion": True,
-            "target_intent": "Sneako (Content Creator & Streamer)",
-            "confused_with": "Footwear & Sneaker Retailers ('Sneakd Up', 'SNEAK O\\' KICKS', 'Sneakers')",
-            "explanation": "Meta Ad Library's search algorithm stems 'sneako' to 'sneak', matching local sneaker and shoe stores. Helixa's relevance engine detected that Sneako is an online creator, not a shoe retailer, and pruned off-topic footwear ads.",
-            "filtered_categories": ["Footwear", "Sneakers", "Shoe Sizing (e.g., sizes 41-45)", "Sneaker Resellers"]
-        },
-        "playbook_and_takeaways": [
-            {
-                "title": "Decentralized Clipping Syndicates",
-                "detail": "Instead of paying Meta $40-$60 CPMs, top creators incentivize third-party clippers with affiliate bounties, generating tens of millions of views organically."
-            },
-            {
-                "title": "Native In-Stream Sponsor Integration",
-                "detail": "Live stream sponsors achieve 5-10x higher retention than static banner ads when the creator organically reviews or interacts with products during live broadcasts."
-            },
-            {
-                "title": "Controversy & Algorithmic Velocity",
-                "detail": "Polarized debate topics and high-friction discussions are used systematically to trigger algorithm recommendation loops on X and short-form video feeds."
-            }
-        ],
-        "similar_entities": ["Andrew Tate", "Adin Ross", "Kai Cenat", "Vitaly", "Fresh & Fit"]
-    },
-    "andrew tate": {
-        "entity_name": "Andrew Tate (Emory Andrew Tate III)",
-        "entity_type": "creator_streamer",
-        "category_label": "Media Personality & Entrepreneur",
-        "primary_platforms": ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"],
-        "summary": "Former kickboxer and controversial media personality known for Hustler's University / The Real World, luxury lifestyle marketing, and debate-heavy podcasts.",
-        "runs_direct_meta_ads": False,
-        "marketing_archetype": "Affiliate Army Syndication & High-Polarity PR",
-        "social_links": {
-            "x": {
-                "name": "X (Twitter)",
-                "handle": "@Cobratate",
-                "profile_url": "https://x.com/Cobratate",
-                "search_url": "https://x.com/search?q=andrew%20tate&src=typeahead_click",
-            },
-            "instagram": {
-                "name": "Instagram",
-                "handle": "@cobratate",
-                "profile_url": "https://instagram.com/cobratate",
-                "search_url": "https://www.instagram.com/explore/search/keyword/?q=andrew%20tate",
-            },
-            "kick": {
-                "name": "Kick",
-                "handle": "tatespeech",
-                "profile_url": "https://kick.com/tatespeech",
-                "search_url": "https://kick.com/search?q=andrew%20tate",
-            },
-            "rumble": {
-                "name": "Rumble",
-                "handle": "TateSpeech",
-                "profile_url": "https://rumble.com/c/TateSpeech",
-                "search_url": "https://rumble.com/search/all?q=andrew%20tate",
-            },
-            "youtube": {
-                "name": "YouTube",
-                "handle": "TateSpeech",
-                "profile_url": "https://www.youtube.com/results?search_query=andrew+tate",
-                "search_url": "https://www.youtube.com/results?search_query=andrew+tate",
-            },
-            "tiktok": {
-                "name": "TikTok",
-                "handle": "@cobratate",
-                "profile_url": "https://www.tiktok.com/tag/andrewtate",
-                "search_url": "https://www.tiktok.com/search?q=andrew%20tate",
-            },
-        },
-        "online_presence": {
-            "reach_overview": "Global notoriety driven by billions of organic short-form impressions through syndicated affiliate channels.",
-            "viral_engine": "Multi-tier affiliate marketing model where members repost short-form clips with custom referral funnels.",
-            "community_hubs": "The Real World network, Rumble streams, X/Twitter feed."
-        },
-        "ad_and_monetization_footprint": {
-            "strategy": "Does not run direct-to-consumer Meta catalog ads under personal name due to platform policy restrictions.",
-            "primary_monetization": [
-                "Subscription education platform (The Real World / Hustler's University)",
-                "Rumble streaming and media production",
-                "Crypto, trading, and lifestyle ventures"
-            ]
-        },
-        "disambiguation": {
-            "has_confusion": True,
-            "target_intent": "Andrew Tate (Media Personality)",
-            "confused_with": "Unrelated brands with 'Andrew' or 'Tate' (e.g. automotive dealers, art galleries)",
-            "explanation": "Ad libraries frequently match random local businesses containing common names. Helixa filters out non-affiliated entities.",
-            "filtered_categories": ["Automotive", "Local Galleries", "Generic Consultancies"]
-        },
-        "playbook_and_takeaways": [
-            {
-                "title": "Commission-Driven Viral Distribution",
-                "detail": "Outsourced marketing to thousands of student affiliates whose financial incentive was tied to clip performance."
-            },
-            {
-                "title": "Aesthetic Lifestyle Framing",
-                "detail": "Using hypercar visuals, cigar motifs, and aspirational luxury settings to maximize short-form hook rates."
-            }
-        ],
-        "similar_entities": ["Tristan Tate", "Sneako", "Patrick Bet-David", "Jordan Peterson"]
-    },
-    "adin ross": {
-        "entity_name": "Adin Ross",
-        "entity_type": "creator_streamer",
-        "category_label": "Livestreamer & Content Creator",
-        "primary_platforms": ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"],
-        "summary": "High-profile gaming and IRL livestreamer who transitioned from Twitch to an exclusive contract with Kick, hosting celebrity interviews and high-stakes games.",
-        "runs_direct_meta_ads": False,
-        "marketing_archetype": "Celebrity Collaboration & High-Stakes Streaming",
-        "social_links": build_social_links("adin ross", {"kick": "adinross", "x": "@adinross", "kick_profile": "https://kick.com/adinross", "x_profile": "https://x.com/adinross"}),
-        "online_presence": {
-            "reach_overview": "Tens of millions of followers across social platforms with top-tier livestream viewership.",
-            "viral_engine": "High-profile celebrity and rapper collaborations turned into viral clips.",
-            "community_hubs": "Kick streaming chat, Discord, X."
-        },
-        "ad_and_monetization_footprint": {
-            "strategy": "Does not run Facebook/Meta feed ads. Monetization is direct platform equity/contracts and sponsor integrations.",
-            "primary_monetization": [
-                "Kick streaming contract and equity",
-                "Gaming and betting partnerships",
-                "Brand sponsorships and apparel"
-            ]
-        },
-        "disambiguation": {
-            "has_confusion": False,
-            "target_intent": "Adin Ross (Streamer)",
-            "confused_with": "Ross Stores / Generic Ross apparel",
-            "explanation": "Filtered out apparel stores matching the surname 'Ross'.",
-            "filtered_categories": ["Discount Retailers", "Apparel Stores"]
-        },
-        "playbook_and_takeaways": [
-            {
-                "title": "Cultural Crossover Collaborations",
-                "detail": "Streaming with mainstream musicians, boxers, and political figures bridges disparate audience segments."
-            }
-        ],
-        "similar_entities": ["Kai Cenat", "Sneako", "IShowSpeed", "xQc"]
-    },
-    "kai cenat": {
-        "entity_name": "Kai Cenat",
-        "entity_type": "creator_streamer",
-        "category_label": "Livestreamer & Entertainer",
-        "primary_platforms": ["X (Twitter)", "Instagram", "Kick", "Rumble", "YouTube", "TikTok"],
-        "summary": "Record-breaking Twitch streamer, Streamer of the Year, and cultural icon famous for 30-day subathons, celebrity marathons, and AMP group content.",
-        "runs_direct_meta_ads": False,
-        "marketing_archetype": "Event-Based Cultural Spectacle Streaming",
-        "social_links": build_social_links("kai cenat", {"x": "@KaiCenat", "instagram": "@kaicenat", "x_profile": "https://x.com/KaiCenat", "ig_profile": "https://instagram.com/kaicenat"}),
-        "online_presence": {
-            "reach_overview": "Top creator in global live entertainment with mainstream hip-hop and Hollywood crossovers.",
-            "viral_engine": "High-energy comedic moments and unscripted celebrity visits syndicating across TikTok and Reels.",
-            "community_hubs": "Twitch live chat, AMP YouTube channels."
-        },
-        "ad_and_monetization_footprint": {
-            "strategy": "Does not run self-serve Meta ads. Major brands (Nike, McDonald's) partner with him for bespoke experiential campaigns.",
-            "primary_monetization": [
-                "Twitch subscriptions & creator revenue",
-                "Enterprise brand endorsements (Nike partnership)",
-                "YouTube monetization and merchandising"
-            ]
-        },
-        "disambiguation": {
-            "has_confusion": False,
-            "target_intent": "Kai Cenat (Streamer & Entertainer)",
-            "confused_with": "Phonetic matches",
-            "explanation": "Filtered out unrelated apparel matches.",
-            "filtered_categories": []
-        },
-        "playbook_and_takeaways": [
-            {
-                "title": "Eventized Marathons",
-                "detail": "Turning streaming into episodic reality TV through themed set designs and surprise celebrity guests."
-            }
-        ],
-        "similar_entities": ["Duke Dennis", "Fanum", "Adin Ross", "IShowSpeed"]
-    }
-}
-
-
 def _heuristic_entity_classification(query: str) -> Dict[str, Any]:
     clean_q = (query or "").strip().lower()
 
-    # 1. Exact match in curated list
-    if clean_q in KNOWN_ENTITIES:
-        return _drop_unfetched_urls(KNOWN_ENTITIES[clean_q])
-
-    # 2. Check if known entity is inside query
-    for k, profile in KNOWN_ENTITIES.items():
-        if k in clean_q or clean_q in k:
-            return _drop_unfetched_urls(profile)
-
-    # 3. Domain detection (e.g. nike.com, shopify.com)
+    # A domain-shaped query describes whatever the caller typed. Nothing here
+    # names a built-in brand, person, or sample search.
     if "." in clean_q and " " not in clean_q:
         domain_name = clean_q.split("://")[-1].split("/")[0].replace("www.", "")
         brand_label = domain_name.split(".")[0].title()
@@ -434,14 +134,8 @@ async def analyze_entity_intent(query: str, raw_creatives: Optional[List[Any]] =
     if not clean_q:
         return _heuristic_entity_classification("Unknown")
 
-    # If in curated list, return immediately with highest precision
-    low_q = clean_q.lower()
-    if low_q in KNOWN_ENTITIES:
-        profile = dict(KNOWN_ENTITIES[low_q])
-        profile["evidence_status"] = "curated_unverified"
-        profile["evidence_label"] = "Curated profile. Not fetched from an ad library for this search."
-        return _drop_unfetched_urls(profile)
-
+    # No curated dossier. A model call, when a key is configured, classifies
+    # only the caller's query. Otherwise the heuristic below is unlabeled.
     # Check Groq LLM for dynamic classification
     api_key = env_secret("GROQ_API_KEY", fallback=settings.GROQ_API_KEY)
     if not api_key:
@@ -456,7 +150,7 @@ Analyze the entity searched by the user: "{clean_q}".
 Determine:
 1. Is this entity a Content Creator / Streamer / YouTuber / Influencer, or an E-Commerce / DTC Brand, or a SaaS / Software Company, or a general keyword?
 2. Does this entity run self-serve product catalog ads on Meta (Facebook/Instagram), or is their marketing powered by organic platforms (Kick, Rumble, YouTube, X, TikTok) and in-stream sponsors?
-3. What are common phonetic or semantic confusions that an ad library keyword search might erroneously return? (For example, searching for "Sneako" returns local sneaker/shoe stores like "Sneakd Up" or "SNEAK O' KICKS" because Meta stems "sneako" -> "sneak". If this is a creator, explicitly explain why footwear/shoe ads are irrelevant noise).
+3. What unrelated categories could a keyword search confuse with this query because of stemming or a shared word? Name categories, not example brands. If the query is a person, say which product categories are noise.
 4. Provide a structured PR & marketing playbook for this entity.
 
 Respond ONLY with valid JSON matching this schema:
@@ -480,9 +174,9 @@ Respond ONLY with valid JSON matching this schema:
   "disambiguation": {{
     "has_confusion": true,
     "target_intent": "What the user actually searched for",
-    "confused_with": "What ad libraries mistakenly match (e.g. Footwear stores)",
-    "explanation": "Clear explanation of the phonetic stem mismatch",
-    "filtered_categories": ["Footwear", "Sneakers"]
+    "confused_with": "The unrelated category a keyword search might return",
+    "explanation": "Why those results are not this query",
+    "filtered_categories": ["category to drop"]
   }},
   "playbook_and_takeaways": [
     {{

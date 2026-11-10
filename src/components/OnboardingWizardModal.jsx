@@ -188,7 +188,6 @@ export function OnboardingWizardModal({
                       aria-pressed={selected}
                       onClick={() => {
                         setSelectedIndustry(id)
-                        setSearchQuery(translate(key))
                       }}
                       className={`flex min-h-12 items-center justify-between gap-3 rounded-sm border px-4 py-3 text-start text-sm transition ${
                         selected

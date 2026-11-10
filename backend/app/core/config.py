@@ -67,6 +67,18 @@ class Settings(BaseSettings):
 
     # DATABASE
     DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+    # API process pool. Point DATABASE_URL at the Neon pooler host
+    # (the hostname contains "-pooler"). PgBouncer there is transaction
+    # mode, so session.py disables asyncpg's statement cache. One Render
+    # instance and the embedded worker share one Neon compute: keep the
+    # API pool small, fail a checkout after DB_POOL_TIMEOUT_S instead of
+    # waiting forever, and recycle connections before the pooler drops them.
+    # The worker engine uses NullPool and does not take these sizes.
+    DB_POOL_SIZE: int = max(1, int(os.getenv("DB_POOL_SIZE", "5")))
+    DB_MAX_OVERFLOW: int = max(0, int(os.getenv("DB_MAX_OVERFLOW", "5")))
+    DB_POOL_TIMEOUT_S: int = max(1, int(os.getenv("DB_POOL_TIMEOUT_S", "10")))
+    DB_POOL_RECYCLE_S: int = max(30, int(os.getenv("DB_POOL_RECYCLE_S", "300")))
+    DB_COMMAND_TIMEOUT_S: int = max(1, int(os.getenv("DB_COMMAND_TIMEOUT_S", "30")))
     # Outside production, DATABASE_URL must be loopback unless its host exactly
     # equals ALLOWED_REMOTE_DATABASE_HOST (e.g. a Neon dev/staging branch
     # endpoint) and the URL requires TLS. PRODUCTION_DATABASE_HOST must also be
@@ -243,9 +255,6 @@ class Settings(BaseSettings):
     AI_CALL_TIMEOUT_S: float = float(os.getenv("AI_CALL_TIMEOUT_S", "20"))
     AI_CALL_DEADLINE_S: float = float(os.getenv("AI_CALL_DEADLINE_S", "45"))
     AI_MAX_RETRIES: int = int(os.getenv("AI_MAX_RETRIES", "2"))
-    MEDIA_GENERATION_DEADLINE_S: float = float(os.getenv("MEDIA_GENERATION_DEADLINE_S", "120"))
-    # Managed image/video calls may fall back to Pollinations only when this is set.
-    # BYOK failures never use it.
 
     # MONITORS (scheduled competitor watches)
     # The scheduler is whatever calls POST /api/monitors/tick with this secret

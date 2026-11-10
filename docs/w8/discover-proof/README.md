@@ -104,7 +104,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 # terminal 2: worker (DATABASE_URL = helix_worker_login on dev-w8)
 python workers/jobs/worker.py
 # terminal 3
-export HELIX_PROOF_EMAIL=... HELIX_PROOF_PASSWORD=... HELIX_PROOF_PROVIDER=metapi
+export HELIX_PROOF_EMAIL=... HELIX_PROOF_PASSWORD=... HELIX_PROOF_PROVIDER=metapi HELIX_PROOF_QUERY='<the search you want to prove>'
 python scripts/prove_discover.py --scenario success
 python scripts/prove_discover.py --scenario cancel
 # restart API and worker with DISCOVER_JOB_DEADLINE_S=20, then:

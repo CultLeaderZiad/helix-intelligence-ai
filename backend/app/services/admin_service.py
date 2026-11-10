@@ -23,6 +23,7 @@ from app.models.notification import Notification
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.services.billing_service import access_states_for_orgs, is_platform_admin
+from app.services.query_bounds import ADMIN_LIST_CAP, pagination_bounds
 
 
 async def _primary_org_id(db: AsyncSession, user_id: str) -> Optional[str]:
@@ -420,6 +421,7 @@ async def list_organizations(db: AsyncSession) -> List[AdminOrganizationRow]:
         .outerjoin(User, Organization.owner_id == User.id)
         .outerjoin(Plan, Organization.plan_id == Plan.id)
         .order_by(Organization.name.asc())
+        .limit(ADMIN_LIST_CAP)
     )
     result = await db.execute(query)
     rows = result.all()
@@ -627,7 +629,7 @@ async def get_usage_logs_filtered(
         count_query = count_query.where(UsageLog.operation == operation)
 
     total_count = await db.scalar(count_query) or 0
-    offset = (page - 1) * page_size
+    offset, page_size = pagination_bounds(page, page_size)
     query = query.order_by(UsageLog.created_at.desc()).offset(offset).limit(page_size)
 
     result = await db.execute(query)
@@ -664,6 +666,7 @@ async def list_users(db: AsyncSession) -> List[AdminUserRow]:
         .outerjoin(Organization, User.id == Organization.owner_id)
         .outerjoin(Plan, Organization.plan_id == Plan.id)
         .order_by(User.created_at.desc())
+        .limit(ADMIN_LIST_CAP)
     )
     result = await db.execute(query)
     rows = result.all()

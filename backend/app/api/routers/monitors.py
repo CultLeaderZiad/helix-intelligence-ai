@@ -71,7 +71,7 @@ async def create_monitor(
 async def list_events(
     request: Request,
     monitor_id: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
@@ -86,7 +86,7 @@ async def list_events(
 @router.get("/events.md", dependencies=_monitor_access, include_in_schema=False)
 async def list_events_markdown(
     monitor_id: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Any:
