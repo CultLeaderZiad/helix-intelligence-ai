@@ -1,10 +1,13 @@
 services:
   - type: web
-    name: helix-backend
+    # Live dashboard name. The old blueprint name `helix-backend` did not match
+    # the service and must not be used in the runbook.
+    name: helix-intelligence-ai
     env: python
     rootDir: backend
     buildCommand: "pip install -r requirements.txt"
-    # NOTE (2026-11-10): the live service (srv-da3ocem7bikc73bfi4fg, ohio, FREE plan) is
+    # NOTE (2026-11-10): the live service helix-intelligence-ai
+    # (srv-da3ocem7bikc73bfi4fg, ohio, FREE plan) is
     # NOT managed by this Blueprint. Free services have no pre-deploy command, Shell or
     # SSH, so the preDeployCommand below never runs there. Migrations run from a local
     # machine (docs/w8/release-plan.md). Kept as the reference for a paid/Blueprint setup.

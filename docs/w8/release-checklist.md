@@ -51,10 +51,20 @@ Evidence: all 22 rehearsed in one run on fresh copies of `dev` (`w8-dev-rehearsa
 
 ## 2. Before and after the migrations
 
-Follow the free-plan cutover runbook in `docs/w8/release-plan.md` (backup branch,
-local migrations, roles by SQL, Render env with auto-deploy off, manual deploy,
-rollback that restores the owner `DATABASE_URL`). First admin: the migration promotes
-only `HELIX_PLATFORM_ADMIN_EMAILS`; otherwise use
+The ordered copy for the day is `docs/w8/cutover-today.md`. Follow `docs/w8/release-plan.md` for the evidence. The order that matters:
+
+1. Retarget draft PR 31 from `fix/intelligence-W7` to `main` before any merge. Confirmed base on 2026-11-10: `fix/intelligence-W7`.
+2. Render service **`helix-intelligence-ai`** (`srv-da3ocem7bikc73bfi4fg`): Auto-Deploy **off**, health check `/api/health`. Not `helix-backend`.
+3. Check the Neon free-plan branch limit, then (only if the owner accepts the list) delete the leftover branches `prod-backup-pre-w8`, `w8-final-rehearsal`, `w8-rehearsal-from-dev` and `test-remediation-fresh`. Never delete `dev`. Then create the `pre-w8-…` backup. Proposed only; not run here.
+4. Migrate from a laptop as the **current** owner, on the direct host. Do not rotate the owner password yet.
+5. Create `helix_api_login` by SQL. Run `docs/w8/admin-cleanup.sql` only with approval (`ROLLBACK` unless the previews are right).
+6. `COMMIT` `docs/w8/pause-monitors.sql` while the preview is exactly the 3 overdue active daily monitors, and re-read zero due rows, **before** the worker deploy.
+7. Merge to `main` with Render auto-deploy still off. Hold the Vercel production deployment (section 3a of the plan; dashboard controls unverified from this repo).
+8. Check the env file locally with `backend/scripts/check_release_env.py`, delete that plaintext file, then **Save, rebuild and deploy** so the new commit and the new env go live together. `DATABASE_URL` (the `helix_api_login` URL) and a rotated `SECRET_KEY` are the deploy-moment group. `HELIX_DISPATCH_INLINE` is not: `main` at `5b45806` does not contain the name (evidence in the plan).
+9. After `/api/health` is 200, reset `neondb_owner` and keep the **new** owner URL for rollback. Then promote the Vercel deployment.
+
+First admin: the migration promotes only `HELIX_PLATFORM_ADMIN_EMAILS`
+(`cultleaderzoz.dev@gmail.com`); otherwise use
 `backend/scripts/bootstrap_platform_admin.py --expect-branch br-gentle-star-axcrbk22`.
 
 ## 3. Provider budgets
@@ -125,12 +135,25 @@ about 50 tasks/day.
 4. Production's revision (`dev`, `b1c2d3e4f5a6`) should be re-read before release.
 5. `dev` has 29 `role='admin'` users (most on test domains); the admin API trusts
    `role`, so run the reviewed `docs/w8/admin-cleanup.sql` (with approval) first.
+   The original six suspend domains were rehearsed (191 of 231) and approved.
+   `helix.io`, `helix.ai`, `helix.com`, `vynex.com` and `vhynex.com` were added
+   after that rehearsal and have not been counted.
 6. R2 is not configured, so archived media would sit on ephemeral disk.
+7. Vercel production auto-deploy controls are not in the repo (`vercel.json` has
+   no Git settings). Hold or Instant Rollback is documented as unverified.
+8. The Neon free-plan branch limit was not read. Check it before creating
+   `pre-w8-…`. The four leftover deletes are proposed, not run.
+9. Three active daily monitors are overdue. Pause them with
+   `docs/w8/pause-monitors.sql` before `EMBEDDED_WORKER_ENABLED=true` goes live.
 
 ## 5. Rollback
 
-- Vercel and Render: redeploy the previous deployment (`5b45806`); free Render keeps
-  only the last 2 deploys for rollback. Also restore the owner `DATABASE_URL`, because
-  the old code expects it (see `docs/w8/release-plan.md`).
+- Render service `helix-intelligence-ai`: roll back to `5b45806` (free plan keeps
+  only the last 2 deploys) and restore the owner `DATABASE_URL` in the same window.
+  Before the post-health owner-password reset, that URL is the one from T0. After
+  the reset, it is the **new** owner URL. The old code fail-closes on
+  `helix_api_login`; the new code refuses the owner role. See `docs/w8/release-plan.md`.
+- Vercel: Instant Rollback to the previous production deployment. The project's
+  auto-deploy switch was not confirmed from the repo.
 - Database: down-migrations cannot restore deleted rows. Restore from the
   pre-release Neon branch or point-in-time restore.
