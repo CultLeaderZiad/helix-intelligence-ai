@@ -51,7 +51,7 @@ Evidence: all 22 rehearsed in one run on fresh copies of `dev` (`w8-dev-rehearsa
 
 ## 2. Before and after the migrations
 
-Follow `docs/w8/release-plan.md`. The order that matters:
+The ordered copy for the day is `docs/w8/cutover-today.md`. Follow `docs/w8/release-plan.md` for the evidence. The order that matters:
 
 1. Retarget draft PR 31 from `fix/intelligence-W7` to `main` before any merge. Confirmed base on 2026-11-10: `fix/intelligence-W7`.
 2. Render service **`helix-intelligence-ai`** (`srv-da3ocem7bikc73bfi4fg`): Auto-Deploy **off**, health check `/api/health`. Not `helix-backend`.

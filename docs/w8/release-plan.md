@@ -42,6 +42,8 @@ Status: **draft, not approved.** Nothing here has been run on production.
 
 ## 3. Cutover (about 30 minutes, low-traffic time)
 
+The ordered copy for the day is `docs/w8/cutover-today.md`. This section is the evidence behind it.
+
 1. **Freeze.** No admin changes. Note T0 (UTC).
 2. **Proposed Neon leftover cleanup, then confirm a free branch slot.** Not executed by this change. Do it only with the owner's OK, and only before creating the cutover backup.
    - In the Neon console for project `quiet-dawn-26282927`, read the **free-plan branch limit** and the current branch count. This repo does not record the number. Creating `pre-w8-…` needs one free slot; at the limit, the backup fails and the cutover stops.
