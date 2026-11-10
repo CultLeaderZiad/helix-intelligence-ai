@@ -17,7 +17,8 @@
 --   rows in organizations, scrape_jobs, credit_ledger and support tickets
 --   reference them.
 
--- 0. Edit the allowlist: the ONLY accounts that stay admin.
+-- 0. Owner decision (2026-11-10): the ONLY platform admin is cultleaderzoz.dev@gmail.com.
+--    Must match HELIX_PLATFORM_ADMIN_EMAILS used when migrating.
 CREATE TEMP TABLE keep_admins(email text PRIMARY KEY);
 INSERT INTO keep_admins VALUES ('cultleaderzoz.dev@gmail.com');
 
@@ -43,6 +44,10 @@ SET role = 'customer', is_platform_admin = false, admin_permissions = '{}'::json
 WHERE role IN ('admin', 'assistant-admin')
   AND lower(email) NOT IN (SELECT email FROM keep_admins);
 
+-- Nobody else keeps the platform-admin flag, whatever their role.
+UPDATE users SET is_platform_admin = false
+WHERE is_platform_admin AND lower(email) NOT IN (SELECT email FROM keep_admins);
+
 -- Test-domain accounts cannot sign in afterwards. Their data is kept.
 UPDATE users
 SET is_suspended = true
@@ -54,8 +59,11 @@ WHERE split_part(lower(email), '@', 2) IN
 UPDATE users SET role = 'admin', is_platform_admin = true
 WHERE lower(email) IN (SELECT email FROM keep_admins);
 
--- Verify. Expect admins = number of allowlisted emails.
+-- Verify. Expect exactly 1 row with role = 'admin' and 1 with is_platform_admin.
 SELECT role, is_platform_admin, count(*) FROM users GROUP BY 1, 2 ORDER BY 1, 2;
+SELECT count(*) FILTER (WHERE role = 'admin') AS admins,
+       count(*) FILTER (WHERE is_platform_admin) AS platform_admins
+FROM users;
 
 -- COMMIT;   -- uncomment after reviewing the verification output
 ROLLBACK;    -- default: nothing changes
