@@ -37,6 +37,7 @@ describe("ErrorBoundary", () => {
 
       expect(await screen.findByRole("heading", { name: "حدث خطأ ما" })).toBeTruthy()
       expect(screen.getByText("منع خطأ غير متوقع عرض هذه الصفحة.")).toBeTruthy()
+      expect(screen.getByRole("link", { name: "support@cyreax.com" }).getAttribute("href")).toBe("mailto:support@cyreax.com")
       expect(screen.queryByText("private implementation detail")).toBeNull()
     } finally {
       consoleError.mockRestore()

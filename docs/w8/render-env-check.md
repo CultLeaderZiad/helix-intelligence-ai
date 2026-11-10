@@ -35,7 +35,7 @@ What must pass before the W8 deploy:
 - `PUBLIC_APP_BASE_URL` and `APP_BASE_URL` are public https URLs.
 - `BACKEND_CORS_ORIGINS` has no `localhost`.
 - `CREDENTIAL_ENCRYPTION_KEY` differs from `SECRET_KEY`.
-- `RESEND_API_KEY` and `RESEND_FROM` are set.
+- `RESEND_API_KEY` and `RESEND_FROM` are set. `RESEND_FROM` is the verified sender (planned `Helix <noreply@mail.cyreax.com>`). `SUPPORT_EMAIL` is optional and defaults to `support@cyreax.com`; that address is the Reply-To and the footer of transactional mail.
 - `EMBEDDED_WORKER_ENABLED=true`.
 - `METAPI_API_KEY` is set.
 

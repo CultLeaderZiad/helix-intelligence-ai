@@ -6,6 +6,7 @@ import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { w5Support } from "@/i18n/w5Support"
 import { formatMemberDate } from "@/i18n/memberMessages"
 import { useSupport } from "@/hooks/useSupport"
+import { SupportMailto } from "@/components/SupportMailto"
 
 export function SupportPage() {
   const { lang, t } = useLanguage()
@@ -59,6 +60,9 @@ export function SupportPage() {
           <h1 className="text-2xl font-bold text-white tracking-tight">{text("supportTitle")}</h1>
           <p className="text-sm text-slate-400 mt-1">
             {text("supportSubtitle")}
+          </p>
+          <p className="text-sm text-slate-400 mt-1">
+            {text("supportEmailLead")} <SupportMailto />
           </p>
         </div>
         <button

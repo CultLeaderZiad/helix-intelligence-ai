@@ -2,6 +2,7 @@ export const w5Support = {
   en: {
     supportTitle: "Support & Feedback",
     supportSubtitle: "Submit a report or suggestion, or continue a conversation with our product team.",
+    supportEmailLead: "Or email support:",
     newTicket: "New ticket",
     yourTickets: "Your tickets ({count})",
     loadingTickets: "Loading support requests…",
@@ -100,6 +101,7 @@ export const w5Support = {
   ar: {
     supportTitle: "الدعم والملاحظات",
     supportSubtitle: "أرسل بلاغًا أو اقتراحًا، أو تابع محادثتك مع فريق المنتج.",
+    supportEmailLead: "أو راسل الدعم:",
     newTicket: "طلب دعم جديد",
     yourTickets: "طلباتك ({count})",
     loadingTickets: "جارٍ تحميل طلبات الدعم…",

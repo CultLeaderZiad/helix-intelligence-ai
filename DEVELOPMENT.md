@@ -74,7 +74,8 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `MONITOR_MISS_THRESHOLD` | Optional | Consecutive absences before an ad is reported stopped (default `2`) |
 | `MONITOR_MAX_FAILURES` | Optional | Consecutive failed runs before a monitor self-pauses (default `5`) |
 | `RESEND_API_KEY` | Optional | Resend API key. Without it monitor alerts are in-app only |
-| `RESEND_FROM` | Optional | Verified sender address, e.g. `alerts@yourdomain.com` |
+| `RESEND_FROM` | Optional | Verified From address. Planned value: `Helix <noreply@mail.cyreax.com>`. Read from the environment only; the app does not hardcode it |
+| `SUPPORT_EMAIL` | Optional | Reply-To and the address in every transactional email footer. Default `support@cyreax.com` |
 | `META_ACCESS_TOKEN` | Optional | Meta Marketing / Ad Library API access |
 | `APIFY_API_TOKEN` | Optional | Apify Actor scraper API token |
 | `BRIGHTDATA_API_KEY` | Optional | Bright Data scraping proxy API key |
@@ -105,6 +106,7 @@ variable. Vercel → Settings → Environment Variables overrides it per scope:
 | Variable | Production | Preview | Notes |
 |---|---|---|---|
 | `VITE_API_BASE_URL` | `https://helix-intelligence-ai.onrender.com/api` | same, or a staging API's HTTPS URL | Build-time. Must be `https://` on a DNS host; no trailing slash. Redeploy after changing it |
+| `VITE_SUPPORT_EMAIL` | `support@cyreax.com` | same | Build-time. Mailto target for support, legal, account, and error surfaces. Unset or invalid values fall back to `support@cyreax.com` |
 | `VITE_ENVIRONMENT` | `production` (or unset) | `preview` (or unset) | Optional. `preview`/`staging` builds may use a public HTTPS API; `development`/`test` stay loopback-only (`src/services/origin.js`) |
 | `VITE_NEON_AUTH_URL` | unset | unset | Not used. Auth is FastAPI JWT |
 
@@ -355,6 +357,10 @@ through Resend. Email is credential-driven like R2: without both
 run still succeeds. Until a domain is verified, `RESEND_FROM` can be
 `Helix Intelligence <onboarding@resend.dev>` and will only deliver to the
 Resend account's own inbox (plus Resend's `delivered@resend.dev` test sink).
+The planned verified sender is `Helix <noreply@mail.cyreax.com>`. Every
+accepted send sets Reply-To to `SUPPORT_EMAIL` (default `support@cyreax.com`)
+and prints that address in the message footer. Password reset, welcome,
+team invite, and monitor alerts all go through that sender.
 Slack and outbound webhooks are deliberately not built yet.
 
 ## Auth Architecture

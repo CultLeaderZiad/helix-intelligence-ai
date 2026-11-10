@@ -19,6 +19,7 @@ describe("W5 access, not purchase", () => {
     expect(screen.getByText(/Access is granted by an administrator, not purchased/)).toBeTruthy()
     expect(screen.queryByText(/select a plan|free trial|checkout|\$\d/i)).toBeNull()
     expect(screen.getByText(/What happens next/)).toBeTruthy()
+    expect(screen.getByRole("link", { name: "support@cyreax.com" }).getAttribute("href")).toBe("mailto:support@cyreax.com")
   })
   it("W8: lists each feature with the workspace's real on/off state", () => {
     state.status = "approved"

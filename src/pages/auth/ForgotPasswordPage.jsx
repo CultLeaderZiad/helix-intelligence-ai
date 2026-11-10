@@ -8,6 +8,7 @@ import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
 import { formatAuthFieldError, validateEmailOnly } from "@/features/auth/validation"
 import { Input } from "@/components/ui/Field"
+import { SupportMailto } from "@/components/SupportMailto"
 import { Button } from "@/components/ui/Button"
 import { useLanguage } from "@/context/LanguageContext"
 
@@ -201,6 +202,9 @@ export function ForgotPasswordPage() {
             t("authSendResetLink", "Send reset link")
           )}
         </Button>
+        <p className="text-center text-xs text-text-muted">
+          {t("authSupportLead", "Need help with this account?")} <SupportMailto />
+        </p>
       </form>
     </AuthLayout>
   )

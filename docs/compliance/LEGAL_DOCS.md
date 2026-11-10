@@ -76,9 +76,9 @@ changes are outside this W4 allowed-file list; implementation remains blocked.
 
 ## Contact, rights and approval
 
-Privacy contact: **pending operator verification**. The repository's earlier email
-addresses were not verified in this task and are not republished as working privacy
-contacts. Ziad must approve a monitored contact, operator identity, jurisdiction,
-rights-request workflow, retention periods, transfer safeguards, AI-output rights
-and final EN/AR wording before approving or publishing legal policies. Engineering
-has not sent mail, verified a mailbox or obtained legal approval.
+Support and privacy contact: **support@cyreax.com** (`SUPPORT_EMAIL` on the API,
+`VITE_SUPPORT_EMAIL` in the UI). Transactional mail is sent From `RESEND_FROM`
+(planned `Helix <noreply@mail.cyreax.com>`) with Reply-To set to that support
+address. Operator identity, jurisdiction, retention, transfer safeguards, and
+final EN/AR legal wording still require approval. This note does not claim the
+mailbox was delivery-tested or that an erasure workflow is complete.

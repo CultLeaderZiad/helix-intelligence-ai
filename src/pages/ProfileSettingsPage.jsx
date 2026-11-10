@@ -7,6 +7,7 @@ import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { getW5OnboardingText } from "../i18n/w5Onboarding"
 import { getMemberMessage, getMemberRoleLabel } from "@/i18n/memberMessages"
 import { useProfileSettings } from "@/hooks/useProfileSettings"
+import { SupportMailto } from "@/components/SupportMailto"
 
 export function ProfileSettingsPage() {
   const { user, signOut, refreshSession, updateUser } = useAuth()
@@ -345,6 +346,10 @@ export function ProfileSettingsPage() {
         </div>}
 
         {/* Save Actions */}
+        <p className="text-xs text-slate-400">
+          {text("accountSupportLead")} <SupportMailto />
+        </p>
+
         {canMutateAccount && <div className="flex justify-end pt-2">
           <button
             type="submit"

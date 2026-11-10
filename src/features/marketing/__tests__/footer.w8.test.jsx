@@ -27,6 +27,9 @@ describe("W8 marketing footer", () => {
     expect(markup).not.toMatch(/href="\/(intelligence|create|performance|scout)"|#pricing|Pricing|Create Studio/)
     expect(markup).toContain("HELIX")
     expect(markup).toContain("Legal disclosures are drafts")
+    expect(markup).toContain('href="mailto:support@cyreax.com"')
+    expect(markup).toContain("support@cyreax.com")
+    expect(markup).not.toContain("no verified privacy contact")
   })
 
   it("has Arabic copy", () => {

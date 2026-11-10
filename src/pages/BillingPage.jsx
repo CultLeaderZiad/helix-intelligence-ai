@@ -4,6 +4,7 @@ import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { useW8Copy } from "@/i18n/w8Product"
+import { SupportMailto } from "@/components/SupportMailto"
 
 const FEATURES = [
   { flag: "discover", copy: "featureDiscover" },
@@ -38,6 +39,7 @@ export function BillingPage() {
         <Button onClick={refresh} disabled={loading}>{t("refresh")}</Button>
       </div>
       <p className="text-sm leading-relaxed text-text-muted">{w8.accessIntro}</p>
+      <p className="text-sm text-text-muted">{w8.accessSupport} <SupportMailto /></p>
       {loading ? <p role="status">{t("loading")}</p> : error ? <p role="alert" className="text-danger">{t("requestFailed")}</p> : (
         <>
           <p className="border border-border bg-surface p-4" role="status">{t("accessStatusLabel")}: {statusKeys[status] ? t(statusKeys[status]) : t("unknownValue")}</p>
