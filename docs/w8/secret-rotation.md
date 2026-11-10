@@ -7,7 +7,7 @@ Compared against Render's environment export of 2026-11-08, names only.
 | Name | W8 needs | Render today | Action |
 |---|---|---|---|
 | `ENVIRONMENT` | `production` | missing | add |
-| `DATABASE_URL` | `helix_api_login` on the pooled host of branch `br-gentle-star-axcrbk22` | owner role | switch at deploy (runbook step 7); keep the owner URL for rollback |
+| `DATABASE_URL` | `helix_api_login` on the pooled host of branch `br-gentle-star-axcrbk22` | owner role | deploy-moment group only (runbook step 10, **Save, rebuild and deploy**). Keep the current owner URL until the new deploy is healthy, then replace it with the reset owner URL (step 12) |
 | `PUBLIC_APP_BASE_URL`, `APP_BASE_URL` | public https (Vercel URL) | missing | add |
 | `PUBLIC_API_BASE_URL` | public https API URL | present | keep |
 | `BACKEND_CORS_ORIGINS` | https Vercel origin(s) only | present, includes `localhost` | edit |
@@ -15,7 +15,7 @@ Compared against Render's environment export of 2026-11-08, names only.
 | `CREDENTIAL_ENCRYPTION_KEY` | set, different from `SECRET_KEY` | missing | add |
 | `RESEND_API_KEY`, `RESEND_FROM` | set (production refuses to start without them) | missing | add |
 | `EMBEDDED_WORKER_ENABLED` | `true` (free plan has no worker service) | missing | add |
-| `HELIX_DISPATCH_INLINE` | `false` or unset | unset | ok |
+| `HELIX_DISPATCH_INLINE` | `false` or unset | unset | **Not a deploy-moment key.** `main` at `5b45806` has no such name (`git grep` is empty; `work_outbox.py` is not in that commit; `Settings.extra` is `ignore`). Setting it does not change the running process. W8 still refuses to boot if it is true in production. |
 | `METAPI_API_KEY` | set | present | rotate |
 | `METAPI_MONTHLY_RECORD_BUDGET` | the remaining records this period | missing (default 3000) | add |
 | `DISCOVER_*` caps | as decided (defaults: 6 calls/day, 3 searches/workspace) | missing (defaults) | optional |
@@ -35,7 +35,7 @@ Compared against Render's environment export of 2026-11-08, names only.
 - `USE_MOCKS`
 - `VITE_DATA_SOURCE` (a frontend setting; it belongs on Vercel, not Render)
 
-Check: Export → Download .env, then `python backend/scripts/check_release_env.py --env-file <file>`. Every line must be OK.
+Check: from `backend/`, `python scripts/check_release_env.py --env-file <file>`. Every line must be OK. The Render export is **plaintext secrets**. Run the check on your machine, then delete the file. Do not commit it or paste it into chat. Service in the dashboard: **`helix-intelligence-ai`**, not `helix-backend`.
 
 ## B. Rotation checklist
 
@@ -43,8 +43,8 @@ The env file shared on 2026-11-08 exposed every value below in a chat transcript
 
 | # | Secret | Where to rotate | When | Notes |
 |---|---|---|---|---|
-| 1 | Neon owner password (`neondb_owner`, used by `DATABASE_URL` / `_UNPOOLED`) | Neon console → Roles → `neondb_owner` → Reset password | **At cutover**, right after migrating | Rotating breaks the running old API until Render's `DATABASE_URL` changes, so do it in the same window. Keep the new owner URL only for migrations and rollback. |
-| 2 | `SECRET_KEY` | Generate locally (≥ 48 random chars) | At cutover | Invalidates all sessions; users sign in again. |
+| 1 | Neon owner password (`neondb_owner`, used by `DATABASE_URL` / `_UNPOOLED`) | Neon console → Roles → `neondb_owner` → Reset password | **After the new deploy is healthy** (runbook step 12), not after the migration | The old API is still serving on the current owner URL until `DATABASE_URL` switches to `helix_api_login`. Rotating earlier takes that API down. After `/api/health` is 200, the live process no longer uses the owner password. Reset it then, and keep the **new** owner URL for rollback and later migrations. The pre-rotation password is not the rollback credential. |
+| 2 | `SECRET_KEY` | Generate locally (≥ 48 random chars) | Deploy-moment group (runbook step 10), with **Save, rebuild and deploy** | Invalidates all sessions; users sign in again. Do not Save-only it onto the still-running `5b45806` deploy. |
 | 3 | `METAPI_API_KEY` | Metapi dashboard → API keys → revoke and create | Before cutover | Then set `METAPI_MONTHLY_RECORD_BUDGET`. |
 | 4 | `GROQ_API_KEY` | console.groq.com → API Keys | Before cutover | |
 | 5 | `GEMINI_API_KEY` | Google AI Studio → API keys | Before cutover | |
@@ -58,5 +58,5 @@ The env file shared on 2026-11-08 exposed every value below in a chat transcript
 | 13 | `NEON_AI_GATEWAY_TOKEN` | Neon console | Before cutover | Unused by W8: revoke, delete from Render. |
 | 14 | `HF_API_KEY_ID` / `HF_API_KEY_SECRET` | Provider dashboard | Before cutover | Unused by W8: revoke, delete. |
 | 15 | `AIHUBMIX_API_KEY`, `TOKENHARBOR_API_KEY` | Provider dashboards | Before cutover | Unused by W8: revoke, delete. |
-| 16 | New `helix_api_login` password | Generated at cutover (runbook step 4) | At cutover | Only in a password manager and in Render's `DATABASE_URL`. |
+| 16 | New `helix_api_login` password | Generated at cutover (runbook step 5) | At cutover | Only in a password manager and in Render's `DATABASE_URL`. |
 | 17 | New `CREDENTIAL_ENCRYPTION_KEY` | Generate locally | Before cutover | Different from `SECRET_KEY`. |

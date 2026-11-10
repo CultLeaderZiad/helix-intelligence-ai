@@ -1,8 +1,9 @@
 """Check a Render environment export against what W8 needs in production.
 
-Render's free plan has no Shell, so: Render -> helix-backend -> Environment ->
-Export -> Download .env, keep the file on your machine (never commit or paste
-it), then run from backend/:
+Render's free plan has no Shell. The service is helix-intelligence-ai
+(srv-da3ocem7bikc73bfi4fg), not helix-backend. Export its Environment to a
+local .env. That file is plaintext secrets: run this check, then delete the
+file. Never commit it or paste it into chat. From backend/:
 
     python scripts/check_release_env.py --env-file "C:/path/to/render.env"
 

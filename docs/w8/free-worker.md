@@ -6,9 +6,16 @@ background workers, so W8 can run the same loop **inside the API process**.
 
 ## How to turn it on
 
-1. API service environment:
+Pause the overdue monitors first (`docs/w8/pause-monitors.sql`). The scheduler
+calls `tick()` as soon as this loop starts, and the live branch has 3 active
+daily monitors that are already due. `HELIX_DISPATCH_INLINE` is not read by
+the code on `main` at `5b45806` (the name does not occur in that commit), so
+setting it does not change the process that is running today. W8 still requires
+it false in production.
+
+1. API service environment, on the same **Save, rebuild and deploy** as the new commit (`docs/w8/release-plan.md`):
    - `EMBEDDED_WORKER_ENABLED=true`
-   - `HELIX_DISPATCH_INLINE=false` (required in production anyway)
+   - `HELIX_DISPATCH_INLINE=false` (required in production anyway; not a deploy-moment key, because `5b45806` ignores it)
 2. Database, as the owner, once:
    `GRANT helix_worker TO helix_api_login;`
    - The worker claim policies admit members of `helix_worker` only while the
