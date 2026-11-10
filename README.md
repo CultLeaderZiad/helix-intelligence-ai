@@ -39,7 +39,8 @@ When reporting status, changes, or PRs:
 3. **What remains unverified** (production / end-to-end flows not yet tested)
 4. **P0 next step only**
 
-`main` will automatically deploy.
+`main` deploys to Render (free web service, ohio) and Vercel. For the W8 release,
+turn Render auto-deploy off first and follow `docs/w8/release-plan.md`.
 
 [Continue working on v0 →](https://v0.app/chat/projects/prj_EHmR27b76XzctNqInu1YZp1CDzTB)
 

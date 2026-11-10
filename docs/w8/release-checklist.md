@@ -5,12 +5,16 @@ untouched; merging `fix/core-W8` needs Ziad's explicit OK.
 
 ## 1. Migrations
 
-Production's revision was `c4d92e1f7a8b`, read from the `w8-rehearsal` copy of
-production made on 2026-11-06. **Re-read it on production (read-only) right
-before release**; if it differs, recompute this list.
+**Production database = Neon branch `dev`** (`br-gentle-star-axcrbk22`, endpoint
+`ep-cold-rice-axydlqmv`), proven server-side (`neon.branch_id`) with the URL in
+Render's environment export on 2026-11-10. It is at **`b1c2d3e4f5a6`** (row 4 below),
+230 users. The branch named `production` (`br-soft-mode-ax44ab32`) is an empty
+leftover and is NOT used. **Re-read the revision (read-only) right before release.**
 
-From `c4d92e1f7a8b` to head `c9e1f3a5b7d0` there are **26 migrations**, applied
-in this order (`alembic upgrade head`, as the owner role):
+From `b1c2d3e4f5a6` to head `c9e1f3a5b7d0` there are **22 migrations** (rows 5–26),
+run from a local machine as the owner on the **direct** host
+(`alembic upgrade head`), never via Render. Rows 1–4 are already applied on `dev`.
+The cutover runbook is `docs/w8/release-plan.md`.
 
 | # | Revision | What it does | Changes existing data? |
 |---|---|---|---|
@@ -41,24 +45,17 @@ in this order (`alembic upgrade head`, as the owner role):
 | 25 | `b8d0f2a4c6e9` | Per-plan limits: searches/day, monitors, cadences (added 2026-11-08) | no |
 | 26 | `c9e1f3a5b7d0` | Reconcile drifted schemas: defaults, timestamptz, NOT NULL, cascade FKs; no-op on a clean DB (added 2026-11-08) | fills 1 NULL with its default on the live copy |
 
-Evidence: 1–19 were rehearsed in one run on 2026-11-06 (no errors, no rows
-changed: production then held 1 user, 1 workspace, no patterns or usage logs;
-`alembic check` clean). 20–25 were applied to `w8-rehearsal` one at a time on
-2026-11-07/08; it is now at `b8d0f2a4c6e9` with 40 tenant policies. **The 25 have
-not been run as one sequence on a fresh production copy.**
+Evidence: all 22 rehearsed in one run on fresh copies of `dev` (`w8-dev-rehearsal-2`,
+2026-11-08; `w8-cutover-rehearsal`, 2026-11-10): no errors, row counts unchanged except
+2 workspace-less patterns moved to `pattern_quarantine`, `alembic check` clean.
 
 ## 2. Before and after the migrations
 
-1. Create a Neon branch from `production` as the rollback point.
-2. Rehearse all 25 on a second fresh copy; compare row counts before/after.
-3. Migrate production as the owner.
-4. `GRANT helix_app TO helix_api_login; GRANT helix_worker TO helix_worker_login;`
-   (both logins exist in production; neither is a member yet).
-5. First admin: `backend/scripts/bootstrap_platform_admin.py` (DEVELOPMENT.md →
-   First platform admin), production branch id `br-soft-mode-ax44ab32`.
-6. Set the provider settings in section 3 on the API **and** the worker.
-7. A jobs worker must be running (paid Render worker not approved; free
-   hosting under evaluation). Without it, searches queue and are refunded later.
+Follow the free-plan cutover runbook in `docs/w8/release-plan.md` (backup branch,
+local migrations, roles by SQL, Render env with auto-deploy off, manual deploy,
+rollback that restores the owner `DATABASE_URL`). First admin: the migration promotes
+only `HELIX_PLATFORM_ADMIN_EMAILS`; otherwise use
+`backend/scripts/bootstrap_platform_admin.py --expect-branch br-gentle-star-axcrbk22`.
 
 ## 3. Provider budgets
 
@@ -125,12 +122,15 @@ about 50 tasks/day.
    set `METAPI_MONTHLY_RECORD_BUDGET` to the remaining 2,150 for November.
 3. Entity-intent, pattern-scoring and ScrapeGraph calls are not under the
    provider budget.
-4. The 22 migrations have not run as one sequence on a fresh production copy.
-5. Production's revision should be re-read before release.
+4. Production's revision (`dev`, `b1c2d3e4f5a6`) should be re-read before release.
+5. `dev` has 29 `role='admin'` users (most on test domains); the admin API trusts
+   `role`, so run the reviewed `docs/w8/admin-cleanup.sql` (with approval) first.
 6. R2 is not configured, so archived media would sit on ephemeral disk.
 
 ## 5. Rollback
 
-- Vercel and Render: redeploy the previous deployment (`5b45806`).
+- Vercel and Render: redeploy the previous deployment (`5b45806`); free Render keeps
+  only the last 2 deploys for rollback. Also restore the owner `DATABASE_URL`, because
+  the old code expects it (see `docs/w8/release-plan.md`).
 - Database: down-migrations cannot restore deleted rows. Restore from the
   pre-release Neon branch or point-in-time restore.

@@ -97,6 +97,11 @@ already existed (copied from the parent branch), both `LOGIN`,
 `NOSUPERUSER`, `NOBYPASSRLS`, `INHERIT`. Production most likely has them
 too. Verify that before creating anything.
 
+> **Superseded 2026-11-10:** production is the Neon branch `dev` (`br-gentle-star-axcrbk22`,
+> revision `b1c2d3e4f5a6`, no `helix_*` roles), Render is a free web service with no
+> pre-deploy command or shell. Use the runbook in `docs/w8/release-plan.md`; the steps
+> below are kept for history.
+
 1. Back up or branch production first (a Neon branch is instant).
 2. Run migrations as the owner, from `c4d92e1f7a8b` to `d1f9c4a7b263`
    (14 revisions). They took 4 min 43 s on dev-w8 and `alembic check`

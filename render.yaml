@@ -4,6 +4,10 @@ services:
     env: python
     rootDir: backend
     buildCommand: "pip install -r requirements.txt"
+    # NOTE (2026-11-10): the live service (srv-da3ocem7bikc73bfi4fg, ohio, FREE plan) is
+    # NOT managed by this Blueprint. Free services have no pre-deploy command, Shell or
+    # SSH, so the preDeployCommand below never runs there. Migrations run from a local
+    # machine (docs/w8/release-plan.md). Kept as the reference for a paid/Blueprint setup.
     # Operator-controlled release gate: approve only after the backup/restore and
     # disposable migration checks in docs/production-readiness/remediation-status.md.
     # MIGRATION_DATABASE_URL is a dedicated migration credential, never the app's

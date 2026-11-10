@@ -550,10 +550,10 @@ still gets `403` on `/admin/*`, `access-grant` and `/account/access-grants`.
    - `ALLOWED_REMOTE_DATABASE_HOST`: that string's host.
 
    Don't save either variable to a file. The production branch id is
-   `br-soft-mode-ax44ab32`. Check the printed `user_id`, `org_id` and flags.
+   `br-gentle-star-axcrbk22` (the Neon branch named `dev`). Check the printed `user_id`, `org_id` and flags.
    ```bash
    cd backend
-   python scripts/bootstrap_platform_admin.py --user-id <id> --expect-branch br-soft-mode-ax44ab32
+   python scripts/bootstrap_platform_admin.py --user-id <id> --expect-branch br-gentle-star-axcrbk22
    ```
 5. **Apply.** Run the same command again with `--apply`. Add
    `--features discover,swipe_files,monitors` if those should be on too. Note
