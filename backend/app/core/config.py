@@ -7,6 +7,10 @@ from typing import List
 
 from .origins import is_loopback_host, validate_database_target, validate_http_target
 
+# Public support mailbox. The only address transactional mail uses for Reply-To
+# and the only address the API prints in an email footer.
+DEFAULT_SUPPORT_EMAIL = "support@cyreax.com"
+
 
 def _dotenv_files_for_environment(environment: str | None):
     if environment != "development":
@@ -281,8 +285,13 @@ class Settings(BaseSettings):
 
     # EMAIL (Resend). Unset means email fan-out is skipped and only in-app
     # notifications are delivered; it is never a hard failure.
+    # RESEND_FROM is the verified sender (planned: Helix <noreply@mail.cyreax.com>).
+    # It is read only from the environment — never hardcoded as the From address.
     RESEND_API_KEY: str = os.getenv("RESEND_API_KEY", "")
     RESEND_FROM: str = os.getenv("RESEND_FROM", "")
+    # Public support address. Reply-To on every transactional email, and the
+    # address shown in those emails' footers. Not a secret.
+    SUPPORT_EMAIL: str = os.getenv("SUPPORT_EMAIL", DEFAULT_SUPPORT_EMAIL)
     # Origin used to build links in emails and notifications.
     APP_BASE_URL: str = os.getenv("APP_BASE_URL", "http://localhost:3000").rstrip("/")
 
@@ -465,6 +474,10 @@ def validate_boot_invariants(cfg) -> None:
         for name in ("GROQ_MODEL", "GEMINI_TEXT_MODEL"):
             if not getattr(cfg, name, ""):
                 errors.append(f"{name} must be set in production")
+
+    support_email = (getattr(cfg, "SUPPORT_EMAIL", "") or "").strip()
+    if support_email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", support_email):
+        errors.append("SUPPORT_EMAIL must be an email address")
 
     if errors:
         prefix = (

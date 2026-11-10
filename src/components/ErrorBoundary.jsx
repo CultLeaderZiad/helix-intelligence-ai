@@ -1,5 +1,6 @@
 import React from "react"
 import { AlertTriangle, RefreshCw } from "lucide-react"
+import { SupportMailto } from "@/components/SupportMailto"
 import LanguageContext from "@/context/LanguageContext"
 
 const CHUNK_RELOAD_LOCK = "chunk_reload_lock"
@@ -119,6 +120,9 @@ export class ErrorBoundary extends React.Component {
                 <RefreshCw className="w-4 h-4" />
                 {this.translate("errorBoundary.reload", "Reload workspace", "إعادة تحميل مساحة العمل")}
               </button>
+              <p className="text-xs text-slate-400">
+                {this.translate("supportLabel", "Support", "الدعم")} <SupportMailto />
+              </p>
             </div>
           </div>
         )
@@ -156,7 +160,7 @@ export class ErrorBoundary extends React.Component {
                 )}
               </p>
             </div>
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex flex-col items-center gap-2">
               <button
                 onClick={this.handleReset}
                 className="flex items-center gap-1.5 rounded border border-border-strong bg-surface-2 px-3 py-1.5 font-mono text-[11px] font-semibold uppercase text-text transition-colors hover:bg-surface-3"
@@ -164,6 +168,11 @@ export class ErrorBoundary extends React.Component {
                 <RefreshCw className="h-3 w-3" />
                 {this.translate("errorBoundary.retry", "Try again", "حاول مرة أخرى")}
               </button>
+              {!isCompact ? (
+                <p className="text-xs text-text-muted">
+                  {this.translate("supportLabel", "Support", "الدعم")} <SupportMailto />
+                </p>
+              ) : null}
             </div>
           </div>
         </div>

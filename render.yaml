@@ -70,7 +70,9 @@ services:
     #       https://helix-intelligence-ai.onrender.com/api/monitors/tick
     #
     # Optional: RESEND_API_KEY + RESEND_FROM enable email alerts. Without
-    # them monitors still run and notify in-app.
+    # them monitors still run and notify in-app. RESEND_FROM is the verified
+    # sender (planned: Helix <noreply@mail.cyreax.com>). SUPPORT_EMAIL is the
+    # Reply-To and the footer address; it defaults to support@cyreax.com.
     #
     # ────────────────────────────────────────────────────────
     # Discovery & Scraping API keys (CRITICAL FOR LIVE SEARCH)

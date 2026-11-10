@@ -1,12 +1,14 @@
 import { Link } from "react-router-dom"
 import { useLanguage } from "@/context/LanguageContext"
 import { useW8Copy } from "@/i18n/w8Product"
+import { SUPPORT_EMAIL, SUPPORT_MAILTO } from "@/lib/supportEmail"
 
 /** @param {{ to: string, children: import("react").ReactNode }} props */
 function FooterLink({ to, children }) {
   const cls = "text-text-muted transition-colors hover:text-white"
-  // In-page anchors and static files load as plain links; app routes use the router.
-  return to.includes("#") || to.endsWith(".md") ? (
+  // Anchors, files, and mailto leave the router. App routes stay in it.
+  const external = /^(?:https?:|mailto:|tel:)/.test(to) || to.includes("#") || to.endsWith(".md")
+  return external ? (
     <a href={to} className={cls}>{children}</a>
   ) : (
     <Link to={to} className={cls}>{children}</Link>
@@ -87,6 +89,7 @@ export function MarketingFooter() {
               [t("docsNavigation"), "/docs"],
               [c.footerApiReference, "/docs/api-reference/authentication"],
               [c.footerRequestAccess, "/#access"],
+              [c.footerSupport, SUPPORT_MAILTO],
               [c.footerAgents, "/agents.md"],
             ]}
           />
@@ -105,7 +108,8 @@ export function MarketingFooter() {
 
       <div className="border-t border-white/[0.06] bg-[#040407] px-6 py-4 text-center font-mono text-[11px] text-text-faint sm:px-8 lg:px-12">
         <p className="mx-auto max-w-4xl leading-relaxed">
-          {t("footerDisclosure")} {t("footerDraft")}
+          {t("footerDisclosure")} {t("footerDraft")}{" "}
+          <a href={SUPPORT_MAILTO} className="text-text-muted underline decoration-white/20 underline-offset-2 transition-colors hover:text-white">{SUPPORT_EMAIL}</a>
         </p>
       </div>
 

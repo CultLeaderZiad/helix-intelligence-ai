@@ -1,6 +1,7 @@
 import { AlertTriangle, ArrowLeft, Database, Shield } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useLanguage } from "@/context/LanguageContext"
+import { SupportMailto } from "@/components/SupportMailto"
 import { MarketingFooter } from "@/features/marketing/MarketingFooter"
 
 export function LegalPage() {
@@ -55,6 +56,9 @@ export function LegalPage() {
         <section className="space-y-3">
           <h2 className="text-xl font-semibold">{t("legalContactHeading")}</h2>
           <p className="text-sm leading-6 text-text-muted">{t("legalContactBody")}</p>
+          <p className="text-sm leading-6">
+            <SupportMailto />
+          </p>
         </section>
       </main>
 

@@ -18,12 +18,13 @@ notification is the primary channel and email is an addition to it.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from html import escape
 from typing import Optional
 import logging
 
 import httpx
 
-from app.core.config import settings
+from app.core.config import DEFAULT_SUPPORT_EMAIL, settings
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +58,29 @@ def _headers() -> dict:
     return {"Authorization": f"Bearer {settings.RESEND_API_KEY}"}
 
 
+def support_address() -> str:
+    """Reply-To and the address printed in every transactional footer."""
+    value = (getattr(settings, "SUPPORT_EMAIL", "") or "").strip()
+    return value or DEFAULT_SUPPORT_EMAIL
+
+
+def append_support_footer(html: str, text: Optional[str]) -> tuple[str, Optional[str]]:
+    """Add the support address once, as the message footer."""
+    address = support_address()
+    safe = escape(address, quote=True)
+    marker = f"mailto:{safe}"
+    if marker not in (html or ""):
+        html = (
+            f"{html}\n"
+            f'<p style="margin-top:28px;font-size:12px;color:#666;">'
+            f'Questions? Reply to this email or write to '
+            f'<a href="{marker}">{safe}</a>.</p>'
+        )
+    if text and address not in text:
+        text = text.rstrip() + f"\n\nQuestions? Reply to this email or write to {address}."
+    return html, text
+
+
 async def send_email(
     *,
     to: str,
@@ -76,11 +100,13 @@ async def send_email(
     if not to:
         return SendResult(False, error="missing_recipient")
 
+    html, text = append_support_footer(html, text)
     payload = {
         "from": settings.RESEND_FROM,
         "to": [to],
         "subject": subject,
         "html": html,
+        "reply_to": support_address(),
     }
     if text:
         payload["text"] = text

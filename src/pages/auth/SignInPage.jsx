@@ -8,6 +8,7 @@ import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
 import { formatAuthFieldError, validateSignIn } from "@/features/auth/validation"
 import { Input, PasswordInput } from "@/components/ui/Field"
+import { SupportMailto } from "@/components/SupportMailto"
 import { Button } from "@/components/ui/Button"
 import { useLanguage } from "@/context/LanguageContext"
 import { getMemberMessage } from "@/i18n/memberMessages"
@@ -199,6 +200,9 @@ export function SignInPage() {
             </>
           )}
         </Button>
+        <p className="text-center text-xs text-text-muted">
+          {t("authSupportLead", "Need help with this account?")} <SupportMailto />
+        </p>
       </form>
     </AuthLayout>
   )
