@@ -7,9 +7,16 @@ Create Date: 2026-10-18 21:20:00.000000
 Does not invent prices or a billing provider. Seeded plan rows gain
 scout, leadgen, and monitors keys set to false until a platform admin
 grant turns a feature on for one organization.
+
+Platform admins: only the emails in HELIX_PLATFORM_ADMIN_EMAILS (comma-
+separated, case-insensitive) are promoted, and only if they already have
+role 'admin'. Unset means nobody is promoted; use
+scripts/bootstrap_platform_admin.py afterwards. Promoting every role='admin'
+row would have made old test accounts platform admins.
 """
 
-from typing import Sequence, Union
+import os
+from typing import List, Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
@@ -21,12 +28,26 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def platform_admin_allowlist(raw: Union[str, None] = None) -> List[str]:
+    """Emails allowed to become platform admins during this migration."""
+    value = os.environ.get("HELIX_PLATFORM_ADMIN_EMAILS", "") if raw is None else raw
+    return sorted({e.strip().lower() for e in value.split(",") if "@" in e.strip()})
+
+
 def upgrade() -> None:
     op.add_column(
         "users",
         sa.Column("is_platform_admin", sa.Boolean(), server_default=sa.false(), nullable=False),
     )
-    op.execute("UPDATE users SET is_platform_admin = true WHERE role = 'admin'")
+    allowlist = platform_admin_allowlist()
+    if allowlist:
+        op.get_bind().execute(
+            sa.text(
+                "UPDATE users SET is_platform_admin = true "
+                "WHERE role = 'admin' AND lower(email) = ANY(:emails)"
+            ),
+            {"emails": allowlist},
+        )
 
     op.create_table(
         "access_requests",
