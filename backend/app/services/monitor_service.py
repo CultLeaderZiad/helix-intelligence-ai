@@ -50,6 +50,7 @@ from app.services.creative_fingerprint import (
 )
 from app.services.email_service import SendResult, email_enabled, send_email
 from app.services.notification_service import create_notification
+from app.services.query_bounds import MAX_PAGE_SIZE, MONITOR_LIST_CAP
 
 logger = logging.getLogger(__name__)
 
@@ -221,7 +222,7 @@ async def create_monitor(
 
 async def list_monitors(db: AsyncSession, org_id: str) -> List[Dict[str, Any]]:
     result = await db.execute(
-        select(Monitor).where(Monitor.org_id == org_id).order_by(Monitor.created_at.desc())
+        select(Monitor).where(Monitor.org_id == org_id).order_by(Monitor.created_at.desc()).limit(MONITOR_LIST_CAP)
     )
     monitors = list(result.scalars().all())
     if not monitors:
@@ -328,7 +329,7 @@ async def get_monitor_events(
         .join(Monitor, Monitor.id == MonitorEvent.monitor_id)
         .where(Monitor.org_id == org_id)
         .order_by(MonitorEvent.created_at.desc())
-        .limit(min(limit, 200))
+        .limit(min(limit, MAX_PAGE_SIZE))
     )
     if monitor_id:
         query = query.where(MonitorEvent.monitor_id == monitor_id)

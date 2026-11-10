@@ -46,7 +46,7 @@ const translations = {
     image: "Image Still",
     
     // Discover
-    searchPlaceholder: "Brand (e.g. nike.com), niche, or a brand's Ad Library page link",
+    searchPlaceholder: "A brand, a niche, a domain, or that brand's Ad Library page link",
     langEnglish: "English",
     langArabic: "Arabic",
     searchLanguage: "Search language",
@@ -133,7 +133,7 @@ const translations = {
     noPatternsYetDesc: "Click \"Synthesize Patterns\" to mine recurring hook formulas across this corpus.",
     analysisUnavailable: "Analysis Temporarily Unavailable",
     noCorpusTitle: "No Creative Corpus Available",
-    noCorpusDesc: "Run a discovery query in the Discover tab to populate the corpus with competitor ads, or generate a sample analysis.",
+    noCorpusDesc: "Run your own search in Discover. This page stays empty until that search returns ads.",
     openDiscover: "Open Discover",
     family: "Family",
 
@@ -357,7 +357,7 @@ const translations = {
     image: "صورة ثابتة",
     
     // Discover
-    searchPlaceholder: "علامة تجارية (مثل nike.com) أو مجال، أو رابط صفحة العلامة في مكتبة الإعلانات",
+    searchPlaceholder: "علامة تجارية، أو مجال، أو نطاق، أو رابط صفحة العلامة في مكتبة الإعلانات",
     langEnglish: "English",
     langArabic: "العربية",
     searchLanguage: "لغة البحث",
@@ -444,7 +444,7 @@ const translations = {
     noPatternsYetDesc: "اضغط \"استخلاص الأنماط\" لاستخراج صيغ الخطافات المتكررة من هذه البيانات.",
     analysisUnavailable: "خدمة التحليل غير متاحة مؤقتاً",
     noCorpusTitle: "لا توجد بيانات إعلانات متاحة",
-    noCorpusDesc: "قم بتشغيل بحث في صفحة الاستكشاف لتعبئة البيانات بإعلانات المنافسين، أو أنشئ تحليلاً تجريبياً.",
+    noCorpusDesc: "شغّل بحثك في صفحة الاستكشاف. تبقى هذه الصفحة فارغة حتى يعيد ذلك البحث إعلانات.",
     openDiscover: "اذهب إلى الاستكشاف",
     family: "العائلة",
 

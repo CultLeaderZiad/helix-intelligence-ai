@@ -33,7 +33,7 @@ def page_id_from_query(query: str) -> Optional[str]:
 
 
 def brand_term(query: str) -> str:
-    """'Nike', 'nike.com', 'https://www.nike.com/x' -> 'nike'."""
+    """'Acme', 'acme.example', 'https://www.acme.example/x' -> 'acme'."""
     text = (query or "").strip().lower()
     if "://" in text:
         text = text.split("://", 1)[1].split("/", 1)[0]
@@ -56,7 +56,7 @@ def pick_brand_page(items: list, brand: str) -> Optional[Tuple[str, str]]:
 
     Only exact name matches count (ignoring case, spaces, punctuation and a
     trailing word like "Official" or "Store"), so a reseller called
-    "Nike Shoes PH" is never taken for Nike.
+    "Acme Shoes PH" is never taken for Acme.
     """
     target = _norm(brand)
     if not target:

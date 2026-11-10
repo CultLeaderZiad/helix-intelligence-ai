@@ -45,18 +45,14 @@ class AdyntelProvider(ScraperProvider):
             logger.info("Adyntel skipped: query='%s' is not domain-shaped", query.strip())
             return []
 
-        clean_brand = query.strip().lower()
-        if clean_brand == "*":
-            clean_brand = "brand.com"
-            
-        domain = clean_brand
+        domain = query.strip().lower()
         if "://" in domain:
             try:
                 domain = domain.split("://")[1].split("/")[0]
-            except:
-                pass
+            except Exception:
+                return []
         if "." not in domain:
-            domain = f"{domain.replace(' ', '')}.com"
+            return []
 
         url = "https://api.adyntel.com/facebook"
         payload = {

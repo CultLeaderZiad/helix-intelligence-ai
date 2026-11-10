@@ -3,6 +3,10 @@ from fastapi import HTTPException
 
 MAX_PAGE_SIZE = 100
 MAX_OFFSET = 1_000_000
+# Plain-list reads that do not yet return a page envelope. Above the cap the
+# caller needs a paginated API; the cap stops one request from loading the table.
+ADMIN_LIST_CAP = 500
+MONITOR_LIST_CAP = 100
 
 
 def pagination_bounds(page: int, page_size: int) -> tuple[int, int]:

@@ -125,7 +125,7 @@ function CreateMonitorForm({ onCreate, busy, initialQuery = "" }) {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Brand or keyword to watch (e.g. gymshark)"
+        placeholder="Brand or keyword you want to watch"
         className="h-8 min-w-[240px] flex-1 rounded-sm border border-border bg-surface-2 px-2.5 text-xs text-text placeholder:text-text-faint focus:border-border-strong focus:outline-none"
       />
       <select

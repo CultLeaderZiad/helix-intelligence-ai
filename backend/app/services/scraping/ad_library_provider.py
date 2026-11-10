@@ -42,7 +42,7 @@ _DOMAIN_RE = re.compile(r"^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$", re
 
 def is_domain_shaped(query: str) -> bool:
     """True when the query is (or starts with) an actual domain —
-    e.g. 'nike.com', 'https://nike.com/shoes', 'www.nike.co.uk'."""
+    e.g. 'acme.example', 'https://acme.example/shop', 'www.acme.example'."""
     candidate = (query or "").strip().lower()
     if "://" in candidate:
         candidate = candidate.split("://", 1)[1]

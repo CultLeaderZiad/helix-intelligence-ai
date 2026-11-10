@@ -82,43 +82,8 @@ def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] =
 
     text_corpus = f"{headline} {body} {brand_name} {landing_domain} {cta}"
 
-    # 2. Entity Disambiguation (Creators, Streamers, Sports Clubs, Public Figures)
-    is_creator = False
-    if entity_profile and entity_profile.get("entity_type") in ("creator_streamer", "influencer"):
-        is_creator = True
-    elif clean_q in ("sneako", "andrew tate", "adin ross", "kai cenat", "ishowspeed"):
-        is_creator = True
-
-    if is_creator:
-        footwear_markers = [
-            "shoes", "shoe", "sneakers", "sneaker", "kicks", "nike tn", "triple black",
-            "sizes available", "parañaque", "pre-order", "fresh drop", "same day delivery",
-            "slip-on", "heels", "sandals", "footwear"
-        ]
-        has_footwear = any(m in text_corpus for m in footwear_markers)
-        has_exact_creator_in_brand = bool(re.search(rf"\b{re.escape(clean_q)}\b", brand_name))
-        if has_footwear and not has_exact_creator_in_brand:
-            return False
-
-    # Check for Sports Club / Major Sports Entity
-    is_sports_entity = False
-    if entity_profile and any(k in str(entity_profile.get("category_label", "")).lower() for k in ("sport", "football", "soccer", "club")):
-        is_sports_entity = True
-    elif any(team in clean_q for team in ("real madrid", "fc barcelona", "manchester united", "arsenal", "liverpool", "chelsea")):
-        is_sports_entity = True
-
-    if is_sports_entity:
-        discordant_markers = [
-            "desparasitaria", "veterinaria", "perruna", "masticables para alergias", "perro", "gato",
-            "joyería", "joyeria", "curso presencial de joyeria", "orfebrería", "taller de joyeria",
-            "clínica dental", "implantes dentales", "fontanería", "cerrajería"
-        ]
-        has_discordant = any(m in text_corpus for m in discordant_markers)
-        has_club_in_brand = bool(re.search(rf"\b{re.escape(clean_q)}\b", brand_name))
-        if has_discordant and not has_club_in_brand:
-            return False
-
-    # Check any filtered categories from entity profile disambiguation
+    # Categories come only from a profile built for this query (a model call).
+    # There is no built-in list of people, clubs, or product keywords.
     if entity_profile and entity_profile.get("disambiguation", {}).get("filtered_categories"):
         for fc in entity_profile["disambiguation"]["filtered_categories"]:
             fc_clean = fc.lower().strip()
@@ -135,7 +100,7 @@ def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] =
 
     # 4. Multi-token queries (2+ words)
     if len(tokens) >= 2:
-        # DO NOT allow single last_token match (which caused Madrid jewelry/dog medicine to match Real Madrid)
+        # A single trailing token is not enough for a multi-word query.
         # Check if brand name contains all tokens
         brand_matched = sum(1 for t in tokens if re.search(rf"\b{re.escape(t)}\b", brand_name))
         if brand_matched == len(tokens):
@@ -932,8 +897,11 @@ async def _run_discovery_pipeline(
             )
             usage_log_id = usage_log.id
 
-        # Analyze entity intent & PR/marketing footprint early
+        # A model dossier is kept. The no-key heuristic invents a strategy for
+        # every query, so it is not stored or shown.
         entity_profile = await analyze_entity_intent(query)
+        if not entity_profile or entity_profile.get("evidence_status") == "unverified_heuristic":
+            entity_profile = None
 
         # Stage 1: Canonical Ad Library Scraper Chain
         async with async_session_maker() as db:
@@ -1072,13 +1040,13 @@ async def _run_discovery_pipeline(
                 if job:
                     sources_str = ", ".join(sources_tried) if sources_tried else "available sources"
                     job.entity_profile = entity_profile
-                    if entity_profile.get("entity_type") == "creator_streamer":
+                    if entity_profile and entity_profile.get("entity_type") == "creator_streamer":
                         label = (
                             f"'{query}' is recognized as a {entity_profile.get('category_label', 'Content Creator')}. "
                             f"Content creators grow via livestreams, clipping, and sponsors rather than direct Meta feed ads. See Entity Dossier."
                         )
                     else:
-                        label = f"No active ads found across [{sources_str}] for '{query}'. Try a company domain (e.g. 'nike.com') or general industry keyword."
+                        label = f"No active ads found across [{sources_str}] for '{query}'. Try the company domain or a broader keyword, then run the search again."
                     _set_discovery_terminal(job, status="succeeded", stage_label=label)
                     job.stage = "zero_results"
                     job.record_count = 0
@@ -1155,7 +1123,7 @@ async def _run_discovery_pipeline(
                 db_creative, db_score = normalized
                 normalized_records.append((db_creative, db_score))
 
-            # Apply semantic relevance filtering to drop false-positive noise (e.g. shoe stores for Sneako)
+            # Drop rows that do not match the caller's query. A model profile may also name categories to exclude.
             relevant_records = (
                 list(normalized_records)
                 if advertiser_mode
@@ -1220,7 +1188,7 @@ async def _run_discovery_pipeline(
             if job:
                 job.entity_profile = entity_profile
                 if saved_creatives == 0:
-                    if entity_profile.get("entity_type") == "creator_streamer":
+                    if entity_profile and entity_profile.get("entity_type") == "creator_streamer":
                         disambig = entity_profile.get("disambiguation", {})
                         confused = disambig.get("confused_with", "shoe stores")
                         label = (

@@ -496,7 +496,7 @@ export function DiscoverPage() {
                     scrapedNothing
                       ? displayJob?.stage_label && displayJob?.stage !== "complete"
                         ? displayJob.stage_label
-                        : 'The ad libraries had no active ads for this query. Try a company domain (e.g. "nike.com") or a broader industry keyword, then re-run.'
+                        : "The ad libraries had no active ads for this query. Try the company domain or a broader keyword, then run the search again."
                       : t("noMatchesDesc")
                   }
                   action={

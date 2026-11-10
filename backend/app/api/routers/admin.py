@@ -107,7 +107,7 @@ async def get_usage_logs_filtered(
     provider: Optional[str] = Query(None),
     operation: Optional[str] = Query(None),
     page: int = Query(1, ge=1),
-    page_size: int = Query(50, ge=1, le=200),
+    page_size: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_admin: User = Depends(require_admin_permission("usage"))
 ):

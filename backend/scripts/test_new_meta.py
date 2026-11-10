@@ -8,12 +8,16 @@ import urllib.request
 
 def main():
     token = os.environ.get("META_ACCESS_TOKEN", "")
+    query = os.environ.get("META_PROBE_QUERY", "").strip()
     if not token:
         print("Error: META_ACCESS_TOKEN environment variable is not set.")
         return 1
+    if not query:
+        print("Error: META_PROBE_QUERY environment variable is not set.")
+        return 2
 
     params = urllib.parse.urlencode({
-        "search_terms": "shopify",
+        "search_terms": query,
         "ad_reached_countries": "['US']",
         "ad_type": "ALL",
         "limit": "2",

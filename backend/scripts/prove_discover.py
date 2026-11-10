@@ -17,7 +17,7 @@ Environment for this script:
   HELIX_PROOF_EMAIL, HELIX_PROOF_PASSWORD   the granted test account
   HELIX_PROOF_PROVIDER                      which key the servers were started with
                                             (metapi | adyntel | apify | meta_official)
-  HELIX_PROOF_QUERY                         optional, default "nike.com"
+  HELIX_PROOF_QUERY                         required search text; the script has no default query
 
 Usage:
   python scripts/prove_discover.py --scenario success|cancel|timeout
@@ -42,7 +42,7 @@ EVIDENCE_DIR = Path(__file__).resolve().parents[2] / "docs" / "w8" / "discover-p
 
 
 def _require_env() -> dict:
-    missing = [name for name in ("HELIX_PROOF_EMAIL", "HELIX_PROOF_PASSWORD", "HELIX_PROOF_PROVIDER") if not os.getenv(name)]
+    missing = [name for name in ("HELIX_PROOF_EMAIL", "HELIX_PROOF_PASSWORD", "HELIX_PROOF_PROVIDER", "HELIX_PROOF_QUERY") if not os.getenv(name)]
     if missing:
         print("NOT CONFIGURED: set " + ", ".join(missing) + " (see docs/w8/discover-proof/README.md)", file=sys.stderr)
         sys.exit(2)
@@ -50,11 +50,15 @@ def _require_env() -> dict:
     if provider not in PROVIDERS:
         print(f"NOT CONFIGURED: HELIX_PROOF_PROVIDER must be one of {sorted(PROVIDERS)}", file=sys.stderr)
         sys.exit(2)
+    query = os.environ["HELIX_PROOF_QUERY"].strip()
+    if not query:
+        print("NOT CONFIGURED: HELIX_PROOF_QUERY is empty", file=sys.stderr)
+        sys.exit(2)
     return {
         "email": os.environ["HELIX_PROOF_EMAIL"],
         "password": os.environ["HELIX_PROOF_PASSWORD"],
         "provider": provider,
-        "query": os.getenv("HELIX_PROOF_QUERY", "nike.com"),
+        "query": query,
     }
 
 
