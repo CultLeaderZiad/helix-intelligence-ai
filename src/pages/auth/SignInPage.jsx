@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
@@ -6,6 +6,7 @@ import { APP_HOME } from "@/app/ProtectedRoute"
 import { AuthLayout } from "@/features/auth/AuthLayout"
 import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
+import { classifyAuthFailure } from "@/features/auth/authFailure"
 import { formatAuthFieldError, validateSignIn } from "@/features/auth/validation"
 import { Input, PasswordInput } from "@/components/ui/Field"
 import { SupportMailto } from "@/components/SupportMailto"
@@ -34,6 +35,7 @@ export function SignInPage() {
   const [authError, setAuthError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [isSlow, setIsSlow] = useState(false)
+  const submitLock = useRef(false)
 
   useEffect(() => {
     let timer
@@ -58,12 +60,16 @@ export function SignInPage() {
   /** @param {import("react").FormEvent<HTMLFormElement>} [event] */
   async function onSubmit(event) {
     if (event?.preventDefault) event.preventDefault()
-    if (submitting) return
+    if (submitLock.current) return
+    submitLock.current = true
 
     setAuthError(null)
     const nextErrors = validateSignIn(values)
     setErrors(nextErrors)
-    if (Object.keys(nextErrors).length > 0) return
+    if (Object.keys(nextErrors).length > 0) {
+      submitLock.current = false
+      return
+    }
 
     setSubmitting(true)
     try {
@@ -77,18 +83,34 @@ export function SignInPage() {
       
       navigate(finalRedirect, { replace: true })
     } catch (err) {
-      const isCold = err?.code === "network_error" || err?.code === "server_waking" || (err?.status >= 502 && err?.status <= 504)
-      const isLocked = err?.status === 429
-      setAuthError({
-        status: isCold ? "server waking" : isLocked ? "locked" : "auth failed",
-        tone: isCold ? "warning" : "danger",
-        message: isCold
-          ? t("authBackendWaking", "The service is starting. Retry to complete sign in.")
-          : isLocked
-            ? t("authSignInLocked", "Too many sign-in attempts. Wait 15 minutes, or reset your password to sign in now.")
-            : t("authSignInFailed", "Sign in failed. Check your details and try again."),
-        isColdStart: isCold,
-      })
+      const kind = classifyAuthFailure(err)
+      if (kind === "credentials") {
+        setAuthError({
+          status: t("authAuthFailedStatus", "Sign-in failed"),
+          tone: "danger",
+          message: t("authSignInFailed", "Sign in failed. Check your details and try again."),
+        })
+      } else if (kind === "locked") {
+        setAuthError({
+          status: t("authLockedStatus", "Locked"),
+          tone: "danger",
+          message: t("authSignInLocked", "Too many sign-in attempts. Wait 15 minutes, or reset your password to sign in now."),
+        })
+      } else if (kind === "unavailable") {
+        setAuthError({
+          status: t("authServerUnavailableStatus", "Server unavailable"),
+          tone: "warning",
+          message: t("authServerUnavailable", "The server is unavailable. Try again in a moment."),
+          isColdStart: true,
+        })
+      } else {
+        setAuthError({
+          status: t("authAuthFailedStatus", "Sign-in failed"),
+          tone: "danger",
+          message: t("authSignInGeneric", "Sign in could not be completed. Try again."),
+        })
+      }
+      submitLock.current = false
       setSubmitting(false)
     }
   }
@@ -111,7 +133,7 @@ export function SignInPage() {
         </>
       }
     >
-      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+      <form onSubmit={onSubmit} noValidate aria-busy={submitting} className="flex flex-col gap-4">
         {location.state?.passwordChanged ? (
           <FormBanner tone="success" status={getMemberMessage(lang, "profilePasswordChangedStatus")}>
             {getMemberMessage(lang, "profilePasswordChanged")}
@@ -180,6 +202,12 @@ export function SignInPage() {
             className={errors.password ? "border-danger focus:border-danger" : undefined}
           />
         </AuthField>
+
+        {submitting && isSlow ? (
+          <p role="status" className="text-center text-xs text-text-muted">
+            {t("authWakingServer", "Connecting to the server…")}
+          </p>
+        ) : null}
 
         <Button
           type="submit"

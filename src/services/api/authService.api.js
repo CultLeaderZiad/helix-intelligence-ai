@@ -1,4 +1,6 @@
 import { request, ServiceError } from "../http"
+import { API_BASE_URL } from "../config"
+import { withColdStartRetry } from "../coldStart"
 import {
   clearSession,
   getAccessToken,
@@ -20,6 +22,62 @@ function assertCurrentSessionOperation(version) {
       code: "session_changed",
     })
   }
+}
+
+/** @type {Map<string, Promise<unknown>>} */
+const authFlights = new Map()
+
+/**
+ * One in-flight auth submit per key. A second caller joins the same promise
+ * instead of starting another POST.
+ * @template T
+ * @param {string} key
+ * @param {() => Promise<T>} run
+ * @returns {Promise<T>}
+ */
+function shareInFlight(key, run) {
+  const existing = authFlights.get(key)
+  if (existing) return /** @type {Promise<T>} */ (existing)
+  const promise = Promise.resolve().then(run).finally(() => {
+    if (authFlights.get(key) === promise) authFlights.delete(key)
+  })
+  authFlights.set(key, promise)
+  return promise
+}
+
+/** Test seam: drop joined auth submits between cases. */
+export function resetAuthFlights() {
+  authFlights.clear()
+}
+
+/** @type {import("../coldStart").ColdStartOptions} */
+let recoveryOverrides = {}
+
+/** Test seam: replace the health-wait clock without waiting on real time.
+ * @param {import("../coldStart").ColdStartOptions} [options]
+ */
+export function setAuthRecoveryOverridesForTests(options = {}) {
+  recoveryOverrides = options
+}
+
+/**
+ * Auth writes are not idempotent, so the HTTP client does not retry them.
+ * A cold Render instance instead fails the attempt, we wait for /api/health,
+ * and then the same write runs once more.
+ * @template T
+ * @param {() => Promise<T>} operation
+ * @returns {Promise<T>}
+ */
+function recoverAuthRequest(operation) {
+  return withColdStartRetry(operation, {
+    healthUrl: `${API_BASE_URL}/health`,
+    createUnavailableError() {
+      return new ServiceError("The server is unavailable. Try again in a moment.", {
+        code: "server_unavailable",
+      })
+    },
+    ...recoveryOverrides,
+  })
 }
 
 /**
@@ -97,6 +155,65 @@ function sessionToUser(session, fallbackName) {
   }
 }
 
+/** @param {{ email?: string, password?: string }} [credentials] */
+async function performSignIn({ email, password } = {}) {
+  const operationVersion = beginSessionOperation()
+  const session = await recoverAuthRequest(() => request("/auth/sign-in", {
+    method: "POST",
+    body: { email: String(email ?? "").trim().toLowerCase(), password },
+  }))
+
+  if (!session?.access_token) {
+    throw new ServiceError("Sign-in succeeded but no access token returned", {
+      code: "no_token",
+    })
+  }
+  assertCurrentSessionOperation(operationVersion)
+
+  const user = sessionToUser(session)
+  storeSession(session.access_token, user)
+  return { user }
+}
+
+/** @param {{ name?: string, email?: string, password?: string, utm_source?: string, utm_medium?: string, utm_campaign?: string, utm_term?: string, utm_content?: string, referrer?: string }} [params] */
+async function performSignUp({ name, email, password, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer } = {}) {
+  const operationVersion = beginSessionOperation()
+  const cleanName = name ? String(name).trim() : undefined
+  const cleanEmail = String(email ?? "").trim().toLowerCase()
+
+  await recoverAuthRequest(() => request("/auth/sign-up", {
+    method: "POST",
+    body: {
+      name: cleanName,
+      email: cleanEmail,
+      password,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_term,
+      utm_content,
+      referrer,
+    },
+  }))
+  assertCurrentSessionOperation(operationVersion)
+
+  const session = await recoverAuthRequest(() => request("/auth/sign-in", {
+    method: "POST",
+    body: { email: cleanEmail, password },
+  }))
+
+  if (!session?.access_token) {
+    throw new ServiceError("Sign-in succeeded but no access token returned", {
+      code: "no_token",
+    })
+  }
+  assertCurrentSessionOperation(operationVersion)
+
+  const user = sessionToUser(session, cleanName)
+  storeSession(session.access_token, user)
+  return { user }
+}
+
 const authService = {
   getStoredToken,
   getCachedUser,
@@ -149,23 +266,8 @@ const authService = {
    * Stores the returned JWT and returns the user shape.
    */
   /** @param {{ email?: string, password?: string }} [credentials] */
-  async signIn({ email, password } = {}) {
-    const operationVersion = beginSessionOperation()
-    const session = await request("/auth/sign-in", {
-      method: "POST",
-      body: { email: String(email ?? "").trim().toLowerCase(), password },
-    })
-
-    if (!session?.access_token) {
-      throw new ServiceError("Sign-in succeeded but no access token returned", {
-        code: "no_token",
-      })
-    }
-    assertCurrentSessionOperation(operationVersion)
-
-    const user = sessionToUser(session)
-    storeSession(session.access_token, user)
-    return { user }
+  signIn(credentials) {
+    return shareInFlight("auth:sign-in", () => performSignIn(credentials))
   },
 
   /**
@@ -177,42 +279,8 @@ const authService = {
    * therefore surfaces as the usual generic sign-in error.
    */
   /** @param {{ name?: string, email?: string, password?: string, utm_source?: string, utm_medium?: string, utm_campaign?: string, utm_term?: string, utm_content?: string, referrer?: string }} [params] */
-  async signUp({ name, email, password, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer } = {}) {
-    const operationVersion = beginSessionOperation()
-    const cleanName = name ? String(name).trim() : undefined
-    const cleanEmail = String(email ?? "").trim().toLowerCase()
-
-    await request("/auth/sign-up", {
-      method: "POST",
-      body: {
-        name: cleanName,
-        email: cleanEmail,
-        password,
-        utm_source,
-        utm_medium,
-        utm_campaign,
-        utm_term,
-        utm_content,
-        referrer,
-      },
-    })
-    assertCurrentSessionOperation(operationVersion)
-
-    const session = await request("/auth/sign-in", {
-      method: "POST",
-      body: { email: cleanEmail, password },
-    })
-
-    if (!session?.access_token) {
-      throw new ServiceError("Sign-in succeeded but no access token returned", {
-        code: "no_token",
-      })
-    }
-    assertCurrentSessionOperation(operationVersion)
-
-    const user = sessionToUser(session, cleanName)
-    storeSession(session.access_token, user)
-    return { user }
+  signUp(params) {
+    return shareInFlight("auth:sign-up", () => performSignUp(params))
   },
 
   /**
