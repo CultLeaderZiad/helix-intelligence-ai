@@ -89,9 +89,13 @@ services:
     # ────────────────────────────────────────────────────────
     # RATE_LIMIT_ENABLED – default true. In-memory per-IP limits on auth
     #   endpoints (30/min) and Discover job creation (20/min).
-    # TRUSTED_PROXY_CIDRS – Render's proxy is the TCP peer, so set this to
-    #   the private range it uses (check the "Rate limiting keys on proxy
-    #   address" warning in the logs). Unset, every client shares one IP bucket.
+    # TRUSTED_PROXY_CIDRS – Render's proxy is the TCP peer. With
+    #   ENVIRONMENT=production and this unset, the API trusts 10.0.0.0/8
+    #   (Render's private range) so each client gets its own bucket. Set it
+    #   only if the "Rate limiting keys on proxy address" warning still appears.
+    # ABUSE_RATE_LIMIT / _WINDOW_S – support tickets, access requests, share
+    #   links, drafts (default 10/min per IP). Guest board links use the auth
+    #   limit; monitor writes share the paid AI bucket.
     # DISCOVER_ENABLED – "false" pauses Discover and monitors (kill switch).
     # DISCOVER_DAILY_PROVIDER_CALL_CAP – paid provider calls allowed per UTC
     #   day across all workspaces (default 6, Metapi Free). Set on the API and worker.
