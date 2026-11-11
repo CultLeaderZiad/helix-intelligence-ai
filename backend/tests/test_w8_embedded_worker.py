@@ -231,3 +231,29 @@ async def test_embedded_worker_starts_only_when_enabled_and_stops_cleanly(monkey
     assert await embedded_worker.start() is True  # idempotent
     await embedded_worker.stop(timeout_s=10)
     assert not embedded_worker.running()
+
+
+@pytest.mark.asyncio
+async def test_health_reports_worker_state_without_secrets(monkeypatch):
+    from app.api.routers import health
+
+    monkeypatch.setattr(settings, "EMBEDDED_WORKER_ENABLED", False)
+    assert health._worker_status() == {"mode": "external_or_disabled", "running": None, "last_poll_seconds_ago": None}
+
+    async def no_work(owner):
+        return None
+
+    monkeypatch.setattr(outbox, "claim_next_work_item", no_work)
+    monkeypatch.setattr(settings, "EMBEDDED_WORKER_ENABLED", True)
+    await embedded_worker.start()
+    try:
+        assert await _until(lambda: _polled(), timeout=10)
+        state = health._worker_status()
+        assert state["mode"] == "embedded" and state["running"] is True
+        assert 0 <= state["last_poll_seconds_ago"] <= 5
+    finally:
+        await embedded_worker.stop(timeout_s=10)
+
+
+async def _polled():
+    return job_runner.seconds_since_last_poll() is not None

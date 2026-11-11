@@ -132,6 +132,15 @@ async def test_guest_link_shows_one_board_only_and_closes_on_revoke_and_expiry()
             await db.commit()
             assert (await client.get(f"/api/public/boards/{token}")).status_code == 200
 
+            # A suspended or banned creator's link closes at once, and reopens when lifted.
+            for flag in ("is_suspended", "is_banned"):
+                await db.execute(update(User).where(User.id == owner.id).values(**{flag: True}))
+                await db.commit()
+                assert (await client.get(f"/api/public/boards/{token}")).status_code == 404
+                await db.execute(update(User).where(User.id == owner.id).values(**{flag: False}))
+                await db.commit()
+                assert (await client.get(f"/api/public/boards/{token}")).status_code == 200
+
             # Only the creator can revoke; a revoked link is gone for guests.
             with pytest.raises(HTTPException) as not_theirs:
                 await svc.revoke_link(db, other, link["id"])

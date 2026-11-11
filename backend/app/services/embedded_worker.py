@@ -30,8 +30,18 @@ async def start() -> bool:
 
     _stop = asyncio.Event()
     _task = asyncio.create_task(run_jobs(_stop, WORKER_ID), name="helix-embedded-worker")
-    logger.info("embedded jobs worker started (%s)", WORKER_ID)
+    # WARNING so it shows in Render's logs (uvicorn hides INFO from app loggers).
+    logger.warning("embedded jobs worker started (%s)", WORKER_ID)
     return True
+
+
+def status() -> dict:
+    """Public, non-sensitive worker state for /api/health."""
+    from app.services.job_runner import seconds_since_last_poll
+
+    if not settings.EMBEDDED_WORKER_ENABLED:
+        return {"mode": "external_or_disabled", "running": None, "last_poll_seconds_ago": None}
+    return {"mode": "embedded", "running": running(), "last_poll_seconds_ago": seconds_since_last_poll()}
 
 
 async def stop(timeout_s: float = 20.0) -> None:
@@ -50,4 +60,4 @@ async def stop(timeout_s: float = 20.0) -> None:
     except Exception as exc:
         logger.exception("embedded worker stopped with an error: %s", exc)
     _task = None
-    logger.info("embedded jobs worker stopped")
+    logger.warning("embedded jobs worker stopped")

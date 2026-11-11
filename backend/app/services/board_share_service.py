@@ -244,6 +244,14 @@ async def read_guest_board(db: AsyncSession, token: str) -> dict:
             or int(_aware(link.expires_at).timestamp()) != claims["exp"]
         ):
             raise NOT_FOUND
+        # A suspended or banned creator's links stop working at once, like
+        # their sessions do; revocation/expiry alone left them readable.
+        async with tenant_db_scope(db, [claims["org_id"]], str(link.created_by or "")):
+            creator = (await db.execute(
+                select(User.is_suspended, User.is_banned).where(User.id == link.created_by)
+            )).first()
+        if creator is None or creator.is_suspended or creator.is_banned:
+            raise NOT_FOUND
         rows = (await db.execute(
             select(Creative, CreativeScore)
             .join(SavedCreative, SavedCreative.creative_id == Creative.id)
