@@ -5,7 +5,9 @@ No database: these drive the middleware directly with a tiny app.
 from __future__ import annotations
 
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
+import asyncio
+
+import httpx
 
 from app.core.config import effective_trusted_proxy_cidrs, settings
 from app.middleware.rate_limit import RateLimitMiddleware
@@ -16,11 +18,16 @@ def _client(paths):
     for path in paths:
         app.add_api_route(path, lambda: {"ok": True}, methods=["GET", "POST"])
     app.add_middleware(RateLimitMiddleware)
-    return TestClient(app)
+    return app
 
 
-def _codes(client, method, path, n, ip="203.0.113.7"):
-    return [client.request(method, path, headers={"x-forwarded-for": ip}).status_code for _ in range(n)]
+def _codes(app, method, path, n, ip="203.0.113.7", peer="127.0.0.1"):
+    async def go():
+        transport = httpx.ASGITransport(app=app, client=(peer, 50000))
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            return [(await c.request(method, path, headers={"x-forwarded-for": ip})).status_code for _ in range(n)]
+
+    return asyncio.run(go())
 
 
 def test_support_tickets_are_limited(monkeypatch):
@@ -75,6 +82,5 @@ def test_production_clients_behind_render_get_separate_buckets(monkeypatch):
     app = FastAPI()
     app.add_api_route("/api/auth/sign-in", lambda: {"ok": True}, methods=["POST"])
     app.add_middleware(RateLimitMiddleware)
-    client = TestClient(app, client=("10.1.2.3", 50000))
-    assert _codes(client, "POST", "/api/auth/sign-in", 2, ip="198.51.100.1") == [200, 429]
-    assert _codes(client, "POST", "/api/auth/sign-in", 1, ip="198.51.100.2") == [200]
+    assert _codes(app, "POST", "/api/auth/sign-in", 2, ip="198.51.100.1", peer="10.1.2.3") == [200, 429]
+    assert _codes(app, "POST", "/api/auth/sign-in", 1, ip="198.51.100.2", peer="10.1.2.3") == [200]
