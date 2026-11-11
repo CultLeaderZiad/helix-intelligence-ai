@@ -34,7 +34,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from app.core.config import settings
+from app.core.config import effective_trusted_proxy_cidrs, settings
 
 logger = logging.getLogger(__name__)
 
@@ -43,25 +43,41 @@ logger = logging.getLogger(__name__)
 PAID_AI_BUCKET = "paid-ai"
 
 
-def _rules() -> list[Tuple[str, int, int, str]]:
+WRITE_METHODS = ("POST", "PUT", "PATCH", "DELETE")
+ANY_METHOD = ("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE")
+
+
+def _rules() -> list[Tuple[str, int, int, str, tuple]]:
+    """(path prefix, limit, window seconds, bucket, methods). First match wins."""
     auth_limit = settings.AUTH_RATE_LIMIT
     auth_window = settings.AUTH_RATE_LIMIT_WINDOW_S
     paid_limit = settings.EXPENSIVE_RATE_LIMIT
     paid_window = settings.EXPENSIVE_RATE_LIMIT_WINDOW_S
+    abuse_limit = settings.ABUSE_RATE_LIMIT
+    abuse_window = settings.ABUSE_RATE_LIMIT_WINDOW_S
     return [
-        ("/api/auth/sign-in", auth_limit, auth_window, "auth-sign-in"),
-        ("/api/auth/sign-up", auth_limit, auth_window, "auth-sign-up"),
-        ("/api/auth/forgot-password", auth_limit, auth_window, "auth-forgot"),
-        ("/api/auth/reset-password", auth_limit, auth_window, "auth-reset"),
-        ("/api/discovery/jobs", paid_limit, paid_window, PAID_AI_BUCKET),
-        ("/api/creatives/", paid_limit, paid_window, PAID_AI_BUCKET),
-        ("/api/playbooks", paid_limit, paid_window, PAID_AI_BUCKET),
+        ("/api/auth/sign-in", auth_limit, auth_window, "auth-sign-in", WRITE_METHODS),
+        ("/api/auth/sign-up", auth_limit, auth_window, "auth-sign-up", WRITE_METHODS),
+        ("/api/auth/forgot-password", auth_limit, auth_window, "auth-forgot", WRITE_METHODS),
+        ("/api/auth/reset-password", auth_limit, auth_window, "auth-reset", WRITE_METHODS),
+        ("/api/discovery/jobs", paid_limit, paid_window, PAID_AI_BUCKET, WRITE_METHODS),
+        ("/api/creatives/", paid_limit, paid_window, PAID_AI_BUCKET, WRITE_METHODS),
+        ("/api/playbooks", paid_limit, paid_window, PAID_AI_BUCKET, WRITE_METHODS),
+        # Monitor runs spend provider records like a search does.
+        ("/api/monitors", paid_limit, paid_window, PAID_AI_BUCKET, WRITE_METHODS),
+        # Writes that send email or create rows other people see.
+        ("/api/support/tickets", abuse_limit, abuse_window, "support", WRITE_METHODS),
+        ("/api/account/access-requests", abuse_limit, abuse_window, "access-request", WRITE_METHODS),
+        ("/api/boards/share-links", abuse_limit, abuse_window, "share-links", WRITE_METHODS),
+        ("/api/discovery/drafts", abuse_limit, abuse_window, "drafts", WRITE_METHODS),
+        # Unauthenticated token lookups: slow down guessing.
+        ("/api/public/boards", auth_limit, auth_window, "guest-board", ANY_METHOD),
     ]
 
 
 def _trusted_networks():
     networks = []
-    raw = getattr(settings, "TRUSTED_PROXY_CIDRS", "") or ""
+    raw = effective_trusted_proxy_cidrs(settings)
     for part in raw.split(","):
         item = part.strip()
         if not item:
@@ -170,9 +186,8 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if rule is None:
             return await call_next(request)
 
-        prefix, limit, window, bucket = rule
-        # Only rate-limit state-changing methods on these endpoints.
-        if request.method not in ("POST", "PUT", "PATCH", "DELETE"):
+        prefix, limit, window, bucket, methods = rule
+        if request.method not in methods:
             return await call_next(request)
 
         try:

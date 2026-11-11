@@ -106,6 +106,10 @@ class Settings(BaseSettings):
     # Comma-separated IPs or CIDRs of reverse proxies allowed to supply a client IP.
     # Empty means forwarding headers are ignored and the TCP peer is used.
     TRUSTED_PROXY_CIDRS: str = os.getenv("TRUSTED_PROXY_CIDRS", "")
+    # Writes that are cheap but send email or create shared rows (support
+    # tickets, access requests, share links, drafts): per IP per window.
+    ABUSE_RATE_LIMIT: int = int(os.getenv("ABUSE_RATE_LIMIT", "10"))
+    ABUSE_RATE_LIMIT_WINDOW_S: int = int(os.getenv("ABUSE_RATE_LIMIT_WINDOW_S", "60"))
 
     # Per-account sign-in throttle (independent of client IP): after
     # SIGN_IN_FAILURE_LIMIT wrong passwords within SIGN_IN_FAILURE_WINDOW_S the
@@ -486,6 +490,21 @@ def validate_boot_invariants(cfg) -> None:
             else "Refusing to serve with unsafe configuration"
         )
         raise RuntimeError(f"{prefix}: " + "; ".join(errors))
+
+
+
+def effective_trusted_proxy_cidrs(cfg=None) -> str:
+    """Production on Render sits behind Render's private proxy (10.0.0.0/8).
+    Without trusting it every client shares the proxy's address and one
+    bucket, so a single caller can lock sign-in for everyone. An explicit
+    TRUSTED_PROXY_CIDRS (any value) always wins."""
+    cfg = cfg or settings
+    raw = (getattr(cfg, "TRUSTED_PROXY_CIDRS", "") or "").strip()
+    if raw:
+        return raw
+    if getattr(cfg, "ENVIRONMENT", "") == "production":
+        return "10.0.0.0/8"
+    return ""
 
 settings = Settings()
 
