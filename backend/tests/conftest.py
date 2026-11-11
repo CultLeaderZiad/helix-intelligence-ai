@@ -54,3 +54,14 @@ def _signup_trial_off_unless_marked(request, monkeypatch):
 
     if not request.node.get_closest_marker("signup_trial"):
         monkeypatch.setattr(settings, "SIGNUP_TRIAL_DAYS", 0)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limit_buckets():
+    """Every test request comes from the same client address; start each test
+    with empty rate-limit counters so earlier tests cannot throttle it."""
+    from app.middleware.rate_limit import reset_buckets
+
+    reset_buckets()
+    yield
+    reset_buckets()

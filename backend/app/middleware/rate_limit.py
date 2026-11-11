@@ -166,11 +166,19 @@ def client_ip(request: Request) -> str:
     return peer
 
 
+_BUCKETS: Dict[str, Deque[float]] = defaultdict(deque)
+
+
+def reset_buckets() -> None:
+    """Forget every counter (tests; one test's requests must not throttle the next)."""
+    _BUCKETS.clear()
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
-        # (bucket_key) -> deque[timestamps]
-        self._buckets: Dict[str, Deque[float]] = defaultdict(deque)
+        # (bucket_key) -> deque[timestamps]; shared so tests can reset it.
+        self._buckets: Dict[str, Deque[float]] = _BUCKETS
 
     def _client_ip(self, request: Request) -> str:
         return client_ip(request)
