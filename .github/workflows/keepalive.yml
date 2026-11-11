@@ -1,0 +1,38 @@
+# Pings the free Render web service so it is less likely to sleep.
+# GitHub runs this schedule only from the default branch, and a run can
+# start a few minutes after the cron time. workflow_dispatch works on any branch.
+name: Keepalive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    name: Ping Render health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the free Render service
+        run: |
+          url="https://helix-intelligence-ai.onrender.com/api/health"
+          attempt=1
+          while [ "$attempt" -le 3 ]; do
+            echo "Health attempt ${attempt}/3"
+            if curl --fail --silent --show-error --max-time 90 "$url"; then
+              echo
+              echo "Health check succeeded"
+              exit 0
+            fi
+            echo
+            echo "Attempt ${attempt} did not succeed"
+            if [ "$attempt" -lt 3 ]; then
+              sleep 5
+            fi
+            attempt=$((attempt + 1))
+          done
+          echo "Health check failed after 3 attempts"
+          exit 1

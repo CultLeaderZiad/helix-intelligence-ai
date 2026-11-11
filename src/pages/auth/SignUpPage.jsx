@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link, Navigate, useNavigate } from "react-router-dom"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
@@ -7,6 +7,7 @@ import { AuthLayout } from "@/features/auth/AuthLayout"
 import { AuthField } from "@/features/auth/AuthField"
 import { FormBanner } from "@/features/auth/FormBanner"
 import { PasswordStrength } from "@/features/auth/PasswordStrength"
+import { classifyAuthFailure } from "@/features/auth/authFailure"
 import { formatAuthFieldError, validateSignUp } from "@/features/auth/validation"
 import { Input, PasswordInput } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
@@ -31,6 +32,7 @@ export function SignUpPage() {
   const [authError, setAuthError] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [isSlow, setIsSlow] = useState(false)
+  const submitLock = useRef(false)
 
   useEffect(() => {
     let timer
@@ -54,7 +56,8 @@ export function SignUpPage() {
   /** @param {import("react").FormEvent<HTMLFormElement>} [event] */
   async function onSubmit(event) {
     if (event?.preventDefault) event.preventDefault()
-    if (submitting) return
+    if (submitLock.current) return
+    submitLock.current = true
 
     setAuthError(null)
     const nextErrors = validateSignUp(values)
@@ -79,6 +82,7 @@ export function SignUpPage() {
         tone: "danger",
         message: firstMsg,
       })
+      submitLock.current = false
       return
     }
 
@@ -109,24 +113,28 @@ export function SignUpPage() {
       clearAttribution()
       navigate(APP_HOME, { replace: true })
     } catch (err) {
-      const isCold = err?.code === "network_error" || err?.code === "server_waking" || (err?.status >= 502 && err?.status <= 504)
+      const kind = classifyAuthFailure(err)
       // Sign-up never says whether an email is taken. When the follow-up
       // sign-in is refused, the account may already exist with another
       // password, so point to sign-in and reset without confirming it.
-      const isDuplicate = err?.status === 401
-
-      if (isDuplicate) {
+      if (kind === "credentials") {
         setAuthError({
           status: t("authAccountExistsStatus", "Could not sign you in"),
           tone: "info",
           message: t("authAccountExistsMessage", "These details did not open an account. If you already have one, sign in or reset your password."),
           isDuplicate: true,
         })
-      } else if (isCold) {
+      } else if (kind === "locked") {
         setAuthError({
-          status: t("authServerWakingStatus", "Server waking"),
+          status: t("authLockedStatus", "Locked"),
+          tone: "danger",
+          message: t("authSignInLocked", "Too many sign-in attempts. Wait 15 minutes, or reset your password to sign in now."),
+        })
+      } else if (kind === "unavailable") {
+        setAuthError({
+          status: t("authServerUnavailableStatus", "Server unavailable"),
           tone: "warning",
-          message: t("authBackendWaking", "The service is starting. Retry to complete sign in."),
+          message: t("authServerUnavailable", "The server is unavailable. Try again in a moment."),
           isColdStart: true,
         })
       } else {
@@ -137,6 +145,7 @@ export function SignUpPage() {
           isColdStart: false,
         })
       }
+      submitLock.current = false
       setSubmitting(false)
     }
   }
@@ -158,7 +167,7 @@ export function SignUpPage() {
         </>
       }
     >
-      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+      <form onSubmit={onSubmit} noValidate aria-busy={submitting} className="flex flex-col gap-4">
         {authError ? (
           <FormBanner
             status={authError.status}
@@ -266,6 +275,12 @@ export function SignUpPage() {
           )}
 
         </div>
+
+        {submitting && isSlow ? (
+          <p role="status" className="text-center text-xs text-text-muted">
+            {t("authWakingServer", "Connecting to the server…")}
+          </p>
+        ) : null}
 
         <Button
           type="submit"
