@@ -250,3 +250,20 @@ async def _bind_request_tenant(db: AsyncSession, user: User) -> None:
     platform_admin = is_platform_admin(user) and not scoped
     bind_tenant(org_ids, user.id, platform_admin=platform_admin, enforce=True)
     await apply_tenant_context(db)
+
+
+def account_rate_limit(bucket: str, limit_setting: str, window_setting: str):
+    """Per-account limit (app.core.limits): the key is the signed-in user, so a
+    forged client IP does not reset it. Settings are read on every call."""
+
+    async def _limit(current_user: User = Depends(get_current_user)) -> None:
+        from app.core import limits
+
+        limits.enforce(
+            bucket,
+            str(current_user.id),
+            int(getattr(settings, limit_setting)),
+            int(getattr(settings, window_setting)),
+        )
+
+    return _limit

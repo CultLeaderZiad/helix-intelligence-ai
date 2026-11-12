@@ -5,12 +5,16 @@ from app.schemas.discover import SearchParams, Job
 from app.schemas.creative import CreativeResults
 from app.schemas.common import Paginated
 from app.services import discover_service, creative_service
-from app.core.deps import get_db, get_current_user, require_feature
+from app.core.deps import account_rate_limit, get_db, get_current_user, require_feature
 from app.models.user import User
 
 router = APIRouter(dependencies=[Depends(require_feature("discover"))])
 
-@router.post("/jobs", response_model=Job)
+@router.post(
+    "/jobs",
+    response_model=Job,
+    dependencies=[Depends(account_rate_limit("account-search", "ACCOUNT_SEARCH_LIMIT", "ACCOUNT_SEARCH_WINDOW_S"))],
+)
 async def search(
     params: SearchParams, 
     background_tasks: BackgroundTasks,
@@ -149,7 +153,7 @@ async def list_search_drafts(db: AsyncSession = Depends(get_db), current_user: U
     return {"items": await search_draft_service.list_drafts(db, current_user)}
 
 
-@router.post("/drafts", status_code=201)
+@router.post("/drafts", status_code=201, dependencies=[Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))])
 async def save_search_draft(
     body: SearchDraftCreate,
     db: AsyncSession = Depends(get_db),

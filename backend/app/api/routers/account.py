@@ -6,7 +6,7 @@ from typing import List, Optional
 from pydantic import BaseModel, field_validator
 from urllib.parse import unquote, urlsplit
 
-from app.core.deps import get_db, get_current_user
+from app.core.deps import account_rate_limit, get_db, get_current_user
 from app.models.user import User
 from app.models.usage_log import UsageLog
 from app.models.organization import Organization
@@ -153,7 +153,7 @@ def _acceptable_avatar_reference(url: str, user_id: str) -> bool:
     )
 
 
-@router.post("/avatar")
+@router.post("/avatar", dependencies=[Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))])
 async def upload_avatar(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
@@ -216,7 +216,12 @@ async def get_today_real_usage(
 
     daily_credit_limit = getattr(plan, "daily_credit_limit", None) if plan else None
 
+    # Real stored counts (workspace_daily_usage / provider_record_budget).
+    from app.services.provider_budget import record_usage
+    records = await record_usage(db, org.id)
+
     return {
+        **records,
         "credits_consumed_today": credits_deducted_today,
         "searches_run_today": searches_today,
         "daily_credit_limit": daily_credit_limit,
@@ -246,7 +251,7 @@ async def get_access_status(
     return state
 
 
-@router.post("/access-requests")
+@router.post("/access-requests", dependencies=[Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))])
 async def create_access_request(
     body: AccessRequestBody,
     db: AsyncSession = Depends(get_db),
@@ -332,7 +337,7 @@ async def get_team(
 ):
     return await team_service.list_team(db, current_user)
 
-@router.post("/team/invites")
+@router.post("/team/invites", dependencies=[Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))])
 async def invite_team_member(
     req: InviteMemberRequest,
     db: AsyncSession = Depends(get_db),

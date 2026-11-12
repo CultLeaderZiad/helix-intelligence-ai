@@ -4,7 +4,7 @@ from typing import Any, Dict, Literal, Optional
 import json
 from pydantic import BaseModel, Field, field_validator
 
-from app.core.deps import get_db, get_current_user
+from app.core.deps import account_rate_limit, get_db, get_current_user
 from app.models.user import User
 from app.services import support_service
 
@@ -33,7 +33,7 @@ class TicketCreateRequest(BaseModel):
 class TicketReplyRequest(BaseModel):
     message: str = Field(min_length=1, max_length=5000)
 
-@router.post("/tickets")
+@router.post("/tickets", dependencies=[Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))])
 async def create_ticket(
     body: TicketCreateRequest,
     db: AsyncSession = Depends(get_db),
@@ -71,7 +71,7 @@ async def get_ticket(
 ):
     return await support_service.get_ticket_details(db, ticket_id, current_user)
 
-@router.post("/tickets/{ticket_id}/reply")
+@router.post("/tickets/{ticket_id}/reply", dependencies=[Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))])
 async def reply_ticket(
     ticket_id: str,
     body: TicketReplyRequest,
