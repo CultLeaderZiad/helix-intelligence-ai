@@ -17,5 +17,6 @@ class WorkspaceDailyUsage(Base):
     day = Column(Date, primary_key=True)
     org_id = Column(String, ForeignKey("organizations.id"), primary_key=True)
     searches = Column(Integer, nullable=False, server_default="0")
+    records = Column(Integer, nullable=False, server_default="0")
     provider_calls = Column(Integer, nullable=False, server_default="0")
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

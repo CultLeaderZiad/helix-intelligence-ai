@@ -72,8 +72,24 @@ def _utcnow() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
 
+def _floor() -> datetime.timedelta:
+    return datetime.timedelta(hours=max(0, int(settings.MONITOR_MIN_INTERVAL_HOURS)))
+
+
 def _interval(cadence: str) -> datetime.timedelta:
-    return CADENCE_INTERVALS.get(cadence, CADENCE_INTERVALS["daily"])
+    # Never schedule faster than the floor, even for a monitor saved before it.
+    return max(CADENCE_INTERVALS.get(cadence, CADENCE_INTERVALS["daily"]), _floor())
+
+
+def _enforce_cadence_floor(cadence: Optional[str]) -> None:
+    if cadence and cadence in CADENCE_INTERVALS and CADENCE_INTERVALS[cadence] < _floor():
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "cadence_below_floor",
+                "message": f"Monitors can run at most every {int(settings.MONITOR_MIN_INTERVAL_HOURS)} hours.",
+            },
+        )
 
 
 def _as_aware(value: Optional[datetime.datetime]) -> Optional[datetime.datetime]:
@@ -245,6 +261,7 @@ async def _enforce_plan_monitor_limits(
     db: AsyncSession, org_id: str, cadence: Optional[str], activating: bool, exclude_id: Optional[str] = None
 ) -> None:
     """Plan limits (plans.limits): allowed cadences and active monitor count. 403 when over."""
+    _enforce_cadence_floor(cadence)
     from app.services.provider_budget import plan_limits
 
     limits = await plan_limits(db, org_id)

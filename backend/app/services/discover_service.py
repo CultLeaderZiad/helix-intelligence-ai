@@ -514,7 +514,25 @@ async def trigger_search(
 
     # 3. Per-workspace daily search cap. Counted before any provider work and
     #    never lowered by a refund, so refunded searches still count.
-    from app.services.provider_budget import reserve_search_slot
+    from app.services.provider_budget import RECORD_BUDGET, record_refusal, reserve_search_slot
+
+    # 3a. Monthly Metapi record caps: refuse before any provider work.
+    refusal = await record_refusal(db, org_id)
+    if refusal:
+        platform = refusal == RECORD_BUDGET
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "platform_record_budget_reached" if platform else "workspace_record_budget_reached",
+                "message": (
+                    "Live searches are paused for everyone until the monthly data budget resets on the 1st (UTC). "
+                    "Saved searches and past results stay available."
+                    if platform else
+                    "This workspace has used its live-search data for this month. "
+                    "Saved searches and past results stay available. Resets on the 1st (UTC)."
+                ),
+            },
+        )
 
     if not await reserve_search_slot(org_id):
         raise HTTPException(

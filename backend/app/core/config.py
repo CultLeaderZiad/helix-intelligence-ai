@@ -110,6 +110,22 @@ class Settings(BaseSettings):
     # tickets, access requests, share links, drafts): per IP per window.
     ABUSE_RATE_LIMIT: int = int(os.getenv("ABUSE_RATE_LIMIT", "10"))
     ABUSE_RATE_LIMIT_WINDOW_S: int = int(os.getenv("ABUSE_RATE_LIMIT_WINDOW_S", "60"))
+    # Limits keyed by data a caller cannot rotate for free (app.core.limits):
+    # the email in an auth request, the signed-in account, or one global count.
+    AUTH_EMAIL_LIMIT: int = int(os.getenv("AUTH_EMAIL_LIMIT", "5"))              # sign-up / forgot per email
+    AUTH_EMAIL_WINDOW_S: int = int(os.getenv("AUTH_EMAIL_WINDOW_S", "900"))
+    SIGN_IN_EMAIL_LIMIT: int = int(os.getenv("SIGN_IN_EMAIL_LIMIT", "20"))       # all sign-in attempts per email
+    SIGN_UP_GLOBAL_LIMIT: int = int(os.getenv("SIGN_UP_GLOBAL_LIMIT", "40"))     # new accounts, all callers
+    SIGN_UP_GLOBAL_WINDOW_S: int = int(os.getenv("SIGN_UP_GLOBAL_WINDOW_S", "3600"))
+    RESET_GLOBAL_LIMIT: int = int(os.getenv("RESET_GLOBAL_LIMIT", "60"))         # reset redemptions, all callers
+    ACCOUNT_SEARCH_LIMIT: int = int(os.getenv("ACCOUNT_SEARCH_LIMIT", "5"))      # Discover searches per account
+    ACCOUNT_SEARCH_WINDOW_S: int = int(os.getenv("ACCOUNT_SEARCH_WINDOW_S", "300"))
+    ACCOUNT_MONITOR_LIMIT: int = int(os.getenv("ACCOUNT_MONITOR_LIMIT", "5"))    # monitor create / run per account
+    ACCOUNT_MONITOR_WINDOW_S: int = int(os.getenv("ACCOUNT_MONITOR_WINDOW_S", "300"))
+    # Writes that send email or create shared rows (support, access requests,
+    # invites, share links, drafts, avatar uploads), per account.
+    ACCOUNT_WRITE_LIMIT: int = int(os.getenv("ACCOUNT_WRITE_LIMIT", "30"))
+    ACCOUNT_WRITE_WINDOW_S: int = int(os.getenv("ACCOUNT_WRITE_WINDOW_S", "3600"))
 
     # Per-account sign-in throttle (independent of client IP): after
     # SIGN_IN_FAILURE_LIMIT wrong passwords within SIGN_IN_FAILURE_WINDOW_S the
@@ -249,6 +265,18 @@ class Settings(BaseSettings):
     # Defaults sized for Metapi Free (3,000/month). Set it to the plan's
     # remaining records when starting mid-period.
     METAPI_MONTHLY_RECORD_BUDGET: int = int(os.getenv("METAPI_MONTHLY_RECORD_BUDGET", "3000"))
+    # Hard stop below the paid budget: no Metapi task is created once this
+    # month's records reach it, whatever METAPI_MONTHLY_RECORD_BUDGET says.
+    METAPI_GLOBAL_SAFETY_STOP: int = int(os.getenv("METAPI_GLOBAL_SAFETY_STOP", "2500"))
+    # Records one workspace may use per calendar month (UTC). A plan overrides
+    # it with plans.limits.records_per_month (admin-editable).
+    METAPI_WORKSPACE_MONTHLY_RECORDS: int = int(os.getenv("METAPI_WORKSPACE_MONTHLY_RECORDS", "150"))
+    # Records requested from Metapi per task, never more. The default equals
+    # the largest task Helix sends today (the keyword step, METAPI_RESOLVE_COUNT
+    # 30), so it changes nothing until lowered.
+    METAPI_MAX_RECORDS_PER_TASK: int = max(1, int(os.getenv("METAPI_MAX_RECORDS_PER_TASK", "30")))
+    # Monitors may not run more often than this (hours).
+    MONITOR_MIN_INTERVAL_HOURS: int = int(os.getenv("MONITOR_MIN_INTERVAL_HOURS", "12"))
     # Permanent ad archive (see archive_service). The per-workspace cap bounds
     # storage; media larger than the byte cap keeps its text only.
     ARCHIVE_ENABLED: bool = os.getenv("ARCHIVE_ENABLED", "true").lower() == "true"
