@@ -298,3 +298,54 @@ def test_api_docs_are_off_in_production(monkeypatch):
     finally:
         monkeypatch.setattr(settings, "ENVIRONMENT", "development")
         importlib.reload(main)
+
+
+# --- client IP behind Render's proxy --------------------------------------------
+# Production runs uvicorn with --proxy-headers --forwarded-allow-ips 10.0.0.0/8
+# (render.yaml). uvicorn then replaces the peer with the right-most
+# X-Forwarded-For entry that is not a trusted proxy: the address Render's proxy
+# appended. A client can prepend anything it likes; it is never used.
+
+def _behind_render(monkeypatch, limit=1):
+    from fastapi import FastAPI
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+    from app.middleware.rate_limit import RateLimitMiddleware
+
+    monkeypatch.setattr(settings, "RATE_LIMIT_ENABLED", True)
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "TRUSTED_PROXY_CIDRS", "")
+    monkeypatch.setattr(settings, "AUTH_RATE_LIMIT", limit)
+    inner = FastAPI()
+    inner.add_api_route("/api/auth/sign-in", lambda: {"ok": True}, methods=["POST"])
+    inner.add_middleware(RateLimitMiddleware)
+    return ProxyHeadersMiddleware(inner, trusted_hosts="10.0.0.0/8")
+
+
+async def _post(app, xff):
+    transport = httpx.ASGITransport(app=app, client=("10.236.26.183", 51880))  # Render's proxy
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        return (await c.post("/api/auth/sign-in", headers={"x-forwarded-for": xff})).status_code
+
+
+@pytest.mark.asyncio
+async def test_two_real_clients_behind_render_get_separate_buckets(monkeypatch):
+    from app.middleware import rate_limit
+
+    rate_limit.reset_buckets()
+    app = _behind_render(monkeypatch)
+    assert await _post(app, "198.51.100.1") == 200
+    assert await _post(app, "198.51.100.1") == 429
+    assert await _post(app, "198.51.100.2") == 200  # another person is not locked out
+
+
+@pytest.mark.asyncio
+async def test_a_forged_leftmost_forwarded_for_does_not_get_a_new_bucket(monkeypatch):
+    from app.middleware import rate_limit
+
+    rate_limit.reset_buckets()
+    app = _behind_render(monkeypatch)
+    assert await _post(app, "198.51.100.7") == 200
+    for forged in ("203.0.113.1", "203.0.113.2", "1.2.3.4"):
+        # Render appends the real address; the forged one is on the left.
+        assert await _post(app, f"{forged}, 198.51.100.7") == 429
