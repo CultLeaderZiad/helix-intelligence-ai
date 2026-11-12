@@ -6,11 +6,13 @@ import { getAccessToken } from "./sessionStore"
  * so error-handling code in hooks never branches on data source.
  */
 export class ServiceError extends Error {
-  constructor(message, { status = null, code = "service_error" } = {}) {
+  constructor(message, { status = null, code = "service_error", retryAfter = null } = {}) {
     super(message)
     this.name = "ServiceError"
     this.status = status
     this.code = code
+    /** Seconds from a 429's Retry-After header, when sent. */
+    this.retryAfter = retryAfter
   }
 }
 
@@ -303,9 +305,10 @@ async function requestAttempt(path, options, retryCount = 0, sessionToken = getA
       window.dispatchEvent(new CustomEvent("helix:unauthorized"))
     }
 
+    const retryAfterHeader = Number.parseInt(res.headers?.get?.("Retry-After") ?? "", 10)
     throw new ServiceError(
       detail,
-      { status: res.status, code: errorCode },
+      { status: res.status, code: errorCode, retryAfter: Number.isFinite(retryAfterHeader) ? retryAfterHeader : null },
     )
   }
 

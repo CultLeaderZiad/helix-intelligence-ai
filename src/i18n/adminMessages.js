@@ -2,6 +2,7 @@ const arabicMessages = {
   "Enforced limits (blank = default)": "الحدود المطبّقة (فارغ = الافتراضي)",
   "Searches a day": "عمليات البحث يومياً",
   "Active monitors": "المراقبات النشطة",
+  "Data records a month": "سجلات البيانات شهرياً",
   "Daily monitors": "مراقبات يومية",
   "Weekly monitors": "مراقبات أسبوعية",
   "Applied on the server to every workspace on this plan. Searches also cap provider calls at twice this number.": "تُطبَّق على الخادم لكل مساحة عمل على هذه الخطة. تحدّ عمليات البحث أيضاً طلبات المزوّد بضعف هذا العدد.",

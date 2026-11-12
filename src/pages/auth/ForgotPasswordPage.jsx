@@ -57,6 +57,15 @@ export function ForgotPasswordPage() {
       setResetUrl(result?.reset_url ?? null)
     } catch (err) {
       const isCold = err?.code === "network_error" || err?.code === "server_waking" || (err?.status >= 502 && err?.status <= 504)
+      if (err?.status === 429) {
+        setAuthError({
+          status: t("authRateLimitedStatus", "Slow down"),
+          tone: "warning",
+          message: t("authRateLimited", "Too many requests. Wait a few minutes, then try again."),
+        })
+        setSubmitting(false)
+        return
+      }
       setAuthError({
         status: isCold ? t("authServerWakingStatus", "Server waking") : t("authForgotFailed", "Unable to request a reset link. Please try again."),
         tone: isCold ? "warning" : "danger",

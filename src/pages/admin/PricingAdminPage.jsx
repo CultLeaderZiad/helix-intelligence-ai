@@ -37,6 +37,7 @@ export function limitsFromForm(form) {
   return {
     searches_per_day: num(form.searches),
     monitors: num(form.monitors),
+    records_per_month: num(form.records),
     monitor_cadences: cadences.length === 0 || cadences.length === 2 ? null : cadences,
   }
 }
@@ -48,6 +49,7 @@ export function limitsToForm(limits) {
   return {
     searches: l.searches_per_day ?? "",
     monitors: l.monitors ?? "",
+    records: l.records_per_month ?? "",
     cadences: { daily: !allowed || allowed.includes("daily"), weekly: !allowed || allowed.includes("weekly") },
   }
 }
@@ -184,6 +186,17 @@ function PlanEditor({ plan, lang, onClose, onSaved }) {
                   value={limits.monitors}
                   onChange={(e) => setLimits({ ...limits, monitors: e.target.value })}
                   className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                {t("Data records a month")}
+                <input
+                  type="number"
+                  min="0"
+                  max="100000"
+                  value={limits.records}
+                  onChange={(e) => setLimits({ ...limits, records: e.target.value })}
+                  className="w-24 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
                 />
               </label>
               {["daily", "weekly"].map((cad) => (

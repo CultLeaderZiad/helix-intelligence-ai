@@ -124,6 +124,12 @@ export function SignUpPage() {
           message: t("authAccountExistsMessage", "These details did not open an account. If you already have one, sign in or reset your password."),
           isDuplicate: true,
         })
+      } else if (kind === "rate_limited") {
+        setAuthError({
+          status: t("authRateLimitedStatus", "Slow down"),
+          tone: "warning",
+          message: t("authRateLimited", "Too many requests. Wait a few minutes, then try again."),
+        })
       } else if (kind === "locked") {
         setAuthError({
           status: t("authLockedStatus", "Locked"),

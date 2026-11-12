@@ -439,7 +439,13 @@ export function DiscoverPage() {
                         ? w8.discoverQueryTooLong
                         : error?.code === "daily_search_cap_reached"
                           ? w8.discoverSearchCap
-                          : undefined
+                          : error?.code === "workspace_record_budget_reached"
+                            ? w8.recordsMeterFull
+                            : error?.code === "platform_record_budget_reached"
+                              ? w8.recordsPlatformPaused
+                              : error?.code === "rate_limited"
+                                ? w8.rateLimited(error?.retryAfter || 60)
+                                : undefined
                 }
                 action={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? (
                   <Button as={Link} to="/access" size="sm" variant="primary">{w8.discoverOpenAccess}</Button>
