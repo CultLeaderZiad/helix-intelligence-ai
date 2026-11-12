@@ -65,18 +65,20 @@ describe("admin plan limits form", () => {
     expect(limitsFromForm({ searches: "", monitors: "", cadences: { daily: true, weekly: true } })).toEqual({
       searches_per_day: null,
       monitors: null,
+      records_per_month: null,
       monitor_cadences: null,
     })
-    expect(limitsFromForm({ searches: "5", monitors: "2", cadences: { daily: false, weekly: true } })).toEqual({
+    expect(limitsFromForm({ searches: "5", monitors: "2", records: "150", cadences: { daily: false, weekly: true } })).toEqual({
       searches_per_day: 5,
       monitors: 2,
+      records_per_month: 150,
       monitor_cadences: ["weekly"],
     })
   })
 
   it("round-trips the API shape", () => {
-    const form = limitsToForm({ searches_per_day: 20, monitors: 10, monitor_cadences: ["daily"] })
-    expect(form).toEqual({ searches: 20, monitors: 10, cadences: { daily: true, weekly: false } })
+    const form = limitsToForm({ searches_per_day: 20, monitors: 10, records_per_month: 150, monitor_cadences: ["daily"] })
+    expect(form).toEqual({ searches: 20, monitors: 10, records: 150, cadences: { daily: true, weekly: false } })
     expect(limitsToForm(null).cadences).toEqual({ daily: true, weekly: true })
   })
 })

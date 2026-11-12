@@ -6,7 +6,7 @@ from app.core import markdown
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_user, get_db, require_feature
+from app.core.deps import account_rate_limit, get_current_user, get_db, require_feature
 from app.models.user import User
 from app.services import board_share_service, team_board_service
 
@@ -42,7 +42,7 @@ async def get_my_board(
     return board
 
 
-@router.post("/share-links")
+@router.post("/share-links", dependencies=[Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))])
 async def create_share_link(
     body: ShareLinkCreate,
     db: AsyncSession = Depends(get_db),

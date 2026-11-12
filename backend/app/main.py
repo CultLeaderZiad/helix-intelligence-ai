@@ -43,9 +43,17 @@ async def lifespan(app: FastAPI):
     finally:
         await embedded_worker.stop()
 
+# The interactive docs and schema describe every route and parameter; they are
+# for development only.
+from app.core.config import classified_environment  # noqa: E402
+
+# Same classification as the boot checks (aliases, Render promotion).
+_public_docs = classified_environment(settings) != "production"
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json" if _public_docs else None,
+    docs_url="/docs" if _public_docs else None,
+    redoc_url="/redoc" if _public_docs else None,
     lifespan=lifespan
 )
 

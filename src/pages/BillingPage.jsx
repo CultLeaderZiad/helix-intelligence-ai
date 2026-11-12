@@ -12,6 +12,25 @@ const FEATURES = [
   { flag: "swipe_files", copy: "featureBoards" },
 ]
 
+/** Stored Metapi record counts from /account/usage/today; nothing when absent. */
+export function RecordsMeter({ usage, w8 }) {
+  const used = usage?.records_used_this_month
+  const cap = usage?.records_cap_this_month
+  if (typeof used !== "number" || typeof cap !== "number") return null
+  const pct = cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 100
+  return (
+    <div className="space-y-1.5 pt-2" data-testid="records-meter">
+      <p className="font-medium">{w8.recordsMeterTitle}</p>
+      <div className="h-2 w-full overflow-hidden rounded-sm bg-bg" role="progressbar" aria-valuemin={0} aria-valuemax={cap} aria-valuenow={used} aria-label={w8.recordsMeterTitle}>
+        <div className={pct >= 100 ? "h-full bg-danger" : "h-full bg-accent"} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-text-muted">{w8.recordsMeterBody(used, cap)}</p>
+      {usage.platform_records_paused ? <p role="alert" className="text-danger">{w8.recordsPlatformPaused}</p>
+        : used >= cap ? <p role="alert" className="text-danger">{w8.recordsMeterFull}</p> : null}
+    </div>
+  )
+}
+
 export function BillingPage() {
   const { t } = useLanguage()
   const w8 = useW8Copy()
@@ -74,6 +93,7 @@ export function BillingPage() {
           <div className="space-y-2 border border-border bg-surface p-4 text-sm">
             <h2 className="font-semibold">{t("recordedUsage")}</h2>
             <p>{t("searchesLabel")}: {typeof usage?.searches_run_today === "number" ? usage.searches_run_today : t("unknownValue")}</p>
+            <RecordsMeter usage={usage} w8={w8} />
             <p>{t("usageDisclosure")}</p>
           </div>
         </>

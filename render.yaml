@@ -16,7 +16,7 @@ services:
     # MIGRATION_DATABASE_URL is a dedicated migration credential, never the app's
     # restricted DATABASE_URL. Clear approval after the release; do not auto-enable.
     preDeployCommand: 'test "$HELIX_RELEASE_MIGRATIONS_APPROVED" = "yes" && test -n "$MIGRATION_DATABASE_URL" && TEST_DATABASE_URL="$MIGRATION_DATABASE_URL" python -m alembic upgrade head && TEST_DATABASE_URL="$MIGRATION_DATABASE_URL" python -m alembic check'
-    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips 10.0.0.0/8"
     # ────────────────────────────────────────────────────────
     # Required environment variables (set via Render Dashboard → Environment)
     # ────────────────────────────────────────────────────────

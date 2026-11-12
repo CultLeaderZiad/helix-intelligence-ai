@@ -64,6 +64,16 @@ export function ResetPasswordPage() {
       await resetPassword({ token, newPassword: password })
       navigate(APP_HOME, { replace: true })
     } catch (err) {
+      if (err?.status === 429) {
+        setAuthError({
+          status: t("authRateLimitedStatus", "Slow down"),
+          tone: "warning",
+          message: t("authRateLimited", "Too many requests right now. Please wait a while before trying again."),
+          isColdStart: false,
+        })
+        setSubmitting(false)
+        return
+      }
       setAuthError({
         status: t("authResetFailed", "Unable to reset the password. Request a new reset link and try again."),
         tone: "danger",

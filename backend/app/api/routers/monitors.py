@@ -7,13 +7,16 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.deps import get_db, get_current_user, require_feature
+from app.core.deps import account_rate_limit, get_db, get_current_user, require_feature
 from app.models.user import User
 from app.services import monitor_service
 from app.services.billing_service import get_or_create_default_org
 
 router = APIRouter()
 _monitor_access = [Depends(require_feature("monitors"))]
+_monitor_spend = _monitor_access + [
+    Depends(account_rate_limit("account-monitor", "ACCOUNT_MONITOR_LIMIT", "ACCOUNT_MONITOR_WINDOW_S"))
+]
 
 
 class MonitorCreate(BaseModel):
@@ -47,8 +50,8 @@ async def list_monitors(
     return await monitor_service.list_monitors(db, await _org_id(db, current_user))
 
 
-@router.post("", status_code=201, dependencies=_monitor_access)
-@router.post("/", status_code=201, dependencies=_monitor_access)
+@router.post("", status_code=201, dependencies=_monitor_spend)
+@router.post("/", status_code=201, dependencies=_monitor_spend)
 async def create_monitor(
     payload: MonitorCreate,
     db: AsyncSession = Depends(get_db),
@@ -117,7 +120,7 @@ async def delete_monitor(
     return await monitor_service.delete_monitor(db, monitor_id, await _org_id(db, current_user))
 
 
-@router.post("/{monitor_id}/run", dependencies=_monitor_access)
+@router.post("/{monitor_id}/run", dependencies=_monitor_spend)
 async def run_monitor_now(
     monitor_id: str,
     db: AsyncSession = Depends(get_db),

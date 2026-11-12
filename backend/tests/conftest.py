@@ -35,7 +35,7 @@ async def _provider_budget_allows_calls(request, monkeypatch):
     async def _allow(_provider, org_id=None):
         return None
 
-    async def _allow_records(_provider, _records, _budget):
+    async def _allow_records(_provider, _records, _budget, org_id=None):
         return True
 
     monkeypatch.setattr(provider_budget, "reserve_provider_call", _allow)
@@ -60,8 +60,11 @@ def _signup_trial_off_unless_marked(request, monkeypatch):
 def _fresh_rate_limit_buckets():
     """Every test request comes from the same client address; start each test
     with empty rate-limit counters so earlier tests cannot throttle it."""
+    from app.core import limits
     from app.middleware.rate_limit import reset_buckets
 
     reset_buckets()
+    limits.reset()
     yield
     reset_buckets()
+    limits.reset()

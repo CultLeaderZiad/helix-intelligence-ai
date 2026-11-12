@@ -33,6 +33,7 @@ PAUSED = "paused"
 BUDGET = "budget"
 WORKSPACE_BUDGET = "workspace_budget"
 RECORD_BUDGET = "record_budget"
+WORKSPACE_RECORD_BUDGET = "workspace_record_budget"
 
 _DAY = "(now() AT TIME ZONE 'utc')::date"
 _RESERVE_SQL = text(
@@ -160,27 +161,115 @@ _RECORDS_SQL = text(
 )
 
 
-async def reserve_provider_records(provider: str, records: int, monthly_budget: int) -> bool:
-    """Reserve ``records`` against a provider's monthly record budget.
+_WORKSPACE_RECORDS_SQL = text(
+    "INSERT INTO workspace_daily_usage (day, org_id, searches, provider_calls, records, updated_at) "
+    f"VALUES ({_DAY}, :org_id, 0, 0, :n, now()) "
+    "ON CONFLICT (day, org_id) DO UPDATE SET "
+    "records = workspace_daily_usage.records + :n, updated_at = now()"
+)
+_WORKSPACE_MONTH_SQL = text(
+    "SELECT COALESCE(SUM(records), 0) FROM workspace_daily_usage "
+    "WHERE org_id = :org_id AND day >= date_trunc('month', now() AT TIME ZONE 'utc')::date"
+)
+_GLOBAL_MONTH_SQL = text(
+    "SELECT COALESCE(SUM(records), 0) FROM provider_record_budget "
+    "WHERE provider = :provider AND period_start = date_trunc('month', now() AT TIME ZONE 'utc')::date"
+)
+
+
+def global_record_cap(monthly_budget: int) -> int:
+    """The paid budget, lowered to METAPI_GLOBAL_SAFETY_STOP when that is set."""
+    stop = int(settings.METAPI_GLOBAL_SAFETY_STOP)
+    return min(int(monthly_budget), stop) if stop > 0 else int(monthly_budget)
+
+
+def workspace_record_cap(limits: dict) -> int:
+    value = limits.get("records_per_month")
+    return int(settings.METAPI_WORKSPACE_MONTHLY_RECORDS) if value is None else int(value)
+
+
+def task_record_count(requested) -> int:
+    """Records to ask Metapi for in one task: never above METAPI_MAX_RECORDS_PER_TASK."""
+    try:
+        n = int(requested or 0)
+    except (TypeError, ValueError):
+        n = 0
+    cap = int(settings.METAPI_MAX_RECORDS_PER_TASK)
+    return cap if n <= 0 else min(n, cap)
+
+
+async def reserve_provider_records(
+    provider: str, records: int, monthly_budget: int, org_id: Optional[str] = None
+) -> bool:
+    """Reserve ``records`` against the workspace's monthly cap and the global one.
 
     Metapi bills records, so each task reserves its ``count`` before it is
-    created. Refused reservations are rolled back; errors refuse (fail closed).
-    Refunds never lower this counter.
+    created. Both counters move in one transaction: a refusal by either rolls
+    back both. Errors refuse (fail closed). Refunds never lower the counters.
     """
     n = max(0, int(records))
-    if monthly_budget <= 0 or n == 0:
-        return n == 0 and monthly_budget > 0
+    global_cap = global_record_cap(monthly_budget)
+    if global_cap <= 0 or n == 0:
+        return n == 0 and global_cap > 0
+    workspace = _org(org_id)
     from app.db.session import async_session_maker
 
     try:
         async with async_session_maker() as db:
+            if workspace:
+                cap = workspace_record_cap(await plan_limits(db, workspace))
+                await db.execute(_WORKSPACE_RECORDS_SQL, {"org_id": workspace, "n": n})
+                used = int((await db.execute(_WORKSPACE_MONTH_SQL, {"org_id": workspace})).scalar_one())
+                if cap <= 0 or used > cap:
+                    await db.rollback()
+                    logger.warning("Workspace %s monthly record cap reached (%s); refused %s records", workspace, cap, n)
+                    return False
             used = (await db.execute(_RECORDS_SQL, {"provider": provider, "n": n})).scalar_one()
-            if used > monthly_budget:
+            if used > global_cap:
                 await db.rollback()
-                logger.warning("%s monthly record budget reached (%s); refused %s records", provider, monthly_budget, n)
+                logger.warning("%s monthly record cap reached (%s); refused %s records", provider, global_cap, n)
                 return False
             await db.commit()
             return True
     except Exception as exc:  # fail closed
         logger.error("Record budget unavailable; refusing %s task: %s", provider, exc)
         return False
+
+
+async def record_usage(db, org_id: Optional[str], provider: str = "metapi") -> dict:
+    """This month's stored record counts for the usage meter (read only)."""
+    workspace = _org(org_id)
+    used = 0
+    cap = int(settings.METAPI_WORKSPACE_MONTHLY_RECORDS)
+    if workspace:
+        cap = workspace_record_cap(await plan_limits(db, workspace))
+        used = int((await db.execute(_WORKSPACE_MONTH_SQL, {"org_id": workspace})).scalar_one())
+    global_used = int((await db.execute(_GLOBAL_MONTH_SQL, {"provider": provider})).scalar_one())
+    return {
+        "records_used_this_month": used,
+        "records_cap_this_month": cap,
+        "records_per_search_max": int(settings.METAPI_MAX_RECORDS_PER_TASK),
+        "platform_records_paused": global_used >= global_record_cap(int(settings.METAPI_MONTHLY_RECORD_BUDGET)),
+    }
+
+
+async def record_refusal(db, org_id: Optional[str], provider: str = "metapi") -> Optional[str]:
+    """Why a new search would be refused before any provider call, else None.
+
+    Refused when not even the first task of a search fits, so the user is
+    told now instead of after a failed job. A larger second task is still
+    checked by reserve_provider_records before it is sent.
+    """
+    # The smallest task a search can start with (a page-id search: 15),
+    # clamped like _run_task; refusing on the per-task maximum would block
+    # searches that still fit.
+    need = task_record_count(15)
+    usage = await record_usage(db, org_id, provider)
+    if usage["platform_records_paused"]:
+        return RECORD_BUDGET
+    global_used = int((await db.execute(_GLOBAL_MONTH_SQL, {"provider": provider})).scalar_one())
+    if global_used + need > global_record_cap(int(settings.METAPI_MONTHLY_RECORD_BUDGET)):
+        return RECORD_BUDGET
+    if usage["records_used_this_month"] + need > usage["records_cap_this_month"]:
+        return WORKSPACE_RECORD_BUDGET
+    return None

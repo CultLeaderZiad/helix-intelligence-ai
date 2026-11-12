@@ -90,6 +90,12 @@ export function SignInPage() {
           tone: "danger",
           message: t("authSignInFailed", "Sign in failed. Check your details and try again."),
         })
+      } else if (kind === "rate_limited") {
+        setAuthError({
+          status: t("authRateLimitedStatus", "Slow down"),
+          tone: "warning",
+          message: t("authRateLimited", "Too many requests right now. Please wait a while before trying again."),
+        })
       } else if (kind === "locked") {
         setAuthError({
           status: t("authLockedStatus", "Locked"),

@@ -12,6 +12,7 @@ from app.core.deps import _bind_request_tenant, get_db, get_current_user, oauth2
 from app.models.user import User
 from app.models.plan import Plan
 from app.core.config import settings
+from app.core import limits
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -130,6 +131,9 @@ SIGN_UP_ACCEPTED = SignUpAccepted(
 
 @router.post("/sign-up", response_model=SignUpAccepted, status_code=status.HTTP_202_ACCEPTED)
 async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+    limits.enforce("sign-up-email", user_in.email, settings.AUTH_EMAIL_LIMIT, settings.AUTH_EMAIL_WINDOW_S)
+    limits.enforce("sign-up-global", "all", settings.SIGN_UP_GLOBAL_LIMIT, settings.SIGN_UP_GLOBAL_WINDOW_S,
+                   "Sign-ups are paused for a short while. Please try again later.")
     try:
         user = await auth_service.register_user(db, user_in)
     except auth_service.EmailAlreadyRegistered:
@@ -154,6 +158,7 @@ async def signup(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/sign-in", response_model=SessionResponse)
 async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
+    limits.enforce("sign-in-email", user_in.email, settings.SIGN_IN_EMAIL_LIMIT, settings.AUTH_EMAIL_WINDOW_S)
     try:
         token, user = await auth_service.authenticate_user_and_load(db, user_in)
         if not user:
@@ -204,6 +209,8 @@ async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(
     """Start a password reset. The public response is identical whether or
     not the account exists (no account enumeration). The reset link is sent via
     transactional email when email is configured, and never logged in plain text."""
+    # Applied whether or not the account exists, so it reveals nothing.
+    limits.enforce("forgot-email", req.email, settings.AUTH_EMAIL_LIMIT, settings.AUTH_EMAIL_WINDOW_S)
     try:
         user_and_token = await auth_service.request_password_reset(db, req.email)
     except HTTPException:

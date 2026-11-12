@@ -238,8 +238,10 @@ class MetapiProvider(ScraperProvider):
         from app.services.safe_fetch import safe_request_async
 
         # Metapi bills records: reserve this task's count first.
+        # Never ask for more than the per-task cap; that count is what is billed.
+        payload = {**payload, "count": provider_budget.task_record_count(payload.get("count"))}
         if not await provider_budget.reserve_provider_records(
-            "metapi", int(payload.get("count") or 50), int(settings.METAPI_MONTHLY_RECORD_BUDGET)
+            "metapi", payload["count"], int(settings.METAPI_MONTHLY_RECORD_BUDGET), org_id=self.org_id
         ):
             self.records_refused = True
             return None
