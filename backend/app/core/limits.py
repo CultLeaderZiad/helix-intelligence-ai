@@ -50,9 +50,19 @@ def hit(bucket: str, subject: str, limit: int, window_s: int) -> Optional[int]:
         return int(window_s - (now - hits[0])) + 1
     hits.append(now)
     if len(_HITS) > _MAX_KEYS:
-        for k in [k for k, v in _HITS.items() if not v or now - v[-1] > 3600]:
-            _HITS.pop(k, None)
+        _shrink(now)
     return None
+
+
+def _shrink(now: float) -> None:
+    """Keep the table bounded. Runs only past _MAX_KEYS and cuts it to 80%,
+    so the scan is rare. Expired keys go first, then the oldest-created keys
+    (dict order); dropping one only forgets that key's recent hits."""
+    for k in [k for k, v in _HITS.items() if not v or now - v[-1] > 3600]:
+        _HITS.pop(k, None)
+    target = int(_MAX_KEYS * 0.8)
+    while len(_HITS) > target:
+        _HITS.pop(next(iter(_HITS)))
 
 
 def enforce(bucket: str, subject: str, limit: int, window_s: int, message: str | None = None) -> None:

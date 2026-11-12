@@ -117,7 +117,6 @@ class Settings(BaseSettings):
     SIGN_IN_EMAIL_LIMIT: int = int(os.getenv("SIGN_IN_EMAIL_LIMIT", "20"))       # all sign-in attempts per email
     SIGN_UP_GLOBAL_LIMIT: int = int(os.getenv("SIGN_UP_GLOBAL_LIMIT", "40"))     # new accounts, all callers
     SIGN_UP_GLOBAL_WINDOW_S: int = int(os.getenv("SIGN_UP_GLOBAL_WINDOW_S", "3600"))
-    RESET_GLOBAL_LIMIT: int = int(os.getenv("RESET_GLOBAL_LIMIT", "60"))         # reset redemptions, all callers
     ACCOUNT_SEARCH_LIMIT: int = int(os.getenv("ACCOUNT_SEARCH_LIMIT", "5"))      # Discover searches per account
     ACCOUNT_SEARCH_WINDOW_S: int = int(os.getenv("ACCOUNT_SEARCH_WINDOW_S", "300"))
     ACCOUNT_MONITOR_LIMIT: int = int(os.getenv("ACCOUNT_MONITOR_LIMIT", "5"))    # monitor create / run per account

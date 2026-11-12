@@ -45,7 +45,10 @@ async def lifespan(app: FastAPI):
 
 # The interactive docs and schema describe every route and parameter; they are
 # for development only.
-_public_docs = settings.ENVIRONMENT != "production"
+from app.core.config import classified_environment  # noqa: E402
+
+# Same classification as the boot checks (aliases, Render promotion).
+_public_docs = classified_environment(settings) != "production"
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json" if _public_docs else None,

@@ -369,7 +369,7 @@ async def claim_due_monitors(db: AsyncSession, limit: int) -> List[Dict[str, str
         text(
             """
             UPDATE monitors SET
-                next_run_at = now() + make_interval(secs => interval_s),
+                next_run_at = now() + make_interval(secs => GREATEST(interval_s, :floor_s)),
                 last_run_at = now()
             FROM (
                 SELECT id, CASE cadence
@@ -388,7 +388,8 @@ async def claim_due_monitors(db: AsyncSession, limit: int) -> List[Dict[str, str
             RETURNING monitors.id, monitors.org_id, monitors.user_id
             """
         ),
-        {"limit": limit},
+        # The floor also applies to monitors saved with a faster cadence.
+        {"limit": limit, "floor_s": int(_floor().total_seconds())},
     )
     rows = [dict(row) for row in result.mappings().all()]
     await db.commit()

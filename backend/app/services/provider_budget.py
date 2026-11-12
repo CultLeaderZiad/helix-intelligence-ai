@@ -256,10 +256,14 @@ async def record_usage(db, org_id: Optional[str], provider: str = "metapi") -> d
 async def record_refusal(db, org_id: Optional[str], provider: str = "metapi") -> Optional[str]:
     """Why a new search would be refused before any provider call, else None.
 
-    A search can need two tasks; it is refused when one full task no longer
-    fits, so a user is told now instead of after a failed job.
+    Refused when not even the first task of a search fits, so the user is
+    told now instead of after a failed job. A larger second task is still
+    checked by reserve_provider_records before it is sent.
     """
-    need = int(settings.METAPI_MAX_RECORDS_PER_TASK)
+    # The smallest task a search can start with (a page-id search: 15),
+    # clamped like _run_task; refusing on the per-task maximum would block
+    # searches that still fit.
+    need = task_record_count(15)
     usage = await record_usage(db, org_id, provider)
     if usage["platform_records_paused"]:
         return RECORD_BUDGET

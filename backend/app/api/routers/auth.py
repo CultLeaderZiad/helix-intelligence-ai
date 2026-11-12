@@ -251,7 +251,6 @@ async def forgot_password(req: PasswordResetRequest, db: AsyncSession = Depends(
 async def reset_password(req: PasswordResetConfirm, db: AsyncSession = Depends(get_db)):
     """Redeem a reset token and set a new password. Returns a fresh session
     so the frontend can move straight into the app."""
-    limits.enforce("reset-global", "all", settings.RESET_GLOBAL_LIMIT, settings.AUTH_EMAIL_WINDOW_S)
     try:
         user = await auth_service.reset_password(db, req.token, req.new_password)
     except HTTPException:

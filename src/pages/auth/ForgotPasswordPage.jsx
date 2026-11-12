@@ -61,7 +61,7 @@ export function ForgotPasswordPage() {
         setAuthError({
           status: t("authRateLimitedStatus", "Slow down"),
           tone: "warning",
-          message: t("authRateLimited", "Too many requests. Wait a few minutes, then try again."),
+          message: t("authRateLimited", "Too many requests right now. Please wait a while before trying again."),
         })
         setSubmitting(false)
         return

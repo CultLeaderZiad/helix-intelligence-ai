@@ -60,6 +60,13 @@ def test_enforce_raises_429_with_retry_after():
     assert int(exc.value.headers["Retry-After"]) >= 1
 
 
+def test_the_key_table_stays_bounded(monkeypatch):
+    monkeypatch.setattr(limits, "_MAX_KEYS", 100)
+    for i in range(1000):
+        limits.hit("flood", f"user{i}@example.com", 5, 60)
+    assert len(limits._HITS) <= 100
+
+
 def test_emails_are_not_kept_in_clear_text():
     limits.hit("t3", "secret-person@example.com", 5, 60)
     assert not any("secret-person" in key for key in limits._HITS)
@@ -127,16 +134,16 @@ async def test_forgot_password_is_limited_per_email_whether_or_not_it_exists(mon
 
 
 @pytest.mark.asyncio
-async def test_reset_redemptions_have_a_global_ceiling(monkeypatch):
+async def test_invalid_reset_tokens_do_not_exhaust_recovery_for_others(monkeypatch):
     async def _bad_token(_db, _token, _password):
         raise HTTPException(status_code=400, detail="Invalid or expired reset token")
 
     monkeypatch.setattr(auth_service, "reset_password", _bad_token)
-    monkeypatch.setattr(settings, "RESET_GLOBAL_LIMIT", 2)
     body = {"token": "x" * 40, "new_password": "Strong-Pass-123!"}
     async with _client() as c:
         codes = [(await c.post("/api/auth/reset-password", json=body)).status_code for _ in range(3)]
-    assert codes[-1] == 429 and codes[:2] != [429, 429]
+    # No shared ceiling: invalid tokens must not lock everyone out of recovery.
+    assert codes == [400, 400, 400]
 
 
 # --- per-account limits -------------------------------------------------------
@@ -349,3 +356,33 @@ async def test_a_forged_leftmost_forwarded_for_does_not_get_a_new_bucket(monkeyp
     for forged in ("203.0.113.1", "203.0.113.2", "1.2.3.4"):
         # Render appends the real address; the forged one is on the left.
         assert await _post(app, f"{forged}, 198.51.100.7") == 429
+
+
+@pytest.mark.asyncio
+async def test_the_scheduler_claim_applies_the_floor_to_old_fast_monitors(monkeypatch, workspace):
+    """A monitor saved as every_6h before the floor existed is rescheduled at the floor."""
+    from app.core.tenancy import apply_monitor_claim_context
+    from app.db.session import async_session_maker, worker_session_maker
+    from app.models.monitor import Monitor
+    from app.models.organization import Organization
+
+    monkeypatch.setattr(settings, "MONITOR_MIN_INTERVAL_HOURS", 24)
+    async with worker_session_maker() as db:
+        owner = (await db.get(Organization, workspace)).owner_id
+        mid = f"w9_m_{uuid.uuid4().hex[:10]}"
+        db.add(Monitor(id=mid, org_id=workspace, user_id=owner, name="old fast", query="x",
+                       cadence="every_6h", status="active",
+                       next_run_at=dt.datetime(2000, 1, 1, tzinfo=dt.timezone.utc)))
+        await db.commit()
+    try:
+        async with async_session_maker() as db:
+            await apply_monitor_claim_context(db)
+            claimed = await monitor_service.claim_due_monitors(db, 1)
+        assert [r["id"] for r in claimed] == [mid]
+        async with worker_session_maker() as db:
+            nxt = (await db.get(Monitor, mid)).next_run_at
+        assert nxt - dt.datetime.now(dt.timezone.utc) > dt.timedelta(hours=23)
+    finally:
+        async with worker_session_maker() as db:
+            await db.execute(delete(Monitor).where(Monitor.id == mid))
+            await db.commit()
