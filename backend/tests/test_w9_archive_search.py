@@ -120,3 +120,20 @@ async def test_workspace_record_cap_refuses_and_rolls_back_both_counters(monkeyp
         assert refused.value.status_code == 429
         assert refused.value.detail["code"] == "workspace_record_cap_reached"
         await provider_budget.assert_record_room(db, org.id, 6)
+
+
+@pytest.mark.asyncio
+async def test_w9_tables_keep_row_level_security_and_their_tenant_policies():
+    """W9-1 only adds a column and indexes; RLS must stay on for every table it reads or writes."""
+    async with async_session_maker() as db:
+        rows = (await db.execute(text(
+            "SELECT c.relname, c.relrowsecurity, "
+            "(SELECT count(*) FROM pg_policies p WHERE p.schemaname = 'public' AND p.tablename = c.relname) "
+            "FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+            "WHERE n.nspname = 'public' AND c.relname = ANY(:t)"
+        ), {"t": ["ad_archive", "creatives", "saved_creatives", "workspace_daily_usage", "scrape_jobs"]})).all()
+    found = {name: (enabled, policies) for name, enabled, policies in rows}
+    assert set(found) == {"ad_archive", "creatives", "saved_creatives", "workspace_daily_usage", "scrape_jobs"}
+    for name, (enabled, policies) in found.items():
+        assert enabled is True, f"RLS is off on {name}"
+        assert policies >= 1, f"{name} has no RLS policy"
