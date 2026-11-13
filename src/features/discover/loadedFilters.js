@@ -8,6 +8,9 @@
  * run lengths are hidden once a minimum is set.
  */
 
+/** @typedef {{format: string, status: string, cta: string, domain: string, minDays: number}} LoadedFilters */
+
+/** @type {Readonly<LoadedFilters>} */
 export const EMPTY_LOADED_FILTERS = Object.freeze({
   format: "",
   status: "",
