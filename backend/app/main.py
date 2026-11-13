@@ -72,12 +72,6 @@ if cors_origins or cors_origin_regex:
 # requests are never throttled.
 app.add_middleware(RateLimitMiddleware)
 
-# Temporary diagnostic (masked, /api/health?probe=… only): which forwarding
-# header carries the client IP on Render.
-from app.middleware.forwarding_probe import log_probe  # noqa: E402
-
-app.middleware("http")(log_probe)
-
 # Enterprise Security Headers Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response

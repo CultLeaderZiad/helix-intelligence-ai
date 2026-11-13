@@ -106,6 +106,10 @@ class Settings(BaseSettings):
     # Comma-separated IPs or CIDRs of reverse proxies allowed to supply a client IP.
     # Empty means forwarding headers are ignored and the TCP peer is used.
     TRUSTED_PROXY_CIDRS: str = os.getenv("TRUSTED_PROXY_CIDRS", "")
+    # Header set by the edge in front of the app that always overwrites any
+    # client-sent value. Unset = production on Render uses cf-connecting-ip;
+    # "none" turns it off. See effective_client_ip_header.
+    CLIENT_IP_HEADER: str = os.getenv("CLIENT_IP_HEADER", "")
     # Writes that are cheap but send email or create shared rows (support
     # tickets, access requests, share links, drafts): per IP per window.
     ABUSE_RATE_LIMIT: int = int(os.getenv("ABUSE_RATE_LIMIT", "10"))
@@ -531,6 +535,25 @@ def effective_trusted_proxy_cidrs(cfg=None) -> str:
         return raw
     if getattr(cfg, "ENVIRONMENT", "") == "production":
         return "10.0.0.0/8"
+    return ""
+
+def effective_client_ip_header(cfg=None) -> str:
+    """The header that carries the real client IP, or "" to use the peer.
+
+    On Render every public request passes Cloudflare, which overwrites
+    cf-connecting-ip with the real client address. Observed 2026-11-12
+    (masked probe, docs/SECURITY_AUDIT.md A1): with a forged
+    X-Forwarded-For: 203.0.113.77 the header still held the real client,
+    while uvicorn's rewritten peer became the forged 203.0.x.x.
+    """
+    cfg = cfg or settings
+    raw = (getattr(cfg, "CLIENT_IP_HEADER", "") or "").strip().lower()
+    if raw == "none":
+        return ""
+    if raw:
+        return raw
+    if getattr(cfg, "ENVIRONMENT", "") == "production":
+        return "cf-connecting-ip"
     return ""
 
 settings = Settings()

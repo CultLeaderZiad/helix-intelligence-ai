@@ -34,7 +34,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from app.core.config import effective_trusted_proxy_cidrs, settings
+from app.core.config import effective_client_ip_header, effective_trusted_proxy_cidrs, settings
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,19 @@ def warn_if_untrusted_proxy(request: Request) -> bool:
 
 
 def client_ip(request: Request) -> str:
-    """Return the client IP from the TCP peer unless that peer is a trusted proxy."""
+    """Return the client IP.
+
+    When an edge header is configured (production on Render:
+    cf-connecting-ip, set by Cloudflare and never taken from the client),
+    use it. Otherwise use the TCP peer unless that peer is a trusted proxy.
+    The peer alone is unsafe on Render: uvicorn rewrites it from the
+    leftmost X-Forwarded-For entry, which any client can forge.
+    """
+    edge = effective_client_ip_header(settings)
+    if edge:
+        value = (request.headers.get(edge) or "").strip()
+        if value and _is_ip(value):
+            return value
     peer = request.client.host if request.client and request.client.host else ""
     if not peer:
         return "unknown"
