@@ -524,6 +524,14 @@ def validate_boot_invariants(cfg) -> None:
 
 
 
+def _is_production(cfg) -> bool:
+    """Same classification as the docs gate: aliases, and Render, count."""
+    try:
+        return classified_environment(cfg) == "production"
+    except RuntimeError:
+        return False
+
+
 def effective_trusted_proxy_cidrs(cfg=None) -> str:
     """Production on Render sits behind Render's private proxy (10.0.0.0/8).
     Without trusting it every client shares the proxy's address and one
@@ -533,7 +541,7 @@ def effective_trusted_proxy_cidrs(cfg=None) -> str:
     raw = (getattr(cfg, "TRUSTED_PROXY_CIDRS", "") or "").strip()
     if raw:
         return raw
-    if getattr(cfg, "ENVIRONMENT", "") == "production":
+    if _is_production(cfg):
         return "10.0.0.0/8"
     return ""
 
@@ -552,7 +560,7 @@ def effective_client_ip_header(cfg=None) -> str:
         return ""
     if raw:
         return raw
-    if getattr(cfg, "ENVIRONMENT", "") == "production":
+    if _is_production(cfg):
         return "cf-connecting-ip"
     return ""
 

@@ -72,3 +72,13 @@ def test_header_choice():
     assert eff(SimpleNamespace(ENVIRONMENT="development", CLIENT_IP_HEADER="")) == ""
     assert eff(SimpleNamespace(ENVIRONMENT="production", CLIENT_IP_HEADER="none")) == ""
     assert eff(SimpleNamespace(ENVIRONMENT="development", CLIENT_IP_HEADER="True-Client-IP")) == "true-client-ip"
+
+
+def test_render_counts_as_production_like_the_docs_gate(monkeypatch):
+    """Render runs with an ENVIRONMENT alias; the header must still apply."""
+    eff = config.effective_client_ip_header
+    monkeypatch.setenv("RENDER", "true")
+    assert eff(SimpleNamespace(ENVIRONMENT="development", CLIENT_IP_HEADER="")) == "cf-connecting-ip"
+    monkeypatch.delenv("RENDER")
+    assert eff(SimpleNamespace(ENVIRONMENT="prod", CLIENT_IP_HEADER="")) == "cf-connecting-ip"
+    assert eff(SimpleNamespace(ENVIRONMENT="bogus", CLIENT_IP_HEADER="")) == ""
