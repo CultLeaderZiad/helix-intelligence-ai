@@ -22,6 +22,11 @@ const accountService = {
     return request("/account/usage/today")
   },
 
+  /** This month's Metapi records for the workspace, its cap and estimates. */
+  getRecordUsage() {
+    return request("/account/record-usage")
+  },
+
   completeOnboarding() {
     return request("/account/onboarding-complete", {
       method: "POST",

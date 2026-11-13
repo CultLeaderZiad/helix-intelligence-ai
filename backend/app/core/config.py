@@ -249,6 +249,9 @@ class Settings(BaseSettings):
     # Defaults sized for Metapi Free (3,000/month). Set it to the plan's
     # remaining records when starting mid-period.
     METAPI_MONTHLY_RECORD_BUDGET: int = int(os.getenv("METAPI_MONTHLY_RECORD_BUDGET", "3000"))
+    # One workspace's monthly share of that budget (plans.limits.records_per_month
+    # overrides it). 300 = the 3,000-record budget split across 10 workspaces.
+    METAPI_WORKSPACE_MONTHLY_RECORD_CAP: int = int(os.getenv("METAPI_WORKSPACE_MONTHLY_RECORD_CAP", "300"))
     # Permanent ad archive (see archive_service). The per-workspace cap bounds
     # storage; media larger than the byte cap keeps its text only.
     ARCHIVE_ENABLED: bool = os.getenv("ARCHIVE_ENABLED", "true").lower() == "true"

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { useW8Copy } from "@/i18n/w8Product"
 import { SupportMailto } from "@/components/SupportMailto"
+import { RecordMeter } from "@/features/archive/RecordMeter"
+import { useRecordUsage } from "@/hooks/useRecordUsage"
 
 const FEATURES = [
   { flag: "discover", copy: "featureDiscover" },
@@ -17,7 +19,9 @@ export function BillingPage() {
   const w8 = useW8Copy()
   const { user } = useAuth()
   const flags = user?.feature_flags ?? {}
-  const { access, usage, loading, error, submitting, refresh, requestAccess } = useWorkspaceAccess()
+  const { access, usage, loading, error, submitting, refresh: refreshAccess, requestAccess } = useWorkspaceAccess()
+  const { usage: records, error: recordsError, refresh: refreshRecords } = useRecordUsage()
+  const refresh = () => { refreshAccess(); refreshRecords() }
   const [note, setNote] = useState("")
   const [requestError, setRequestError] = useState(false)
   const [sent, setSent] = useState(false)
@@ -76,6 +80,7 @@ export function BillingPage() {
             <p>{t("searchesLabel")}: {typeof usage?.searches_run_today === "number" ? usage.searches_run_today : t("unknownValue")}</p>
             <p>{t("usageDisclosure")}</p>
           </div>
+          <RecordMeter usage={records} error={recordsError} />
         </>
       )}
     </section>

@@ -273,6 +273,11 @@ async def _enforce_plan_monitor_limits(
                     "limit": int(cap),
                 },
             )
+    if activating:
+        # The first run is due at once, so the month must have room for it.
+        from app.services.provider_budget import assert_record_room, search_record_estimate
+
+        await assert_record_room(db, org_id, search_record_estimate())
 
 
 async def update_monitor(

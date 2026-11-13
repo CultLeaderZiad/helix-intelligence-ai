@@ -56,11 +56,14 @@ class PlanLimits(BaseModel):
     a brand search can use two provider tasks.
     monitors: active monitors per workspace.
     monitor_cadences: cadences the plan may use ("daily", "weekly").
+    records_per_month: Metapi records per workspace per UTC month (Discover
+    and monitors together).
     """
 
     searches_per_day: Optional[int] = Field(None, ge=0, le=1000)
     monitors: Optional[int] = Field(None, ge=0, le=500)
     monitor_cadences: Optional[List[Literal["daily", "weekly"]]] = None
+    records_per_month: Optional[int] = Field(None, ge=0, le=100000)
 
     @field_validator("monitor_cadences")
     @classmethod

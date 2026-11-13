@@ -22,6 +22,11 @@ import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 import w5Discover from "@/i18n/w5Discover"
 import { useW8Copy } from "@/i18n/w8Product"
+import { useW9Copy } from "@/i18n/w9Product"
+import { ArchiveSearch } from "@/features/archive/ArchiveSearch"
+import { StoredResultsPrompt } from "@/features/archive/StoredResultsPrompt"
+import { useRecordUsage } from "@/hooks/useRecordUsage"
+import { discoverService } from "@/services"
 
 /* Search-time filters (country, status, format, dates, platform, language)
    are sent with the search; run length and the text-rubric minimum
@@ -52,6 +57,9 @@ import { useLanguage } from "@/context/LanguageContext"
 
 import { Link, useSearchParams } from "react-router-dom"
 
+/* D1: stored searches younger than this are offered before a paid run. */
+const STORED_MAX_AGE_DAYS = 7
+
 export function DiscoverPage() {
   const [searchParams] = useSearchParams()
   const { latestSearch, saveCompletedSearch, selectActiveCreative, openSearchSession } = useSearchContext()
@@ -60,6 +68,10 @@ export function DiscoverPage() {
   const { t, lang } = useLanguage()
   const copy = w5Discover[lang] ?? w5Discover.en
   const w8 = useW8Copy()
+  const w9 = useW9Copy()
+  const { usage: recordUsage, refresh: refreshRecordUsage } = useRecordUsage()
+  /* D1: a recent stored search for this query, offered before a paid run. */
+  const [storedOffer, setStoredOffer] = useState(null)
   const [query, setQuery] = useState(() => searchParams.get("q") || latestSearch?.query || "")
   const [queryLanguage, setQueryLanguage] = useState(() => {
     try {
@@ -190,11 +202,45 @@ export function DiscoverPage() {
     void finishOnboarding()
   }
 
-  function runDiscovery() {
-    if (!query.trim()) return
+  function runFresh() {
+    setStoredOffer(null)
     setSelectedId(null)
     setAppliedFilters(draftFilters)
     submit({ query: query.trim(), filters: draftFilters, sort, query_language: queryLanguage })
+    // The meter moves once the job reserves its records.
+    setTimeout(refreshRecordUsage, 5000)
+  }
+
+  async function runDiscovery() {
+    if (!query.trim()) return
+    // Stored results ignore search-time filters, so only offer them for an
+    // unfiltered search. 404 (nothing recent) or any error: run as before.
+    if (countActiveFilters(draftFilters) === 0) {
+      try {
+        const stored = await discoverService.getStoredResults(query.trim(), { maxAgeDays: STORED_MAX_AGE_DAYS })
+        if (stored?.job_id && (stored.total ?? 0) > 0) {
+          setStoredOffer(stored)
+          return
+        }
+      } catch {
+        /* no stored search: fall through */
+      }
+    }
+    runFresh()
+  }
+
+  async function viewStored() {
+    const stored = storedOffer
+    setStoredOffer(null)
+    setSelectedId(null)
+    const opened = await openSearchSession({
+      query: query.trim(),
+      job_id: stored.job_id,
+      status: "succeeded",
+      items: stored.items,
+      total: stored.total,
+    }).catch(() => false)
+    if (!opened) runFresh()
   }
 
   function handleSortChange(next) {
@@ -292,6 +338,19 @@ export function DiscoverPage() {
         onQueryLanguageChange={setQueryLanguage}
         onOpenDrafts={() => setShowDraftsModal(true)}
       />
+      {recordUsage ? (
+        <p className={`px-4 py-1 text-xs ${recordUsage.warning ? "text-warning" : "text-text-faint"}`} data-testid="search-record-estimate">
+          {w9.searchEstimate(recordUsage.estimates?.discover_search, recordUsage.remaining)}
+        </p>
+      ) : null}
+      <StoredResultsPrompt
+        stored={storedOffer}
+        estimate={recordUsage?.estimates?.discover_search}
+        onView={viewStored}
+        onFresh={runFresh}
+        onCancel={() => setStoredOffer(null)}
+      />
+      <ArchiveSearch />
 
       {showProgress ? (
         <JobProgress
@@ -429,7 +488,7 @@ export function DiscoverPage() {
             {phase === PHASE.ERROR && !isServiceRestart(error) ? (
               <ErrorState
                 error={error}
-                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
+                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" || error?.code === "workspace_record_cap_reached" ? undefined : retry}
                 description={
                   error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED"
                     ? t("discoverNeedsAccess")
@@ -439,9 +498,11 @@ export function DiscoverPage() {
                         ? w8.discoverQueryTooLong
                         : error?.code === "daily_search_cap_reached"
                           ? w8.discoverSearchCap
-                          : undefined
+                          : error?.code === "workspace_record_cap_reached"
+                            ? w9.recordCapError
+                            : undefined
                 }
-                action={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? (
+                action={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" || error?.code === "workspace_record_cap_reached" ? (
                   <Button as={Link} to="/access" size="sm" variant="primary">{w8.discoverOpenAccess}</Button>
                 ) : undefined}
                 className=""

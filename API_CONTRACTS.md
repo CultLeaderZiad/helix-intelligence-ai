@@ -51,6 +51,7 @@ no API-key or third-party-token login (W8).
 | DELETE | `/drafts/{id}` | Delete one of the caller's own drafts; anyone else's is `404`. |
 | GET | `/jobs/{job_id}` | Status, stage, deadline, `failure_kind`. A job stopped by the global hard stop fails with `failure_kind` `discover_paused` or `provider_budget` and its credit is refunded. |
 | POST | `/jobs/{job_id}/cancel` | Tenant-checked cancellation. |
+| GET | `/stored-results?query=&max_age_days=` | W9-1. Latest finished search for `query` in the caller's workspace (JSON or Markdown). Never starts a search; 0 credits, 0 Metapi records. `max_age_days` > 0 only considers searches within that many days that found ads (the UI uses 7 to offer "View stored results (0 records)" before a paid run). JSON adds `job_id`, `searched_at`, `records_used: 0`. `404` if none. |
 | GET | `/jobs/{job_id}/results` | Paginated creatives. `sort` = `days_active_desc` (default), `first_seen_desc`, `composite_desc`, `hook_desc`, `impressions_desc`; anything else is `422`. Nulls sort last. Optional view filters on stored rows: `min_days` ∈ {30, 60, 90} (ads with an unknown run length are excluded and counted in `hidden_unknown_run_length`, never treated as 0) and `min_score` 0–10 (text-rubric minimum); other values are `422`. |
 
 Scores (`hook`, `clarity`, `retention`, `composite`) are a **text rubric on a
@@ -63,7 +64,7 @@ every other source; spend, CTR and engagement are `null` unless Meta reports the
 | Method | Path | Flag | Notes |
 |---|---|---|---|
 | GET | `/api/creatives/{id}` | `discover` | Creative detail (tenant-scoped through its job). |
-| GET | `/api/creatives/saved` | `discover` + `swipe_files` | Saved creatives (boards). |
+| GET | `/api/creatives/saved` | `discover` + `swipe_files` | Saved creatives (boards). W9-1: optional `q` runs the same full-text search as `/api/archive/search`, ranked by match. |
 | POST / DELETE | `/api/creatives/{id}/save` | `discover` + `swipe_files` | Save to / remove from a board. |
 | POST | `/api/creatives/custom` | `discover` + `swipe_files` | Add a custom reference to a board. |
 | GET / POST | `/api/playbooks` | `swipe_files` | List / create a shareable board report. |
@@ -80,6 +81,7 @@ every other source; spend, CTR and engagement are `null` unless Meta reports the
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/api/archive` | Paginated archive entries for the caller's workspace (`brand` filter optional). Includes `cap_per_workspace`. |
+| GET | `/api/archive/search?q=&scope=&page=&page_size=` | W9-1. Postgres full-text search over the workspace archive and the caller's saved ads (brand, headline, body, CTA, landing domain), with the `simple` and `arabic` configs OR-ed, so English, Arabic and mixed text match. `q` is free text (`websearch_to_tsquery`: quotes, `-word`), trimmed to 200 chars; empty `422`. `scope` = `all` (default), `archive`, `saved`; other `422`. Response `{query, scope, page, page_size, records_used: 0, archive: {items, total, has_more}, saved: {items, total, has_more} | null}`. `saved` is `null` under `all` when the plan lacks `swipe_files`; `scope=saved` then returns `403`. Archive rows are limited to the caller's workspaces (and RLS); saved rows to the caller. GIN indexes `ix_ad_archive_fts`, `ix_creatives_fts`. |
 | GET | `/api/archive/by-creative/{creative_id}` | The archived copy of one creative, or `404` until the background copy exists. |
 
 After a Discover search succeeds with results, an `archive` work item copies
@@ -136,6 +138,26 @@ for read-only single-workspace tokens is in `agents/mcp/README.md`.
 - `/api/account`: `profile` (GET/PATCH), `avatar`, `access`, `access-requests`,
   `access-grants`, `usage/today`, `workspace`, `onboarding-complete`, and team
   invites/members (`team_accounts`, flag-hidden in the UI).
+- `GET /api/account/record-usage` (W9-1): the active workspace's Metapi
+  records this UTC month: `{period_start, used, cap, remaining, percent,
+  warning, reached, estimates: {discover_search, monitor_run,
+  monitor_month: {daily, weekly}}}`. `warning` is true at 80% of `cap`.
+
+### Record budget guardrails (W9-1)
+
+Metapi bills each returned ad as a record. Every Metapi task reserves its
+`count` against both the global `METAPI_MONTHLY_RECORD_BUDGET` (unchanged) and
+the workspace's monthly cap in one transaction; a refusal by either rolls back
+both. The cap is `plans.limits.records_per_month` (set by an admin in the plan
+editor, `PUT /api/admin/plans/{id}`, 0–100000) or
+`METAPI_WORKSPACE_MONTHLY_RECORD_CAP` (default 300). Usage is
+`workspace_daily_usage.metapi_records`, summed over the month; refunds never
+lower it. A search or monitor run reserves at most `METAPI_RESOLVE_COUNT` + 15
+records (30 by default). `POST /api/discovery/jobs` (after cache hits, which
+are free) and creating or re-activating a monitor return `429` with
+`{code: "workspace_record_cap_reached", message, used, cap, needed}` when the
+month has less room than that. Scheduled monitor runs are refused by the
+reservation itself.
 - `/api/support/tickets`, `/api/notifications`, `/api/updates` (banner and
   public updates).
 

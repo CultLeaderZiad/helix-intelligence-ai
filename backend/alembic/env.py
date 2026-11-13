@@ -75,7 +75,9 @@ def custom_compare_server_default(
 
 
 def include_object(object, name, type_, reflected, compare_to):
-    if type_ == "index" and name in ("uq_scrape_jobs_active_query", "ix_users_lower_email"):
+    if type_ == "index" and name in (
+        "uq_scrape_jobs_active_query", "ix_users_lower_email", "ix_ad_archive_fts", "ix_creatives_fts",
+    ):
         return False
     return True
 

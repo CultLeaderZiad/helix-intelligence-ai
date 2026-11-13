@@ -225,6 +225,19 @@ async def get_today_real_usage(
     }
 
 
+@router.get("/record-usage")
+async def get_record_usage(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """This month's Metapi records for the caller's workspace, its cap, and
+    what a Discover search or a monitor is estimated to reserve."""
+    from app.services import provider_budget
+
+    org = await billing_service.get_or_create_default_org(db, current_user)
+    return await provider_budget.workspace_record_usage(db, org.id)
+
+
 @router.post("/onboarding-complete")
 async def complete_onboarding(
     db: AsyncSession = Depends(get_db),

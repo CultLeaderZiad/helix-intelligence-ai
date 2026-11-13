@@ -533,9 +533,11 @@ async def list_saved_creatives(
     user: "User",
     collection_name: Optional[str] = None,
     page: int = 1,
-    page_size: int = 20
+    page_size: int = 20,
+    q: Optional[str] = None,
 ) -> Paginated[CreativeSchema]:
     from app.services.billing_service import check_quota_and_feature
+    from app.services import text_search
     from app.models.saved_creative import SavedCreative
     from app.models.creative import Creative
     from app.models.creative_score import CreativeScore
@@ -547,8 +549,13 @@ async def list_saved_creatives(
     filters = [SavedCreative.user_id == user.id]
     if collection_name:
         filters.append(SavedCreative.collection_name == collection_name)
+    needle = text_search.clean_query(q)
+    if needle:
+        filters.append(text_search.matches("creatives", needle))
 
-    count_query = select(func.count(SavedCreative.id)).where(*filters)
+    count_query = (
+        select(func.count(SavedCreative.id)).join(Creative, Creative.id == SavedCreative.creative_id).where(*filters)
+    )
     total = await db.scalar(count_query) or 0
 
     query = (
@@ -556,7 +563,7 @@ async def list_saved_creatives(
         .join(SavedCreative, Creative.id == SavedCreative.creative_id)
         .outerjoin(CreativeScore, Creative.id == CreativeScore.creative_id)
         .where(*filters)
-        .order_by(SavedCreative.created_at.desc(), SavedCreative.id)
+        .order_by(*([text_search.rank("creatives", needle)] if needle else []), SavedCreative.created_at.desc(), SavedCreative.id)
         .offset(offset)
         .limit(page_size)
     )

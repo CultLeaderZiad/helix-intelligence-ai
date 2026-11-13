@@ -514,8 +514,11 @@ async def trigger_search(
 
     # 3. Per-workspace daily search cap. Counted before any provider work and
     #    never lowered by a refund, so refunded searches still count.
-    from app.services.provider_budget import reserve_search_slot
+    from app.services.provider_budget import assert_record_room, reserve_search_slot, search_record_estimate
 
+    # 3a. Per-workspace monthly Metapi record cap: refuse before counting the
+    #     search when the month has no room for this search's worst case.
+    await assert_record_room(db, org_id, search_record_estimate())
     if not await reserve_search_slot(org_id):
         raise HTTPException(
             status_code=429,

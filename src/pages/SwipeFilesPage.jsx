@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useW8Copy } from "@/i18n/w8Product"
+import { useW9Copy } from "@/i18n/w9Product"
+import { Input } from "@/components/ui/Field"
 import { BoardSharePanel } from "@/features/boards/BoardSharePanel"
 import { TeamBoardsPanel } from "@/features/boards/TeamBoardsPanel"
 import { creativeService } from "@/services"
@@ -30,6 +32,7 @@ export function SwipeFilesPage() {
   const { user } = useAuth()
   const { latestSearch } = useSearchContext()
   const { t } = useLanguage()
+  const w9 = useW9Copy()
   const w8 = useW8Copy()
   const navigate = useNavigate()
 
@@ -38,6 +41,8 @@ export function SwipeFilesPage() {
   const [, setError] = useState(null)
   const [activeCollection] = useState("all")
   const [toast, setToast] = useState(null)
+  const [searchInput, setSearchInput] = useState("")
+  const [searchQ, setSearchQ] = useState("")
   const [deleteTargetCreative, setDeleteTargetCreative] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
   
@@ -66,6 +71,7 @@ export function SwipeFilesPage() {
         collection: activeCollection === "all" ? null : activeCollection,
         page: 1,
         page_size: 50,
+        q: searchQ || null,
       })
       setCreatives(res.items || [])
     } catch (err) {
@@ -77,7 +83,7 @@ export function SwipeFilesPage() {
 
   useEffect(() => {
     fetchSaved()
-  }, [activeCollection, isFeatureEnabled])
+  }, [activeCollection, isFeatureEnabled, searchQ])
 
   const showToast = (msg) => {
     setToast(msg)
@@ -237,6 +243,32 @@ export function SwipeFilesPage() {
           </Button>
         </div>
       </div>
+
+      {isFeatureEnabled && (
+        <form
+          role="search"
+          className="flex flex-wrap items-center gap-2 text-sm"
+          onSubmit={(event) => { event.preventDefault(); setSearchQ(searchInput.trim()) }}
+        >
+          <label htmlFor="swipe-search" className="font-medium">{w9.swipeSearchLabel}</label>
+          <Input
+            id="swipe-search"
+            type="search"
+            dir="auto"
+            maxLength={200}
+            value={searchInput}
+            placeholder={w9.swipeSearchPlaceholder}
+            onChange={(event) => setSearchInput(event.target.value)}
+            className="min-w-48 flex-1"
+          />
+          <Button type="submit" size="xs" disabled={loading}>{w9.swipeSearchButton}</Button>
+          {searchQ ? (
+            <Button type="button" size="xs" variant="ghost" onClick={() => { setSearchInput(""); setSearchQ("") }}>{w9.swipeSearchClear}</Button>
+          ) : null}
+          <p className="w-full text-xs text-text-faint">{w9.archiveSearchHint}</p>
+          {searchQ && !loading && creatives.length === 0 ? <p role="status" className="w-full">{w9.swipeSearchEmpty(searchQ)}</p> : null}
+        </form>
+      )}
 
       {/* Discovered Corpus Import Banner */}
       {discoveredCount > 0 && (

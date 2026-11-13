@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, Request
 from app.core import markdown
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.discover import SearchParams, Job
-from app.schemas.creative import CreativeResults
+from app.schemas.creative import CreativeResults, StoredResults
 from app.schemas.common import Paginated
 from app.services import discover_service, creative_service
 from app.core.deps import get_db, get_current_user, require_feature
@@ -88,14 +88,18 @@ async def stored_results(
     sort: str = creative_service.DEFAULT_CREATIVE_SORT,
     min_days: int = 0,
     min_score: float = 0.0,
+    max_age_days: int = 0,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Results of the latest finished search for ``query`` in the caller's workspace.
 
-    Read-only: it never starts a search and never spends credits. 404 when the
-    workspace has not run that search yet.
+    Read-only: it never starts a search, never spends credits and uses 0
+    Metapi records. ``max_age_days`` > 0 only considers searches that found
+    ads within that many days (the "already have this" check before a run).
+    404 when there is no such search.
     """
+    import datetime as _dt
     from sqlalchemy import func, select
     from app.core.tenancy import get_user_org_ids
     from app.models.scrape_job import ScrapeJob
@@ -104,15 +108,25 @@ async def stored_results(
     if not needle:
         raise HTTPException(status_code=422, detail="query is required")
     scope = await get_user_org_ids(db, current_user)
-    stmt = select(ScrapeJob.id).where(
+    stmt = select(ScrapeJob.id, ScrapeJob.created_at).where(
         func.lower(func.trim(ScrapeJob.query)) == needle, ScrapeJob.status == "succeeded"
     )
     if scope is not None:
         stmt = stmt.where(ScrapeJob.org_id.in_(scope or [""]))
-    job_id = (await db.execute(stmt.order_by(ScrapeJob.created_at.desc()).limit(1))).scalar_one_or_none()
-    if job_id is None:
+    if max_age_days > 0:
+        since = _dt.datetime.now(_dt.timezone.utc) - _dt.timedelta(days=min(int(max_age_days), 365))
+        stmt = stmt.where(ScrapeJob.created_at >= since, ScrapeJob.record_count > 0)
+    row = (await db.execute(stmt.order_by(ScrapeJob.created_at.desc()).limit(1))).first()
+    if row is None:
         raise HTTPException(status_code=404, detail="No finished search for this query in your workspace. Run it in Helix first.")
-    return await _job_results(job_id, page, page_size, sort, min_days, min_score, db, current_user, request)
+    job_id, searched_at = row
+    results = await _job_results(job_id, page, page_size, sort, min_days, min_score, db, current_user, request)
+    if isinstance(results, CreativeResults):
+        return StoredResults(
+            **results.model_dump(), job_id=job_id,
+            searched_at=searched_at.isoformat() if searched_at else None, records_used=0,
+        )
+    return results
 
 
 @router.get("/jobs", response_model=Paginated[Job])

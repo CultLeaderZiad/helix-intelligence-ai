@@ -239,7 +239,8 @@ class MetapiProvider(ScraperProvider):
 
         # Metapi bills records: reserve this task's count first.
         if not await provider_budget.reserve_provider_records(
-            "metapi", int(payload.get("count") or 50), int(settings.METAPI_MONTHLY_RECORD_BUDGET)
+            "metapi", int(payload.get("count") or 50), int(settings.METAPI_MONTHLY_RECORD_BUDGET),
+            org_id=self.org_id,
         ):
             self.records_refused = True
             return None

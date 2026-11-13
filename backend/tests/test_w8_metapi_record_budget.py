@@ -40,7 +40,7 @@ async def test_refused_records_stop_the_search_before_any_metapi_request(monkeyp
         posted.append(url)
         return httpx.Response(202, json={"task_id": "t1"})
 
-    async def refuse(provider, records, budget):
+    async def refuse(provider, records, budget, org_id=None):
         reserved.append((provider, records))
         return False
 

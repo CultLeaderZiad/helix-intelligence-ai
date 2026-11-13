@@ -29,10 +29,11 @@ async def get_saved_creatives(
     collection: Optional[str] = None,
     page: int = 1,
     page_size: int = 20,
+    q: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return await creative_service.list_saved_creatives(db, current_user, collection_name=collection, page=page, page_size=page_size)
+    return await creative_service.list_saved_creatives(db, current_user, collection_name=collection, page=page, page_size=page_size, q=q)
 
 @router.post("/custom")
 async def add_custom_swipe_reference(

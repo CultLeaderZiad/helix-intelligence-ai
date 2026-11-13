@@ -72,3 +72,10 @@ class CreativeResults(Paginated[Creative]):
     length is unknown cannot be shown as "running N+ days"; their count is
     reported instead of silently treating them as 0."""
     hidden_unknown_run_length: Optional[int] = None
+
+
+class StoredResults(CreativeResults):
+    """``/discovery/stored-results``: which stored search answered, and when."""
+    job_id: str
+    searched_at: Optional[str] = None
+    records_used: int = 0
