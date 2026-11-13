@@ -23,16 +23,16 @@ function wrap(node, lang = "en") {
 
 describe("W9-1 record meter", () => {
   it("shows the API's numbers and no warning under 80%", () => {
-    wrap(<RecordMeter usage={usage()} />)
+    wrap(<RecordMeter usage={usage()} error={false} />)
     expect(screen.getByText(/120 of 300 records used/)).toBeTruthy()
     expect(screen.getByRole("meter").getAttribute("aria-valuenow")).toBe("120")
     expect(screen.queryByRole("alert")).toBeNull()
   })
   it("warns at 80% and says clearly when the cap is reached", () => {
-    wrap(<RecordMeter usage={usage({ used: 250, remaining: 50, percent: 83, warning: true })} />)
+    wrap(<RecordMeter usage={usage({ used: 250, remaining: 50, percent: 83, warning: true })} error={false} />)
     expect(screen.getByRole("alert").textContent).toMatch(/80% or more/)
     cleanup()
-    wrap(<RecordMeter usage={usage({ used: 300, remaining: 0, percent: 100, warning: true, reached: true })} />)
+    wrap(<RecordMeter usage={usage({ used: 300, remaining: 0, percent: 100, warning: true, reached: true })} error={false} />)
     expect(screen.getByRole("alert").textContent).toMatch(/used all of its monthly records/)
   })
   it("says the meter is unavailable instead of inventing numbers", () => {
@@ -41,7 +41,7 @@ describe("W9-1 record meter", () => {
     expect(screen.queryByRole("meter")).toBeNull()
   })
   it("renders in Arabic", () => {
-    wrap(<RecordMeter usage={usage()} />, "ar")
+    wrap(<RecordMeter usage={usage()} error={false} />, "ar")
     expect(screen.getByText(/سجلات Metapi هذا الشهر/)).toBeTruthy()
   })
 })
@@ -54,7 +54,7 @@ describe("W9-1 archive search", () => {
       saved: { total: 0, items: [] },
     })
     wrap(<ArchiveSearch />)
-    fireEvent.change(screen.getByLabelText("Search your archive"), { target: { value: " shorts " } })
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search your archive" }), { target: { value: " shorts " } })
     fireEvent.click(screen.getByRole("button", { name: "Search archive" }))
     await waitFor(() => expect(screen.getByText(/Gymshark · Shorts/)).toBeTruthy())
     expect(search).toHaveBeenCalledWith("shorts", { scope: "all", page_size: 20 })
@@ -63,7 +63,7 @@ describe("W9-1 archive search", () => {
   it("says when nothing matches", async () => {
     search.mockResolvedValue({ query: "zz", archive: { total: 0, items: [] }, saved: null })
     wrap(<ArchiveSearch />)
-    fireEvent.change(screen.getByLabelText("Search your archive"), { target: { value: "zz" } })
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search your archive" }), { target: { value: "zz" } })
     fireEvent.click(screen.getByRole("button", { name: "Search archive" }))
     await waitFor(() => expect(screen.getByText(/No archived ads match "zz"/)).toBeTruthy())
   })
@@ -81,7 +81,7 @@ describe("W9-1 stored results first", () => {
     expect(onFresh).toHaveBeenCalledOnce()
   })
   it("renders nothing without a stored search", () => {
-    const { container } = wrap(<StoredResultsPrompt stored={null} estimate={30} />)
+    const { container } = wrap(<StoredResultsPrompt stored={null} estimate={30} onView={() => {}} onFresh={() => {}} onCancel={() => {}} />)
     expect(container.textContent).toBe("")
   })
 })

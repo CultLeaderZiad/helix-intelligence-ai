@@ -11,6 +11,7 @@ import { useLanguage } from "@/context/LanguageContext"
 import { useW8Copy } from "@/i18n/w8Product"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { deriveInsight } from "@/lib/insight"
+import { MonitorBrandButton } from "@/features/discover/MonitorBrandButton"
 import {
   formatCompact,
   formatDate,
@@ -263,6 +264,9 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
           <div className="flex flex-col gap-4 p-3">
             {/* Brand + copy — hierarchy: brand, headline, body */}
             <div className="flex flex-col gap-1.5">
+              <div className="flex justify-end">
+                <MonitorBrandButton pageId={data.page_id ?? null} brandName={data.brand_name || data.brand?.name || null} />
+              </div>
               <div className="flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-2">
                   <span className="truncate text-xs font-medium text-text">

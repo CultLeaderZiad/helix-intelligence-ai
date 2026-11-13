@@ -20,8 +20,8 @@ const creativeService = {
     return request(`/creatives/${id}`)
   },
 
-  getSavedCreatives({ page = 1, page_size = 50, collection = null, q = null } = {}) {
-    return request("/creatives/saved", { params: { page, page_size, collection, q: q || null } })
+  getSavedCreatives({ page = 1, page_size = 50, collection = null, q = null, tag = null } = {}) {
+    return request("/creatives/saved", { params: { page, page_size, collection, q: q || null, tag: tag || null } })
   },
 
   saveCreative(creativeId, collection = "Default") {

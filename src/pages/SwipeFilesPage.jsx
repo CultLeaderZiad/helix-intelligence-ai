@@ -5,7 +5,9 @@ import { useW9Copy } from "@/i18n/w9Product"
 import { Input } from "@/components/ui/Field"
 import { BoardSharePanel } from "@/features/boards/BoardSharePanel"
 import { TeamBoardsPanel } from "@/features/boards/TeamBoardsPanel"
-import { creativeService } from "@/services"
+import { boardService, creativeService } from "@/services"
+import { SavedAdAnnotations } from "@/features/boards/SavedAdAnnotations"
+import { useW92Copy } from "@/i18n/w9_2Product"
 import { useAuth } from "@/context/AuthContext"
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
@@ -34,6 +36,7 @@ export function SwipeFilesPage() {
   const { t } = useLanguage()
   const w9 = useW9Copy()
   const w8 = useW8Copy()
+  const w92 = useW92Copy()
   const navigate = useNavigate()
 
   const [creatives, setCreatives] = useState([])
@@ -43,6 +46,9 @@ export function SwipeFilesPage() {
   const [toast, setToast] = useState(null)
   const [searchInput, setSearchInput] = useState("")
   const [searchQ, setSearchQ] = useState("")
+  /* W9-2: filter the board by one tag; tag list comes from GET /boards/tags. */
+  const [tagFilter, setTagFilter] = useState("")
+  const [allTags, setAllTags] = useState([])
   const [deleteTargetCreative, setDeleteTargetCreative] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
   
@@ -72,6 +78,7 @@ export function SwipeFilesPage() {
         page: 1,
         page_size: 50,
         q: searchQ || null,
+        tag: tagFilter || null,
       })
       setCreatives(res.items || [])
     } catch (err) {
@@ -83,7 +90,14 @@ export function SwipeFilesPage() {
 
   useEffect(() => {
     fetchSaved()
-  }, [activeCollection, isFeatureEnabled, searchQ])
+  }, [activeCollection, isFeatureEnabled, searchQ, tagFilter])
+
+  const fetchTags = () => {
+    if (!isFeatureEnabled) return
+    boardService.listTags().then((res) => setAllTags(res.items || [])).catch(() => setAllTags([]))
+  }
+
+  useEffect(fetchTags, [isFeatureEnabled])
 
   const showToast = (msg) => {
     setToast(msg)
@@ -269,6 +283,32 @@ export function SwipeFilesPage() {
           {searchQ && !loading && creatives.length === 0 ? <p role="status" className="w-full">{w9.swipeSearchEmpty(searchQ)}</p> : null}
         </form>
       )}
+
+      {allTags.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs" role="group" aria-label={w92.filterByTag}>
+          <span className="label-mono">{w92.filterByTag}</span>
+          <button
+            type="button"
+            aria-pressed={!tagFilter}
+            onClick={() => setTagFilter("")}
+            className={`rounded border px-2 py-0.5 ${!tagFilter ? "border-accent text-accent" : "border-border text-text-muted"}`}
+          >
+            {w92.allTags}
+          </button>
+          {allTags.map(({ tag, count }) => (
+            <button
+              key={tag}
+              type="button"
+              dir="auto"
+              aria-pressed={tagFilter === tag}
+              onClick={() => setTagFilter(tagFilter === tag ? "" : tag)}
+              className={`rounded border px-2 py-0.5 ${tagFilter === tag ? "border-accent text-accent" : "border-border text-text-muted"}`}
+            >
+              {w92.tagCount(tag, count)}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {/* Discovered Corpus Import Banner */}
       {discoveredCount > 0 && (
@@ -487,6 +527,8 @@ export function SwipeFilesPage() {
                 <p className="text-xs text-text-muted line-clamp-3 leading-relaxed">
                   {c.body || "No body text available."}
                 </p>
+
+                <SavedAdAnnotations creativeId={c.id} tags={c.tags || []} notes={c.notes || []} onTagsChange={fetchTags} />
 
                 {c.scores?.composite != null && (
                   <div className="pt-2 border-t border-border flex items-center justify-between text-xs font-mono">

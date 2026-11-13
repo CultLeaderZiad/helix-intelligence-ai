@@ -155,7 +155,7 @@ def _assert_rls_policy_state(database: str, *, deny_by_default: bool) -> None:
         """,
     )[0]
     # W8 added board_share_links, ad_archive, search_drafts, users, api_keys and workspace_daily_usage, each with one tenant policy.
-    expected = 40
+    expected = 42  # W9-2: + saved_ad_tags, saved_ad_notes
     if int(policies[0]) != expected or int(rls_counts[0]) != expected:
         raise SystemExit(
             f"expected {expected} enabled tenant policies, found policies={policies}, rls={rls_counts}"

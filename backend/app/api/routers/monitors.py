@@ -25,6 +25,14 @@ class MonitorCreate(BaseModel):
     notify_email: bool = False
 
 
+class BrandMonitorCreate(BaseModel):
+    page_id: Optional[str] = Field(None, max_length=40)
+    brand_name: Optional[str] = Field(None, max_length=200)
+    cadence: str = "weekly"
+    notify_in_app: bool = True
+    notify_email: bool = False
+
+
 class MonitorUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=200)
     cadence: Optional[str] = None
@@ -62,6 +70,42 @@ async def create_monitor(
         query=payload.query,
         cadence=payload.cadence,
         filters=payload.filters,
+        notify_in_app=payload.notify_in_app,
+        notify_email=payload.notify_email,
+    )
+
+
+@router.get("/brand/preview", dependencies=_monitor_access)
+async def preview_brand_monitor(
+    page_id: Optional[str] = Query(None, max_length=40),
+    brand_name: Optional[str] = Query(None, max_length=200),
+    cadence: str = Query("weekly"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """W9-2: the monitor "Monitor this brand" would create, with its record cost. 0 records."""
+    return await monitor_service.brand_monitor_preview(
+        db, org_id=await _org_id(db, current_user), page_id=page_id, brand_name=brand_name, cadence=cadence
+    )
+
+
+@router.post("/brand", status_code=201, dependencies=_monitor_access)
+async def create_brand_monitor(
+    payload: BrandMonitorCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Dict[str, Any]:
+    """W9-2 one-click "Monitor this brand". Same plan limits, record-cap check
+    (429 workspace_record_cap_reached) and duplicate check (409) as POST /monitors."""
+    target = monitor_service.brand_monitor_target(payload.page_id, payload.brand_name)
+    return await monitor_service.create_monitor(
+        db,
+        user=current_user,
+        org_id=await _org_id(db, current_user),
+        name=target["name"],
+        query=target["query"],
+        cadence=payload.cadence,
+        filters=None,
         notify_in_app=payload.notify_in_app,
         notify_email=payload.notify_email,
     )
