@@ -12,6 +12,16 @@ const monitorService = {
     })
   },
 
+  /** W9-2: the pre-filled brand monitor and its record cost (0 records). */
+  previewBrandMonitor({ page_id = null, brand_name = null, cadence = "weekly" } = {}) {
+    return request("/monitors/brand/preview", { params: { page_id: page_id || null, brand_name: brand_name || null, cadence } })
+  },
+
+  /** W9-2 one-click "Monitor this brand". */
+  createBrandMonitor({ page_id = null, brand_name = null, cadence = "weekly" } = {}) {
+    return request("/monitors/brand", { method: "POST", body: { page_id, brand_name, cadence } })
+  },
+
   updateMonitor(monitorId, changes) {
     return request(`/monitors/${monitorId}`, {
       method: "PATCH",

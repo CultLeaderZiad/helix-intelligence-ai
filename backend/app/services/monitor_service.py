@@ -220,6 +220,52 @@ async def create_monitor(
     return serialize_monitor(monitor)
 
 
+def brand_monitor_target(page_id: Optional[str], brand_name: Optional[str]) -> Dict[str, str]:
+    """W9-2 "Monitor this brand": what the monitor will watch.
+
+    A Facebook page id is preferred: Metapi then reads that advertiser's ads
+    directly instead of resolving a name. Otherwise the brand name is used.
+    """
+    from app.services.scraping.metapi_provider import page_id_from_query
+
+    pid = page_id_from_query(str(page_id or ""))
+    name = " ".join(str(brand_name or "").split())[:200]
+    if pid:
+        return {"query": pid, "name": name or pid, "watch": "page_id"}
+    if name:
+        return {"query": name[:300], "name": name, "watch": "brand_name"}
+    raise HTTPException(
+        status_code=422,
+        detail={"code": "brand_required", "message": "Pick a result with a brand or page id to monitor."},
+    )
+
+
+async def brand_monitor_preview(
+    db: AsyncSession, *, org_id: str, page_id: Optional[str], brand_name: Optional[str], cadence: str = "weekly"
+) -> Dict[str, Any]:
+    """The pre-filled monitor and its record cost. Reads only; 0 records."""
+    from app.services import provider_budget
+
+    if cadence not in CADENCE_INTERVALS:
+        raise HTTPException(status_code=422, detail=f"Unknown cadence '{cadence}'. Expected one of {sorted(CADENCE_INTERVALS)}.")
+    target = brand_monitor_target(page_id, brand_name)
+    existing = await db.scalar(
+        select(Monitor.id).where(Monitor.org_id == org_id, Monitor.query == target["query"], Monitor.status == "active").limit(1)
+    )
+    usage = await provider_budget.workspace_record_usage(db, org_id)
+    per_run = provider_budget.search_record_estimate()
+    return {
+        **target,
+        "cadence": cadence,
+        "records_per_run": per_run,
+        "records_per_month": provider_budget.monitor_month_estimate(cadence),
+        "records_remaining": usage["remaining"],
+        "records_cap": usage["cap"],
+        "fits_this_month": usage["remaining"] >= per_run,
+        "existing_monitor_id": existing,
+    }
+
+
 async def list_monitors(db: AsyncSession, org_id: str) -> List[Dict[str, Any]]:
     result = await db.execute(
         select(Monitor).where(Monitor.org_id == org_id).order_by(Monitor.created_at.desc()).limit(MONITOR_LIST_CAP)

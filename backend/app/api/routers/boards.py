@@ -1,5 +1,5 @@
 """Board share links (owner side) and the guest read (no sign-in)."""
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Request, Response
 from app.core import markdown
@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user, get_db, require_feature
 from app.models.user import User
-from app.services import board_share_service, team_board_service
+from app.services import annotation_service, board_share_service, team_board_service
 
 router = APIRouter(dependencies=[Depends(require_feature("swipe_files"))])
 guest_router = APIRouter()
@@ -67,6 +67,65 @@ async def revoke_share_link(
     current_user: User = Depends(get_current_user),
 ):
     return await board_share_service.revoke_link(db, current_user, link_id)
+
+
+# --- W9-2: tags and notes on the caller's saved ads (0 credits, 0 records) ---
+
+class TagsBody(BaseModel):
+    tags: List[str] = Field(default_factory=list, max_length=annotation_service.MAX_TAGS_PER_AD)
+
+
+class NoteBody(BaseModel):
+    body: str = Field(min_length=1, max_length=annotation_service.MAX_NOTE_LENGTH)
+
+
+@router.get("/tags")
+async def list_tags(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return {"items": await annotation_service.list_tags(db, current_user)}
+
+
+@router.put("/saved/{creative_id}/tags")
+async def set_tags(
+    creative_id: str,
+    body: TagsBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await annotation_service.set_tags(db, current_user, creative_id, body.tags)
+
+
+@router.post("/saved/{creative_id}/notes", status_code=201)
+async def add_note(
+    creative_id: str,
+    body: NoteBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await annotation_service.add_note(db, current_user, creative_id, body.body)
+
+
+@router.patch("/saved/{creative_id}/notes/{note_id}")
+async def update_note(
+    creative_id: str,
+    note_id: str,
+    body: NoteBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await annotation_service.update_note(db, current_user, creative_id, note_id, body.body)
+
+
+@router.delete("/saved/{creative_id}/notes/{note_id}")
+async def delete_note(
+    creative_id: str,
+    note_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return await annotation_service.delete_note(db, current_user, creative_id, note_id)
 
 
 # Team boards: readable by every current member, only with `team_accounts`.

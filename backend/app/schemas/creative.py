@@ -23,6 +23,14 @@ class CopyVariant(BaseModel):
     title: str = ""
     description: str = ""
 
+class SavedAdNote(BaseModel):
+    id: str
+    body: str
+    author_id: str
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
 class Creative(BaseModel):
     id: str
     brand_id: str
@@ -50,6 +58,11 @@ class Creative(BaseModel):
     # Ads in one search sharing the same copy share a concept id; variant_count
     # is then the number of ads in that concept.
     concept_id: Optional[str] = None
+    # Advertiser page id when the provider returned one (W9-2 "Monitor this brand").
+    page_id: Optional[str] = None
+    # Saved-ads list only (W9-2): the caller's tags and notes on this ad.
+    tags: List[str] = []
+    notes: List[SavedAdNote] = []
     scores: Scores
     metrics: CreativeMetrics
     pattern_ids: List[str]

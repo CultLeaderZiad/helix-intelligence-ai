@@ -63,8 +63,8 @@ every other source; spend, CTR and engagement are `null` unless Meta reports the
 
 | Method | Path | Flag | Notes |
 |---|---|---|---|
-| GET | `/api/creatives/{id}` | `discover` | Creative detail (tenant-scoped through its job). |
-| GET | `/api/creatives/saved` | `discover` + `swipe_files` | Saved creatives (boards). W9-1: optional `q` runs the same full-text search as `/api/archive/search`, ranked by match. |
+| GET | `/api/creatives/{id}` | `discover` | Creative detail (tenant-scoped through its job). W9-2: every creative payload adds `page_id` (the advertiser's Facebook page id, digits only, or `null`). |
+| GET | `/api/creatives/saved` | `discover` + `swipe_files` | Saved creatives (boards). W9-1: optional `q` runs the same full-text search as `/api/archive/search`, ranked by match. W9-2: `q` also matches a saved ad whose tag equals `q` or whose notes match it (FTS, `simple` + `arabic`); optional `tag` keeps only ads with that tag. Each item adds `tags: string[]` and `notes: [{id, body, author_id, created_at, updated_at}]`. |
 | POST / DELETE | `/api/creatives/{id}/save` | `discover` + `swipe_files` | Save to / remove from a board. |
 | POST | `/api/creatives/custom` | `discover` + `swipe_files` | Add a custom reference to a board. |
 | GET / POST | `/api/playbooks` | `swipe_files` | List / create a shareable board report. |
@@ -72,6 +72,10 @@ every other source; spend, CTR and engagement are `null` unless Meta reports the
 | GET | `/api/boards` | `swipe_files` | The caller's boards (saved-ad collections) with counts. |
 | GET / POST | `/api/boards/share-links` | `swipe_files` | List / create guest links. Body `{collection, expires_in_days ∈ {1, 7, 30}}`; at most 5 active links per board (`409`). |
 | DELETE | `/api/boards/share-links/{id}` | `swipe_files` | Revoke (creator only; sets `revoked_at`, nothing is deleted). |
+| GET | `/api/boards/tags` | `swipe_files` | W9-2. The caller's tags with counts: `{items: [{tag, count}]}` (most used first, at most 200). |
+| PUT | `/api/boards/saved/{creative_id}/tags` | `swipe_files` | W9-2. Replace the tags on one of the caller's saved ads. Body `{tags: string[]}`; tags are trimmed, whitespace-collapsed, lower-cased, at most 40 chars, de-duplicated, at most 20 per ad (`422 too_many_tags`). Returns `{creative_id, tags}`. `404 not_saved` if the caller has not saved it. |
+| POST | `/api/boards/saved/{creative_id}/notes` | `swipe_files` | W9-2. Add a note `{body}` (1–2000 chars, at most 50 per ad). `201` with the note. |
+| PATCH / DELETE | `/api/boards/saved/{creative_id}/notes/{note_id}` | `swipe_files` | W9-2. Edit (`{body}`, sets `updated_at`) or delete a note. Author only; anyone else gets `404 note_not_found`. |
 | GET | `/api/boards/team` | `swipe_files` + `team_accounts` | Boards saved by current members (owner + `organization_members`) of the active workspace, with owner display name. Former members' boards are not listed. |
 | GET | `/api/boards/team/items?owner_id=&collection=` | `swipe_files` + `team_accounts` | Read-only items of one teammate's board (`404` for non-members or other workspaces). Writes stay with the owner. |
 | GET | `/api/public/boards/{token}` | none (token is the capability) | Read-only board view. Token = base64url `{l, o, e}` + HMAC-SHA256 with a key derived from `SECRET_KEY`. The MAC and expiry are checked before any query; RLS is then bound to the token's workspace only, and the link row must be unrevoked with the same expiry. Any failure is `404`. `Cache-Control: no-store`, `X-Robots-Tag: noindex`. Display fields only; `impressions_est` only for Meta-official rows; `days_active` stays `null` when unknown. Rotating `SECRET_KEY` invalidates every guest link. |
@@ -105,6 +109,13 @@ CRUD on saved competitor watches, `POST /{id}/run`, `GET /events`, and
 `POST /tick` for the scheduler (requires `X-Cron-Secret`; `503` while
 `CRON_SECRET` is unset). See DEVELOPMENT.md → Monitors.
 
+### Monitor this brand (W9-2)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/monitors/brand/preview?page_id=&brand_name=&cadence=` | The monitor one click would create, read only (0 credits, 0 records): `{query, name, watch: "page_id" \| "brand_name", cadence, records_per_run, records_per_month, records_remaining, records_cap, fits_this_month, existing_monitor_id}`. A page id (or an Ad Library link with `view_all_page_id`) is preferred, so runs read that advertiser directly; otherwise the brand name. Neither: `422 brand_required`. `cadence` defaults to `weekly`. |
+| POST | `/api/monitors/brand` | Body `{page_id?, brand_name?, cadence?, notify_in_app?, notify_email?}`. Creates the monitor through the same path as `POST /api/monitors`: plan limits, the W9-1 record check (`429 workspace_record_cap_reached`) and the duplicate check (`409`). `201` with the monitor. |
+
 ### Continuous runs and the daily digest
 
 The jobs worker ticks the monitor scheduler every
@@ -132,6 +143,15 @@ Meta-official rows. The read-only MCP server in `agents/mcp` (tools
 `search_ads`, `get_board`, `list_monitor_changes`, `get_ad`) calls only these
 GET routes with the user's own session token. No API keys exist; the design
 for read-only single-workspace tokens is in `agents/mcp/README.md`.
+
+### Discover results in the browser (W9-2, no new endpoints)
+
+Filters on loaded results (media type, running / has a stop date, CTA, landing
+domain, minimum run length) work in memory on what is already loaded and never
+call the API. Infinite scroll and "Load more" read the next page of
+`GET /api/discovery/jobs/{job_id}/results`, which reads stored rows only
+(0 Metapi records). Keyboard: `j`/`k` move, `s` saves (`POST
+/api/creatives/{id}/save`), `o` opens the permalink, `?` shows the list.
 
 ## 6. Account, team, support, notifications
 

@@ -66,6 +66,9 @@ export function useDiscoverySearch() {
   const pollJobRef = useRef(null)
   const cancelRequestsRef = useRef(new Map())
   const lifecycle = useJobLifecycle()
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadMoreError, setLoadMoreError] = useState(null)
+  const loadingMoreRef = useRef(false)
 
   /**
    * @param {{signal: AbortSignal}} run
@@ -447,6 +450,41 @@ export function useDiscoverySearch() {
     void fetchResults(run, jobId, { page, sort: nextParams.sort, view: viewFilters(nextParams) })
   }
 
+  /**
+   * W9-2 (D9): append the next page of stored results for infinite scroll.
+   * Reads GET /discovery/jobs/{id}/results only, so it never starts a search
+   * and never spends Metapi records. A refine or new search in the meantime
+   * wins: the appended page is dropped if the results it extends changed.
+   */
+  async function loadMore() {
+    const jobId = activeJobId.current
+    const context = activeJobRef.current
+    const base = results
+    if (!jobId || !context || context.status !== "succeeded" || !base?.has_more || loadingMoreRef.current) return
+    loadingMoreRef.current = true
+    setLoadingMore(true)
+    setLoadMoreError(null)
+    const params = lastParams ?? {}
+    const view = viewFilters(params)
+    try {
+      const payload = await discoverService.getJobResults(jobId, {
+        page: (base.page || 1) + 1, page_size: PAGE_SIZE, sort: params.sort,
+        min_days: view.min_days, min_score: view.min_score,
+      })
+      if (activeJobId.current !== jobId) return
+      setResults((prev) => {
+        if (prev !== base) return prev
+        const seen = new Set(prev.items.map((i) => i.id))
+        return { ...payload, items: [...prev.items, ...(payload.items || []).filter((i) => !seen.has(i.id))] }
+      })
+    } catch (err) {
+      setLoadMoreError(err)
+    } finally {
+      loadingMoreRef.current = false
+      setLoadingMore(false)
+    }
+  }
+
   function cancel() {
     const context = activeJobRef.current
     if (context && !isTerminalStatus(context.status)) {
@@ -532,6 +570,9 @@ export function useDiscoverySearch() {
     lastParams,
     submit,
     refine,
+    loadMore,
+    loadingMore,
+    loadMoreError,
     cancel,
     retry,
     isBusy,
