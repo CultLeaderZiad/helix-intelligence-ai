@@ -23,7 +23,7 @@ const PLATFORM_LABEL = {
  * scrolling 20 cards. Row selection is keyboard-navigable and the header
  * is sticky so the column meaning never scrolls away.
  */
-export function ResultsTable({ items, selectedId, onSelect }) {
+export function ResultsTable({ items, selectedId, onSelect, footer = null }) {
   const w8 = useW8Copy()
   function handleKeyDown(event, index) {
     if (event.key === "ArrowDown") {
@@ -149,6 +149,7 @@ export function ResultsTable({ items, selectedId, onSelect }) {
           })}
         </tbody>
       </table>
+      {footer}
     </div>
   )
 }

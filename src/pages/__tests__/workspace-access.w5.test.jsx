@@ -9,6 +9,7 @@ vi.mock("@/hooks/useWorkspaceAccess", () => ({ useWorkspaceAccess: () => ({
   access: { status: state.status }, usage: null, loading: false, error: false,
   submitting: false, refresh: vi.fn(), requestAccess: vi.fn(),
 }) }))
+vi.mock("@/hooks/useRecordUsage", () => ({ useRecordUsage: () => ({ usage: null, error: true, refresh: vi.fn() }) }))
 afterEach(() => { cleanup(); localStorage.clear() })
 
 describe("W5 access, not purchase", () => {

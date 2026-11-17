@@ -1,9 +1,13 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useW8Copy } from "@/i18n/w8Product"
+import { useW9Copy } from "@/i18n/w9Product"
+import { Input } from "@/components/ui/Field"
 import { BoardSharePanel } from "@/features/boards/BoardSharePanel"
 import { TeamBoardsPanel } from "@/features/boards/TeamBoardsPanel"
-import { creativeService } from "@/services"
+import { boardService, creativeService } from "@/services"
+import { SavedAdAnnotations } from "@/features/boards/SavedAdAnnotations"
+import { useW92Copy } from "@/i18n/w9_2Product"
 import { useAuth } from "@/context/AuthContext"
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
@@ -30,7 +34,9 @@ export function SwipeFilesPage() {
   const { user } = useAuth()
   const { latestSearch } = useSearchContext()
   const { t } = useLanguage()
+  const w9 = useW9Copy()
   const w8 = useW8Copy()
+  const w92 = useW92Copy()
   const navigate = useNavigate()
 
   const [creatives, setCreatives] = useState([])
@@ -38,6 +44,11 @@ export function SwipeFilesPage() {
   const [, setError] = useState(null)
   const [activeCollection] = useState("all")
   const [toast, setToast] = useState(null)
+  const [searchInput, setSearchInput] = useState("")
+  const [searchQ, setSearchQ] = useState("")
+  /* W9-2: filter the board by one tag; tag list comes from GET /boards/tags. */
+  const [tagFilter, setTagFilter] = useState("")
+  const [allTags, setAllTags] = useState([])
   const [deleteTargetCreative, setDeleteTargetCreative] = useState(null)
   const [isDeleting, setIsDeleting] = useState(false)
   
@@ -54,6 +65,8 @@ export function SwipeFilesPage() {
   // Check if swipe_files feature flag is enabled
   const isFeatureEnabled = user?.feature_flags?.swipe_files === true
 
+  const fetchSeq = useRef(0)
+
   const fetchSaved = async () => {
     if (!isFeatureEnabled) {
       setLoading(false)
@@ -61,23 +74,36 @@ export function SwipeFilesPage() {
     }
     setLoading(true)
     setError(null)
+    // Only the latest request may update the list (filters can change mid-flight).
+    const requestId = ++fetchSeq.current
     try {
       const res = await creativeService.getSavedCreatives({
         collection: activeCollection === "all" ? null : activeCollection,
         page: 1,
         page_size: 50,
+        q: searchQ || null,
+        tag: tagFilter || null,
       })
+      if (requestId !== fetchSeq.current) return
       setCreatives(res.items || [])
     } catch (err) {
+      if (requestId !== fetchSeq.current) return
       setError(err.message || "Failed to load saved swipe file")
     } finally {
-      setLoading(false)
+      if (requestId === fetchSeq.current) setLoading(false)
     }
   }
 
   useEffect(() => {
     fetchSaved()
-  }, [activeCollection, isFeatureEnabled])
+  }, [activeCollection, isFeatureEnabled, searchQ, tagFilter])
+
+  const fetchTags = () => {
+    if (!isFeatureEnabled) return
+    boardService.listTags().then((res) => setAllTags(res.items || [])).catch(() => setAllTags([]))
+  }
+
+  useEffect(fetchTags, [isFeatureEnabled])
 
   const showToast = (msg) => {
     setToast(msg)
@@ -237,6 +263,58 @@ export function SwipeFilesPage() {
           </Button>
         </div>
       </div>
+
+      {isFeatureEnabled && (
+        <form
+          role="search"
+          className="flex flex-wrap items-center gap-2 text-sm"
+          onSubmit={(event) => { event.preventDefault(); setSearchQ(searchInput.trim()) }}
+        >
+          <label htmlFor="swipe-search" className="font-medium">{w9.swipeSearchLabel}</label>
+          <Input
+            id="swipe-search"
+            type="search"
+            dir="auto"
+            maxLength={200}
+            value={searchInput}
+            placeholder={w9.swipeSearchPlaceholder}
+            onChange={(event) => setSearchInput(event.target.value)}
+            className="min-w-48 flex-1"
+          />
+          <Button type="submit" size="xs" disabled={loading}>{w9.swipeSearchButton}</Button>
+          {searchQ ? (
+            <Button type="button" size="xs" variant="ghost" onClick={() => { setSearchInput(""); setSearchQ("") }}>{w9.swipeSearchClear}</Button>
+          ) : null}
+          <p className="w-full text-xs text-text-faint">{w9.archiveSearchHint}</p>
+          {searchQ && !loading && creatives.length === 0 ? <p role="status" className="w-full">{w9.swipeSearchEmpty(searchQ)}</p> : null}
+        </form>
+      )}
+
+      {allTags.length > 0 || tagFilter ? (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs" role="group" aria-label={w92.filterByTag}>
+          <span className="label-mono">{w92.filterByTag}</span>
+          <button
+            type="button"
+            aria-pressed={!tagFilter}
+            onClick={() => setTagFilter("")}
+            className={`rounded border px-2 py-0.5 ${!tagFilter ? "border-accent text-accent" : "border-border text-text-muted"}`}
+          >
+            {w92.allTags}
+          </button>
+          {allTags.map(({ tag, count }) => (
+            <button
+              key={tag}
+              type="button"
+              dir="auto"
+              aria-pressed={tagFilter === tag}
+              onClick={() => setTagFilter(tagFilter === tag ? "" : tag)}
+              className={`rounded border px-2 py-0.5 ${tagFilter === tag ? "border-accent text-accent" : "border-border text-text-muted"}`}
+            >
+              {w92.tagCount(tag, count)}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {/* Discovered Corpus Import Banner */}
       {discoveredCount > 0 && (
@@ -455,6 +533,8 @@ export function SwipeFilesPage() {
                 <p className="text-xs text-text-muted line-clamp-3 leading-relaxed">
                   {c.body || "No body text available."}
                 </p>
+
+                <SavedAdAnnotations creativeId={c.id} tags={c.tags || []} notes={c.notes || []} onTagsChange={fetchTags} />
 
                 {c.scores?.composite != null && (
                   <div className="pt-2 border-t border-border flex items-center justify-between text-xs font-mono">

@@ -169,7 +169,8 @@ async def test_saved_creatives_filter_count_and_page_in_sql(corpus):
         result = await creative_service.list_saved_creatives(db, User(id=users[0]), collection_name="Pick", page=2, page_size=5)
     assert result.total == 12 and len(result.items) == 5 and result.has_more
     assert all(item.id.startswith(f"c_{suffix}_0_") for item in result.items)
-    assert len(statements) == 2
+    # count + page, then W9-2 tags and notes for the whole page (constant, never per row)
+    assert len(statements) == 4
     assert "saved_creatives.collection_name" in statements[0]
     assert "LIMIT" in statements[1] and "ORDER BY" in statements[1]
 

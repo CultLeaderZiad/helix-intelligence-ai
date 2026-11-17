@@ -233,3 +233,45 @@ async def get_for_creative(db: AsyncSession, user, creative_id: str) -> dict:
     if entry is None:
         raise HTTPException(status_code=404, detail="Not archived")
     return entry_view(entry)
+
+
+async def search(db: AsyncSession, user, q: str, *, scope: str = "all", page: int = 1, page_size: int = 20) -> dict:
+    """Full-text search over the workspace archive and the caller's saved ads.
+
+    Reads only stored rows, so it costs 0 Metapi records. The archive is
+    scoped to the caller's workspaces (plus RLS); saved ads are the caller's
+    own, as on the Swipe Files page, and need the ``swipe_files`` flag.
+    """
+    from app.services import creative_service, text_search
+    from app.services.query_bounds import pagination_bounds
+
+    needle = text_search.clean_query(q)
+    if not needle:
+        raise HTTPException(status_code=422, detail={"code": "query_required", "message": "Type something to search."})
+    if scope not in ("all", "archive", "saved"):
+        raise HTTPException(status_code=422, detail={"code": "bad_scope", "message": "scope is all, archive or saved."})
+    offset, page_size = pagination_bounds(page, page_size)
+    out: dict = {"query": needle, "scope": scope, "page": page, "page_size": page_size, "records_used": 0}
+
+    if scope in ("all", "archive"):
+        org_ids = await _org_ids(db, user)
+        filters = [AdArchiveEntry.org_id.in_(org_ids or [""]), text_search.matches("ad_archive", needle)]
+        total = await db.scalar(select(func.count(AdArchiveEntry.id)).where(*filters)) or 0
+        rows = (await db.execute(
+            select(AdArchiveEntry).where(*filters)
+            .order_by(text_search.rank("ad_archive", needle), AdArchiveEntry.archived_at.desc(), AdArchiveEntry.id)
+            .offset(offset).limit(page_size)
+        )).scalars().all()
+        out["archive"] = {"items": [entry_view(e) for e in rows], "total": total, "has_more": offset + page_size < total}
+
+    if scope in ("all", "saved"):
+        try:
+            saved = await creative_service.list_saved_creatives(db, user, page=page, page_size=page_size, q=needle)
+        except HTTPException as exc:
+            if scope == "saved" or exc.status_code not in (402, 403):
+                raise
+            out["saved"] = None  # Swipe Files is not on this workspace's plan
+        else:
+            out["saved"] = {"items": saved.items, "total": saved.total, "has_more": offset + page_size < saved.total}
+    return out
+
