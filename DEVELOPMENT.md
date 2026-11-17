@@ -419,9 +419,10 @@ Charged server-side by `assert_can_spend`; the values live in
 | Discover search | 1.0 |
 | Discover deep search surcharge | 2.0 |
 
-Access is granted by a platform administrator; there is no trial, plan
-purchase or checkout. A new workspace starts on the default plan with every
-feature off until an admin grants access.
+Every new account without a paid plan gets a 7-day free trial
+(`SIGNUP_TRIAL_DAYS`, default 7; `0` turns it off, `SIGNUP_TRIAL_FEATURES`
+picks the flags). After it ends, a workspace has every feature off until an
+admin grants access. There is no plan purchase or checkout.
 
 ### Standardized Error Responses
 - `402 Payment Required` (Insufficient credits):

@@ -21,7 +21,7 @@ function renderInLanguage(language, element) {
 describe("W4 marketing and legal disclosures", () => {
   beforeEach(() => { localStorage.clear(); __setTrialDaysForTests(7) })
 
-  it("promises no trial when the server grants none (the documented default)", () => {
+  it("promises no trial when the server reports trial_days 0 (trial turned off)", () => {
     __setTrialDaysForTests(0)
     const markup = renderInLanguage("en", (
       <>

@@ -3,7 +3,7 @@ import { pricingService } from "@/services"
 
 /*
  * The sign-up trial length the server grants (GET /public/pricing
- * trial_days; SIGNUP_TRIAL_DAYS). 0 means no trial, the documented default.
+ * trial_days; SIGNUP_TRIAL_DAYS, default 7). 0 means the trial is turned off.
  * null while unknown: callers must not promise a trial until the server says so.
  * One request per page load, shared by every caller.
  */

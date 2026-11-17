@@ -10,9 +10,13 @@ no API-key or third-party-token login (W8).
 
 ## 1. Access model
 
-- Access is granted by a platform administrator. There are no plans for sale, no
-  trial and no checkout.
-- A new workspace is **pending**: every feature flag is off until a grant.
+- Every new account without a paid plan gets a 7-day free trial: sign-up
+  writes a time-limited access grant for `SIGNUP_TRIAL_FEATURES` that expires
+  server-side after `SIGNUP_TRIAL_DAYS` (default 7; `0` turns the trial off).
+  `GET /public/pricing` reports `trial_days`; the landing and pricing pages
+  only promise a trial when it is above 0. There is no checkout.
+- Otherwise, and after the trial ends, a workspace is **pending**: every
+  feature flag is off until an administrator grants access.
 - Grantable flags: `discover`, `swipe_files` (boards and share links),
   `monitors`, `team_accounts`.
 - Credit and daily limits are enforced server-side by `assert_can_spend`.

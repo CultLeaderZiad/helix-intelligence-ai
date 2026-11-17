@@ -82,7 +82,7 @@ export function PricingPage() {
   const { lang } = useLanguage()
   const { data, loading, error } = useAsync(() => pricingService.getPricing(), [])
 
-  // Only the server decides whether a trial exists (SIGNUP_TRIAL_DAYS, default 0).
+  // Only the server decides whether a trial exists (SIGNUP_TRIAL_DAYS, default 7; 0 = off).
   const trialDays = Number(data?.trial_days) > 0 ? Number(data.trial_days) : 0
   const trialFeatures = (data?.trial_features?.length ? data.trial_features : ["discover", "swipe_files", "monitors"])
     .map((key) => c.features[key])

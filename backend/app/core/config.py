@@ -37,11 +37,11 @@ class Settings(BaseSettings):
     # Admin and assistant-admin sessions expire sooner: a stolen admin token
     # reaches every workspace.
     ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES: int = max(15, int(os.getenv("ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", str(60 * 12))))
-    # Days of automatic access a new account gets. Default 0 = no trial, as the
-    # docs state (README, API_CONTRACTS "Access model"): new workspaces wait
-    # for an admin grant. A positive value turns the trial on; the provider
-    # caps (DISCOVER_*) still apply per workspace and globally during it.
-    SIGNUP_TRIAL_DAYS: int = max(0, int(os.getenv("SIGNUP_TRIAL_DAYS", "0")))
+    # Every new account without a paid plan gets this many days of automatic
+    # access (README, API_CONTRACTS "Access model"). Default 7; 0 turns the
+    # trial off and new workspaces wait for an admin grant. The provider caps
+    # (DISCOVER_*) still apply per workspace and globally during the trial.
+    SIGNUP_TRIAL_DAYS: int = max(0, int(os.getenv("SIGNUP_TRIAL_DAYS", "7")))
     SIGNUP_TRIAL_FEATURES: tuple = tuple(
         f.strip() for f in os.getenv("SIGNUP_TRIAL_FEATURES", "discover,swipe_files,monitors").split(",") if f.strip()
     )
