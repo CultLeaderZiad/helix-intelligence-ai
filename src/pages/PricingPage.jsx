@@ -82,7 +82,8 @@ export function PricingPage() {
   const { lang } = useLanguage()
   const { data, loading, error } = useAsync(() => pricingService.getPricing(), [])
 
-  const trialDays = data?.trial_days || 7
+  // Only the server decides whether a trial exists (SIGNUP_TRIAL_DAYS, default 0).
+  const trialDays = Number(data?.trial_days) > 0 ? Number(data.trial_days) : 0
   const trialFeatures = (data?.trial_features?.length ? data.trial_features : ["discover", "swipe_files", "monitors"])
     .map((key) => c.features[key])
     .filter(Boolean)
@@ -96,22 +97,24 @@ export function PricingPage() {
         <section className="mx-auto max-w-6xl px-4 pb-20 pt-16 text-center sm:px-6">
           <p className="font-mono text-xs uppercase tracking-wider text-accent">{c.label}</p>
           <h1 className="mx-auto mt-4 max-w-2xl text-balance text-4xl font-bold tracking-tight text-white sm:text-5xl">{c.title}</h1>
-          <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-6 text-text-muted">{c.body}</p>
+          <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-6 text-text-muted">{trialDays ? c.body.replace(/7/g, String(trialDays)) : c.bodyNoTrial}</p>
 
           <div className="mt-12 flex flex-wrap items-stretch justify-center gap-8">
-            <PlanCard
-              badge={c.trialBadge}
-              status={c.trialStatus}
-              statusColor="#22c55e"
-              name={c.trialName(trialDays)}
-              price={formatPrice(0)}
-              period=""
-              tagline={c.trialTagline}
-              features={trialFeatures}
-              cta={c.startTrial}
-              to="/sign-up"
-              highlight={!plans.some((p) => p.pricing?.highlight)}
-            />
+            {trialDays > 0 ? (
+              <PlanCard
+                badge={c.trialBadge}
+                status={c.trialStatus}
+                statusColor="#22c55e"
+                name={c.trialName(trialDays)}
+                price={formatPrice(0)}
+                period=""
+                tagline={c.trialTagline}
+                features={trialFeatures}
+                cta={c.startTrial}
+                to="/sign-up"
+                highlight={!plans.some((p) => p.pricing?.highlight)}
+              />
+            ) : null}
             {plans.map((plan) => {
               const p = plan.pricing || {}
               const priced = typeof plan.price_monthly === "number" && plan.price_monthly > 0
@@ -125,7 +128,7 @@ export function PricingPage() {
                   period={priced ? localized(p.period, lang) || c.perMonth : ""}
                   tagline={localized(p.tagline, lang)}
                   features={localizedList(p.features, lang)}
-                  cta={p.cta === "contact" ? c.contact : c.startTrial}
+                  cta={p.cta === "contact" || !trialDays ? c.contact : c.startTrial}
                   to={p.cta === "contact" ? "/support" : "/sign-up"}
                   highlight={!!p.highlight}
                 />

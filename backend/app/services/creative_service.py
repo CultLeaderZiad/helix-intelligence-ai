@@ -6,10 +6,8 @@ from app.models.creative import Creative
 from app.models.creative_score import CreativeScore
 from app.models.scrape_job import ScrapeJob
 from app.services.query_bounds import pagination_bounds
-import datetime
 
 from typing import List, Optional
-from app.schemas.creative import Brand as BrandSchema
 from app.schemas.analysis import Pattern as PatternSchema
 from app.models.pattern import Pattern
 from fastapi import HTTPException
@@ -222,48 +220,6 @@ async def get_creative_by_id(
             ctr_est=c.ctr_est
         ),
         pattern_ids=[]
-    )
-
-async def list_brands(
-    db: AsyncSession,
-    page: int = 1,
-    page_size: int = 20,
-    user_org_ids: Optional[List[str]] = None
-) -> Paginated[BrandSchema]:
-    offset, page_size = pagination_bounds(page, page_size)
-    # Since we don't have a separate Brand table, generate unique brands from creatives
-    query = select(
-        Creative.brand_id,
-        func.max(Creative.brand_name).label("brand_name"),
-        func.count(Creative.id).label("ad_count")
-    )
-    if user_org_ids is not None:
-        scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))
-        query = query.where(Creative.job_id.in_(scoped_jobs))
-
-    query = query.group_by(Creative.brand_id)
-    total = await db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    result = await db.execute(query.order_by(Creative.brand_id).offset(offset).limit(page_size))
-    paginated_rows = result.all()
-    
-    items = []
-    for brand_id, brand_name, ad_count in paginated_rows:
-        display_name = (brand_name or "").strip() or brand_id.replace("-", " ").title()
-        items.append(BrandSchema(
-            id=brand_id,
-            name=display_name,
-            domain=f"{brand_id}.com",
-            category="Other",
-            ad_count=ad_count,
-            first_seen=datetime.datetime.now(datetime.timezone.utc).isoformat().replace("+00:00", "Z")
-        ))
-        
-    return Paginated(
-        items=items,
-        total=total,
-        page=page,
-        page_size=page_size,
-        has_more=(offset + page_size) < total
     )
 
 async def list_patterns(

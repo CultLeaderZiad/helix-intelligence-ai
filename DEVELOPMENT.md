@@ -594,6 +594,13 @@ Two independent limits protect sign-in:
   range so the real client address is used; otherwise every client shares one
   bucket. The API logs `Rate limiting keys on proxy address <ip>` once per
   process when this is misconfigured.
+  In production the client IP comes from `cf-connecting-ip`, but only when the
+  request reached Render from a Cloudflare address (the rightmost
+  `X-Forwarded-For` hop that is not one of our trusted proxies, checked against
+  `CLOUDFLARE_IP_RANGES` in `app/middleware/rate_limit.py`, source
+  cloudflare.com/ips, fetched 2026-11-17), or when it carries
+  `X-Helix-Edge-Secret` equal to `TRUSTED_PROXY_SECRET` (default empty = off).
+  Otherwise the header is ignored.
 - **Per account** (stored on the user row, so it holds across processes):
   after `SIGN_IN_FAILURE_LIMIT` wrong passwords (default 10) within
   `SIGN_IN_FAILURE_WINDOW_S` (900 s), sign-in for that email returns

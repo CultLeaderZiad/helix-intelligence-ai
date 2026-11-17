@@ -37,10 +37,11 @@ class Settings(BaseSettings):
     # Admin and assistant-admin sessions expire sooner: a stolen admin token
     # reaches every workspace.
     ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES: int = max(15, int(os.getenv("ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES", str(60 * 12))))
-    # Every new account gets this many days of access automatically (0 turns
-    # it off and new workspaces wait for an admin grant). The provider caps
-    # (DISCOVER_*) still apply per workspace and globally during the trial.
-    SIGNUP_TRIAL_DAYS: int = max(0, int(os.getenv("SIGNUP_TRIAL_DAYS", "7")))
+    # Days of automatic access a new account gets. Default 0 = no trial, as the
+    # docs state (README, API_CONTRACTS "Access model"): new workspaces wait
+    # for an admin grant. A positive value turns the trial on; the provider
+    # caps (DISCOVER_*) still apply per workspace and globally during it.
+    SIGNUP_TRIAL_DAYS: int = max(0, int(os.getenv("SIGNUP_TRIAL_DAYS", "0")))
     SIGNUP_TRIAL_FEATURES: tuple = tuple(
         f.strip() for f in os.getenv("SIGNUP_TRIAL_FEATURES", "discover,swipe_files,monitors").split(",") if f.strip()
     )
@@ -110,6 +111,10 @@ class Settings(BaseSettings):
     # client-sent value. Unset = production on Render uses cf-connecting-ip;
     # "none" turns it off. See effective_client_ip_header.
     CLIENT_IP_HEADER: str = os.getenv("CLIENT_IP_HEADER", "")
+    # Optional shared secret an edge adds as X-Helix-Edge-Secret. When it
+    # matches, the edge client-IP header is believed even if the hop before
+    # our proxies is not a Cloudflare address. Empty = off (the default).
+    TRUSTED_PROXY_SECRET: str = os.getenv("TRUSTED_PROXY_SECRET", "")
     # Writes that are cheap but send email or create shared rows (support
     # tickets, access requests, share links, drafts): per IP per window.
     ABUSE_RATE_LIMIT: int = int(os.getenv("ABUSE_RATE_LIMIT", "10"))

@@ -7,6 +7,7 @@ import { LoopsSection } from "../LoopsSection"
 import { AccessSection } from "../AccessSection"
 import { LegalPage } from "../../../pages/LegalPage"
 import { LanguageProvider } from "../../../context/LanguageContext"
+import { __setTrialDaysForTests } from "@/hooks/useTrialDays"
 
 function renderInLanguage(language, element) {
   localStorage.setItem("helix_lang", language)
@@ -18,9 +19,27 @@ function renderInLanguage(language, element) {
 }
 
 describe("W4 marketing and legal disclosures", () => {
-  beforeEach(() => localStorage.clear())
+  beforeEach(() => { localStorage.clear(); __setTrialDaysForTests(7) })
 
-  it("offers the real 7-day trial but no sample scores, brands, or public prices", () => {
+  it("promises no trial when the server grants none (the documented default)", () => {
+    __setTrialDaysForTests(0)
+    const markup = renderInLanguage("en", (
+      <>
+        <Hero />
+        <AccessSection />
+      </>
+    ))
+    expect(markup).not.toMatch(/free trial|7 days free|7-day/i)
+    expect(markup).toContain("Create an account")
+  })
+
+  it("promises nothing while the trial length is unknown", () => {
+    __setTrialDaysForTests(null)
+    const markup = renderInLanguage("en", <Hero />)
+    expect(markup).not.toMatch(/free trial|days free/i)
+  })
+
+  it("offers the trial with the server's length when SIGNUP_TRIAL_DAYS is on", () => {
     const markup = renderInLanguage("en", (
       <>
         <Hero />
@@ -30,7 +49,7 @@ describe("W4 marketing and legal disclosures", () => {
     ))
 
     expect(markup).not.toMatch(/Nike|Gymshark|Alo Yoga|\b94\s*\/\s*100|\$\s*\d/i)
-    // The trial is real: sign-up grants 7 days server-side (SIGNUP_TRIAL_DAYS).
+    // Shown only because the server reported trial_days = 7 (SIGNUP_TRIAL_DAYS).
     expect(markup).toContain("Start your 7-day free trial")
     expect(markup).toContain("No credit card required")
     expect(markup).toContain('href="/sign-up"')
