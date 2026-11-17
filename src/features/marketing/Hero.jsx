@@ -1,9 +1,12 @@
 import { ArrowLeft, ArrowRight, Search, Sparkles } from "lucide-react"
 import { Link } from "react-router-dom"
 import { useLanguage } from "@/context/LanguageContext"
+import { trialCopy, useTrialDays } from "@/hooks/useTrialDays"
 
 export function Hero() {
   const { t, isRtl } = useLanguage()
+  const trialDays = useTrialDays()
+  const cta = trialCopy(t("marketingStartTrial"), trialDays) || t("marketingCreateAccount")
 
   return (
     <section className="relative overflow-hidden border-b border-white/[0.08] bg-[#07070a] text-white">
@@ -23,7 +26,7 @@ export function Hero() {
               to="/sign-up"
               className="inline-flex items-center gap-2 rounded bg-accent px-5 py-3 text-sm font-semibold text-black transition hover:brightness-110"
             >
-              {t("marketingStartTrial")}
+              {cta}
               {isRtl ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
             </Link>
             <a
@@ -33,7 +36,7 @@ export function Hero() {
               {t("marketingCapabilities")}
             </a>
           </div>
-          <p className="mt-6 text-sm text-text-muted">{t("marketingAdminAccess")}</p>
+          <p className="mt-6 text-sm text-text-muted">{trialCopy(t("marketingAdminAccess"), trialDays) || t("marketingAdminAccessNoTrial")}</p>
           <p className="mt-2 max-w-2xl text-xs leading-5 text-text-faint">
             {t("marketingHeroCaveat")}
           </p>
@@ -61,7 +64,7 @@ export function Hero() {
               <p className="text-sm font-medium text-white">{t("marketingCreativeTitle")}</p>
             </div>
           </div>
-          <p className="mt-4 text-xs leading-5 text-text-faint">{t("marketingCapabilitiesIntro")}</p>
+          <p className="mt-4 text-xs leading-5 text-text-faint">{trialCopy(t("marketingCapabilitiesIntro"), trialDays) || t("marketingCapabilitiesIntroNoTrial")}</p>
         </div>
       </div>
     </section>

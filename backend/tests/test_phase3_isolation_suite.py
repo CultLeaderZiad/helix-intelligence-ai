@@ -3,7 +3,7 @@
 Tests cover:
 - F03: Cross-tenant creative save rejected (404)
 - F04: Playbook compilation cross-tenant job rejected (404) & unscoped query org-isolation
-- F05: list_brands and list_patterns scoped to user_org_ids
+- F05: list_patterns scoped to user_org_ids (list_brands removed in W9)
 - F06: generate_insight_for_creative and simulate_creative_for_audiences cross-tenant creative rejected (404)
 - F12 & F43: SearchContext.jsx hardcoded history removed, namespaced by userId, cleared on logout
 - F46 & F47: Team invite RBAC, email mismatch rejection (403), atomic redemption, tenancy membership resolution
@@ -176,10 +176,11 @@ def test_f05_brands_and_patterns_tenant_scoping():
     creative_service_path = REPO_ROOT / "backend" / "app" / "services" / "creative_service.py"
     code = creative_service_path.read_text(encoding="utf-8")
 
-    # Verify list_brands accepts and applies user_org_ids
+    # list_brands returned invented domains/categories and had no route; it is gone (W9).
+    assert "async def list_brands" not in code
+    # list_patterns accepts and applies user_org_ids
     assert "user_org_ids: Optional[List[str]] = None" in code
     assert "scoped_jobs = select(ScrapeJob.id).where(ScrapeJob.org_id.in_(user_org_ids))" in code
-    assert "query.where(Creative.job_id.in_(scoped_jobs))" in code
 
     # Null-job patterns are not globally readable.
     assert "Pattern.job_id.is_not(None)" in code
