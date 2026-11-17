@@ -149,4 +149,4 @@ def test_phrase_queries_never_join_the_two_language_vectors():
     """CodeRabbit #44: `doc_simple || doc_arabic` let "beta alpha" match "alpha beta"."""
     sql = str(text_search.matches("ad_archive", "x"))
     assert ") || to_tsvector" not in sql
-    assert sql.count("@@") == len(text_search.CONFIGS)
+    assert sql.count("@@") == len(text_search.CONFIGS) ** 2  # each vector with both query parsings

@@ -182,8 +182,8 @@ async def delete_note(db: AsyncSession, user, creative_id: str, note_id: str) ->
 def _note_matches_sql() -> str:
     """Each config against its own vector, so phrases never span the two."""
     return "(" + " OR ".join(
-        f"(to_tsvector('{c}'::regconfig, saved_ad_notes.body) @@ {text_search.query_sql(c)})"
-        for c in text_search.CONFIGS
+        f"(to_tsvector('{d}'::regconfig, saved_ad_notes.body) @@ {text_search.query_sql(qc)})"
+        for d in text_search.CONFIGS for qc in text_search.CONFIGS
     ) + ")"
 
 

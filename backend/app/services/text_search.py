@@ -37,11 +37,19 @@ def clean_query(q: str | None) -> str:
     return " ".join((q or "").split())[:MAX_QUERY_LENGTH]
 
 
+def _pairs():
+    # Every document config against every query config: an Arabic word can
+    # stem differently as a document and as a query ("الهدايا" vs "هدايا"),
+    # so each vector is tried with both parsings. Each test stays inside one
+    # vector, so a quoted phrase still never spans the two.
+    return [(d, qc) for d in CONFIGS for qc in CONFIGS]
+
+
 def matches(table: str, q: str):
-    clause = " OR ".join(f"({document_sql(table, c)} @@ {query_sql(c)})" for c in CONFIGS)
+    clause = " OR ".join(f"({document_sql(table, d)} @@ {query_sql(qc)})" for d, qc in _pairs())
     return text(f"({clause})").bindparams(fts_q=q)
 
 
 def rank(table: str, q: str):
-    score = " + ".join(f"ts_rank({document_sql(table, c)}, {query_sql(c)})" for c in CONFIGS)
+    score = " + ".join(f"ts_rank({document_sql(table, d)}, {query_sql(qc)})" for d, qc in _pairs())
     return text(f"({score}) DESC").bindparams(fts_q=q)
