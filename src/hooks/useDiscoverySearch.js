@@ -194,6 +194,7 @@ export function useDiscoverySearch() {
     const operationId = ++operationRef.current
     const nextContext = { ...context, operationId }
     activeJobRef.current = nextContext
+    setLoadMoreError(null)
     const run = lifecycle.begin(() => onTimeout(nextContext))
     return run ? { run, context: nextContext } : null
   }
@@ -478,7 +479,8 @@ export function useDiscoverySearch() {
         return { ...payload, items: [...prev.items, ...(payload.items || []).filter((i) => !seen.has(i.id))] }
       })
     } catch (err) {
-      setLoadMoreError(err)
+      // A failure for a job that is no longer shown must not block the new one.
+      if (activeJobId.current === jobId) setLoadMoreError(err)
     } finally {
       loadingMoreRef.current = false
       setLoadingMore(false)

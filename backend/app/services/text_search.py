@@ -2,8 +2,9 @@
 
 One document per row: brand, headline, body, CTA and landing domain, indexed
 with both the ``simple`` config (any language, exact words) and ``arabic``
-(Arabic stemming). The query is parsed the same two ways and OR-ed, so English,
-Arabic and mixed queries all match. ``websearch_to_tsquery`` accepts free text
+(Arabic stemming). Each config is matched against its own document and the results are
+OR-ed, so English, Arabic and mixed queries all match, and a quoted phrase
+never matches across the two representations. ``websearch_to_tsquery`` accepts free text
 ("quoted phrases", -exclusions) and never raises on user input.
 
 The expressions below must stay byte-for-byte equal to the GIN indexes in
@@ -18,12 +19,18 @@ FTS_COLUMNS = ("brand_name", "headline", "body", "cta", "landing_domain")
 MAX_QUERY_LENGTH = 200
 
 
-def document_sql(table: str) -> str:
+CONFIGS = ("simple", "arabic")
+
+
+def document_sql(table: str, config: str) -> str:
+    """One config's document. Kept separate per config so a quoted phrase can
+    only match inside one representation, never across the two."""
     joined = " || ' ' || ".join(f"coalesce({table}.{col}, '')" for col in FTS_COLUMNS)
-    return f"(to_tsvector('simple'::regconfig, {joined}) || to_tsvector('arabic'::regconfig, {joined}))"
+    return f"to_tsvector('{config}'::regconfig, {joined})"
 
 
-QUERY_SQL = "(websearch_to_tsquery('simple'::regconfig, :fts_q) || websearch_to_tsquery('arabic'::regconfig, :fts_q))"
+def query_sql(config: str) -> str:
+    return f"websearch_to_tsquery('{config}'::regconfig, :fts_q)"
 
 
 def clean_query(q: str | None) -> str:
@@ -31,8 +38,10 @@ def clean_query(q: str | None) -> str:
 
 
 def matches(table: str, q: str):
-    return text(f"{document_sql(table)} @@ {QUERY_SQL}").bindparams(fts_q=q)
+    clause = " OR ".join(f"({document_sql(table, c)} @@ {query_sql(c)})" for c in CONFIGS)
+    return text(f"({clause})").bindparams(fts_q=q)
 
 
 def rank(table: str, q: str):
-    return text(f"ts_rank({document_sql(table)}, {QUERY_SQL}) DESC").bindparams(fts_q=q)
+    score = " + ".join(f"ts_rank({document_sql(table, c)}, {query_sql(c)})" for c in CONFIGS)
+    return text(f"({score}) DESC").bindparams(fts_q=q)

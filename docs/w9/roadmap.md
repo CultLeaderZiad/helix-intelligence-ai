@@ -8,7 +8,7 @@ Helix Intelligence is a competitive ad-intelligence workstation for DTC brands, 
 
 | Problem users name (Reddit, see feature-ideas.md) | How Helix solves it |
 |---|---|
-| **X — "My saved ads die."** Ad Library links break when an ad stops running. | Every ad Helix finds is archived for good: copy plus media in private storage. **Live** |
+| **X — "My saved ads die."** Ad Library links break when an ad stops running. | Ads Helix finds are archived: copy always, and Meta CDN media up to 15 MB, in private storage while archiving is on and under the per-workspace cap (5,000). **Live** |
 | **Y — "I check competitors by hand every Friday and still miss half."** | Monitors re-run searches and send one digest of new, stopped and rewritten ads. **Live**, plus a weekly page (W9) |
 | **Z — "The Ad Library is unusable for research."** No saving, no history, clunky UI. | Discover jobs, boards, search over your archive, brand timelines, AI breakdowns (W9) |
 
@@ -28,7 +28,7 @@ Ground rules for every phase:
 - The onboarding wizard asks for **your brand and up to 3 competitors**. **Live** (partly; extend it)
 - **W9 — stored results first (D1):** if Helix already holds recent results for a competitor, show them instantly at a cost of 0 records. Otherwise start one search and show its record cost first.
 - **W9 — results summary (D4):** "Competitor X runs 42 active ads. Median run is 23 days. 60% video. Top landing page: /offer." Plain counts, no invented insight.
-- **Aha moment:** seeing the competitor's longest-running ads, sorted, saved forever.
+- **Aha moment:** seeing the competitor's longest-running ads, sorted, and kept in the archive.
 
 ### 2. First session: organise
 - Save to a board (**Live**), with **tags and notes in place (#7)**.
@@ -44,7 +44,7 @@ Ground rules for every phase:
 - **AI ad breakdown:** one click gives hook, angle, offer, CTA and format for an archived image or video. Labelled as AI analysis. Capped per workspace, 0 records.
 - **Brief builder (#9):** turn a board, plus its breakdowns, into a creative brief and export it.
 - **Board export (#10):** CSV, ZIP of media, or a share link (share links are **Live**) for clients.
-- **Chrome extension (#3):** "Save to Helix" from the Meta Ad Library. The ad is archived and never breaks.
+- **Chrome extension (#3):** "Save to Helix" from the Meta Ad Library. The ad is saved to Helix; copying its media needs a new ingestion step.
 - **Automations:** send monitor events to Slack, a webhook or Google Sheets.
 - **Arabic / MENA:** a full RTL experience that competitors lack.
 

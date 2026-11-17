@@ -269,13 +269,18 @@ async def brand_monitor_preview(
         select(Monitor.id).where(Monitor.org_id == org_id, Monitor.query == target["query"], Monitor.status == "active").limit(1)
     )
     usage = await provider_budget.record_usage(db, org_id)
-    per_run = provider_budget.search_record_estimate()
+    # A page-id monitor runs only the advertiser task; a brand name also runs the keyword step.
+    per_run = (
+        provider_budget.page_search_record_estimate()
+        if target["watch"] == "page_id"
+        else provider_budget.search_record_estimate()
+    )
     remaining = usage["records_remaining_this_month"]
     return {
         **target,
         "cadence": cadence,
         "records_per_run": per_run,
-        "records_per_month": provider_budget.monitor_month_estimate(cadence),
+        "records_per_month": provider_budget.monitor_month_estimate(cadence, per_run),
         "records_remaining": remaining,
         "records_cap": usage["records_cap_this_month"],
         "fits_this_month": remaining >= per_run and not usage["platform_records_paused"],

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useW8Copy } from "@/i18n/w8Product"
 import { useW9Copy } from "@/i18n/w9Product"
@@ -65,6 +65,8 @@ export function SwipeFilesPage() {
   // Check if swipe_files feature flag is enabled
   const isFeatureEnabled = user?.feature_flags?.swipe_files === true
 
+  const fetchSeq = useRef(0)
+
   const fetchSaved = async () => {
     if (!isFeatureEnabled) {
       setLoading(false)
@@ -72,6 +74,8 @@ export function SwipeFilesPage() {
     }
     setLoading(true)
     setError(null)
+    // Only the latest request may update the list (filters can change mid-flight).
+    const requestId = ++fetchSeq.current
     try {
       const res = await creativeService.getSavedCreatives({
         collection: activeCollection === "all" ? null : activeCollection,
@@ -80,11 +84,13 @@ export function SwipeFilesPage() {
         q: searchQ || null,
         tag: tagFilter || null,
       })
+      if (requestId !== fetchSeq.current) return
       setCreatives(res.items || [])
     } catch (err) {
+      if (requestId !== fetchSeq.current) return
       setError(err.message || "Failed to load saved swipe file")
     } finally {
-      setLoading(false)
+      if (requestId === fetchSeq.current) setLoading(false)
     }
   }
 
@@ -284,7 +290,7 @@ export function SwipeFilesPage() {
         </form>
       )}
 
-      {allTags.length > 0 ? (
+      {allTags.length > 0 || tagFilter ? (
         <div className="flex flex-wrap items-center gap-1.5 text-xs" role="group" aria-label={w92.filterByTag}>
           <span className="label-mono">{w92.filterByTag}</span>
           <button

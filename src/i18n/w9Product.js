@@ -36,6 +36,7 @@ export const en = {
   storedView: "View stored results (0 records)",
   storedFresh: (n) => `Run fresh search (up to ${n} records)`,
   storedCancel: "Cancel",
+  storedOpenFailed: "Stored results could not be opened. Nothing was charged. Try again, or run a fresh search.",
   recordCapError: "This workspace has used its monthly Metapi records. Stored results and archive search still work. Open Access & Usage to see the meter.",
   monitorEstimate: (cadence, n) => `About ${n} records a month at ${cadence === "weekly" ? "weekly" : "daily"} runs (up to the cap).`,
 }
@@ -71,6 +72,7 @@ export const ar = {
   storedView: "اعرض النتائج المحفوظة (0 سجلات)",
   storedFresh: (n) => `شغّل بحثًا جديدًا (حتى ${n} سجل)`,
   storedCancel: "إلغاء",
+  storedOpenFailed: "تعذّر فتح النتائج المحفوظة. لم يُخصم شيء. حاول مجدداً أو شغّل بحثاً جديداً.",
   recordCapError: "استخدمت مساحة العمل سجلات Metapi الشهرية. تظل النتائج المحفوظة والبحث في الأرشيف متاحة. افتح الوصول والاستخدام لرؤية العدّاد.",
   monitorEstimate: (cadence, n) => `حوالي ${n} سجل شهريًا عند التشغيل ${cadence === "weekly" ? "الأسبوعي" : "اليومي"} (حتى الحد).`,
 }

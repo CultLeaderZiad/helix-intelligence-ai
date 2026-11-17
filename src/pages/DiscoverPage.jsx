@@ -84,6 +84,8 @@ export function DiscoverPage() {
   /* D1: a recent stored search for this query, offered before a paid run. */
   const [storedOffer, setStoredOffer] = useState(null)
   const [query, setQuery] = useState(() => searchParams.get("q") || latestSearch?.query || "")
+  const queryRef = useRef(query)
+  queryRef.current = query
   const [queryLanguage, setQueryLanguage] = useState(() => {
     try {
       return localStorage.getItem("helix_search_lang") === "ar" ? "ar" : "en"
@@ -231,10 +233,14 @@ export function DiscoverPage() {
     // Stored results ignore search-time filters, so only offer them for an
     // unfiltered search. 404 (nothing recent) or any error: run as before.
     if (countActiveFilters(draftFilters) === 0) {
+      const asked = query.trim()
       try {
-        const stored = await discoverService.getStoredResults(query.trim(), { maxAgeDays: STORED_MAX_AGE_DAYS })
+        const stored = await discoverService.getStoredResults(asked, { maxAgeDays: STORED_MAX_AGE_DAYS })
+        // The query may have been edited while the lookup ran: never offer
+        // (or open) results for a different query.
+        if (queryRef.current.trim() !== asked) return
         if (stored?.job_id && (stored.total ?? 0) > 0) {
-          setStoredOffer(stored)
+          setStoredOffer({ ...stored, query: asked })
           return
         }
       } catch {
@@ -246,16 +252,22 @@ export function DiscoverPage() {
 
   async function viewStored() {
     const stored = storedOffer
+    if (!stored || stored.query !== query.trim()) {
+      setStoredOffer(null)
+      return
+    }
     setStoredOffer(null)
     setSelectedId(null)
     const opened = await openSearchSession({
-      query: query.trim(),
+      query: stored.query,
       job_id: stored.job_id,
       status: "succeeded",
       items: stored.items,
       total: stored.total,
     }).catch(() => false)
-    if (!opened) runFresh()
+    // A failed free read must never turn into a paid search: show the error
+    // and let the user choose "Run fresh search" themselves.
+    if (!opened) setStoredOffer({ ...stored, openFailed: true })
   }
 
   function handleSortChange(next) {
@@ -406,7 +418,7 @@ export function DiscoverPage() {
         </p>
       ) : null}
       <StoredResultsPrompt
-        stored={storedOffer}
+        stored={storedOffer && storedOffer.query === query.trim() ? storedOffer : null}
         estimate={recordUsage?.estimates?.discover_search}
         onView={viewStored}
         onFresh={runFresh}

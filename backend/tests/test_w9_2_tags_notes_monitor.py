@@ -161,8 +161,9 @@ async def test_brand_monitor_preview_costs_records_and_respects_the_cap(monkeypa
             db, org_id=org.id, page_id="123456789", brand_name="Gymshark", cadence="weekly"
         )
         assert preview["query"] == "123456789" and preview["watch"] == "page_id"
-        assert preview["records_per_run"] == provider_budget.search_record_estimate()
-        assert preview["records_per_month"] == provider_budget.monitor_month_estimate("weekly")
+        # A page-id monitor costs only the advertiser task, matching the activation check.
+        assert preview["records_per_run"] == provider_budget.page_search_record_estimate()
+        assert preview["records_per_month"] == 5 * provider_budget.page_search_record_estimate()
         assert preview["existing_monitor_id"] is None
 
         db.add(Monitor(org_id=org.id, user_id=user.id, name="Gymshark", query="123456789", filters={},

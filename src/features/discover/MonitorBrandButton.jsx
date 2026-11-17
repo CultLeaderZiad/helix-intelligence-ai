@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { Radar } from "lucide-react"
 import { monitorService } from "@/services"
@@ -25,10 +25,18 @@ export function MonitorBrandButton({ pageId = null, brandName = null, size = "xs
   const [state, setState] = useState("idle") // idle | loading | ready | creating | created | error
   const [message, setMessage] = useState(null)
 
+  // Identity of the target the dialog currently shows; results for any other
+  // target (props changed mid-request) are ignored.
+  const targetKey = `${pageId ?? ""}|${brandName ?? ""}|${cadence}`
+  const targetRef = useRef(targetKey)
+  targetRef.current = targetKey
+
   useEffect(() => {
     if (!open) return undefined
     let active = true
-    setState("loading")
+    // Drop the old preview so Create stays disabled until this target's cost is known.
+    setPreview(null)
+    setState((s) => (s === "creating" ? s : "loading"))
     setMessage(null)
     monitorService.previewBrandMonitor({ page_id: pageId, brand_name: brandName, cadence })
       .then((p) => { if (active) { setPreview(p); setState("ready") } })
@@ -45,13 +53,16 @@ export function MonitorBrandButton({ pageId = null, brandName = null, size = "xs
   if (!pageId && !(brandName || "").trim()) return null
 
   async function create() {
+    const key = targetKey
     setState("creating")
     setMessage(null)
     try {
       await monitorService.createBrandMonitor({ page_id: pageId, brand_name: brandName, cadence })
+      if (targetRef.current !== key) return
       setState("created")
       setMessage(w.monitorCreated)
     } catch (err) {
+      if (targetRef.current !== key) return
       setState("ready")
       const code = err?.code ?? err?.detail?.code
       setMessage(
@@ -63,7 +74,7 @@ export function MonitorBrandButton({ pageId = null, brandName = null, size = "xs
     }
   }
 
-  const blocked = preview && (!preview.fits_this_month || preview.existing_monitor_id)
+  const blocked = !preview || !preview.fits_this_month || Boolean(preview.existing_monitor_id)
 
   return (
     <div className="relative inline-block">

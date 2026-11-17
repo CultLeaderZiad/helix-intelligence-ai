@@ -20,7 +20,7 @@ export function toRecordUsage(raw) {
 
 export function useRecordUsage() {
   const { user } = useAuth()
-  const [usage, setUsage] = useState(null)
+  const [loaded, setLoaded] = useState({ scope: null, usage: null })
   const [error, setError] = useState(false)
   const [version, setVersion] = useState(0)
   const scope = `${user?.id ?? ""}:${user?.organization_id ?? ""}`
@@ -29,11 +29,13 @@ export function useRecordUsage() {
     let active = true
     setError(false)
     accountService.getTodayUsage()
-      .then((next) => { if (active) setUsage(toRecordUsage(next)) })
-      .catch(() => { if (active) { setUsage(null); setError(true) } })
+      .then((next) => { if (active) setLoaded({ scope, usage: toRecordUsage(next) }) })
+      .catch(() => { if (active) { setLoaded({ scope, usage: null }); setError(true) } })
     return () => { active = false }
   }, [scope, version])
 
   const refresh = useCallback(() => setVersion((v) => v + 1), [])
+  // Never show another workspace's numbers while this one's are loading.
+  const usage = loaded.scope === scope ? loaded.usage : null
   return { usage, error, refresh }
 }

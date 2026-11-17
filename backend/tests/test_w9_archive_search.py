@@ -30,8 +30,9 @@ def _migration():
 
 def test_index_expressions_match_the_query_expressions():
     m = _migration()
-    assert m.ARCHIVE_DOC == text_search.document_sql("ad_archive")
-    assert m.CREATIVES_DOC == text_search.document_sql("creatives")
+    for table in ("ad_archive", "creatives"):
+        for config in text_search.CONFIGS:
+            assert m.INDEXES[f"ix_{table}_fts_{config}"] == (table, text_search.document_sql(table, config))
     # Rebased onto main: the index migration follows tags/notes, one head.
     assert m.down_revision == "a4c6e8f0b2d5"
 
@@ -42,6 +43,8 @@ def test_record_estimates_and_cap_defaults():
     )
     assert provider_budget.monitor_month_estimate("weekly") == 5 * provider_budget.search_record_estimate()
     assert provider_budget.monitor_month_estimate("daily") == 31 * provider_budget.search_record_estimate()
+    assert provider_budget.monitor_month_estimate("every_6h") == 124 * provider_budget.search_record_estimate()
+    assert provider_budget.monitor_month_estimate("every_12h", per_run=15) == 62 * 15
     # No second cap setting: W9 reuses main's METAPI_WORKSPACE_MONTHLY_RECORDS.
     assert not hasattr(settings, "METAPI_WORKSPACE_MONTHLY_RECORD_CAP")
     assert provider_budget.workspace_record_cap({}) == settings.METAPI_WORKSPACE_MONTHLY_RECORDS
@@ -140,3 +143,10 @@ async def test_w9_tables_keep_row_level_security_and_their_tenant_policies():
     for name, (enabled, policies) in found.items():
         assert enabled is True, f"RLS is off on {name}"
         assert policies >= 1, f"{name} has no RLS policy"
+
+
+def test_phrase_queries_never_join_the_two_language_vectors():
+    """CodeRabbit #44: `doc_simple || doc_arabic` let "beta alpha" match "alpha beta"."""
+    sql = str(text_search.matches("ad_archive", "x"))
+    assert ") || to_tsvector" not in sql
+    assert sql.count("@@") == len(text_search.CONFIGS)

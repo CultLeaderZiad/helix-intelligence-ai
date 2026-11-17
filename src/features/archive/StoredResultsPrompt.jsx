@@ -12,6 +12,7 @@ export function StoredResultsPrompt({ stored, estimate, onView, onFresh, onCance
     <div role="dialog" aria-labelledby="stored-results-title" className="space-y-2 border-b border-border bg-surface px-4 py-3 text-sm">
       <p id="stored-results-title" className="font-semibold">{w9.storedTitle}</p>
       <p className="text-text-muted">{w9.storedBody(stored.total ?? 0, String(stored.searched_at || "").slice(0, 10))}</p>
+      {stored.openFailed ? <p role="alert" className="text-danger">{w9.storedOpenFailed}</p> : null}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="primary" onClick={onView}>{w9.storedView}</Button>
         <Button size="sm" onClick={onFresh}>{w9.storedFresh(estimate)}</Button>

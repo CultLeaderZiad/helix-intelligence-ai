@@ -57,7 +57,8 @@ export function SavedAdAnnotations({ creativeId, tags: initialTags = [], notes: 
     try {
       const note = await boardService.addNote(creativeId, body)
       setNotes((prev) => [...prev, note])
-      setNoteInput("")
+      // Clear only if the user has not typed a new draft while this one saved.
+      setNoteInput((current) => (current.trim() === body ? "" : current))
     } catch {
       setError(w.noteFailed)
     } finally {
@@ -73,7 +74,8 @@ export function SavedAdAnnotations({ creativeId, tags: initialTags = [], notes: 
     try {
       const note = await boardService.updateNote(creativeId, editing.id, editing.body.trim())
       setNotes((prev) => prev.map((n) => (n.id === note.id ? note : n)))
-      setEditing(null)
+      // Close only the editor this request saved; another note's open draft stays.
+      setEditing((current) => (current && current.id === note.id ? null : current))
     } catch {
       setError(w.noteFailed)
     } finally {

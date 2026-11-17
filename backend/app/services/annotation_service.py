@@ -179,10 +179,12 @@ async def delete_note(db: AsyncSession, user, creative_id: str, note_id: str) ->
 
 # --- filters used by the saved-ads list and archive search -----------------
 
-NOTE_DOC = (
-    "(to_tsvector('simple'::regconfig, saved_ad_notes.body) || "
-    "to_tsvector('arabic'::regconfig, saved_ad_notes.body))"
-)
+def _note_matches_sql() -> str:
+    """Each config against its own vector, so phrases never span the two."""
+    return "(" + " OR ".join(
+        f"(to_tsvector('{c}'::regconfig, saved_ad_notes.body) @@ {text_search.query_sql(c)})"
+        for c in text_search.CONFIGS
+    ) + ")"
 
 
 def has_tag(tag: str):
@@ -196,6 +198,6 @@ def tag_or_note_matches(needle: str):
     tag_hit = has_tag(needle)
     note_hit = select(SavedAdNote.id).where(
         SavedAdNote.saved_creative_id == SavedCreative.id,
-        text(f"{NOTE_DOC} @@ {text_search.QUERY_SQL}").bindparams(fts_q=needle),
+        text(_note_matches_sql()).bindparams(fts_q=needle),
     ).exists()
     return or_(tag_hit, note_hit)

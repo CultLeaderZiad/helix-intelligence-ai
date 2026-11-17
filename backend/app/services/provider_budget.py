@@ -188,8 +188,9 @@ def workspace_record_cap(limits: dict) -> int:
     return int(settings.METAPI_WORKSPACE_MONTHLY_RECORDS) if value is None else int(value)
 
 
-# Monitor runs per month by cadence (worst case: a 31-day month).
-RUNS_PER_MONTH = {"daily": 31, "weekly": 5}
+# Monitor runs per month by cadence (worst case: a 31-day month). Sub-daily
+# cadences only run that often when the scheduling floor allows it.
+RUNS_PER_MONTH = {"every_6h": 124, "every_12h": 62, "daily": 31, "weekly": 5}
 
 
 def search_record_estimate() -> int:
@@ -198,8 +199,14 @@ def search_record_estimate() -> int:
     return task_record_count(settings.METAPI_RESOLVE_COUNT) + task_record_count(15)
 
 
-def monitor_month_estimate(cadence: str) -> int:
-    return RUNS_PER_MONTH.get(cadence, 31) * search_record_estimate()
+def page_search_record_estimate() -> int:
+    """A page-id search or monitor runs only the advertiser task."""
+    return task_record_count(15)
+
+
+def monitor_month_estimate(cadence: str, per_run: int | None = None) -> int:
+    runs = RUNS_PER_MONTH.get(cadence, 31)
+    return runs * (search_record_estimate() if per_run is None else int(per_run))
 
 
 def task_record_count(requested) -> int:
