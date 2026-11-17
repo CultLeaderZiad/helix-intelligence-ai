@@ -64,7 +64,7 @@ const translations = {
     
     // Swipe Files
     swipeFilesTitle: "Swipe Files & Saved Creatives",
-    swipeFilesSubtitle: "Personal swipe file library. Bookmark winning competitor ads or upload links/images (0 credits used).",
+    swipeFilesSubtitle: "Personal swipe file library. Bookmark winning competitor ads or save reference links (0 credits used).",
     addReference: "Add Ad Link / Reference",
     addManualRef: "Add Ad Reference or Competitor Link",
     adUrl: "Ad or Landing Page URL",

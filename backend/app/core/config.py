@@ -106,6 +106,10 @@ class Settings(BaseSettings):
     # Comma-separated IPs or CIDRs of reverse proxies allowed to supply a client IP.
     # Empty means forwarding headers are ignored and the TCP peer is used.
     TRUSTED_PROXY_CIDRS: str = os.getenv("TRUSTED_PROXY_CIDRS", "")
+    # Optional Sentry (app/core/error_reporting.py). Empty = off. Errors only by
+    # default; raise the sample rate to also send traces (counts against quota).
+    SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")
+    SENTRY_TRACES_SAMPLE_RATE: float = float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0") or 0)
     # Header set by the edge in front of the app that always overwrites any
     # client-sent value. Unset = production on Render uses cf-connecting-ip;
     # "none" turns it off. See effective_client_ip_header.

@@ -145,6 +145,13 @@ Platform-admin only: access requests (approve/reject), organization access
 grant/revoke and flags, credit grants, users (role, status, ban, impersonate),
 support tickets, usage, system health, plans, broadcast and updates.
 
+### Health — `/api/health`
+
+`GET /api/health` (no auth) returns `{status, service, db, providers, worker,
+migration}`. `migration` is `{database_revision, code_head, up_to_date}`:
+Alembic revision ids only, for checking production migration state after a
+deploy. `GET /api/health/live` and `/ready` are unchanged.
+
 ## 8. Frontend request cancellation
 
 `discoverService` calls accept a final `{ signal: AbortSignal }`.

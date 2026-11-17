@@ -8,9 +8,13 @@ import "./styles/globals.css"
 
 import App from "./App"
 import { initAnalytics } from "./lib/analytics"
+import { initErrorReporting } from "./lib/errorReporting"
 
 // Start privacy-friendly analytics (no-op unless VITE_ANALYTICS_DOMAIN is set)
 initAnalytics()
+
+// Optional Sentry (no-op unless VITE_SENTRY_DSN is set at build time)
+initErrorReporting()
 
 // Automatically reload when a deployment has invalidated cached chunks
 window.addEventListener("vite:preloadError", (event) => {

@@ -12,6 +12,10 @@ from app.middleware.rate_limit import RateLimitMiddleware
 importlib.import_module("app.models")  # register ORM tables before startup validation
 quiet_http_client_logs()
 
+from app.core.error_reporting import init_error_reporting  # noqa: E402
+
+init_error_reporting()  # no-op unless SENTRY_DSN is set
+
 from app.api.routers import (
     auth,
     discover,
