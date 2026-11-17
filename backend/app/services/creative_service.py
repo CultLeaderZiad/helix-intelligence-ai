@@ -24,8 +24,12 @@ def provenance_fields(c) -> dict:
     raw = prov.get("raw") if isinstance(prov.get("raw"), dict) else {}
     variants = [v for v in (raw.get("copy_variants") or []) if isinstance(v, dict)]
     concept = prov.get("concept_id")
+    page_id = str(raw.get("page_id") or "").strip()
     return {
         "copy_variants": variants,
+        # The advertiser's Facebook page id (digits only), used to pre-fill
+        # "Monitor this brand" (W9-2).
+        "page_id": page_id if page_id.isdigit() else None,
         "concept_id": concept if isinstance(concept, str) else None,
     }
 
@@ -533,9 +537,13 @@ async def list_saved_creatives(
     user: "User",
     collection_name: Optional[str] = None,
     page: int = 1,
-    page_size: int = 20
+    page_size: int = 20,
+    q: Optional[str] = None,
+    tag: Optional[str] = None,
 ) -> Paginated[CreativeSchema]:
     from app.services.billing_service import check_quota_and_feature
+    from app.services import annotation_service, text_search
+    from sqlalchemy import or_
     from app.models.saved_creative import SavedCreative
     from app.models.creative import Creative
     from app.models.creative_score import CreativeScore
@@ -547,8 +555,16 @@ async def list_saved_creatives(
     filters = [SavedCreative.user_id == user.id]
     if collection_name:
         filters.append(SavedCreative.collection_name == collection_name)
+    if tag and annotation_service.clean_tag(tag):
+        filters.append(annotation_service.has_tag(tag))
+    needle = text_search.clean_query(q)
+    if needle:
+        # W9-2: a saved ad also matches by its tags and notes.
+        filters.append(or_(text_search.matches("creatives", needle), annotation_service.tag_or_note_matches(needle)))
 
-    count_query = select(func.count(SavedCreative.id)).where(*filters)
+    count_query = (
+        select(func.count(SavedCreative.id)).join(Creative, Creative.id == SavedCreative.creative_id).where(*filters)
+    )
     total = await db.scalar(count_query) or 0
 
     query = (
@@ -556,17 +572,20 @@ async def list_saved_creatives(
         .join(SavedCreative, Creative.id == SavedCreative.creative_id)
         .outerjoin(CreativeScore, Creative.id == CreativeScore.creative_id)
         .where(*filters)
-        .order_by(SavedCreative.created_at.desc(), SavedCreative.id)
+        .order_by(*([text_search.rank("creatives", needle)] if needle else []), SavedCreative.created_at.desc(), SavedCreative.id)
         .offset(offset)
         .limit(page_size)
     )
 
     result = await db.execute(query)
     rows = result.all()
+    notes_and_tags = await annotation_service.annotations_for(db, [saved.id for _c, _s, saved in rows])
 
     items = []
     for c, score, saved in rows:
         items.append(CreativeSchema(
+            tags=notes_and_tags[saved.id]["tags"],
+            notes=notes_and_tags[saved.id]["notes"],
             id=c.id,
             brand_id=c.brand_id,
             brand_name=getattr(c, "brand_name", None),

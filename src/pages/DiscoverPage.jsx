@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Radar, SearchX, Clock, RotateCcw, MessageSquarePlus } from "lucide-react"
 import { BreadcrumbBar } from "@/app/BreadcrumbBar"
 import { useTelemetry } from "@/app/TelemetryContext"
@@ -22,6 +22,16 @@ import { EntityDossierCard } from "@/features/discover/EntityDossierCard"
 import { SavedDraftsModal } from "@/components/SavedDraftsModal"
 import w5Discover from "@/i18n/w5Discover"
 import { useW8Copy } from "@/i18n/w8Product"
+import { useW9Copy } from "@/i18n/w9Product"
+import { ArchiveSearch } from "@/features/archive/ArchiveSearch"
+import { StoredResultsPrompt } from "@/features/archive/StoredResultsPrompt"
+import { useRecordUsage } from "@/hooks/useRecordUsage"
+import { creativeService, discoverService } from "@/services"
+import { useW92Copy } from "@/i18n/w9_2Product"
+import { LoadedResultsFilters } from "@/features/discover/LoadedResultsFilters"
+import { EMPTY_LOADED_FILTERS, applyLoadedFilters } from "@/features/discover/loadedFilters"
+import { MonitorBrandButton } from "@/features/discover/MonitorBrandButton"
+import { ShortcutHelp, useResultShortcuts } from "@/features/discover/resultShortcuts"
 
 /* Search-time filters (country, status, format, dates, platform, language)
    are sent with the search; run length and the text-rubric minimum
@@ -52,6 +62,9 @@ import { useLanguage } from "@/context/LanguageContext"
 
 import { Link, useSearchParams } from "react-router-dom"
 
+/* D1: stored searches younger than this are offered before a paid run. */
+const STORED_MAX_AGE_DAYS = 7
+
 export function DiscoverPage() {
   const [searchParams] = useSearchParams()
   const { latestSearch, saveCompletedSearch, selectActiveCreative, openSearchSession } = useSearchContext()
@@ -60,6 +73,16 @@ export function DiscoverPage() {
   const { t, lang } = useLanguage()
   const copy = w5Discover[lang] ?? w5Discover.en
   const w8 = useW8Copy()
+  const w9 = useW9Copy()
+  const w92 = useW92Copy()
+  /* W9-2: in-memory filters on loaded results (0 records), shortcut help, toast. */
+  const [loadedFilters, setLoadedFilters] = useState(EMPTY_LOADED_FILTERS)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [shortcutToast, setShortcutToast] = useState(null)
+  const sentinelRef = useRef(null)
+  const { usage: recordUsage, refresh: refreshRecordUsage } = useRecordUsage()
+  /* D1: a recent stored search for this query, offered before a paid run. */
+  const [storedOffer, setStoredOffer] = useState(null)
   const [query, setQuery] = useState(() => searchParams.get("q") || latestSearch?.query || "")
   const [queryLanguage, setQueryLanguage] = useState(() => {
     try {
@@ -90,6 +113,9 @@ export function DiscoverPage() {
     cancelError,
     submit,
     refine,
+    loadMore,
+    loadingMore,
+    loadMoreError,
     cancel,
     retry,
     isBusy,
@@ -190,11 +216,46 @@ export function DiscoverPage() {
     void finishOnboarding()
   }
 
-  function runDiscovery() {
-    if (!query.trim()) return
+  function runFresh() {
+    setStoredOffer(null)
     setSelectedId(null)
+    setLoadedFilters(EMPTY_LOADED_FILTERS)
     setAppliedFilters(draftFilters)
     submit({ query: query.trim(), filters: draftFilters, sort, query_language: queryLanguage })
+    // The meter moves once the job reserves its records.
+    setTimeout(refreshRecordUsage, 5000)
+  }
+
+  async function runDiscovery() {
+    if (!query.trim()) return
+    // Stored results ignore search-time filters, so only offer them for an
+    // unfiltered search. 404 (nothing recent) or any error: run as before.
+    if (countActiveFilters(draftFilters) === 0) {
+      try {
+        const stored = await discoverService.getStoredResults(query.trim(), { maxAgeDays: STORED_MAX_AGE_DAYS })
+        if (stored?.job_id && (stored.total ?? 0) > 0) {
+          setStoredOffer(stored)
+          return
+        }
+      } catch {
+        /* no stored search: fall through */
+      }
+    }
+    runFresh()
+  }
+
+  async function viewStored() {
+    const stored = storedOffer
+    setStoredOffer(null)
+    setSelectedId(null)
+    const opened = await openSearchSession({
+      query: query.trim(),
+      job_id: stored.job_id,
+      status: "succeeded",
+      items: stored.items,
+      total: stored.total,
+    }).catch(() => false)
+    if (!opened) runFresh()
   }
 
   function handleSortChange(next) {
@@ -244,6 +305,53 @@ export function DiscoverPage() {
   const showProgress = Boolean(job) && phase !== PHASE.READY && phase !== PHASE.IDLE
   const inspectorOpen = Boolean(selectedId)
 
+  /* W9-2 (D3): filter only what is loaded; never a new query. */
+  const shownItems = useMemo(() => applyLoadedFilters(items, loadedFilters), [items, loadedFilters])
+  const canLoadMore = phase === PHASE.READY && Boolean(displayResults?.has_more)
+  /* One brand across the loaded results: offer "Monitor this brand" in the header. */
+  const singleBrand = useMemo(() => {
+    const names = new Set(items.map((i) => i.brand_name).filter(Boolean))
+    const pages = new Set(items.map((i) => i.page_id).filter(Boolean))
+    if (names.size !== 1 && pages.size !== 1) return null
+    return { brandName: names.size === 1 ? [...names][0] : null, pageId: pages.size === 1 ? [...pages][0] : null }
+  }, [items])
+
+  /* W9-2 (D9): infinite scroll reads the next stored page (0 records). */
+  useEffect(() => {
+    const node = sentinelRef.current
+    if (!node || !canLoadMore || loadingMore || loadMoreError || typeof IntersectionObserver === "undefined") return undefined
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) void loadMore()
+    }, { rootMargin: "200px" })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [canLoadMore, loadingMore, loadMoreError, loadMore, shownItems.length])
+
+  function flash(message) {
+    setShortcutToast(message)
+    setTimeout(() => setShortcutToast(null), 2500)
+  }
+
+  useResultShortcuts({
+    enabled: shownItems.length > 0 && !showOnboardingModal && !showDraftsModal && !showSupportModal,
+    items: shownItems,
+    selectedId,
+    onSelect: setSelectedId,
+    onSave: async (item) => {
+      if (user?.feature_flags?.swipe_files !== true) return
+      try {
+        await creativeService.saveCreative(item.id)
+        flash(w92.savedToast)
+      } catch {
+        flash(w92.saveFailed)
+      }
+    },
+    onOpen: (item) => {
+      if (item.permalink) window.open(item.permalink, "_blank", "noopener,noreferrer")
+    },
+    onToggleHelp: () => setHelpOpen((v) => !v),
+  })
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <OnboardingTour 
@@ -292,6 +400,19 @@ export function DiscoverPage() {
         onQueryLanguageChange={setQueryLanguage}
         onOpenDrafts={() => setShowDraftsModal(true)}
       />
+      {recordUsage ? (
+        <p className={`px-4 py-1 text-xs ${recordUsage.warning ? "text-warning" : "text-text-faint"}`} data-testid="search-record-estimate">
+          {w9.searchEstimate(recordUsage.estimates?.discover_search, recordUsage.remaining)}
+        </p>
+      ) : null}
+      <StoredResultsPrompt
+        stored={storedOffer}
+        estimate={recordUsage?.estimates?.discover_search}
+        onView={viewStored}
+        onFresh={runFresh}
+        onCancel={() => setStoredOffer(null)}
+      />
+      <ArchiveSearch />
 
       {showProgress ? (
         <JobProgress
@@ -429,7 +550,7 @@ export function DiscoverPage() {
             {phase === PHASE.ERROR && !isServiceRestart(error) ? (
               <ErrorState
                 error={error}
-                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? undefined : retry}
+                onRetry={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" || error?.code === "workspace_record_budget_reached" ? undefined : retry}
                 description={
                   error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED"
                     ? t("discoverNeedsAccess")
@@ -447,7 +568,7 @@ export function DiscoverPage() {
                                 ? w8.rateLimited(error?.retryAfter || 60)
                                 : undefined
                 }
-                action={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" ? (
+                action={error?.status === 402 || error?.status === 403 || error?.code === "CREDIT_LIMIT_REACHED" || error?.code === "workspace_record_budget_reached" ? (
                   <Button as={Link} to="/access" size="sm" variant="primary">{w8.discoverOpenAccess}</Button>
                 ) : undefined}
                 className=""
@@ -521,38 +642,45 @@ export function DiscoverPage() {
                 {displayJob?.entity_profile ? (
                   <EntityDossierCard profile={displayJob.entity_profile} query={query || latestSearch?.query} isZeroResults={false} />
                 ) : null}
+                <div className="flex flex-wrap items-start">
+                  <div className="min-w-0 flex-1">
+                    <LoadedResultsFilters items={items} filters={loadedFilters} onChange={setLoadedFilters} shown={shownItems.length} />
+                  </div>
+                  {singleBrand ? (
+                    <div className="border-b border-border px-3 py-1.5">
+                      <MonitorBrandButton pageId={singleBrand.pageId} brandName={singleBrand.brandName} />
+                    </div>
+                  ) : null}
+                </div>
+                {shortcutToast ? <p role="status" className="bg-accent/10 px-3 py-1 text-xs text-accent">{shortcutToast}</p> : null}
+                {shownItems.length === 0 ? (
+                  <p role="status" className="px-3 py-6 text-center text-xs text-text-muted">{w92.noLoadedMatches}</p>
+                ) : null}
                 <ErrorBoundary variant="compact" label="The results table">
                   <ResultsTable
-                    items={items}
+                    items={shownItems}
                     selectedId={selectedId}
                     onSelect={setSelectedId}
+                    footer={canLoadMore ? <div ref={sentinelRef} aria-hidden="true" className="h-1" data-testid="results-sentinel" /> : null}
                   />
                 </ErrorBoundary>
                 <div className="flex h-8 shrink-0 items-center gap-3 border-t border-border bg-surface px-3">
                   <span className="label-mono">
-                    page {displayResults?.page || 1} · {formatInt(items.length)} of{" "}
-                    {formatInt(displayResults?.total || items.length)}
+                    {w92.loadedOf(formatInt(items.length), formatInt(displayResults?.total || items.length))}
                     {phase === PHASE.IDLE && (
                       <span className="ml-2 text-accent font-mono text-[10px]">(Saved Session)</span>
                     )}
                   </span>
-                  <div className="ml-auto flex items-center gap-1.5">
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      disabled={!displayResults?.page || displayResults.page <= 1 || phase === PHASE.IDLE}
-                      onClick={() => refine({ page: (displayResults?.page || 1) - 1, sort })}
-                     className="">
-                      Prev
-                    </Button>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      disabled={!displayResults?.has_more || phase === PHASE.IDLE}
-                      onClick={() => refine({ page: (displayResults?.page || 1) + 1, sort })}
-                     className="">
-                      Next
-                    </Button>
+                  <div className="ms-auto flex items-center gap-1.5">
+                    {loadMoreError ? <span role="alert" className="text-xs text-danger">{w92.loadMoreFailed}</span> : null}
+                    {canLoadMore ? (
+                      <Button size="xs" variant="outline" disabled={loadingMore} onClick={() => loadMore()}>
+                        {loadingMore ? w92.loadingMore : w92.loadMore}
+                      </Button>
+                    ) : phase === PHASE.READY ? (
+                      <span className="text-[11px] text-text-faint">{w92.allLoaded}</span>
+                    ) : null}
+                    <ShortcutHelp open={helpOpen} onToggle={() => setHelpOpen((v) => !v)} />
                   </div>
                 </div>
               </>

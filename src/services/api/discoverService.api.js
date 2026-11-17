@@ -50,6 +50,16 @@ const discoverService = {
     return request(`/discovery/jobs/${encodeURIComponent(jobId)}/results`, { signal, params })
   },
 
+  /**
+   * Latest finished search for this query that found ads within maxAgeDays.
+   * 0 records, 0 credits; rejects with status 404 when there is none.
+   * @param {string} query
+   * @param {{maxAgeDays?: number, page_size?: number}} [options]
+   */
+  getStoredResults(query, { maxAgeDays = 7, page_size = 20 } = {}) {
+    return request("/discovery/stored-results", { params: { query, max_age_days: maxAgeDays, page: 1, page_size } })
+  },
+
   /** Recent searches recorded on the server (each row carries its query). */
   listRecentJobs({ page_size = 15 } = {}) {
     return request("/discovery/jobs", { params: { page: 1, page_size } })
