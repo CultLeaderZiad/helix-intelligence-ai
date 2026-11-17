@@ -1,3 +1,5 @@
+import functools
+import pathlib
 from fastapi import APIRouter, Header, Response, status
 from typing import Optional
 from sqlalchemy import text, select
@@ -41,6 +43,41 @@ async def readiness(response: Response):
         return {"status": "unready", "database": "disconnected", "providers": "not_checked", "code": "database_unavailable", "detail": "Database is unavailable"}
 
 
+async def _database_revision(session):
+    """The Alembic revision stored in the database, or None. Read only."""
+    try:
+        return (await session.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))).scalar_one_or_none()
+    except Exception:
+        await session.rollback()
+        return None
+
+
+@functools.lru_cache(maxsize=1)
+def code_alembic_head():
+    """The single Alembic head this build ships, or None if it cannot be read."""
+    try:
+        from alembic.config import Config
+        from alembic.script import ScriptDirectory
+
+        backend_root = pathlib.Path(__file__).resolve().parents[3]
+        cfg = Config(str(backend_root / "alembic.ini"))
+        cfg.set_main_option("script_location", str(backend_root / "alembic"))
+        heads = ScriptDirectory.from_config(cfg).get_heads()
+        return heads[0] if len(heads) == 1 else None
+    except Exception:
+        return None
+
+
+def _migration_status(db_revision) -> dict:
+    """Migration state for post-deploy checks: revision ids only, no secrets."""
+    head = code_alembic_head()
+    return {
+        "database_revision": db_revision,
+        "code_head": head,
+        "up_to_date": bool(db_revision and head and db_revision == head),
+    }
+
+
 def _worker_status() -> dict:
     try:
         from app.services import embedded_worker
@@ -58,11 +95,14 @@ async def health_check(
 ):
     db_status = "unknown"
     db_error = None
+    db_revision = None
     try:
         async def _ping_db():
+            nonlocal db_revision
             async with async_session_maker() as session:
                 await session.execute(text("SELECT 1"))
                 await session.execute(select(User.id).limit(1))
+                db_revision = await _database_revision(session)
 
         await asyncio.wait_for(_ping_db(), timeout=3.0)
         db_status = "connected"
@@ -91,6 +131,7 @@ async def health_check(
         "db": db_status,
         "providers": "not_checked",
         "worker": _worker_status(),
+        "migration": _migration_status(db_revision),
     }
     if db_error and is_admin_req:
         res["db_detail"] = db_error
