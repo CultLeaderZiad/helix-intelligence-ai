@@ -12,8 +12,9 @@ features:
 - **Boards and share links** — save ads into boards and produce a report
   link. Shown when the workspace is granted the `swipe_files` flag.
 
-Access is granted manually by a platform administrator; there is no trial,
-pricing or checkout. W8 removed Create, Intelligence, Performance, the
+Every new account without a paid plan gets a 7-day free trial
+(`SIGNUP_TRIAL_DAYS`, default 7; no card). After it, access is granted manually
+by a platform administrator; there is no checkout. W8 removed Create, Intelligence, Performance, the
 dashboard, Scout/Lead generation and API keys (see `AUDIT-W8.md`). There is no
 faked data or fake UI standing in for unbuilt product.
 

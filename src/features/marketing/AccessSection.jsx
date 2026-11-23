@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom"
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react"
 import { useLanguage } from "@/context/LanguageContext"
+import { trialCopy, useTrialDays } from "@/hooks/useTrialDays"
 
 export function AccessSection() {
   const { t, isRtl } = useLanguage()
+  const trialDays = useTrialDays()
+  const cta = trialCopy(t("marketingStartTrial"), trialDays) || t("marketingCreateAccount")
 
   return (
     <section id="access" className="border-y border-white/[0.08] bg-[#07070a] px-6 py-16 text-white sm:px-8 lg:px-12">
@@ -19,7 +22,7 @@ export function AccessSection() {
           <p className="mt-2 text-sm leading-6 text-text-muted">{t("marketingAdminGrant")}</p>
         </div>
         <Link to="/sign-up" className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-accent hover:text-white">
-          {t("marketingStartTrial")}
+          {cta}
           {isRtl ? <ArrowLeft className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
         </Link>
       </div>

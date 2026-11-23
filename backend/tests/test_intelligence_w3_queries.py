@@ -92,19 +92,6 @@ async def corpus():
 
 
 @pytest.mark.asyncio
-async def test_brand_count_and_page_stay_in_sql(corpus):
-    db, users, orgs, jobs, suffix, statements = corpus
-    result = await creative_service.list_brands(db, page=2, page_size=7, user_org_ids=[orgs[0]])
-    assert result.total == 70
-    assert result.page == 2 and result.page_size == 7 and result.has_more
-    assert [brand.id for brand in result.items] == [f"brand_{j:03}" for j in range(7, 14)]
-    assert all(brand.ad_count == 2 for brand in result.items)
-    assert len(statements) == 2
-    assert "count(" in statements[0].lower() and "GROUP BY" in statements[0]
-    assert "LIMIT" in statements[1] and "OFFSET" in statements[1] and "ORDER BY" in statements[1]
-
-
-@pytest.mark.asyncio
 async def test_insights_scope_is_a_database_subquery_not_materialized_ids(corpus):
     db, users, orgs, jobs, suffix, statements = corpus
     result = await analysis_service.list_insights(db, page=2, page_size=9, user_org_ids=[orgs[0]])
@@ -147,8 +134,6 @@ async def test_max_page_size_empty_last_page_and_empty_scope(corpus):
     assert len(page.items) == 100 and page.total == 140 and page.has_more
     last = await creative_service.list_creatives(db, page=3, page_size=100, user_org_ids=[orgs[0]])
     assert last.items == [] and last.total == 140 and not last.has_more
-    empty = await creative_service.list_brands(db, user_org_ids=[])
-    assert empty.items == [] and empty.total == 0
     empty_patterns = await creative_service.list_patterns(db, user_org_ids=[])
     assert empty_patterns.items == [] and empty_patterns.total == 0
     boundary = await analysis_service.list_insights(db, page=1000001, page_size=1, user_org_ids=[orgs[0]])
@@ -220,16 +205,15 @@ async def test_explain_actual_scoped_pages_has_bounded_output(corpus):
 
     event.listen(connection.sync_connection, "before_cursor_execute", capture)
     try:
-        await creative_service.list_brands(db, page=2, page_size=7, user_org_ids=[orgs[0]])
         await analysis_service.list_insights(db, page=2, page_size=7, user_org_ids=[orgs[0]])
         await creative_service.list_creatives(db, page=2, page_size=7, user_org_ids=[orgs[0]])
         await discover_service.list_recent_jobs(db, users[0], page_size=7)
         await playbook_service.list_user_playbooks(db, users[0], page=2, page_size=7)
     finally:
         event.remove(connection.sync_connection, "before_cursor_execute", capture)
-    assert len(captured) == 5
+    assert len(captured) == 4
     for name, expected_rows, (statement, parameters) in zip(
-        ("brands", "insights", "creatives", "recent_jobs", "playbooks"), (7, 7, 7, 1, 7), captured
+        ("insights", "creatives", "recent_jobs", "playbooks"), (7, 7, 1, 7), captured
     ):
         result = await connection.exec_driver_sql("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) " + statement, parameters)
         plan = result.scalar_one()[0]
@@ -274,7 +258,6 @@ async def test_oversized_positive_page_size_is_capped_for_every_service(corpus, 
         with patch("app.services.billing_service.check_quota_and_feature", new=AsyncMock()):
             pages = [
                 await creative_service.list_creatives(db, page=2, page_size=page_size, user_org_ids=[orgs[0]]),
-                await creative_service.list_brands(db, page=2, page_size=page_size, user_org_ids=[orgs[0]]),
                 await creative_service.list_patterns(db, page=2, page_size=page_size, user_org_ids=[orgs[0]]),
                 await creative_service.list_saved_creatives(db, User(id=users[0]), page=2, page_size=page_size),
                 await analysis_service.list_insights(db, page=2, page_size=page_size, user_org_ids=[orgs[0]]),
@@ -284,9 +267,9 @@ async def test_oversized_positive_page_size_is_capped_for_every_service(corpus, 
             playbooks = await playbook_service.list_user_playbooks(db, users[0], page=2, page_size=page_size)
     finally:
         event.remove(connection.sync_connection, "before_cursor_execute", capture_bounds)
-    assert bounds == [(100, 100)] * 8
+    assert bounds == [(100, 100)] * 7
     assert all(page.page == 2 and page.page_size == 100 and len(page.items) <= 100 for page in pages)
-    assert len(pages[0].items) == len(pages[4].items) == 40
+    assert len(pages[0].items) == len(pages[3].items) == 40
     assert playbooks == []
 
 
@@ -299,7 +282,6 @@ async def test_invalid_pagination_is_rejected_before_sql(corpus, page, page_size
     db, users, orgs, jobs, suffix, statements = corpus
     calls = [
         creative_service.list_creatives(db, page=page, page_size=page_size),
-        creative_service.list_brands(db, page=page, page_size=page_size),
         creative_service.list_patterns(db, page=page, page_size=page_size),
         creative_service.list_saved_creatives(db, User(id=users[0]), page=page, page_size=page_size),
         analysis_service.list_insights(db, page=page, page_size=page_size),
