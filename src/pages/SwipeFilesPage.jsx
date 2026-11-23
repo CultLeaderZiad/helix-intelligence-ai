@@ -11,8 +11,6 @@ import { useW92Copy } from "@/i18n/w9_2Product"
 import { useAuth } from "@/context/AuthContext"
 import { useSearchContext } from "@/context/SearchContext"
 import { useLanguage } from "@/context/LanguageContext"
-import { API_BASE_URL } from "@/services/config"
-import { getAccessToken } from "@/services/sessionStore"
 import {
   Bookmark,
   Trash2,
@@ -60,7 +58,6 @@ export function SwipeFilesPage() {
   const [customFormat, setCustomFormat] = useState("video")
   const [isSubmittingCustom, setIsSubmittingCustom] = useState(false)
   const [isSavingBulk, setIsSavingBulk] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
 
   // Check if swipe_files feature flag is enabled
   const isFeatureEnabled = user?.feature_flags?.swipe_files === true
@@ -123,46 +120,6 @@ export function SwipeFilesPage() {
       showToast(typeof detail === "string" ? detail : "Failed to remove creative")
     } finally {
       setIsDeleting(false)
-    }
-  }
-
-  const handleFileUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    const MAX_SIZE = 2 * 1024 * 1024 // 2MB
-    if (file.size > MAX_SIZE) {
-      alert("File size exceeds 2MB limit. Please upload a smaller image to protect cache and avoid server corruption.")
-      return
-    }
-
-    setIsUploading(true)
-    const formData = new FormData()
-    formData.append("file", file)
-
-    try {
-      const token = getAccessToken()
-      const response = await fetch(`${API_BASE_URL}/media/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || "Upload failed")
-      }
-
-      const data = await response.json()
-      setCustomUrl(data.url)
-      setCustomFormat("image")
-      showToast("Image file uploaded successfully!")
-    } catch (err) {
-      alert(err.message || "Failed to upload image file")
-    } finally {
-      setIsUploading(false)
     }
   }
 
@@ -236,7 +193,7 @@ export function SwipeFilesPage() {
             {t("swipeFilesTitle", "Swipe Files & Saved Creatives")}
           </h1>
           <p className="text-text-muted text-xs mt-1">
-            {t("swipeFilesSubtitle", "Personal swipe file library. Bookmark winning competitor ads or upload links/images (0 credits used).")}
+            {t("swipeFilesSubtitle", "Personal swipe file library. Bookmark winning competitor ads or save reference links (0 credits used).")}
           </p>
         </div>
 
@@ -381,37 +338,6 @@ export function SwipeFilesPage() {
                   onChange={(e) => setCustomUrl(e.target.value)}
                   className="w-full rounded border border-border bg-surface-2 p-2 text-xs text-text placeholder-text-faint focus:border-accent focus:outline-none font-mono"
                 />
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label className="label-mono text-text">Or Attach Image File (max 2MB)</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept="image/png, image/jpeg, image/jpg, image/webp"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="swipe-file-upload"
-                    disabled={isUploading}
-                  />
-                  <label
-                    htmlFor="swipe-file-upload"
-                    className="flex items-center gap-2 px-3 py-2 border border-border rounded bg-surface-2 text-xs font-semibold text-text cursor-pointer hover:bg-surface-3 transition"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-accent" />
-                    {isUploading ? "Uploading..." : "Choose Image"}
-                  </label>
-                  {customUrl && customUrl.startsWith("http") && (
-                    <div className="flex items-center gap-2">
-                      <img 
-                        src={customUrl} 
-                        alt="Attached Preview" 
-                        className="h-8 w-8 object-cover rounded border border-border"
-                      />
-                      <span className="text-[11px] text-accent font-mono">Attached successfully</span>
-                    </div>
-                  )}
-                </div>
               </div>
 
               <div>

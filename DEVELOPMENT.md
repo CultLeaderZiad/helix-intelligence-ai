@@ -612,6 +612,51 @@ Two independent limits protect sign-in:
   Anyone can lock an account for 15 minutes by guessing; the reset link is the
   way back in.
 
+## Rate limits: in-memory, reset on restart
+
+The per-IP limits (`RateLimitMiddleware`) and the per-account / per-email
+limits (`app/core/limits.py`) live in **process memory**. On Render free there
+is one process, so they hold while it runs, but they **reset on every restart,
+deploy or idle spin-down**, and would not be shared if more instances ran.
+There is no Redis and none should be added on the free tier.
+
+They are a first line against bursts, not the spend guarantee. What protects
+money is stored in Postgres and survives restarts:
+
+- `workspace_daily_usage` (`searches`, `provider_calls`, `records`): the
+  per-workspace daily search cap and the monthly Metapi record cap
+  (`provider_budget.reserve_search_slot`, `reserve_provider_records`,
+  `record_refusal`).
+- `provider_record_budget` and the provider call budget: the global caps and
+  `METAPI_GLOBAL_SAFETY_STOP`.
+- The per-account sign-in lock stored on the user row.
+
+Any new spend path must reserve against these stored counters before calling a
+paid provider, never rely on the in-memory limiter alone.
+
+## Error reporting (optional Sentry)
+
+Off by default. Free-tier usage only: errors, no tracing or replay.
+
+- Backend: set `SENTRY_DSN` (and optionally `SENTRY_TRACES_SAMPLE_RATE`, default
+  `0`). `app/core/error_reporting.py` starts `sentry-sdk[fastapi]` with
+  `send_default_pii=False`, drops request bodies and cookies, filters auth and
+  secret headers and masks email addresses before anything is sent.
+- Frontend: set `VITE_SENTRY_DSN` at build time. `src/lib/errorReporting.js`
+  loads `@sentry/react` as a separate chunk and applies the same scrubbing.
+  The CSP in `vercel.json` allows no wildcard `connect-src`, so also add your
+  project's exact ingest origin (from the DSN, e.g.
+  `https://o123456.ingest.us.sentry.io`) to `connect-src`, or browser events
+  are blocked.
+
+## Checking migrations after a deploy
+
+`GET /api/health` returns `migration: {database_revision, code_head,
+up_to_date}`: the revision in the database's `alembic_version`, the single
+head this build ships, and whether they match. Revision ids only, no secrets.
+After a deploy, `up_to_date: false` means `alembic upgrade head` has not run
+against that database.
+
 ## Frontend security headers
 
 `vercel.json` sends a Content-Security-Policy and hardening headers on every
