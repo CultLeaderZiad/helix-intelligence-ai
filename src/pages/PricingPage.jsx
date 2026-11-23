@@ -97,7 +97,7 @@ export function PricingPage() {
         <section className="mx-auto max-w-6xl px-4 pb-20 pt-16 text-center sm:px-6">
           <p className="font-mono text-xs uppercase tracking-wider text-accent">{c.label}</p>
           <h1 className="mx-auto mt-4 max-w-2xl text-balance text-4xl font-bold tracking-tight text-white sm:text-5xl">{c.title}</h1>
-          <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-6 text-text-muted">{trialDays ? c.body.replace(/7/g, String(trialDays)) : c.bodyNoTrial}</p>
+          <p className="mx-auto mt-4 max-w-2xl text-pretty text-sm leading-6 text-text-muted">{loading || error ? null : trialDays ? c.body.replace(/7/g, String(trialDays)) : c.bodyNoTrial}</p>
 
           <div className="mt-12 flex flex-wrap items-stretch justify-center gap-8">
             {trialDays > 0 ? (
@@ -129,7 +129,7 @@ export function PricingPage() {
                   tagline={localized(p.tagline, lang)}
                   features={localizedList(p.features, lang)}
                   cta={p.cta === "contact" || !trialDays ? c.contact : c.startTrial}
-                  to={p.cta === "contact" ? "/support" : "/sign-up"}
+                  to={p.cta === "contact" || !trialDays ? "/support" : "/sign-up"}
                   highlight={!!p.highlight}
                 />
               )

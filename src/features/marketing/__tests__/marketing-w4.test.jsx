@@ -37,6 +37,8 @@ describe("W4 marketing and legal disclosures", () => {
     __setTrialDaysForTests(null)
     const markup = renderInLanguage("en", <Hero />)
     expect(markup).not.toMatch(/free trial|days free/i)
+    // Nor that access is admin-granted: the trial may well exist.
+    expect(markup).not.toMatch(/granted by our team/i)
   })
 
   it("offers the trial with the server's length when SIGNUP_TRIAL_DAYS is on", () => {

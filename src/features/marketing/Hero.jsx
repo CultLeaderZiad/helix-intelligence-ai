@@ -36,7 +36,10 @@ export function Hero() {
               {t("marketingCapabilities")}
             </a>
           </div>
-          <p className="mt-6 text-sm text-text-muted">{trialCopy(t("marketingAdminAccess"), trialDays) || t("marketingAdminAccessNoTrial")}</p>
+          {/* Unknown (loading or failed): say nothing about access rather than "granted by our team". */}
+          {trialDays !== null ? (
+            <p className="mt-6 text-sm text-text-muted">{trialCopy(t("marketingAdminAccess"), trialDays) || t("marketingAdminAccessNoTrial")}</p>
+          ) : null}
           <p className="mt-2 max-w-2xl text-xs leading-5 text-text-faint">
             {t("marketingHeroCaveat")}
           </p>
