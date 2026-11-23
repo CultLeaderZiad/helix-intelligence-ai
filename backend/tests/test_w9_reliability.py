@@ -89,3 +89,14 @@ def test_database_revision_reads_alembic_version_and_tolerates_its_absence():
     assert asyncio.run(health._database_revision(_Session())) == "abc123"
     broken = _Session(fail=True)
     assert asyncio.run(health._database_revision(broken)) is None and broken.rolled_back
+
+
+def test_secret_query_parameters_are_masked_in_urls():
+    event = error_reporting.before_send({
+        "request": {"url": "https://api/reset-password?token=abc123&lang=ar", "query_string": "code=xyz&q=shoes"},
+        "breadcrumbs": {"values": [{"data": {"to": "/invite?token=t1"}}]},
+    })
+    assert event["request"]["url"] == "https://api/reset-password?token=[Filtered]&lang=ar"
+    assert event["request"]["query_string"] == "code=[Filtered]&q=shoes"
+    assert event["breadcrumbs"]["values"][0]["data"]["to"] == "/invite?token=[Filtered]"
+    assert error_reporting.scrub("/search?q=monkey=1") == "/search?q=monkey=1"

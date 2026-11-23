@@ -40,4 +40,10 @@ describe("W9 optional Sentry (frontend)", () => {
     expect(out.request.data).toBeUndefined()
     expect(scrub({ access_token: "t" })).toEqual({ access_token: "[Filtered]" })
   })
+
+  it("masks secret query parameters in URLs and breadcrumbs", () => {
+    expect(scrub("https://app/reset-password?token=abc123&lang=ar")).toBe("https://app/reset-password?token=[Filtered]&lang=ar")
+    expect(scrub({ data: { to: "/invite?code=xyz" } })).toEqual({ data: { to: "/invite?code=[Filtered]" } })
+    expect(scrub("/search?q=monkey")).toBe("/search?q=monkey")
+  })
 })

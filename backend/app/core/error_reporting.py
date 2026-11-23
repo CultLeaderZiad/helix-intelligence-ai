@@ -22,6 +22,11 @@ SENSITIVE_KEYS = (
     "access_token", "refresh_token", "email",
 )
 FILTERED = "[Filtered]"
+# Secret-bearing query parameters (reset/invite links carry ?token=...). Masked
+# wherever they appear in a string: request.url, query_string, breadcrumbs.
+SECRET_PARAM_RE = re.compile(
+    r"(?i)(^|[?&;\s])(token|access_token|refresh_token|code|secret|password|api_key|apikey|key|signature|sig)=([^&#\s;\"']+)"
+)
 
 
 def _sensitive(key: Any) -> bool:
@@ -36,7 +41,7 @@ def scrub(value: Any) -> Any:
     if isinstance(value, (list, tuple)):
         return type(value)(scrub(v) for v in value)
     if isinstance(value, str):
-        return EMAIL_RE.sub("[email]", value)
+        return SECRET_PARAM_RE.sub(lambda m: f"{m.group(1)}{m.group(2)}={FILTERED}", EMAIL_RE.sub("[email]", value))
     return value
 
 

@@ -10,6 +10,9 @@
 const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g
 const SENSITIVE = ["authorization", "cookie", "password", "token", "secret", "api_key", "apikey", "email"]
 const FILTERED = "[Filtered]"
+// Secret-bearing query parameters (reset/invite links carry ?token=...), masked
+// wherever they appear in a string: request URLs, navigation breadcrumbs.
+const SECRET_PARAM_RE = /(^|[?&;\s])(token|access_token|refresh_token|code|secret|password|api_key|apikey|key|signature|sig)=([^&#\s;"']+)/gi
 
 const isSensitive = (key) => SENSITIVE.some((s) => String(key).toLowerCase().includes(s))
 
@@ -20,7 +23,9 @@ export function scrub(value) {
       Object.entries(value).map(([k, v]) => [k, isSensitive(k) ? FILTERED : scrub(v)]),
     )
   }
-  if (typeof value === "string") return value.replace(EMAIL_RE, "[email]")
+  if (typeof value === "string") {
+    return value.replace(EMAIL_RE, "[email]").replace(SECRET_PARAM_RE, (_m, pre, name) => `${pre}${name}=${FILTERED}`)
+  }
   return value
 }
 
