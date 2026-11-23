@@ -26,6 +26,12 @@ export const en = {
   noPlans: "More plans are coming. Start with the free trial.",
   footnote: "Prices in USD. Your saved searches, ads and boards are kept if your access ends.",
   features: FEATURE_LABELS.en,
+  // Used when at least one plan can be bought online (Whop checkout).
+  bodyCheckout: "Every new account gets the full product for 7 days with no credit card. Subscribe to a plan any time; payment is handled by Whop.",
+  bodyCheckoutNoTrial: "Subscribe to a plan to get access. Payment is handled by Whop.",
+  subscribe: "Subscribe",
+  openingCheckout: "Opening checkout…",
+  checkoutFailed: "Checkout could not open. Try again in a moment.",
 }
 
 export const ar = {
@@ -49,6 +55,11 @@ export const ar = {
   noPlans: "خطط أخرى قادمة. ابدأ بالتجربة المجانية.",
   footnote: "الأسعار بالدولار الأمريكي. تبقى عمليات البحث والإعلانات واللوحات المحفوظة إذا انتهى وصولك.",
   features: FEATURE_LABELS.ar,
+  bodyCheckout: "يحصل كل حساب جديد على المنتج كاملاً لمدة 7 أيام دون بطاقة ائتمان. اشترك في خطة في أي وقت؛ وتتم عملية الدفع عبر Whop.",
+  bodyCheckoutNoTrial: "اشترك في خطة للحصول على الوصول. وتتم عملية الدفع عبر Whop.",
+  subscribe: "اشترك",
+  openingCheckout: "جارٍ فتح صفحة الدفع…",
+  checkoutFailed: "تعذّر فتح صفحة الدفع. حاول مرة أخرى بعد قليل.",
 }
 
 export function usePricingCopy() {

@@ -30,6 +30,7 @@ from .provider_call_budget import ProviderCallBudget
 from .workspace_daily_usage import WorkspaceDailyUsage
 from .provider_record_budget import ProviderRecordBudget
 from .saved_ad_annotation import SavedAdTag, SavedAdNote
+from .billing_subscription import BillingSubscription
 
 __all__ = [
     "Base",
@@ -38,6 +39,7 @@ __all__ = [
     "ProviderRecordBudget",
     "SavedAdTag",
     "SavedAdNote",
+    "BillingSubscription",
     "User",
     "Organization",
     "ScrapeJob",

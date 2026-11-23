@@ -4,6 +4,11 @@ The repository has organization plans, credit balances, and a Neon auth
 webhook. It does not contain a checkout provider, price catalog, or the
 event schema that would map a paid subscription onto those rows. This
 module refuses provider events instead of inventing that contract.
+
+Whop is now the checkout provider, but it has its own signed endpoint
+(POST /api/webhooks/billing/whop, app/services/whop_billing.py). This
+authenticated /account/billing/provider-events route stays refused: it was
+never a provider target and must not become a way to post unsigned events.
 """
 
 from typing import Any, Dict, List

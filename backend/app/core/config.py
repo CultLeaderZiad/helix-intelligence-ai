@@ -119,6 +119,21 @@ class Settings(BaseSettings):
     # matches, the edge client-IP header is believed even if the hop before
     # our proxies is not a Cloudflare address. Empty = off (the default).
     TRUSTED_PROXY_SECRET: str = os.getenv("TRUSTED_PROXY_SECRET", "")
+    # Whop billing (app/services/whop_billing.py). Every value empty = off:
+    # no checkout button, and the webhook answers 503.
+    # WHOP_API_KEY: company API key with checkout_configuration:create.
+    # WHOP_WEBHOOK_SECRET: the endpoint's ws_... signing secret, verbatim.
+    # WHOP_COMPANY_ID: biz_... account that owns the plans.
+    # WHOP_PLAN_MAP: "plan_xxx=<helix plan id>,plan_yyy=<helix plan id>". Only
+    # mapped Whop plans grant access; an unmapped plan grants nothing.
+    WHOP_API_KEY: str = os.getenv("WHOP_API_KEY", "")
+    WHOP_WEBHOOK_SECRET: str = os.getenv("WHOP_WEBHOOK_SECRET", "")
+    WHOP_COMPANY_ID: str = os.getenv("WHOP_COMPANY_ID", "")
+    WHOP_PLAN_MAP: str = os.getenv("WHOP_PLAN_MAP", "")
+    WHOP_API_BASE: str = os.getenv("WHOP_API_BASE", "https://api.whop.com/api/v1")
+    # Access keeps running this long past the paid period, so a renewal that
+    # arrives late (retries, cold starts) never locks a paying workspace out.
+    WHOP_GRACE_HOURS: int = max(0, int(os.getenv("WHOP_GRACE_HOURS", "48")))
     # Writes that are cheap but send email or create shared rows (support
     # tickets, access requests, share links, drafts): per IP per window.
     ABUSE_RATE_LIMIT: int = int(os.getenv("ABUSE_RATE_LIMIT", "10"))

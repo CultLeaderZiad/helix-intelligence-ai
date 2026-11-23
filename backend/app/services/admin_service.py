@@ -271,12 +271,19 @@ async def list_public_pricing(db: AsyncSession):
     """Listed plans for /pricing, plus the sign-up trial terms. No auth."""
     from app.schemas.pricing import PublicPlan, PublicPricing
 
+    from app.services import whop_billing
+
+    purchasable = whop_billing.configured_for_checkout()
+    purchasable_plans = set(whop_billing.plan_map().values())
     plans = []
     for p in (await db.execute(select(Plan))).scalars().all():
         pricing = _pricing(p)
         if pricing is None or not pricing.listed:
             continue
-        plans.append(PublicPlan(id=p.id, name=p.name, price_monthly=p.price_monthly, pricing=pricing))
+        plans.append(PublicPlan(
+            id=p.id, name=p.name, price_monthly=p.price_monthly, pricing=pricing,
+            checkout=purchasable and p.id in purchasable_plans,
+        ))
     plans.sort(key=lambda item: (item.pricing.order, item.price_monthly or 0, item.name))
     return PublicPricing(
         trial_days=int(settings.SIGNUP_TRIAL_DAYS),

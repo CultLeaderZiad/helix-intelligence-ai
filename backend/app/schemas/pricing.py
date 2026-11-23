@@ -79,6 +79,9 @@ class PublicPlan(BaseModel):
     name: str
     price_monthly: Optional[float] = None
     pricing: PlanPricing
+    # True when this plan can be bought online (Whop checkout is configured
+    # and WHOP_PLAN_MAP maps a Whop plan to it).
+    checkout: bool = False
 
 
 class PublicPricing(BaseModel):
