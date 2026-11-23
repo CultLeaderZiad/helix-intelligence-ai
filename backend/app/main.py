@@ -62,14 +62,21 @@ app = FastAPI(
 )
 
 # Set all CORS enabled origins
+# Only what the SPA sends (src/services/http.js): the routers use GET, POST,
+# PUT, PATCH and DELETE; requests carry Authorization, Content-Type and
+# Accept, plus an optional Idempotency-Key that http.js forwards. Ops-only
+# headers (X-Admin-Secret, X-Cron-Secret) are never sent from a browser.
+CORS_ALLOW_METHODS = ("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+CORS_ALLOW_HEADERS = ("Authorization", "Content-Type", "Accept", "Accept-Language", "Idempotency-Key", "X-Idempotency-Key")
+
 if cors_origins or cors_origin_regex:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
         allow_origin_regex=cors_origin_regex,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=list(CORS_ALLOW_METHODS),
+        allow_headers=list(CORS_ALLOW_HEADERS),
     )
 # Rate limiting: shields credential + expensive AI/scrape endpoints from
 # brute-force and credit-burn bursts. Added after CORS so preflight OPTIONS

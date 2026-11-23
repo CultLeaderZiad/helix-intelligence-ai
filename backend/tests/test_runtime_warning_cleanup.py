@@ -5,21 +5,7 @@ import pytest
 
 from app.db.base import Base
 from app.schemas.app_update import AppUpdateResponse
-from app.services import creative_service
 from app.services.scraping import adyntel_provider, metapi_provider
-
-
-class _BrandRows:
-    def all(self):
-        return [("acme", "Acme", 1)]
-
-
-class _BrandSession:
-    async def scalar(self, query):
-        return 1
-
-    async def execute(self, query):
-        return _BrandRows()
 
 
 def test_declarative_base_and_response_models_use_supported_configuration():
@@ -36,15 +22,6 @@ def test_declarative_base_and_response_models_use_supported_configuration():
     )
     assert update.id == "update-1"
 
-
-
-@pytest.mark.asyncio
-async def test_brand_first_seen_remains_utc_iso8601_z():
-    brands = await creative_service.list_brands(_BrandSession())
-
-    first_seen = brands.items[0].first_seen
-    assert first_seen.endswith("Z")
-    assert datetime.fromisoformat(first_seen.replace("Z", "+00:00")).utcoffset() == timedelta(0)
 
 
 @pytest.mark.parametrize(

@@ -22,6 +22,19 @@ async def list_archive(
     return await archive_service.list_entries(db, current_user, page=page, page_size=page_size, brand=brand)
 
 
+@router.get("/search")
+async def search_archive(
+    q: str,
+    scope: str = "all",
+    page: int = 1,
+    page_size: int = 20,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Full-text search (simple + arabic) over the archive and saved ads. 0 records."""
+    return await archive_service.search(db, current_user, q, scope=scope, page=page, page_size=page_size)
+
+
 @router.get("/by-creative/{creative_id}")
 async def archive_for_creative(
     creative_id: str,

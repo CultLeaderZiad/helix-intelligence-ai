@@ -300,8 +300,13 @@ def test_pool_ping_is_a_single_simple_query():
 
 @pytest.mark.asyncio
 @pytest.mark.signup_trial
-async def test_sign_up_starts_a_seven_day_trial_that_expires_server_side():
+async def test_sign_up_starts_a_seven_day_trial_that_expires_server_side(monkeypatch):
     from datetime import datetime, timezone
+
+    from app.core.config import settings
+
+    # 7 is the documented default; set explicitly so the test does not depend on env.
+    monkeypatch.setattr(settings, "SIGNUP_TRIAL_DAYS", 7)
 
     from sqlalchemy import update
 

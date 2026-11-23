@@ -419,9 +419,10 @@ Charged server-side by `assert_can_spend`; the values live in
 | Discover search | 1.0 |
 | Discover deep search surcharge | 2.0 |
 
-Access is granted by a platform administrator; there is no trial, plan
-purchase or checkout. A new workspace starts on the default plan with every
-feature off until an admin grants access.
+Every new account without a paid plan gets a 7-day free trial
+(`SIGNUP_TRIAL_DAYS`, default 7; `0` turns it off, `SIGNUP_TRIAL_FEATURES`
+picks the flags). After it ends, a workspace has every feature off until an
+admin grants access. There is no plan purchase or checkout.
 
 ### Standardized Error Responses
 - `402 Payment Required` (Insufficient credits):
@@ -594,6 +595,13 @@ Two independent limits protect sign-in:
   range so the real client address is used; otherwise every client shares one
   bucket. The API logs `Rate limiting keys on proxy address <ip>` once per
   process when this is misconfigured.
+  In production the client IP comes from `cf-connecting-ip`, but only when the
+  request reached Render from a Cloudflare address (the rightmost
+  `X-Forwarded-For` hop that is not one of our trusted proxies, checked against
+  `CLOUDFLARE_IP_RANGES` in `app/middleware/rate_limit.py`, source
+  cloudflare.com/ips, fetched 2026-11-17), or when it carries
+  `X-Helix-Edge-Secret` equal to `TRUSTED_PROXY_SECRET` (default empty = off).
+  Otherwise the header is ignored.
 - **Per account** (stored on the user row, so it holds across processes):
   after `SIGN_IN_FAILURE_LIMIT` wrong passwords (default 10) within
   `SIGN_IN_FAILURE_WINDOW_S` (900 s), sign-in for that email returns

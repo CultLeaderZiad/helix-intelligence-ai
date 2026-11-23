@@ -23,6 +23,7 @@ limiter itself. The limiter is a shield, not a single point of failure.
 
 from __future__ import annotations
 
+import hmac
 import ipaddress
 import logging
 import re
@@ -105,6 +106,72 @@ def _is_valid_public_ip(ip_str: str) -> bool:
     )
 
 
+# Cloudflare's published edge ranges. Source: https://www.cloudflare.com/ips-v4
+# and https://www.cloudflare.com/ips-v6, fetched 2026-11-17. Cloudflare changes
+# these rarely; update both lists together from those two URLs.
+CLOUDFLARE_IP_RANGES = (
+    "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22",
+    "141.101.64.0/18", "108.162.192.0/18", "190.93.240.0/20", "188.114.96.0/20",
+    "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
+    "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22",
+    "2400:cb00::/32", "2606:4700::/32", "2803:f800::/32", "2405:b500::/32",
+    "2405:8100::/32", "2a06:98c0::/29", "2c0f:f248::/32",
+)
+_CLOUDFLARE_NETWORKS = tuple(ipaddress.ip_network(r) for r in CLOUDFLARE_IP_RANGES)
+
+# Header an edge may set to prove the request passed it (TRUSTED_PROXY_SECRET).
+EDGE_SECRET_HEADER = "x-helix-edge-secret"
+
+
+def _is_cloudflare(value: str) -> bool:
+    if not _is_ip(value):
+        return False
+    ip = ipaddress.ip_address(value)
+    return any(ip in network for network in _CLOUDFLARE_NETWORKS)
+
+
+def _edge_peer(request: Request) -> str:
+    """The address that connected to our own proxies.
+
+    On Render uvicorn rewrites the peer to the leftmost X-Forwarded-For
+    entry, which the client controls (docs/SECURITY_AUDIT.md A1), so the
+    peer alone cannot prove a request came through Cloudflare. Each proxy
+    appends the address it received the request from, so the rightmost
+    hop that is not one of our trusted proxies (TRUSTED_PROXY_CIDRS;
+    10.0.0.0/8 in production) is the one that reached Render: Cloudflare's
+    edge for honest traffic, the caller itself for a request that skipped
+    Cloudflare. Without trusted proxies or a chain, the TCP peer is used.
+
+    Sound only while every request passes our trusted proxies first (true on
+    Render, where the app is not reachable except through Render's proxy,
+    and the same assumption the rest of client_ip makes).
+    """
+    peer = request.client.host if request.client and request.client.host else ""
+    hops = [h.strip() for h in (request.headers.get("x-forwarded-for") or "").split(",") if h.strip()]
+    if not hops or not _trusted_networks():
+        return peer
+    for hop in reversed(hops):
+        if not _is_ip(hop):
+            return ""
+        if not _is_trusted_proxy(hop):
+            return hop
+    return peer
+
+
+def edge_header_trusted(request: Request) -> bool:
+    """True when the edge client-IP header may be believed.
+
+    Either the request reached our proxies from a Cloudflare address, or it
+    carries the shared edge secret (TRUSTED_PROXY_SECRET, off when empty).
+    """
+    secret = (getattr(settings, "TRUSTED_PROXY_SECRET", "") or "").strip()
+    if secret:
+        sent = (request.headers.get(EDGE_SECRET_HEADER) or "").strip()
+        if sent and hmac.compare_digest(sent.encode(), secret.encode()):
+            return True
+    return _is_cloudflare(_edge_peer(request))
+
+
 def _is_ip(value: str) -> bool:
     try:
         ipaddress.ip_address(value)
@@ -158,7 +225,7 @@ def client_ip(request: Request) -> str:
     leftmost X-Forwarded-For entry, which any client can forge.
     """
     edge = effective_client_ip_header(settings)
-    if edge:
+    if edge and edge_header_trusted(request):
         value = (request.headers.get(edge) or "").strip()
         if value and _is_ip(value):
             return value

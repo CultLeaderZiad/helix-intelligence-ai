@@ -188,6 +188,27 @@ def workspace_record_cap(limits: dict) -> int:
     return int(settings.METAPI_WORKSPACE_MONTHLY_RECORDS) if value is None else int(value)
 
 
+# Monitor runs per month by cadence (worst case: a 31-day month). Sub-daily
+# cadences only run that often when the scheduling floor allows it.
+RUNS_PER_MONTH = {"every_6h": 124, "every_12h": 62, "daily": 31, "weekly": 5}
+
+
+def search_record_estimate() -> int:
+    """Worst-case records one Discover search (or monitor run) reserves: the
+    keyword step plus the page step, each clamped like the real tasks."""
+    return task_record_count(settings.METAPI_RESOLVE_COUNT) + task_record_count(15)
+
+
+def page_search_record_estimate() -> int:
+    """A page-id search or monitor runs only the advertiser task."""
+    return task_record_count(15)
+
+
+def monitor_month_estimate(cadence: str, per_run: int | None = None) -> int:
+    runs = RUNS_PER_MONTH.get(cadence, 31)
+    return runs * (search_record_estimate() if per_run is None else int(per_run))
+
+
 def task_record_count(requested) -> int:
     """Records to ask Metapi for in one task: never above METAPI_MAX_RECORDS_PER_TASK."""
     try:
@@ -250,6 +271,14 @@ async def record_usage(db, org_id: Optional[str], provider: str = "metapi") -> d
         "records_cap_this_month": cap,
         "records_per_search_max": int(settings.METAPI_MAX_RECORDS_PER_TASK),
         "platform_records_paused": global_used >= global_record_cap(int(settings.METAPI_MONTHLY_RECORD_BUDGET)),
+        # W9: what the UI shows before a paid run (estimates, never reservations).
+        "records_remaining_this_month": max(0, cap - used),
+        "records_warning": cap <= 0 or used >= 0.8 * cap,
+        "records_estimates": {
+            "discover_search": search_record_estimate(),
+            "monitor_run": search_record_estimate(),
+            "monitor_month": {c: monitor_month_estimate(c) for c in RUNS_PER_MONTH},
+        },
     }
 
 
@@ -273,3 +302,18 @@ async def record_refusal(db, org_id: Optional[str], provider: str = "metapi") ->
     if usage["records_used_this_month"] + need > usage["records_cap_this_month"]:
         return WORKSPACE_RECORD_BUDGET
     return None
+
+
+def record_refusal_detail(refusal: str) -> dict:
+    """The 429 body for a record_refusal() result (Discover and monitors)."""
+    platform = refusal == RECORD_BUDGET
+    return {
+        "code": "platform_record_budget_reached" if platform else "workspace_record_budget_reached",
+        "message": (
+            "Live searches are paused for everyone until the monthly data budget resets on the 1st (UTC). "
+            "Saved searches and past results stay available."
+            if platform else
+            "This workspace has used its live-search data for this month. "
+            "Saved searches and past results stay available. Resets on the 1st (UTC)."
+        ),
+    }

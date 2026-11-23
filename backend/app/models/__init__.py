@@ -29,12 +29,15 @@ from .ad_archive import AdArchiveEntry
 from .provider_call_budget import ProviderCallBudget
 from .workspace_daily_usage import WorkspaceDailyUsage
 from .provider_record_budget import ProviderRecordBudget
+from .saved_ad_annotation import SavedAdTag, SavedAdNote
 
 __all__ = [
     "Base",
     "ProviderCallBudget",
     "WorkspaceDailyUsage",
     "ProviderRecordBudget",
+    "SavedAdTag",
+    "SavedAdNote",
     "User",
     "Organization",
     "ScrapeJob",
