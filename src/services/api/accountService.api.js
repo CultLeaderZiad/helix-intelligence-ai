@@ -32,6 +32,14 @@ const accountService = {
     return request("/account/billing")
   },
 
+  /** A Whop checkout link for the caller's workspace (owner only). */
+  createCheckout(planId) {
+    return request("/account/billing/checkout", {
+      method: "POST",
+      body: { plan_id: planId },
+    })
+  },
+
   getAccess() {
     return request("/account/access")
   },

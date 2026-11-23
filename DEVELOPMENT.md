@@ -422,7 +422,7 @@ Charged server-side by `assert_can_spend`; the values live in
 Every new account without a paid plan gets a 7-day free trial
 (`SIGNUP_TRIAL_DAYS`, default 7; `0` turns it off, `SIGNUP_TRIAL_FEATURES`
 picks the flags). After it ends, a workspace has every feature off until an
-admin grants access. There is no plan purchase or checkout.
+admin grants access, or the owner buys a plan through Whop checkout (below).
 
 ### Standardized Error Responses
 - `402 Payment Required` (Insufficient credits):
@@ -736,3 +736,36 @@ workspaces.
   new provider call or charge.
 - The per-IP rate limit, the global provider budget and the per-job attempt cap
   are unchanged and are not affected by refunds.
+
+## Whop billing
+
+Off until configured. With nothing set the pricing page shows no Subscribe
+button and `POST /api/webhooks/billing/whop` answers `503`.
+
+| Env var | Where | What |
+|---|---|---|
+| `WHOP_API_KEY` | Render | Company API key with `checkout_configuration:create`. |
+| `WHOP_WEBHOOK_SECRET` | Render | The webhook's `ws_...` signing secret, verbatim (do not strip the prefix). |
+| `WHOP_COMPANY_ID` | Render | `biz_...`, the account that owns the plans. |
+| `WHOP_PLAN_MAP` | Render | `plan_xxx=<helix plan id>,...`. Only mapped Whop plans grant access. |
+| `WHOP_GRACE_HOURS` | Render | Access keeps running this long past the paid period (default 48). |
+
+Setup:
+1. In Whop, create one plan per paid Helix plan. In Helix admin, give each
+   Helix plan its feature flags and list it on /pricing.
+2. Set `WHOP_PLAN_MAP` to pair them.
+3. In Whop, add a webhook to `https://<api>/api/webhooks/billing/whop` for
+   `membership.activated` and `membership.updated` (payment events are
+   accepted and only recorded). Put its secret in `WHOP_WEBHOOK_SECRET`.
+4. Send Whop's test event and check the Render log line
+   `whop webhook ... : <outcome>`.
+
+How it works: the checkout is created on the server with the caller's
+workspace id in Whop `metadata` (`helix_org_id`). Every membership event
+names that workspace. Active, trialing, past-due, canceling and completed
+memberships keep one access grant (owner as grantor) that expires at
+`current_period_end` + grace, so a missed cancellation still lapses. Canceled
+and expired revoke only that grant; an admin's grant is never touched.
+Deliveries are deduplicated on `webhook-id` (`webhook_events`) and an event
+older than the last one applied to its membership is ignored. State per
+membership lives in `billing_subscriptions` (tenant RLS).

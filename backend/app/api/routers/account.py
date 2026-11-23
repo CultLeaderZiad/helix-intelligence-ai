@@ -329,6 +329,32 @@ async def billing_provider_events(
     refuse_billing_provider_event(None)
 
 
+class CheckoutRequest(BaseModel):
+    plan_id: str
+
+
+@router.post(
+    "/billing/checkout",
+    dependencies=[Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))],
+)
+async def billing_checkout(
+    body: CheckoutRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """A Whop checkout link for the caller's workspace. Owner only: the
+    workspace id is taken from the session, never from the request."""
+    from app.core.config import settings
+    from app.services import whop_billing
+
+    org = await billing_service.get_or_create_default_org(db, current_user)
+    if org.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail={"code": "owner_only", "message": "Only the workspace owner can change its plan."})
+    redirect = f"{settings.PUBLIC_APP_BASE_URL.rstrip('/')}/settings?billing=returned"
+    url = await whop_billing.create_checkout(org.id, body.plan_id, redirect)
+    return {"checkout_url": url}
+
+
 # --- Team Multi-Seat (Gated by 'team_accounts') ---
 @router.get("/team")
 async def get_team(

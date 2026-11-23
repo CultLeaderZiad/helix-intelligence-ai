@@ -14,7 +14,14 @@ no API-key or third-party-token login (W8).
   writes a time-limited access grant for `SIGNUP_TRIAL_FEATURES` that expires
   server-side after `SIGNUP_TRIAL_DAYS` (default 7; `0` turns the trial off).
   `GET /public/pricing` reports `trial_days`; the landing and pricing pages
-  only promise a trial when it is above 0. There is no checkout.
+  only promise a trial when it is above 0.
+- Paid plans (Whop, off until `WHOP_*` is set): `POST /api/account/billing/checkout`
+  `{plan_id}` (workspace owner only) returns `{checkout_url}`, a Whop checkout
+  for the caller's workspace. `POST /api/webhooks/billing/whop` (no session;
+  Standard Webhooks signature with `WHOP_WEBHOOK_SECRET`) turns membership
+  events into an access grant that ends at the paid period end plus
+  `WHOP_GRACE_HOURS`, and revokes it on `canceled`/`expired`.
+  `GET /public/pricing` marks plans that can be bought with `checkout: true`.
 - Otherwise, and after the trial ends, a workspace is **pending**: every
   feature flag is off until an administrator grants access.
 - Grantable flags: `discover`, `swipe_files` (boards and share links),

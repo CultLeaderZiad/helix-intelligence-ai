@@ -14,7 +14,8 @@ features:
 
 Every new account without a paid plan gets a 7-day free trial
 (`SIGNUP_TRIAL_DAYS`, default 7; no card). After it, access is granted manually
-by a platform administrator; there is no checkout. W8 removed Create, Intelligence, Performance, the
+by a platform administrator, or bought through Whop checkout when it is configured
+(`WHOP_*`, see DEVELOPMENT.md "Whop billing"; off by default). W8 removed Create, Intelligence, Performance, the
 dashboard, Scout/Lead generation and API keys (see `AUDIT-W8.md`). There is no
 faked data or fake UI standing in for unbuilt product.
 
