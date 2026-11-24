@@ -33,6 +33,7 @@ from .saved_ad_annotation import SavedAdTag, SavedAdNote
 from .billing_subscription import BillingSubscription
 from .notification_channel import NotificationChannel
 from .ad_teardown import AdTeardown
+from .knowledge_base import KbAudit, KbChunk, KbDocument
 
 __all__ = [
     "Base",
@@ -44,6 +45,9 @@ __all__ = [
     "BillingSubscription",
     "NotificationChannel",
     "AdTeardown",
+    "KbDocument",
+    "KbChunk",
+    "KbAudit",
     "User",
     "Organization",
     "ScrapeJob",

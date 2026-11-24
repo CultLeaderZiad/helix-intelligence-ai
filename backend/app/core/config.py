@@ -128,6 +128,9 @@ class Settings(BaseSettings):
     ALERT_DEFAULT_TELEGRAM_CHATS: int = int(os.getenv("ALERT_DEFAULT_TELEGRAM_CHATS", "1"))
     ALERT_DEFAULT_WEBHOOKS: int = int(os.getenv("ALERT_DEFAULT_WEBHOOKS", "1"))
     ALERT_DEFAULT_PER_DAY: int = int(os.getenv("ALERT_DEFAULT_PER_DAY", "20"))
+    # Knowledge base (admin uploads): bytes per file and in total.
+    KB_MAX_FILE_BYTES: int = int(os.getenv("KB_MAX_FILE_BYTES", str(512 * 1024)))
+    KB_MAX_TOTAL_BYTES: int = int(os.getenv("KB_MAX_TOTAL_BYTES", str(10 * 1024 * 1024)))
     TEARDOWN_DEFAULT_PER_DAY: int = int(os.getenv("TEARDOWN_DEFAULT_PER_DAY", "10"))
     ALERT_MAX_CONSECUTIVE_FAILURES: int = int(os.getenv("ALERT_MAX_CONSECUTIVE_FAILURES", "5"))
     # Whop billing (app/services/whop_billing.py). Every value empty = off:

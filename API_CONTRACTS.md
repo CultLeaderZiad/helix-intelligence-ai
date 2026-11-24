@@ -247,3 +247,12 @@ A non-2xx answer counts as a failure and is retried by the outbox.
 - Body: `{hook, angle, offer, cta, format, target_audience_guess, language, cached, model, created_at, label}`. A field the ad does not show is `null`.
 - Only public ad copy is sent (headline, body, CTA, format, landing domain), framed as data. Notes, tags and annotations are never sent. When every provider fails, or the output is invalid, the response is `502 ai_unavailable` and nothing is stored or counted.
 - Cache: `ad_teardowns` keyed by the ad's fingerprint (identity + copy), shared across workspaces. It holds no workspace data. Per-workspace usage is in `usage_logs` (`operation = 'ai_teardown'`).
+
+## Knowledge base — `/api/admin/knowledge-base` (full platform admins only)
+
+- `GET` list `{items: [{id, title, version, status, filename, size_bytes, checksum, uploaded_by, created_at, chunks}]}`.
+- `POST {title, text, filename?}` (`.md`/`.txt` only). Re-uploading a title creates the next version and turns the older ones off. `409 kb_unchanged` for identical content, `413` over `KB_MAX_FILE_BYTES` (512 KB) or `KB_MAX_TOTAL_BYTES` (10 MB).
+- `GET /{id}` preview with `chunk_items`; `PATCH /{id} {enabled}`; `DELETE /{id}` (deletes its chunks). Every change is written to `kb_audit`, which `GET /audit` returns.
+- `GET /search?q&k` returns the top chunks of enabled documents, as `{chunk_id, document_id, title, version, ordinal, text}`. The agent uses the same function and cites `chunk_id`.
+- Tables `kb_documents`, `kb_chunks` (GIN expression indexes, simple + arabic) and `kb_audit`. They are platform-wide admin content, so they have no tenant RLS.
+- Source files: `python backend/scripts/kb_merge.py <dir> -o knowledge_base.md`. The script dedupes paragraphs and drops links-only, navigation and very short text. It never rewrites anything, and it marks the source of every block. Review the file, then upload it on the admin page.

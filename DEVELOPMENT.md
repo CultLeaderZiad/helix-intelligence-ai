@@ -797,6 +797,7 @@ secret) is Fernet-encrypted with `CREDENTIAL_ENCRYPTION_KEY`.
 | `TELEGRAM_WEBHOOK_SECRET` | With Telegram | Must equal the `secret_token` given to `setWebhook`; the bot webhook refuses requests without it |
 | `ALERT_DEFAULT_TELEGRAM_CHATS` / `ALERT_DEFAULT_WEBHOOKS` | Optional | Channels per workspace when the plan sets none (default `1` / `1`) |
 | `ALERT_DEFAULT_PER_DAY` | Optional | Alerts per workspace per UTC day when the plan sets none (default `20`) |
+| `KB_MAX_FILE_BYTES` / `KB_MAX_TOTAL_BYTES` | Optional | Knowledge base upload limits per file and in total (default 512 KB / 10 MB) |
 | `TEARDOWN_DEFAULT_PER_DAY` | Optional | New AI teardowns per workspace per UTC day when the plan sets none (default `10`; cache hits are free) |
 | `ALERT_MAX_CONSECUTIVE_FAILURES` | Optional | Failures in a row before a channel is turned off (default `5`) |
 

@@ -43,6 +43,7 @@ function safeLazy(importFn) {
 
 const LandingPage = safeLazy(() => import("@/pages/LandingPage").then(m => ({ default: m.LandingPage })))
 const PricingAdminPage = safeLazy(() => import("@/pages/admin/PricingAdminPage").then(m => ({ default: m.PricingAdminPage })))
+const KnowledgeBasePage = safeLazy(() => import("@/pages/admin/KnowledgeBasePage").then(m => ({ default: m.KnowledgeBasePage })))
 const PricingPage = safeLazy(() => import("@/pages/PricingPage").then(m => ({ default: m.PricingPage })))
 const AdminShell = safeLazy(() => import("@/app/admin/AdminShell").then(m => ({ default: m.AdminShell })))
 
@@ -208,6 +209,7 @@ export default function App() {
                       <Route path="/admin/users" element={<UsersPage />} />
                       <Route path="/admin/pricing" element={<PricingAdminPage />} />
                       <Route path="/admin/updates" element={<UpdatesPage />} />
+                      <Route path="/admin/knowledge-base" element={<KnowledgeBasePage />} />
                       <Route path="/admin/support" element={<SupportAdminPage />} />
                       <Route path="/admin/data-sources" element={optionalPage(<DataSourcesPage />)} />
                       <Route path="/admin/scrape-jobs" element={optionalPage(<ScrapeJobsPage />)} />
