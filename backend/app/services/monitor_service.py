@@ -689,6 +689,24 @@ async def _load_prior_states(db: AsyncSession, monitor_id: str) -> Dict[str, Mon
     return {row.identity_hash: row for row in result.scalars().all()}
 
 
+def partial_guard_active(recent_reasons: Sequence[Optional[str]], max_consecutive: int) -> bool:
+    """Whether a small run should still be treated as a partial scrape.
+
+    ``recent_reasons`` are the ``skipped_reason`` values of this monitor's
+    previous runs, newest first (the current run excluded). Once
+    ``max_consecutive - 1`` of them in a row were partial, this run is the
+    ``max_consecutive``-th and the smaller catalogue is accepted as real.
+    """
+    if max_consecutive <= 1:
+        return False
+    streak = 0
+    for reason in recent_reasons:
+        if reason != "partial_result":
+            break
+        streak += 1
+    return streak < max_consecutive - 1
+
+
 async def _apply_diff(monitor_id: str, run_id: str, job_id: str, is_baseline: bool) -> None:
     async with async_session_maker() as db:
         creatives = list(
@@ -701,12 +719,39 @@ async def _apply_diff(monitor_id: str, run_id: str, job_id: str, is_baseline: bo
             for identity, row in stored.items()
         }
 
+        recent_reasons = list(
+            (
+                await db.execute(
+                    select(MonitorRun.skipped_reason)
+                    .where(MonitorRun.monitor_id == monitor_id, MonitorRun.id != run_id, MonitorRun.status == "succeeded")
+                    .order_by(MonitorRun.started_at.desc())
+                    .limit(max(settings.MONITOR_PARTIAL_MAX_CONSECUTIVE, 1))
+                )
+            ).scalars().all()
+        )
         result = diff_run(
             signatures,
             previous,
             is_baseline=is_baseline,
             miss_threshold=settings.MONITOR_MISS_THRESHOLD,
+            partial_guard=settings.MONITOR_PARTIAL_RATIO > 0
+            and partial_guard_active(recent_reasons, settings.MONITOR_PARTIAL_MAX_CONSECUTIVE),
+            partial_ratio=settings.MONITOR_PARTIAL_RATIO,
+            partial_min_prior=settings.MONITOR_PARTIAL_MIN_PRIOR,
         )
+
+        if result.skipped_reason == "partial_result":
+            # Touch nothing: no event, no miss counter, no overwritten copy
+            # hashes. The ads seen this run are re-evaluated by the next one.
+            await db.commit()
+            await _finish_run(
+                run_id,
+                status="succeeded",
+                creatives_seen=len(signatures),
+                is_baseline=False,
+                skipped_reason="partial_result",
+            )
+            return
 
         now = _utcnow()
 

@@ -39,6 +39,14 @@ FINGERPRINT_VERSION = "v1"
 # One absence is far more often a partial scrape than a paused ad.
 DEFAULT_MISS_THRESHOLD = 2
 
+# A run that returns far fewer ads than the monitor already tracks is a partial
+# scrape far more often than an advertiser pausing most of its ads at once.
+# Below this share of the active ads we already know, the run is inconclusive.
+DEFAULT_PARTIAL_RATIO = 0.5
+# With very few tracked ads a ratio means nothing (2 of 3 is 67%, 1 of 3 is 33%),
+# so the guard only applies from this many active ads upward.
+DEFAULT_PARTIAL_MIN_PRIOR = 6
+
 _WHITESPACE = re.compile(r"\s+")
 _PUNCTUATION = re.compile(r"[^\w\s]", re.UNICODE)
 # Ad libraries hand back copy containing unresolved merge tags. They carry no
@@ -237,6 +245,9 @@ def diff_run(
     *,
     is_baseline: bool = False,
     miss_threshold: int = DEFAULT_MISS_THRESHOLD,
+    partial_guard: bool = True,
+    partial_ratio: float = DEFAULT_PARTIAL_RATIO,
+    partial_min_prior: int = DEFAULT_PARTIAL_MIN_PRIOR,
 ) -> DiffResult:
     """Compare one run's creatives against what the monitor remembers.
 
@@ -249,12 +260,20 @@ def diff_run(
       indistinguishable from a provider outage, and "all your competitor's ads
       were killed" is the single most damaging thing this feature could get
       wrong.
+    - A run that returned far fewer ads than the monitor tracks is inconclusive
+      (``partial_result``). It is told apart from a real drop only by the
+      caller, which turns the guard off after several such runs in a row.
     """
     if not current:
         return DiffResult([], [], [], [], [], 0, skipped_reason="empty_result")
 
     if is_baseline:
         return DiffResult([], [], [], [], [], len(current), skipped_reason="baseline")
+
+    if partial_guard:
+        active_prior = sum(1 for prior in previous.values() if prior.status == "active")
+        if active_prior >= partial_min_prior and len(current) < partial_ratio * active_prior:
+            return DiffResult([], [], [], [], [], len(current), skipped_reason="partial_result")
 
     new: List[CreativeSignature] = []
     changed: List[Tuple[CreativeSignature, PriorState]] = []

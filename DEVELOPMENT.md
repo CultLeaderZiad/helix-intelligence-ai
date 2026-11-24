@@ -72,6 +72,9 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `APP_BASE_URL` | ✅ (for Monitors) | Frontend origin used for links in alerts. Production: `https://helix-intelligence-ai-six.vercel.app` |
 | `MONITOR_MAX_PER_TICK` | Optional | Due monitors started per tick (default `3`) |
 | `MONITOR_MISS_THRESHOLD` | Optional | Consecutive absences before an ad is reported stopped (default `2`) |
+| `MONITOR_PARTIAL_RATIO` | Optional | A run returning fewer than this share of the monitor's active ads is recorded as `partial_result` and changes nothing (default `0.5`, `0` disables) |
+| `MONITOR_PARTIAL_MIN_PRIOR` | Optional | The partial-run guard only applies once a monitor tracks at least this many active ads (default `6`) |
+| `MONITOR_PARTIAL_MAX_CONSECUTIVE` | Optional | After this many partial runs in a row the smaller catalogue is accepted as real, so a genuine shrink cannot freeze a monitor (default `3`) |
 | `MONITOR_MAX_FAILURES` | Optional | Consecutive failed runs before a monitor self-pauses (default `5`) |
 | `RESEND_API_KEY` | Optional | Resend API key. Without it monitor alerts are in-app only |
 | `RESEND_FROM` | Optional | Verified From address. Planned value: `Helix <noreply@mail.cyreax.com>`. Read from the environment only; the app does not hardcode it |
@@ -343,6 +346,13 @@ Three refusals to report keep the feed trustworthy:
 - **A single absence is not a death.** An ad must be missing for
   `MONITOR_MISS_THRESHOLD` consecutive runs before `killed_ad` fires, because
   one absence is far more often a partial scrape than a paused ad.
+- **A partial scrape is not a takedown.** Once a monitor tracks at least
+  `MONITOR_PARTIAL_MIN_PRIOR` active ads, a run that returns fewer than
+  `MONITOR_PARTIAL_RATIO` of them is recorded with `skipped_reason =
+  partial_result` and changes nothing: no events, no miss counters, no
+  rewritten copy hashes. After `MONITOR_PARTIAL_MAX_CONSECUTIVE` such runs in a
+  row the smaller catalogue is accepted, so a real shrink is reported late
+  rather than never. The run still spends its provider records.
 
 Known limit: ads that normalize identically (same copy, same domain — or no
 copy at all) are disambiguated by a deterministic index, so the first copy stays

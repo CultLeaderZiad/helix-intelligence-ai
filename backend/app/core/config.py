@@ -336,6 +336,13 @@ class Settings(BaseSettings):
     # Consecutive absences before an ad is reported killed. See
     # creative_fingerprint: one absence is usually a flaky scrape.
     MONITOR_MISS_THRESHOLD: int = int(os.getenv("MONITOR_MISS_THRESHOLD", "2"))
+    # A run returning fewer than this share of the monitor's active ads is
+    # inconclusive, not a mass takedown. 0 disables the guard.
+    MONITOR_PARTIAL_RATIO: float = float(os.getenv("MONITOR_PARTIAL_RATIO", "0.5"))
+    MONITOR_PARTIAL_MIN_PRIOR: int = int(os.getenv("MONITOR_PARTIAL_MIN_PRIOR", "6"))
+    # After this many partial runs in a row the smaller catalogue is accepted as
+    # real, so a genuine shrink cannot freeze a monitor forever.
+    MONITOR_PARTIAL_MAX_CONSECUTIVE: int = int(os.getenv("MONITOR_PARTIAL_MAX_CONSECUTIVE", "3"))
     # Consecutive failed runs before a monitor pauses itself, so a permanently
     # broken query stops burning credits.
     MONITOR_MAX_FAILURES: int = int(os.getenv("MONITOR_MAX_FAILURES", "5"))
