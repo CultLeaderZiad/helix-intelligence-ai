@@ -1,6 +1,6 @@
 import uuid
 import sqlalchemy as sa
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, JSON, String, Boolean
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, JSON, String, Boolean, Index
 from app.db.base import Base
 
 def generate_uuid():
@@ -8,6 +8,7 @@ def generate_uuid():
 
 class Creative(Base):
     __tablename__ = "creatives"
+    __table_args__ = (Index("ix_creatives_brand_landing", "brand_id", "landing_domain"),)
 
     id = Column(String, primary_key=True, default=generate_uuid)
     job_id = Column(String, ForeignKey("scrape_jobs.id"), nullable=False, index=True)

@@ -234,3 +234,8 @@ Reject a timestamp older than 5 minutes. Body:
 ```
 
 A non-2xx answer counts as a failure and is retried by the outbox.
+
+## Advertisers — `/api/advertisers` (flag `discover`, database only, no provider cost)
+
+- `GET /api/advertisers/{brand_id}` returns `{brand_id, brand_name, ads_found, ads_with_known_run_length, longest_running_days, monitored_ads, active_now, launches_last_30d, weekly: [{week_start, launches, active}], source_note}`. Scope: the caller's workspaces. Launches and active counts come only from the workspace's monitors, and baseline ads are not counted as launches. Without monitors, `weekly` is `[]` and the counts are `null`, not 0. `404` when the workspace has no ads from that advertiser.
+- `GET /api/advertisers/{brand_id}/ads?page&page_size` (`page_size` ≤ 50) returns `{items, total, page, page_size, has_more, order}`. Each item has `signals: {days_active (null = unknown), variants, landing_page_reuse, fingerprint_anchor}`. There is no combined score. Order: days_active desc (unknown last), then variants, then landing_page_reuse.
