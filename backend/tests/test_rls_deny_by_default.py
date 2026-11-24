@@ -137,7 +137,7 @@ async def test_rls_deny_by_default_for_restricted_roles_and_worker_claims():
                     )
                 )
             ).all()
-            assert len(policies) == 43  # W8: + board_share_links, ad_archive, search_drafts, users, api_keys, workspace_daily_usage; W9-2: + saved_ad_tags, saved_ad_notes; Whop: + billing_subscriptions
+            assert len(policies) == 45  # W8: + board_share_links, ad_archive, search_drafts, users, api_keys, workspace_daily_usage; W9-2: + saved_ad_tags, saved_ad_notes; Whop: + billing_subscriptions; alerts: + notification_channels; agent: + agent_generations
             assert all(
                 "helix.enforce" not in f"{row.qual} {row.with_check}"
                 for row in policies
@@ -307,7 +307,7 @@ async def test_reconciliation_runs_with_restricted_worker_role(monkeypatch):
         rows = await reconciliation._sweep_table("media_jobs", reconciliation.MEDIA_ACTIVE, "error_message", reconciliation.MEDIA_MESSAGE)
         assert job.id in {row["id"] for row in rows}
         assert await reconciliation._sweep_monitor_runs() >= 1
-        notify.assert_any_await(monitor.id)
+        assert any(c.args[0] == monitor.id for c in notify.await_args_list)
         async with worker_session_maker() as db:
             assert (await db.execute(text("SELECT status FROM media_jobs WHERE id = :id"), {"id": job.id})).scalar_one() == "failed"
             assert (await db.execute(text("SELECT status FROM monitor_runs WHERE id = :id"), {"id": run.id})).scalar_one() == "failed"

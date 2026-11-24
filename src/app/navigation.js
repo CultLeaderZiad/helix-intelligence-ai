@@ -1,4 +1,4 @@
-import { Radar, Eye, Bookmark } from "lucide-react"
+import { Radar, Eye, Bookmark, MessageSquare } from "lucide-react"
 
 /**
  * The loops of the product. Single source of truth for the sidebar,
@@ -35,6 +35,15 @@ export const NAV_SECTIONS = [
     icon: Bookmark,
     feature: "swipe_files",
     description: "Save ads into boards and share a report.",
+    status: "live",
+  },
+  {
+    key: "agent",
+    path: "/agent",
+    label: "Ask Helix",
+    icon: MessageSquare,
+    feature: "discover",
+    description: "Ask about your saved ads, monitors and competitors; draft new ads.",
     status: "live",
   },
 ]

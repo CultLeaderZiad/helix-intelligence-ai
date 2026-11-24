@@ -21,6 +21,30 @@ const adminService = {
     }
   },
 
+  listKnowledgeBase() {
+    return request("/admin/knowledge-base")
+  },
+
+  uploadKnowledgeDocument({ title, text, filename }) {
+    return request("/admin/knowledge-base", { method: "POST", body: { title, text, filename } })
+  },
+
+  previewKnowledgeDocument(id) {
+    return request(`/admin/knowledge-base/${encodeURIComponent(id)}`)
+  },
+
+  setKnowledgeDocumentEnabled(id, enabled) {
+    return request(`/admin/knowledge-base/${encodeURIComponent(id)}`, { method: "PATCH", body: { enabled } })
+  },
+
+  deleteKnowledgeDocument(id) {
+    return request(`/admin/knowledge-base/${encodeURIComponent(id)}`, { method: "DELETE" })
+  },
+
+  knowledgeBaseAudit() {
+    return request("/admin/knowledge-base/audit")
+  },
+
   getSystemHealth() {
     return request("/admin/system/health")
   },

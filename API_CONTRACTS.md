@@ -214,3 +214,58 @@ retry waits and fences stale state updates. Aborting a client request is
 **not** proof that the backend job stopped: only `POST /jobs/{id}/cancel` asks
 the server to stop. Requests keep their bounded transport deadline and the hook
 keeps its overall job deadline.
+
+## Alerts — `/api/account/alert-channels`, `/api/telegram/webhook`
+
+- `GET /api/account/alert-channels` returns `{items, limits: {telegram, webhook, per_day}, sent_today, telegram_available}`. Items never include the chat id, URL or secrets.
+- `POST /api/account/alert-channels/webhook` `{url}` (owner only, https, public host only: SSRF-checked, pinned address, no redirects). Returns `{channel, signing_secret}`. The secret is shown once.
+- `POST /api/account/alert-channels/telegram` (owner only) returns `{channel, link, expires_at}`. The one-time code is valid for 15 minutes and is stored hashed.
+- `PATCH /api/account/alert-channels/{id}` `{enabled}`; `DELETE /api/account/alert-channels/{id}`. `403 alert_channel_limit` when the plan's channel count is used.
+- `POST /api/telegram/webhook`: Telegram only, verified with `X-Telegram-Bot-Api-Secret-Token`. Handles `/start <code>`.
+
+Webhook delivery: `POST <your url>`, `Content-Type: application/json`, headers
+`X-Helix-Timestamp: <unix seconds>` and
+`X-Helix-Signature: v1=<hex HMAC-SHA256(secret, "<timestamp>.<raw body>")>`.
+Reject a timestamp older than 5 minutes. Body:
+
+```json
+{"type": "helix.alert", "id": "<notification id>", "created_at": "<ISO 8601>",
+ "title": "...", "message": "...", "link": "https://<app>/monitors" }
+```
+
+A non-2xx answer counts as a failure and is retried by the outbox.
+
+## Advertisers — `/api/advertisers` (flag `discover`, database only, no provider cost)
+
+- `GET /api/advertisers/{brand_id}` returns `{brand_id, brand_name, ads_found, ads_with_known_run_length, longest_running_days, monitored_ads, active_now, launches_last_30d, weekly: [{week_start, launches, active}], source_note}`. Scope: the caller's workspaces. Launches and active counts come only from the workspace's monitors, and baseline ads are not counted as launches. Without monitors, `weekly` is `[]` and the counts are `null`, not 0. `404` when the workspace has no ads from that advertiser.
+- `GET /api/advertisers/{brand_id}/ads?page&page_size` (`page_size` ≤ 50) returns `{items, total, page, page_size, has_more, order}`. Each item has `signals: {days_active (null = unknown), variants, landing_page_reuse, fingerprint_anchor}`. There is no combined score. Order: days_active desc (unknown last), then variants, then landing_page_reuse.
+
+## AI teardown — `/api/creatives/{id}/teardown` (flag `discover`)
+
+- `GET` returns the cached teardown (free) or `404 teardown_not_found`.
+- `POST` analyses the ad: cache first (free, `cached: true`). Otherwise it counts one against `plans.limits.teardowns_per_day` (default `TEARDOWN_DEFAULT_PER_DAY` = 10; `429 teardown_daily_limit`). It goes through the paid-AI rate-limit bucket.
+- Body: `{hook, angle, offer, cta, format, target_audience_guess, language, cached, model, created_at, label}`. A field the ad does not show is `null`.
+- Only public ad copy is sent (headline, body, CTA, format, landing domain), framed as data. Notes, tags and annotations are never sent. When every provider fails, or the output is invalid, the response is `502 ai_unavailable` and nothing is stored or counted.
+- Cache: `ad_teardowns` keyed by the ad's fingerprint (identity + copy), shared across workspaces. It holds no workspace data. Per-workspace usage is in `usage_logs` (`operation = 'ai_teardown'`).
+
+## Knowledge base — `/api/admin/knowledge-base` (full platform admins only)
+
+- `GET` list `{items: [{id, title, version, status, filename, size_bytes, checksum, uploaded_by, created_at, chunks}]}`.
+- `POST {title, text, filename?}` (`.md`/`.txt` only). Re-uploading a title creates the next version and turns the older ones off. `409 kb_unchanged` for identical content, `413` over `KB_MAX_FILE_BYTES` (512 KB) or `KB_MAX_TOTAL_BYTES` (10 MB).
+- `GET /{id}` preview with `chunk_items`; `PATCH /{id} {enabled}`; `DELETE /{id}` (deletes its chunks). Every change is written to `kb_audit`, which `GET /audit` returns.
+- `GET /search?q&k` returns the top chunks of enabled documents, as `{chunk_id, document_id, title, version, ordinal, text}`. The agent uses the same function and cites `chunk_id`.
+- Tables `kb_documents`, `kb_chunks` (GIN expression indexes, simple + arabic) and `kb_audit`. They are platform-wide admin content, so they have no tenant RLS.
+- Source files: `python backend/scripts/kb_merge.py <dir> -o knowledge_base.md`. The script dedupes paragraphs and drops links-only, navigation and very short text. It never rewrites anything, and it marks the source of every block. Review the file, then upload it on the admin page.
+
+## Ask Helix — `/api/agent` (flag `discover`, text only, read-only agent)
+
+- `GET /limits` returns `{messages_per_day, messages_used, generations_per_day, generations_used}`. Counters come from `usage_logs` (`agent_message`, `agent_generation`) in the database. Defaults: 5 messages and 3 generations a day (`AGENT_DEFAULT_*`); plans override with `plans.limits.agent_messages_per_day` and `agent_generations_per_day`. `429 agent_message_daily_limit` / `agent_generation_daily_limit`.
+- `POST /ask {question, history[], lang}` returns `{answer, citations: [{type: kb|ad, id}], proposals[], tools_used[], model, label}`.
+  - The model picks read tools: `list_boards`, `get_board`, `list_monitor_events`, `get_stored_results`, `get_ad`, `get_advertiser_summary`, `search_knowledge_base`, `get_teardown`. The server checks the name and arguments against an allow-list and scopes everything to the workspace.
+  - No tool starts a search, spends records or credits, writes, or returns board notes or annotations. At most `AGENT_MAX_STEPS` steps (4) and `AGENT_TIMEOUT_S` seconds (60).
+  - Tool output and ad/KB text reach the model as data inside tags. Citations are kept only if a tool returned that chunk or ad in this conversation.
+  - Proposals (`create_monitor`, `save_to_board`, `create_brief`) carry `requires_approval: true` and the normal endpoint the UI calls after the user approves. The agent cannot write.
+  - `502 ai_unavailable` when every provider fails or the output is invalid: nothing is counted, nothing is made up.
+- `POST /generate {creative_id, product, language: ar|en, dialect: egyptian|gulf|levantine|msa}` returns 5 drafts `{primary_text, headline, cta, ugc_script, image_prompt}`, cached per workspace by input hash (a cache hit is free).
+- `POST /brief {brand_id}` saves the advertiser's longest-running ads to a board "Brief: <name>" (needs Swipe Files) and returns angles (from cached teardowns only) and 10 ideas. Share the board with the existing share link.
+- Arabic search: queries are also matched with alef forms, ta marbuta, alef maqsura, tashkeel and tatweel normalised (`text_search.expand_query`).

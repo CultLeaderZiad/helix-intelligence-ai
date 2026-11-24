@@ -43,6 +43,7 @@ function safeLazy(importFn) {
 
 const LandingPage = safeLazy(() => import("@/pages/LandingPage").then(m => ({ default: m.LandingPage })))
 const PricingAdminPage = safeLazy(() => import("@/pages/admin/PricingAdminPage").then(m => ({ default: m.PricingAdminPage })))
+const KnowledgeBasePage = safeLazy(() => import("@/pages/admin/KnowledgeBasePage").then(m => ({ default: m.KnowledgeBasePage })))
 const PricingPage = safeLazy(() => import("@/pages/PricingPage").then(m => ({ default: m.PricingPage })))
 const AdminShell = safeLazy(() => import("@/app/admin/AdminShell").then(m => ({ default: m.AdminShell })))
 
@@ -62,6 +63,8 @@ function FeaturePage({ feature, children }) {
 }
 
 const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
+const AdvertiserPage = safeLazy(() => import("@/pages/AdvertiserPage").then(m => ({ default: m.AdvertiserPage })))
+const AgentPage = safeLazy(() => import("@/pages/AgentPage").then(m => ({ default: m.AgentPage })))
 const SwipeFilesPage = safeLazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
 const BillingPage = safeLazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
 const TeamPage = safeLazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamPage })))
@@ -207,6 +210,7 @@ export default function App() {
                       <Route path="/admin/users" element={<UsersPage />} />
                       <Route path="/admin/pricing" element={<PricingAdminPage />} />
                       <Route path="/admin/updates" element={<UpdatesPage />} />
+                      <Route path="/admin/knowledge-base" element={<KnowledgeBasePage />} />
                       <Route path="/admin/support" element={<SupportAdminPage />} />
                       <Route path="/admin/data-sources" element={optionalPage(<DataSourcesPage />)} />
                       <Route path="/admin/scrape-jobs" element={optionalPage(<ScrapeJobsPage />)} />
@@ -227,6 +231,8 @@ export default function App() {
                     <Route element={<AuthenticatedShell />}>
                       <Route path="/discover" element={<DiscoverPage />} />
                       <Route path="/monitors" element={<FeaturePage feature="monitors"><MonitorsPage /></FeaturePage>} />
+                      <Route path="/advertisers/:brandId" element={<FeaturePage feature="discover"><AdvertiserPage /></FeaturePage>} />
+                      <Route path="/agent" element={<FeaturePage feature="discover"><AgentPage /></FeaturePage>} />
                       <Route path="/swipe-files" element={<FeaturePage feature="swipe_files"><SwipeFilesPage /></FeaturePage>} />
                       <Route path="/access" element={<BillingPage />} />
                       <Route path="/billing" element={<Navigate to="/access" replace />} />

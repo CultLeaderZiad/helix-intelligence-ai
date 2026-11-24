@@ -117,6 +117,7 @@ class MonitorCreative(Base):
 
     __table_args__ = (
         Index("ix_monitor_creatives_identity", "monitor_id", "identity_hash", unique=True),
+        Index("ix_monitor_creatives_creative_id", "creative_id"),
     )
 
 

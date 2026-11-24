@@ -119,6 +119,27 @@ class Settings(BaseSettings):
     # matches, the edge client-IP header is believed even if the hop before
     # our proxies is not a Cloudflare address. Empty = off (the default).
     TRUSTED_PROXY_SECRET: str = os.getenv("TRUSTED_PROXY_SECRET", "")
+    # Alerts (app/services/alert_channels.py). Telegram is off unless the
+    # bot token is set. TELEGRAM_WEBHOOK_SECRET must match the secret_token
+    # passed to Telegram's setWebhook; requests without it are refused.
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_BOT_USERNAME: str = os.getenv("TELEGRAM_BOT_USERNAME", "")
+    TELEGRAM_WEBHOOK_SECRET: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+    ALERT_DEFAULT_TELEGRAM_CHATS: int = int(os.getenv("ALERT_DEFAULT_TELEGRAM_CHATS", "1"))
+    ALERT_DEFAULT_WEBHOOKS: int = int(os.getenv("ALERT_DEFAULT_WEBHOOKS", "1"))
+    ALERT_DEFAULT_PER_DAY: int = int(os.getenv("ALERT_DEFAULT_PER_DAY", "20"))
+    # Knowledge base (admin uploads): bytes per file and in total.
+    KB_MAX_FILE_BYTES: int = int(os.getenv("KB_MAX_FILE_BYTES", str(512 * 1024)))
+    KB_MAX_TOTAL_BYTES: int = int(os.getenv("KB_MAX_TOTAL_BYTES", str(10 * 1024 * 1024)))
+    # Helix Agent (app/services/agent_service.py). Defaults are the free/trial
+    # caps; paid plans set plans.limits.agent_messages_per_day /
+    # agent_generations_per_day (e.g. 100 / 50).
+    AGENT_DEFAULT_MESSAGES_PER_DAY: int = int(os.getenv("AGENT_DEFAULT_MESSAGES_PER_DAY", "5"))
+    AGENT_DEFAULT_GENERATIONS_PER_DAY: int = int(os.getenv("AGENT_DEFAULT_GENERATIONS_PER_DAY", "3"))
+    AGENT_MAX_STEPS: int = int(os.getenv("AGENT_MAX_STEPS", "4"))
+    AGENT_TIMEOUT_S: float = float(os.getenv("AGENT_TIMEOUT_S", "60"))
+    TEARDOWN_DEFAULT_PER_DAY: int = int(os.getenv("TEARDOWN_DEFAULT_PER_DAY", "10"))
+    ALERT_MAX_CONSECUTIVE_FAILURES: int = int(os.getenv("ALERT_MAX_CONSECUTIVE_FAILURES", "5"))
     # Whop billing (app/services/whop_billing.py). Every value empty = off:
     # no checkout button, and the webhook answers 503.
     # WHOP_API_KEY: company API key with checkout_configuration:create.
@@ -336,11 +357,23 @@ class Settings(BaseSettings):
     # Consecutive absences before an ad is reported killed. See
     # creative_fingerprint: one absence is usually a flaky scrape.
     MONITOR_MISS_THRESHOLD: int = int(os.getenv("MONITOR_MISS_THRESHOLD", "2"))
+    # A run returning fewer than this share of the monitor's active ads is
+    # inconclusive, not a mass takedown. 0 disables the guard.
+    MONITOR_PARTIAL_RATIO: float = float(os.getenv("MONITOR_PARTIAL_RATIO", "0.5"))
+    MONITOR_PARTIAL_MIN_PRIOR: int = int(os.getenv("MONITOR_PARTIAL_MIN_PRIOR", "6"))
+    # After this many partial runs in a row the smaller catalogue is accepted as
+    # real, so a genuine shrink cannot freeze a monitor forever.
+    MONITOR_PARTIAL_MAX_CONSECUTIVE: int = int(os.getenv("MONITOR_PARTIAL_MAX_CONSECUTIVE", "3"))
     # Consecutive failed runs before a monitor pauses itself, so a permanently
     # broken query stops burning credits.
     MONITOR_MAX_FAILURES: int = int(os.getenv("MONITOR_MAX_FAILURES", "5"))
     # How long a monitor run may take before the reconciler treats it as dead.
     MONITOR_RUN_TIMEOUT_S: int = int(os.getenv("MONITOR_RUN_TIMEOUT_S", "900"))
+    # A run killed by a restart (reconciler: skipped_reason='service_restart')
+    # is retried on the next tick instead of waiting a full cadence, at most
+    # this many times in a row, so a monitor that crashes the process every
+    # time cannot loop. 0 = never retry early (wait for the cadence).
+    MONITOR_RESTART_MAX_RETRIES: int = max(0, int(os.getenv("MONITOR_RESTART_MAX_RETRIES", "2")))
 
     # EMAIL (Resend). Unset means email fan-out is skipped and only in-app
     # notifications are delivered; it is never a hard failure.

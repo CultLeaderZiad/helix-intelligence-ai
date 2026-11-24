@@ -31,6 +31,10 @@ from .workspace_daily_usage import WorkspaceDailyUsage
 from .provider_record_budget import ProviderRecordBudget
 from .saved_ad_annotation import SavedAdTag, SavedAdNote
 from .billing_subscription import BillingSubscription
+from .notification_channel import NotificationChannel
+from .ad_teardown import AdTeardown
+from .knowledge_base import KbAudit, KbChunk, KbDocument
+from .agent_generation import AgentGeneration
 
 __all__ = [
     "Base",
@@ -40,6 +44,12 @@ __all__ = [
     "SavedAdTag",
     "SavedAdNote",
     "BillingSubscription",
+    "NotificationChannel",
+    "AdTeardown",
+    "KbDocument",
+    "KbChunk",
+    "KbAudit",
+    "AgentGeneration",
     "User",
     "Organization",
     "ScrapeJob",

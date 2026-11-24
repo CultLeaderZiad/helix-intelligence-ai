@@ -10,7 +10,8 @@ async def create_notification(
     message: str,
     org_id: Optional[str] = None,
     type: str = "info",
-    link: Optional[str] = None
+    link: Optional[str] = None,
+    fan_out: bool = True,
 ) -> Notification:
     notif = Notification(
         user_id=user_id,
@@ -24,6 +25,20 @@ async def create_notification(
     db.add(notif)
     await db.commit()
     await db.refresh(notif)
+    if fan_out and org_id:
+        # Telegram / webhook copies go through the durable outbox. Best effort:
+        # the in-app notification above is already saved either way.
+        try:
+            from app.services.alert_channels import enqueue_alerts
+
+            if await enqueue_alerts(db, org_id=org_id, user_id=user_id, notification_id=notif.id,
+                                    title=title, message=message, link=link):
+                await db.commit()
+        except Exception:
+            import logging
+
+            await db.rollback()
+            logging.getLogger(__name__).exception("alert fan-out failed for notification %s", notif.id)
     return notif
 
 async def list_notifications(

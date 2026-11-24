@@ -76,3 +76,28 @@ async def get_creative(
     if markdown.wants_markdown(request, as_md):
         return markdown.response(markdown.ad_document(creative))
     return creative
+
+
+@router.get("/{creative_id}/teardown")
+async def get_teardown(creative_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Cached AI teardown only (free). 404 when this ad was never analysed."""
+    from fastapi import HTTPException
+    from app.core.tenancy import get_user_org_ids
+    from app.services import teardown_service
+
+    scope = await get_user_org_ids(db, current_user)
+    cached = await teardown_service.get_cached(db, scope, creative_id)
+    if cached is None:
+        raise HTTPException(status_code=404, detail={"code": "teardown_not_found", "message": "This ad has not been analysed yet."})
+    return cached
+
+
+@router.post("/{creative_id}/teardown")
+async def create_teardown(creative_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Analyse an ad (cache first; a new analysis counts against the daily cap)."""
+    from app.core.tenancy import get_user_org_ids
+    from app.services import billing_service, teardown_service
+
+    scope = await get_user_org_ids(db, current_user)
+    org = await billing_service.get_or_create_default_org(db, current_user)
+    return await teardown_service.create(db, scope, org.id, current_user.id, creative_id)

@@ -144,7 +144,7 @@ async def test_monitor_org_lookup_precedes_failure_and_survives_commit():
     async def commit():
         events.append("commit")
 
-    async def notify(monitor_id):
+    async def notify(monitor_id, retrying=False):
         events.append("notify")
         assert monitor_id == "monitor-1"
         assert current_tenant().org_ids == ["org-1"]

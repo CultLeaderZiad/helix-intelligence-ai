@@ -489,4 +489,8 @@ async def _dispatch(kind, job_id, payload, org_id, user_id, item_id, owner, atte
         async with async_session_maker() as db:
             await archive_job(db, job_id, org_id)
         return
+    if kind == "alert":
+        from app.services.alert_channels import deliver
+        await deliver(org_id, payload)
+        return
     raise RuntimeError(f"unknown work kind {kind}")

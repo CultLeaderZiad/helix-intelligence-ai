@@ -60,6 +60,14 @@ describe("admin pricing editor helpers", () => {
 })
 
 
+const NO_EXTRA_API = {
+  alert_telegram_chats: null, alert_webhooks: null, alerts_per_day: null,
+  teardowns_per_day: null, agent_messages_per_day: null, agent_generations_per_day: null,
+}
+const NO_EXTRA_FORM = {
+  alertTelegram: "", alertWebhooks: "", alertsPerDay: "", teardowns: "", agentMessages: "", agentGenerations: "",
+}
+
 describe("admin plan limits form", () => {
   it("sends blanks as defaults and one cadence only when restricted", () => {
     expect(limitsFromForm({ searches: "", monitors: "", cadences: { daily: true, weekly: true } })).toEqual({
@@ -67,18 +75,31 @@ describe("admin plan limits form", () => {
       monitors: null,
       records_per_month: null,
       monitor_cadences: null,
+      ...NO_EXTRA_API,
     })
     expect(limitsFromForm({ searches: "5", monitors: "2", records: "150", cadences: { daily: false, weekly: true } })).toEqual({
       searches_per_day: 5,
       monitors: 2,
       records_per_month: 150,
       monitor_cadences: ["weekly"],
+      ...NO_EXTRA_API,
     })
   })
 
   it("round-trips the API shape", () => {
     const form = limitsToForm({ searches_per_day: 20, monitors: 10, records_per_month: 150, monitor_cadences: ["daily"] })
-    expect(form).toEqual({ searches: 20, monitors: 10, records: 150, cadences: { daily: true, weekly: false } })
+    expect(form).toEqual({ searches: 20, monitors: 10, records: 150, cadences: { daily: true, weekly: false }, ...NO_EXTRA_FORM })
     expect(limitsToForm(null).cadences).toEqual({ daily: true, weekly: true })
+  })
+
+  it("keeps the alert, analysis and agent limits when a plan is saved", () => {
+    const api = {
+      searches_per_day: 20, monitors: 10, records_per_month: 800, monitor_cadences: null,
+      alert_telegram_chats: 3, alert_webhooks: 2, alerts_per_day: 100,
+      teardowns_per_day: 40, agent_messages_per_day: 100, agent_generations_per_day: 50,
+    }
+    const form = limitsToForm(api)
+    expect(form).toMatchObject({ agentMessages: 100, alertsPerDay: 100, teardowns: 40 })
+    expect(limitsFromForm(form)).toEqual(api)
   })
 })

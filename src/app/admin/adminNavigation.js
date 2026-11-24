@@ -10,6 +10,7 @@ import {
   Flag,
   ScrollText,
   Bell,
+  BookOpen,
   MessageSquareCheck,
   ShieldCheck,
   Tag,
@@ -114,6 +115,13 @@ const ALL_ADMIN_NAV_GROUPS = [
         path: "/admin/updates",
         label: "Updates & Banners",
         icon: Bell,
+        built: true,
+      },
+      {
+        key: "knowledge-base",
+        path: "/admin/knowledge-base",
+        label: "Knowledge Base",
+        icon: BookOpen,
         built: true,
       },
       {

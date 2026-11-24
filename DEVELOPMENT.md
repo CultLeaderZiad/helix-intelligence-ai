@@ -72,6 +72,10 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `APP_BASE_URL` | ✅ (for Monitors) | Frontend origin used for links in alerts. Production: `https://helix-intelligence-ai-six.vercel.app` |
 | `MONITOR_MAX_PER_TICK` | Optional | Due monitors started per tick (default `3`) |
 | `MONITOR_MISS_THRESHOLD` | Optional | Consecutive absences before an ad is reported stopped (default `2`) |
+| `MONITOR_PARTIAL_RATIO` | Optional | A run returning fewer than this share of the monitor's active ads is recorded as `partial_result` and changes nothing (default `0.5`, `0` disables) |
+| `MONITOR_PARTIAL_MIN_PRIOR` | Optional | The partial-run guard only applies once a monitor tracks at least this many active ads (default `6`) |
+| `MONITOR_PARTIAL_MAX_CONSECUTIVE` | Optional | After this many partial runs in a row the smaller catalogue is accepted as real, so a genuine shrink cannot freeze a monitor (default `3`) |
+| `MONITOR_RESTART_MAX_RETRIES` | Optional | A run killed by a restart is retried on the next tick, at most this many times in a row; after that it waits for its cadence (default `2`, `0` = never retry early) |
 | `MONITOR_MAX_FAILURES` | Optional | Consecutive failed runs before a monitor self-pauses (default `5`) |
 | `RESEND_API_KEY` | Optional | Resend API key. Without it monitor alerts are in-app only |
 | `RESEND_FROM` | Optional | Verified From address. Planned value: `Helix <noreply@mail.cyreax.com>`. Read from the environment only; the app does not hardcode it |
@@ -343,6 +347,13 @@ Three refusals to report keep the feed trustworthy:
 - **A single absence is not a death.** An ad must be missing for
   `MONITOR_MISS_THRESHOLD` consecutive runs before `killed_ad` fires, because
   one absence is far more often a partial scrape than a paused ad.
+- **A partial scrape is not a takedown.** Once a monitor tracks at least
+  `MONITOR_PARTIAL_MIN_PRIOR` active ads, a run that returns fewer than
+  `MONITOR_PARTIAL_RATIO` of them is recorded with `skipped_reason =
+  partial_result` and changes nothing: no events, no miss counters, no
+  rewritten copy hashes. After `MONITOR_PARTIAL_MAX_CONSECUTIVE` such runs in a
+  row the smaller catalogue is accepted, so a real shrink is reported late
+  rather than never. The run still spends its provider records.
 
 Known limit: ads that normalize identically (same copy, same domain — or no
 copy at all) are disambiguated by a deterministic index, so the first copy stays
@@ -769,3 +780,31 @@ and expired revoke only that grant; an admin's grant is never touched.
 Deliveries are deduplicated on `webhook-id` (`webhook_events`) and an event
 older than the last one applied to its membership is ignored. State per
 membership lives in `billing_subscriptions` (tenant RLS).
+
+## Alerts: Telegram and webhooks
+
+Every in-app notification for a workspace is copied to its active alert
+channels through the work outbox (`kind = 'alert'`). A failed send is retried
+with backoff. After `ALERT_MAX_CONSECUTIVE_FAILURES` failures in a row, the
+channel is turned off and the owner gets an in-app notice. Channels live in
+`notification_channels` (tenant RLS). The secret part (chat id, URL, signing
+secret) is Fernet-encrypted with `CREDENTIAL_ENCRYPTION_KEY`.
+
+| Env var | Required | What |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | Optional | Bot token from @BotFather. Unset = Telegram alerts off |
+| `TELEGRAM_BOT_USERNAME` | Optional | Bot username, used in the `t.me/<bot>?start=<code>` link |
+| `TELEGRAM_WEBHOOK_SECRET` | With Telegram | Must equal the `secret_token` given to `setWebhook`; the bot webhook refuses requests without it |
+| `ALERT_DEFAULT_TELEGRAM_CHATS` / `ALERT_DEFAULT_WEBHOOKS` | Optional | Channels per workspace when the plan sets none (default `1` / `1`) |
+| `ALERT_DEFAULT_PER_DAY` | Optional | Alerts per workspace per UTC day when the plan sets none (default `20`) |
+| `KB_MAX_FILE_BYTES` / `KB_MAX_TOTAL_BYTES` | Optional | Knowledge base upload limits per file and in total (default 512 KB / 10 MB) |
+| `AGENT_DEFAULT_MESSAGES_PER_DAY` / `AGENT_DEFAULT_GENERATIONS_PER_DAY` | Optional | Ask Helix questions and generations per workspace per UTC day when the plan sets none (default `5` / `3`) |
+| `AGENT_MAX_STEPS` / `AGENT_TIMEOUT_S` | Optional | Tool steps per question and the hard timeout (default `4` / `60`) |
+| `TEARDOWN_DEFAULT_PER_DAY` | Optional | New AI teardowns per workspace per UTC day when the plan sets none (default `10`; cache hits are free) |
+| `ALERT_MAX_CONSECUTIVE_FAILURES` | Optional | Failures in a row before a channel is turned off (default `5`) |
+
+Plan overrides: `plans.limits.alert_telegram_chats`, `alert_webhooks`, `alerts_per_day`.
+
+Telegram setup, done once by the owner:
+`POST https://api.telegram.org/bot<TOKEN>/setWebhook` with
+`url=https://<api>/api/telegram/webhook` and `secret_token=<TELEGRAM_WEBHOOK_SECRET>`.

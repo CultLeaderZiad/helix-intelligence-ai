@@ -8,6 +8,7 @@ import { getW5OnboardingText } from "../i18n/w5Onboarding"
 import { getMemberMessage, getMemberRoleLabel } from "@/i18n/memberMessages"
 import { useProfileSettings } from "@/hooks/useProfileSettings"
 import { SupportMailto } from "@/components/SupportMailto"
+import { AlertChannelsSection } from "@/features/alerts/AlertChannelsSection"
 
 export function ProfileSettingsPage() {
   const { user, signOut, refreshSession, updateUser } = useAuth()
@@ -178,6 +179,8 @@ export function ProfileSettingsPage() {
           {onboardingText(isRestartingTour ? "w5_settings_tour_restarting" : "w5_settings_tour_restart")}
         </button>
       </section>
+
+      <AlertChannelsSection />
 
       {/* Form Container */}
       <form onSubmit={handleSaveProfile} className="space-y-6">

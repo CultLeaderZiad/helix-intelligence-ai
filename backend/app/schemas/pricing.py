@@ -64,6 +64,15 @@ class PlanLimits(BaseModel):
     monitors: Optional[int] = Field(None, ge=0, le=500)
     records_per_month: Optional[int] = Field(None, ge=0, le=100000)
     monitor_cadences: Optional[List[Literal["daily", "weekly"]]] = None
+    # Alerts (None = defaults: 1 Telegram chat, 1 webhook, 20 alerts/day).
+    alert_telegram_chats: Optional[int] = Field(None, ge=0, le=20)
+    alert_webhooks: Optional[int] = Field(None, ge=0, le=20)
+    alerts_per_day: Optional[int] = Field(None, ge=0, le=10000)
+    # AI teardowns per workspace per UTC day (None = TEARDOWN_DEFAULT_PER_DAY). Cache hits are free.
+    teardowns_per_day: Optional[int] = Field(None, ge=0, le=10000)
+    # Helix Agent per workspace per UTC day (None = AGENT_DEFAULT_*). Cache hits are free.
+    agent_messages_per_day: Optional[int] = Field(None, ge=0, le=10000)
+    agent_generations_per_day: Optional[int] = Field(None, ge=0, le=10000)
 
     @field_validator("monitor_cadences")
     @classmethod

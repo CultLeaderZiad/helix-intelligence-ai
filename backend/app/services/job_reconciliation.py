@@ -258,7 +258,7 @@ async def _sweep_monitor_runs() -> int:
                         SET status = 'failed',
                             finished_at = now(),
                             skipped_reason = 'service_restart',
-                            error = 'Interrupted by a service restart. The next scheduled run will pick up where this left off.'
+                            error = 'Interrupted by a service restart. It is retried shortly (a bounded number of times) or on the next cadence.'
                         WHERE id = :run_id AND status = 'running'
                         RETURNING monitor_id
                         """
@@ -271,15 +271,21 @@ async def _sweep_monitor_runs() -> int:
         await db.commit()
 
     if monitor_targets:
-        from app.services.monitor_service import notify_run_interrupted
+        from app.services.monitor_service import notify_run_interrupted, reschedule_interrupted
 
         for monitor_id in dict.fromkeys(monitor_targets):
             org_id = monitor_orgs.get(monitor_id)
             if not org_id:
                 continue
+            retrying = False
             try:
                 with tenant_scope([org_id], "", platform_admin=False, enforce=True):
-                    await notify_run_interrupted(monitor_id)
+                    retrying = await reschedule_interrupted(monitor_id)
+            except Exception as exc:
+                logger.error("Could not reschedule interrupted monitor %s: %s", monitor_id, exc)
+            try:
+                with tenant_scope([org_id], "", platform_admin=False, enforce=True):
+                    await notify_run_interrupted(monitor_id, retrying=retrying)
             except Exception as exc:
                 logger.error("Could not notify owner of interrupted monitor %s: %s", monitor_id, exc)
     return len(monitor_targets)

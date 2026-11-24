@@ -417,6 +417,18 @@ async def get_monitor_events(
 # Scheduling
 # ---------------------------------------------------------------------------
 
+async def _platform_records_exhausted() -> bool:
+    """True when not even one monitor task fits the platform's monthly record cap."""
+    from app.services.provider_budget import RECORD_BUDGET, record_refusal
+
+    async with async_session_maker() as db:
+        try:
+            return await record_refusal(db, None) == RECORD_BUDGET
+        except Exception:
+            logger.exception("record budget check failed; monitors left unclaimed")
+            return True  # fail closed: no claim, no charge
+
+
 async def claim_due_monitors(db: AsyncSession, limit: int) -> List[Dict[str, str]]:
     """Atomically take ownership of monitors that are due.
 
@@ -468,6 +480,11 @@ async def tick(max_monitors: Optional[int] = None) -> Dict[str, Any]:
     if discover_paused():
         # Leave due monitors unclaimed (and uncharged) until Discover resumes.
         return {"dispatched": 0, "monitor_ids": [], "paused": True}
+    if await _platform_records_exhausted():
+        # Same rule for the platform's monthly record budget: claiming would
+        # push next_run_at a full cadence and charge a credit for a run whose
+        # provider task is then refused. Leave them due until the budget resets.
+        return {"dispatched": 0, "monitor_ids": [], "paused": True, "reason": "platform_record_budget_reached"}
     limit = max_monitors or settings.MONITOR_MAX_PER_TICK
     async with async_session_maker() as db:
         await apply_monitor_claim_context(db)
@@ -627,6 +644,43 @@ async def _run_monitor(monitor_id: str) -> None:
             await _handle_blocked(monitor_id, reason, message)
             return
 
+        # Records first: a workspace (or the platform) that has used its
+        # monthly Metapi records gets a skipped run, no credit charge and no
+        # provider call. Without this the charge below commits and the run then
+        # fails inside the provider when reserve_provider_records refuses.
+        from app.services.provider_budget import record_refusal, record_refusal_detail
+
+        refusal = await record_refusal(db, org_id)
+        if refusal:
+            detail = record_refusal_detail(refusal)
+            await db.rollback()
+            async with async_session_maker() as skipped_db:
+                skipped_db.add(MonitorRun(
+                    monitor_id=monitor_id, status="skipped", started_at=_utcnow(), finished_at=_utcnow(),
+                    is_baseline=is_baseline, skipped_reason=detail["code"], error=detail["message"],
+                ))
+                await skipped_db.commit()
+            logger.info("Monitor %s skipped: %s", monitor_id, detail["code"])
+            return
+
+        # The work item is delivered at least once. After a crash or a lease
+        # expiry it arrives again while the first attempt may still be running,
+        # and a second run would charge the credit and spend provider records a
+        # second time. ``assert_can_spend`` holds the organisation row lock, so
+        # two deliveries cannot both pass this check. A run that really died is
+        # closed by the reconciliation sweep and the next cadence runs again.
+        in_flight = await db.scalar(
+            select(func.count(MonitorRun.id)).where(
+                MonitorRun.monitor_id == monitor.id,
+                MonitorRun.status == "running",
+                MonitorRun.started_at > _utcnow() - datetime.timedelta(seconds=settings.MONITOR_RUN_TIMEOUT_S),
+            )
+        )
+        if in_flight:
+            await db.rollback()
+            logger.info("Monitor %s already has a run in flight; duplicate delivery ignored", monitor_id)
+            return
+
         run = MonitorRun(monitor_id=monitor.id, status="running", started_at=_utcnow(), is_baseline=is_baseline)
         job = ScrapeJob(
             org_id=org_id,
@@ -689,6 +743,24 @@ async def _load_prior_states(db: AsyncSession, monitor_id: str) -> Dict[str, Mon
     return {row.identity_hash: row for row in result.scalars().all()}
 
 
+def partial_guard_active(recent_reasons: Sequence[Optional[str]], max_consecutive: int) -> bool:
+    """Whether a small run should still be treated as a partial scrape.
+
+    ``recent_reasons`` are the ``skipped_reason`` values of this monitor's
+    previous runs, newest first (the current run excluded). Once
+    ``max_consecutive - 1`` of them in a row were partial, this run is the
+    ``max_consecutive``-th and the smaller catalogue is accepted as real.
+    """
+    if max_consecutive <= 1:
+        return False
+    streak = 0
+    for reason in recent_reasons:
+        if reason != "partial_result":
+            break
+        streak += 1
+    return streak < max_consecutive - 1
+
+
 async def _apply_diff(monitor_id: str, run_id: str, job_id: str, is_baseline: bool) -> None:
     async with async_session_maker() as db:
         creatives = list(
@@ -701,12 +773,39 @@ async def _apply_diff(monitor_id: str, run_id: str, job_id: str, is_baseline: bo
             for identity, row in stored.items()
         }
 
+        recent_reasons = list(
+            (
+                await db.execute(
+                    select(MonitorRun.skipped_reason)
+                    .where(MonitorRun.monitor_id == monitor_id, MonitorRun.id != run_id, MonitorRun.status == "succeeded")
+                    .order_by(MonitorRun.started_at.desc())
+                    .limit(max(settings.MONITOR_PARTIAL_MAX_CONSECUTIVE, 1))
+                )
+            ).scalars().all()
+        )
         result = diff_run(
             signatures,
             previous,
             is_baseline=is_baseline,
             miss_threshold=settings.MONITOR_MISS_THRESHOLD,
+            partial_guard=settings.MONITOR_PARTIAL_RATIO > 0
+            and partial_guard_active(recent_reasons, settings.MONITOR_PARTIAL_MAX_CONSECUTIVE),
+            partial_ratio=settings.MONITOR_PARTIAL_RATIO,
+            partial_min_prior=settings.MONITOR_PARTIAL_MIN_PRIOR,
         )
+
+        if result.skipped_reason == "partial_result":
+            # Touch nothing: no event, no miss counter, no overwritten copy
+            # hashes. The ads seen this run are re-evaluated by the next one.
+            await db.commit()
+            await _finish_run(
+                run_id,
+                status="succeeded",
+                creatives_seen=len(signatures),
+                is_baseline=False,
+                skipped_reason="partial_result",
+            )
+            return
 
         now = _utcnow()
 
@@ -967,14 +1066,59 @@ async def _notify_run_failed(monitor_id: str, error: str) -> None:
     )
 
 
-async def notify_run_interrupted(monitor_id: str) -> None:
+def restart_retry_allowed(recent: Sequence[tuple], max_retries: int) -> bool:
+    """Whether an interrupted run may be retried on the next tick.
+
+    ``recent`` is (status, skipped_reason) of the monitor's runs, newest first,
+    including the run that was just failed. Retries stop after ``max_retries``
+    restarts in a row, so a run that kills the process cannot loop.
+    """
+    if max_retries <= 0:
+        return False
+    streak = 0
+    for status, reason in recent:
+        if status == "failed" and reason == "service_restart":
+            streak += 1
+        else:
+            break
+    return 0 < streak <= max_retries
+
+
+async def reschedule_interrupted(monitor_id: str) -> bool:
+    """After a restart killed a run, make the monitor due again (bounded).
+
+    Called by the reconciler inside the monitor's tenant scope. The credit for
+    the interrupted run was charged and stays charged, like a failed run; the
+    retry is a new run with its own charge and record reservation.
+    """
+    async with async_session_maker() as db:
+        recent = (
+            await db.execute(
+                select(MonitorRun.status, MonitorRun.skipped_reason)
+                .where(MonitorRun.monitor_id == monitor_id)
+                .order_by(MonitorRun.started_at.desc())
+                .limit(settings.MONITOR_RESTART_MAX_RETRIES + 1)
+            )
+        ).all()
+        if not restart_retry_allowed([tuple(r) for r in recent], settings.MONITOR_RESTART_MAX_RETRIES):
+            return False
+        monitor = (await db.execute(select(Monitor).where(Monitor.id == monitor_id))).scalar_one_or_none()
+        if monitor is None or monitor.status != "active":
+            return False
+        monitor.next_run_at = _utcnow()
+        await db.commit()
+        return True
+
+
+async def notify_run_interrupted(monitor_id: str, retrying: bool = False) -> None:
     """Used by the reconciler when a run dies with the process. No refund claim."""
     await _notify_owner(
         monitor_id,
         "Monitor run interrupted",
         (
             "A scheduled search was interrupted by a service restart. "
-            "The next cadence will run it again. Open the monitor to check its status."
+            + ("It will be retried within a few minutes. " if retrying else "The next cadence will run it again. ")
+            + "Open the monitor to check its status."
         ),
     )
 

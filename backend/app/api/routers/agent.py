@@ -1,0 +1,67 @@
+"""Ask Helix: read-only agent, ad variant drafts, and briefs (approved proposals)."""
+from typing import List, Literal, Optional
+
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.deps import account_rate_limit, get_current_user, get_db, require_feature
+from app.core.tenancy import get_user_org_ids
+from app.models.user import User
+from app.services import agent_service, billing_service
+
+router = APIRouter(dependencies=[Depends(require_feature("discover"))])
+_limit = Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))
+
+
+class Turn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=4000)
+
+
+class AskBody(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+    history: List[Turn] = Field(default_factory=list, max_length=12)
+    lang: Literal["en", "ar"] = "en"
+
+
+class GenerateBody(BaseModel):
+    creative_id: str = Field(min_length=1, max_length=100)
+    product: str = Field(min_length=10, max_length=500)
+    language: Literal["ar", "en"] = "ar"
+    dialect: Optional[Literal["egyptian", "gulf", "levantine", "msa"]] = "egyptian"
+
+
+class BriefBody(BaseModel):
+    brand_id: str = Field(min_length=1, max_length=200)
+
+
+async def _ctx(db: AsyncSession, user: User):
+    org = await billing_service.get_or_create_default_org(db, user)
+    return org.id, await get_user_org_ids(db, user)
+
+
+@router.get("/limits")
+async def agent_limits(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    org_id, _scope = await _ctx(db, current_user)
+    return await agent_service.limits(db, org_id)
+
+
+@router.post("/ask", dependencies=[_limit])
+async def ask(body: AskBody, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    org_id, scope = await _ctx(db, current_user)
+    return await agent_service.ask(db, current_user, org_id, scope, body.question,
+                                   [t.model_dump() for t in body.history], body.lang)
+
+
+@router.post("/generate", dependencies=[_limit])
+async def generate(body: GenerateBody, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    org_id, scope = await _ctx(db, current_user)
+    return await agent_service.generate_variants(db, current_user, org_id, scope, body.creative_id, body.product,
+                                                 body.language, body.dialect)
+
+
+@router.post("/brief", dependencies=[_limit])
+async def brief(body: BriefBody, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    org_id, scope = await _ctx(db, current_user)
+    return await agent_service.create_brief(db, current_user, org_id, scope, body.brand_id)

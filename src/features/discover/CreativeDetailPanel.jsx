@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { X, ExternalLink, Play, Image as ImageIcon, Layers, Bookmark, Check } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { archiveService, creativeService } from "@/services"
@@ -12,6 +13,7 @@ import { useW8Copy } from "@/i18n/w8Product"
 import { ErrorState, Skeleton } from "@/components/ui/States"
 import { deriveInsight } from "@/lib/insight"
 import { MonitorBrandButton } from "@/features/discover/MonitorBrandButton"
+import { TeardownPanel } from "@/features/discover/TeardownPanel"
 import {
   formatCompact,
   formatDate,
@@ -267,11 +269,18 @@ export function CreativeDetailPanel({ creativeId, onClose }) {
               <div className="flex justify-end">
                 <MonitorBrandButton pageId={data.page_id ?? null} brandName={data.brand_name || data.brand?.name || null} />
               </div>
+              <TeardownPanel creativeId={creativeId} />
               <div className="flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="truncate text-xs font-medium text-text">
-                    {data.brand_name || data.brand?.name || "Unknown brand"}
-                  </span>
+                  {data.brand_id ? (
+                    <Link to={`/advertisers/${encodeURIComponent(data.brand_id)}`} className="truncate text-xs font-medium text-text underline-offset-2 hover:underline">
+                      {data.brand_name || data.brand?.name || "Unknown brand"}
+                    </Link>
+                  ) : (
+                    <span className="truncate text-xs font-medium text-text">
+                      {data.brand_name || data.brand?.name || "Unknown brand"}
+                    </span>
+                  )}
                   <Tag>{data.platform}</Tag>
                   {data.source_type === "organic_content_proxy" ? (
                     <span className="rounded border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-amber-400" title="Organic Post/Reel Proxy Content">
