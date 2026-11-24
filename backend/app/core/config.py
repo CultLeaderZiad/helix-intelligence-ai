@@ -133,6 +133,9 @@ class Settings(BaseSettings):
     # Knowledge base (admin uploads): bytes per file and in total.
     KB_MAX_FILE_BYTES: int = int(os.getenv("KB_MAX_FILE_BYTES", str(512 * 1024)))
     KB_MAX_TOTAL_BYTES: int = int(os.getenv("KB_MAX_TOTAL_BYTES", str(10 * 1024 * 1024)))
+    # A .zip upload: its size, and how many files it may hold.
+    KB_MAX_ZIP_BYTES: int = int(os.getenv("KB_MAX_ZIP_BYTES", str(8 * 1024 * 1024)))
+    KB_MAX_ZIP_ENTRIES: int = int(os.getenv("KB_MAX_ZIP_ENTRIES", "300"))
     # Helix Agent (app/services/agent_service.py). Defaults are the free/trial
     # caps; paid plans set plans.limits.agent_messages_per_day /
     # agent_generations_per_day (e.g. 100 / 50).

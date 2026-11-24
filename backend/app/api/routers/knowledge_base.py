@@ -1,13 +1,14 @@
 """Admin knowledge base. Full platform admins only."""
-from typing import Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_full_admin, get_db
 from app.models.user import User
-from app.services import kb_service
+from app.core.config import settings
+from app.services import kb_import, kb_service
 
 router = APIRouter()
 
@@ -30,6 +31,21 @@ async def list_documents(db: AsyncSession = Depends(get_db), admin: User = Depen
 @router.post("", status_code=201)
 async def upload_document(body: KbUpload, db: AsyncSession = Depends(get_db), admin: User = Depends(get_current_full_admin)):
     return await kb_service.upload(db, admin.id, body.title, body.text, body.filename)
+
+
+@router.post("/upload", status_code=201)
+async def upload_files(files: List[UploadFile] = File(...), title: Optional[str] = Form(None),
+                       db: AsyncSession = Depends(get_db), admin: User = Depends(get_current_full_admin)):
+    """.md, .txt and .zip files, read fully on the server. Each text file becomes its own document."""
+    uploads = []
+    for upload in files[: kb_import.MAX_FILES_PER_REQUEST + 1]:
+        name = upload.filename or ""
+        limit = settings.KB_MAX_ZIP_BYTES if name.lower().endswith(".zip") else settings.KB_MAX_FILE_BYTES
+        raw = await upload.read(limit + 1)
+        if len(raw) > limit:
+            raise HTTPException(status_code=413, detail={"code": "kb_file_too_large", "message": f"{name or 'A file'} is larger than {limit} bytes."})
+        uploads.append((name, raw))
+    return await kb_import.import_files(db, admin.id, uploads, title)
 
 
 @router.get("/audit")
