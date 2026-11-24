@@ -39,8 +39,19 @@ export function limitsFromForm(form) {
     monitors: num(form.monitors),
     records_per_month: num(form.records),
     monitor_cadences: cadences.length === 0 || cadences.length === 2 ? null : cadences,
+    ...Object.fromEntries(EXTRA_LIMITS.map(([key, api]) => [api, num(form[key])])),
   }
 }
+
+/** Limits beyond the first four: [form key, API key, label, max]. Blank = the server default. */
+export const EXTRA_LIMITS = [
+  ["alertTelegram", "alert_telegram_chats", "Telegram chats", 20],
+  ["alertWebhooks", "alert_webhooks", "Alert webhooks", 20],
+  ["alertsPerDay", "alerts_per_day", "Alerts a day", 10000],
+  ["teardowns", "teardowns_per_day", "AI analyses a day", 10000],
+  ["agentMessages", "agent_messages_per_day", "Ask Helix questions a day", 10000],
+  ["agentGenerations", "agent_generations_per_day", "Ad drafts a day", 10000],
+]
 
 /** API limits -> admin form values. */
 export function limitsToForm(limits) {
@@ -51,6 +62,7 @@ export function limitsToForm(limits) {
     monitors: l.monitors ?? "",
     records: l.records_per_month ?? "",
     cadences: { daily: !allowed || allowed.includes("daily"), weekly: !allowed || allowed.includes("weekly") },
+    ...Object.fromEntries(EXTRA_LIMITS.map(([key, api]) => [key, l[api] ?? ""])),
   }
 }
 
@@ -199,6 +211,19 @@ function PlanEditor({ plan, lang, onClose, onSaved }) {
                   className="w-24 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
                 />
               </label>
+              {EXTRA_LIMITS.map(([key, , label, max]) => (
+                <label key={key} className="flex items-center gap-2">
+                  {t(label)}
+                  <input
+                    type="number"
+                    min="0"
+                    max={max}
+                    value={limits[key] ?? ""}
+                    onChange={(e) => setLimits({ ...limits, [key]: e.target.value })}
+                    className="w-24 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-slate-100"
+                  />
+                </label>
+              ))}
               {["daily", "weekly"].map((cad) => (
                 <label key={cad} className="flex items-center gap-2">
                   <input
