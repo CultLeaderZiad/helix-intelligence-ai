@@ -32,6 +32,7 @@ from .provider_record_budget import ProviderRecordBudget
 from .saved_ad_annotation import SavedAdTag, SavedAdNote
 from .billing_subscription import BillingSubscription
 from .notification_channel import NotificationChannel
+from .ad_teardown import AdTeardown
 
 __all__ = [
     "Base",
@@ -42,6 +43,7 @@ __all__ = [
     "SavedAdNote",
     "BillingSubscription",
     "NotificationChannel",
+    "AdTeardown",
     "User",
     "Organization",
     "ScrapeJob",

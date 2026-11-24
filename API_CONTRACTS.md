@@ -239,3 +239,11 @@ A non-2xx answer counts as a failure and is retried by the outbox.
 
 - `GET /api/advertisers/{brand_id}` returns `{brand_id, brand_name, ads_found, ads_with_known_run_length, longest_running_days, monitored_ads, active_now, launches_last_30d, weekly: [{week_start, launches, active}], source_note}`. Scope: the caller's workspaces. Launches and active counts come only from the workspace's monitors, and baseline ads are not counted as launches. Without monitors, `weekly` is `[]` and the counts are `null`, not 0. `404` when the workspace has no ads from that advertiser.
 - `GET /api/advertisers/{brand_id}/ads?page&page_size` (`page_size` ≤ 50) returns `{items, total, page, page_size, has_more, order}`. Each item has `signals: {days_active (null = unknown), variants, landing_page_reuse, fingerprint_anchor}`. There is no combined score. Order: days_active desc (unknown last), then variants, then landing_page_reuse.
+
+## AI teardown — `/api/creatives/{id}/teardown` (flag `discover`)
+
+- `GET` returns the cached teardown (free) or `404 teardown_not_found`.
+- `POST` analyses the ad: cache first (free, `cached: true`). Otherwise it counts one against `plans.limits.teardowns_per_day` (default `TEARDOWN_DEFAULT_PER_DAY` = 10; `429 teardown_daily_limit`). It goes through the paid-AI rate-limit bucket.
+- Body: `{hook, angle, offer, cta, format, target_audience_guess, language, cached, model, created_at, label}`. A field the ad does not show is `null`.
+- Only public ad copy is sent (headline, body, CTA, format, landing domain), framed as data. Notes, tags and annotations are never sent. When every provider fails, or the output is invalid, the response is `502 ai_unavailable` and nothing is stored or counted.
+- Cache: `ad_teardowns` keyed by the ad's fingerprint (identity + copy), shared across workspaces. It holds no workspace data. Per-workspace usage is in `usage_logs` (`operation = 'ai_teardown'`).

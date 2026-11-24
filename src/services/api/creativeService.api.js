@@ -16,6 +16,14 @@ const creativeService = {
     return request("/creatives", { params: { page, page_size, brand_id } })
   },
 
+  getTeardown(id) {
+    return request(`/creatives/${encodeURIComponent(id)}/teardown`)
+  },
+
+  createTeardown(id) {
+    return request(`/creatives/${encodeURIComponent(id)}/teardown`, { method: "POST" })
+  },
+
   getCreativeById(id) {
     return request(`/creatives/${id}`)
   },

@@ -128,6 +128,7 @@ class Settings(BaseSettings):
     ALERT_DEFAULT_TELEGRAM_CHATS: int = int(os.getenv("ALERT_DEFAULT_TELEGRAM_CHATS", "1"))
     ALERT_DEFAULT_WEBHOOKS: int = int(os.getenv("ALERT_DEFAULT_WEBHOOKS", "1"))
     ALERT_DEFAULT_PER_DAY: int = int(os.getenv("ALERT_DEFAULT_PER_DAY", "20"))
+    TEARDOWN_DEFAULT_PER_DAY: int = int(os.getenv("TEARDOWN_DEFAULT_PER_DAY", "10"))
     ALERT_MAX_CONSECUTIVE_FAILURES: int = int(os.getenv("ALERT_MAX_CONSECUTIVE_FAILURES", "5"))
     # Whop billing (app/services/whop_billing.py). Every value empty = off:
     # no checkout button, and the webhook answers 503.

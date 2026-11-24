@@ -114,3 +114,27 @@ def parse_outreach(data: Any) -> dict:
     }
 
 
+
+
+_TEARDOWN_FIELDS = ("hook", "angle", "offer", "cta", "format", "target_audience_guess")
+_TEARDOWN_LANGS = {"ar", "en", "fr", "other"}
+
+
+def parse_teardown(data: Any) -> dict:
+    """Validate an ad teardown. Every field is model output about public ad copy."""
+    if not isinstance(data, dict):
+        raise InvalidModelOutput("teardown response is not an object")
+    out = {}
+    for key in _TEARDOWN_FIELDS:
+        value = data.get(key)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            out[key] = None  # the model could not tell; never invent
+            continue
+        if not isinstance(value, str):
+            raise InvalidModelOutput(f"{key} must be text")
+        out[key] = " ".join(value.split())[:300]
+    lang = str(data.get("language") or "other").strip().lower()[:5]
+    out["language"] = lang if lang in _TEARDOWN_LANGS else "other"
+    if not any(out[k] for k in ("hook", "angle", "offer")):
+        raise InvalidModelOutput("teardown has no hook, angle or offer")
+    return out
