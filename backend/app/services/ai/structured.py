@@ -138,3 +138,58 @@ def parse_teardown(data: Any) -> dict:
     if not any(out[k] for k in ("hook", "angle", "offer")):
         raise InvalidModelOutput("teardown has no hook, angle or offer")
     return out
+
+
+_VARIANT_FIELDS = {"primary_text": 1200, "headline": 200, "cta": 60, "ugc_script": 1500, "image_prompt": 800}
+
+
+def parse_variants(data: Any, count: int = 5) -> list:
+    """Exactly ``count`` ad drafts, each with every field as non-empty text."""
+    items = data.get("variants") if isinstance(data, dict) else data
+    if not isinstance(items, list) or len(items) < count:
+        raise InvalidModelOutput(f"expected {count} variants")
+    out = []
+    for item in items[:count]:
+        if not isinstance(item, dict):
+            raise InvalidModelOutput("variant is not an object")
+        row = {}
+        for key, limit in _VARIANT_FIELDS.items():
+            value = item.get(key)
+            if not isinstance(value, str) or not value.strip():
+                raise InvalidModelOutput(f"variant {key} is missing")
+            row[key] = value.strip()[:limit]
+        out.append(row)
+    return out
+
+
+def parse_ideas(data: Any, count: int = 10) -> list:
+    items = data.get("ideas") if isinstance(data, dict) else data
+    if not isinstance(items, list):
+        raise InvalidModelOutput("ideas must be a list")
+    ideas = [" ".join(str(i).split())[:300] for i in items if isinstance(i, str) and i.strip()]
+    if len(ideas) < count:
+        raise InvalidModelOutput(f"expected {count} ideas")
+    return ideas[:count]
+
+
+def parse_agent_step(data: Any) -> dict:
+    """One agent step: {"action": "tool", "tool", "args"} or {"action": "answer", ...}."""
+    if not isinstance(data, dict):
+        raise InvalidModelOutput("agent step is not an object")
+    action = data.get("action")
+    if action == "tool":
+        tool = data.get("tool")
+        args = data.get("args") if isinstance(data.get("args"), dict) else {}
+        if not isinstance(tool, str) or not tool:
+            raise InvalidModelOutput("tool name missing")
+        return {"action": "tool", "tool": tool, "args": args}
+    if action == "answer":
+        answer = data.get("answer")
+        if not isinstance(answer, str) or not answer.strip():
+            raise InvalidModelOutput("answer missing")
+        cites = data.get("citations") if isinstance(data.get("citations"), list) else []
+        props = data.get("proposals") if isinstance(data.get("proposals"), list) else []
+        return {"action": "answer", "answer": answer.strip()[:6000],
+                "citations": [c for c in cites if isinstance(c, str)][:20],
+                "proposals": [p for p in props if isinstance(p, dict)][:5]}
+    raise InvalidModelOutput("unknown action")

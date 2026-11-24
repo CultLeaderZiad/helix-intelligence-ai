@@ -70,6 +70,9 @@ class PlanLimits(BaseModel):
     alerts_per_day: Optional[int] = Field(None, ge=0, le=10000)
     # AI teardowns per workspace per UTC day (None = TEARDOWN_DEFAULT_PER_DAY). Cache hits are free.
     teardowns_per_day: Optional[int] = Field(None, ge=0, le=10000)
+    # Helix Agent per workspace per UTC day (None = AGENT_DEFAULT_*). Cache hits are free.
+    agent_messages_per_day: Optional[int] = Field(None, ge=0, le=10000)
+    agent_generations_per_day: Optional[int] = Field(None, ge=0, le=10000)
 
     @field_validator("monitor_cadences")
     @classmethod

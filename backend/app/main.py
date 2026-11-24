@@ -36,6 +36,7 @@ from app.api.routers import (
     alerts,
     advertisers,
     knowledge_base,
+    agent,
 )
 
 @asynccontextmanager
@@ -146,6 +147,7 @@ app.include_router(billing_webhooks.router, prefix=f"{settings.API_V1_STR}/webho
 app.include_router(alerts.router, prefix=f"{settings.API_V1_STR}/account/alert-channels", tags=["alerts"])
 app.include_router(alerts.telegram_router, prefix=f"{settings.API_V1_STR}/telegram", tags=["alerts"])
 app.include_router(advertisers.router, prefix=f"{settings.API_V1_STR}/advertisers", tags=["advertisers"])
+app.include_router(agent.router, prefix=f"{settings.API_V1_STR}/agent", tags=["agent"])
 
 # Locally stored media. This is served by a router rather than a StaticFiles
 # mount so that access is checked: the old mount handed any file to anyone who

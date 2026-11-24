@@ -133,9 +133,9 @@ async def audit(db: AsyncSession, limit: int = 100) -> List[Dict[str, Any]]:
 
 async def search(db: AsyncSession, query: str, k: int = 5) -> List[Dict[str, Any]]:
     """Top-k chunks of enabled documents for ``query``, with source ids for citing."""
-    from app.services.text_search import clean_query
+    from app.services.text_search import clean_query, expand_query
 
-    q = clean_query(query)
+    q = expand_query(clean_query(query))
     if not q:
         return []
     configs = ("simple", "arabic")

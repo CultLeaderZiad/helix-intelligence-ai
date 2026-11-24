@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { Sparkles } from "lucide-react"
 import { creativeService } from "@/services"
 import { useLanguage } from "@/context/LanguageContext"
@@ -11,6 +12,7 @@ export const TEARDOWN_COPY = {
     fields: { hook: "Hook", angle: "Angle", offer: "Offer", cta: "CTA", format: "Format", target_audience_guess: "Audience (guess)" },
     notShown: "Not shown in the ad",
     failed: "The analysis could not be completed. Nothing was saved; try again later.",
+    drafts: "Write ad drafts from this ad",
   },
   ar: {
     analyse: "حلّل هذا الإعلان",
@@ -19,6 +21,7 @@ export const TEARDOWN_COPY = {
     fields: { hook: "الخطّاف", angle: "الزاوية", offer: "العرض", cta: "الدعوة لاتخاذ إجراء", format: "الصيغة", target_audience_guess: "الجمهور (تخمين)" },
     notShown: "غير ظاهر في الإعلان",
     failed: "تعذّر إكمال التحليل. لم يُحفظ شيء؛ حاول لاحقاً.",
+    drafts: "اكتب مسودات إعلانات من هذا الإعلان",
   },
 }
 
@@ -73,6 +76,7 @@ export function TeardownPanel({ creativeId }) {
         ))}
       </dl>
       <p className="mt-2 text-[11px] text-text-faint">{c.label}</p>
+      <Link to={`/agent?ad=${encodeURIComponent(creativeId)}`} className="mt-2 inline-block text-xs text-accent underline">{c.drafts}</Link>
     </section>
   )
 }

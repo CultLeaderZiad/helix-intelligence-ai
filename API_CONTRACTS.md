@@ -256,3 +256,16 @@ A non-2xx answer counts as a failure and is retried by the outbox.
 - `GET /search?q&k` returns the top chunks of enabled documents, as `{chunk_id, document_id, title, version, ordinal, text}`. The agent uses the same function and cites `chunk_id`.
 - Tables `kb_documents`, `kb_chunks` (GIN expression indexes, simple + arabic) and `kb_audit`. They are platform-wide admin content, so they have no tenant RLS.
 - Source files: `python backend/scripts/kb_merge.py <dir> -o knowledge_base.md`. The script dedupes paragraphs and drops links-only, navigation and very short text. It never rewrites anything, and it marks the source of every block. Review the file, then upload it on the admin page.
+
+## Ask Helix — `/api/agent` (flag `discover`, text only, read-only agent)
+
+- `GET /limits` returns `{messages_per_day, messages_used, generations_per_day, generations_used}`. Counters come from `usage_logs` (`agent_message`, `agent_generation`) in the database. Defaults: 5 messages and 3 generations a day (`AGENT_DEFAULT_*`); plans override with `plans.limits.agent_messages_per_day` and `agent_generations_per_day`. `429 agent_message_daily_limit` / `agent_generation_daily_limit`.
+- `POST /ask {question, history[], lang}` returns `{answer, citations: [{type: kb|ad, id}], proposals[], tools_used[], model, label}`.
+  - The model picks read tools: `list_boards`, `get_board`, `list_monitor_events`, `get_stored_results`, `get_ad`, `get_advertiser_summary`, `search_knowledge_base`, `get_teardown`. The server checks the name and arguments against an allow-list and scopes everything to the workspace.
+  - No tool starts a search, spends records or credits, writes, or returns board notes or annotations. At most `AGENT_MAX_STEPS` steps (4) and `AGENT_TIMEOUT_S` seconds (60).
+  - Tool output and ad/KB text reach the model as data inside tags. Citations are kept only if a tool returned that chunk or ad in this conversation.
+  - Proposals (`create_monitor`, `save_to_board`, `create_brief`) carry `requires_approval: true` and the normal endpoint the UI calls after the user approves. The agent cannot write.
+  - `502 ai_unavailable` when every provider fails or the output is invalid: nothing is counted, nothing is made up.
+- `POST /generate {creative_id, product, language: ar|en, dialect: egyptian|gulf|levantine|msa}` returns 5 drafts `{primary_text, headline, cta, ugc_script, image_prompt}`, cached per workspace by input hash (a cache hit is free).
+- `POST /brief {brand_id}` saves the advertiser's longest-running ads to a board "Brief: <name>" (needs Swipe Files) and returns angles (from cached teardowns only) and 10 ideas. Share the board with the existing share link.
+- Arabic search: queries are also matched with alef forms, ta marbuta, alef maqsura, tashkeel and tatweel normalised (`text_search.expand_query`).

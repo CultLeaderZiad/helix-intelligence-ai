@@ -131,6 +131,13 @@ class Settings(BaseSettings):
     # Knowledge base (admin uploads): bytes per file and in total.
     KB_MAX_FILE_BYTES: int = int(os.getenv("KB_MAX_FILE_BYTES", str(512 * 1024)))
     KB_MAX_TOTAL_BYTES: int = int(os.getenv("KB_MAX_TOTAL_BYTES", str(10 * 1024 * 1024)))
+    # Helix Agent (app/services/agent_service.py). Defaults are the free/trial
+    # caps; paid plans set plans.limits.agent_messages_per_day /
+    # agent_generations_per_day (e.g. 100 / 50).
+    AGENT_DEFAULT_MESSAGES_PER_DAY: int = int(os.getenv("AGENT_DEFAULT_MESSAGES_PER_DAY", "5"))
+    AGENT_DEFAULT_GENERATIONS_PER_DAY: int = int(os.getenv("AGENT_DEFAULT_GENERATIONS_PER_DAY", "3"))
+    AGENT_MAX_STEPS: int = int(os.getenv("AGENT_MAX_STEPS", "4"))
+    AGENT_TIMEOUT_S: float = float(os.getenv("AGENT_TIMEOUT_S", "60"))
     TEARDOWN_DEFAULT_PER_DAY: int = int(os.getenv("TEARDOWN_DEFAULT_PER_DAY", "10"))
     ALERT_MAX_CONSECUTIVE_FAILURES: int = int(os.getenv("ALERT_MAX_CONSECUTIVE_FAILURES", "5"))
     # Whop billing (app/services/whop_billing.py). Every value empty = off:

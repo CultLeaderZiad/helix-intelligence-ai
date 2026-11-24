@@ -1,11 +1,12 @@
 import React from "react"
 import { fireEvent, render, screen } from "@testing-library/react"
+import { MemoryRouter } from "react-router-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { LanguageProvider } from "@/context/LanguageContext"
 import { creativeService } from "@/services"
 import { TEARDOWN_COPY, TeardownPanel } from "../TeardownPanel"
 
-const renderPanel = () => render(<LanguageProvider><TeardownPanel creativeId="c1" /></LanguageProvider>)
+const renderPanel = () => render(<LanguageProvider><MemoryRouter><TeardownPanel creativeId="c1" /></MemoryRouter></LanguageProvider>)
 
 describe("AI teardown panel", () => {
   beforeEach(() => {

@@ -64,6 +64,7 @@ function FeaturePage({ feature, children }) {
 
 const MonitorsPage = safeLazy(() => import("@/pages/MonitorsPage").then(m => ({ default: m.MonitorsPage })))
 const AdvertiserPage = safeLazy(() => import("@/pages/AdvertiserPage").then(m => ({ default: m.AdvertiserPage })))
+const AgentPage = safeLazy(() => import("@/pages/AgentPage").then(m => ({ default: m.AgentPage })))
 const SwipeFilesPage = safeLazy(() => import("@/pages/SwipeFilesPage").then(m => ({ default: m.SwipeFilesPage })))
 const BillingPage = safeLazy(() => import("@/pages/BillingPage").then(m => ({ default: m.BillingPage })))
 const TeamPage = safeLazy(() => import("@/pages/TeamPage").then(m => ({ default: m.TeamPage })))
@@ -231,6 +232,7 @@ export default function App() {
                       <Route path="/discover" element={<DiscoverPage />} />
                       <Route path="/monitors" element={<FeaturePage feature="monitors"><MonitorsPage /></FeaturePage>} />
                       <Route path="/advertisers/:brandId" element={<FeaturePage feature="discover"><AdvertiserPage /></FeaturePage>} />
+                      <Route path="/agent" element={<FeaturePage feature="discover"><AgentPage /></FeaturePage>} />
                       <Route path="/swipe-files" element={<FeaturePage feature="swipe_files"><SwipeFilesPage /></FeaturePage>} />
                       <Route path="/access" element={<BillingPage />} />
                       <Route path="/billing" element={<Navigate to="/access" replace />} />
