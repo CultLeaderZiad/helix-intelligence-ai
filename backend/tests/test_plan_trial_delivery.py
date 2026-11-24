@@ -50,7 +50,7 @@ async def _plans():
             Plan(id=f"plan_a_{s}", name="Agency-like", type="pro", price_monthly=99.99,
                  feature_flags={"discover": True, "swipe_files": True, "team_accounts": True},
                  pricing=_card(), limits={"records_per_month": 5000, "monitors": 15}),
-            Plan(id=f"plan_b_{s}", name="Pro-like", type="pro", price_monthly=49.99,
+            Plan(id=f"plan_b_{s}", name="Pro-like", type="pro", price_monthly=49.99, credit_allowance=600,
                  feature_flags={"discover": True, "swipe_files": True, "monitors": True}, pricing=_card()),
             Plan(id=f"plan_unlisted_{s}", name="Hidden", type="pro", price_monthly=1.0,
                  feature_flags={"team_accounts": True, "discover": True}, pricing={"listed": False}),
@@ -166,7 +166,32 @@ async def test_paying_after_the_trial_delivers_the_paid_plans_features(monkeypat
         assert paid["access_status"] == "approved" and paid["feature_flags"]["monitors"] is True
         assert await _monitors_status(client, headers) == 200
 
-        event["data"].update(status="canceled", updated_at="2026-11-25T10:00:00Z")
+        async def balance():
+            async with async_session_maker() as db:
+                with tenant_scope([org.id], user.id, platform_admin=False, enforce=True):
+                    await apply_tenant_context(db)
+                    return (await db.execute(select(Organization.credit_balance).where(Organization.id == org.id))).scalar_one()
+
+        # A paid period brings the plan's monthly credits; a repeated event for the same period adds nothing.
+        assert await balance() == 600
+        async with async_session_maker() as db:
+            with tenant_scope([org.id], user.id, platform_admin=False, enforce=True):
+                await apply_tenant_context(db)
+                await db.execute(update(Organization).where(Organization.id == org.id).values(credit_balance=40))
+                await db.commit()
+        again = dict(event, id=f"msg1b_{s}")
+        again["data"] = dict(event["data"], updated_at="2026-11-24T11:00:00Z")
+        async with async_session_maker() as db:
+            await whop_billing.handle_event(db, f"wh1b_{s}", again)
+        assert await balance() == 40  # same period: no new credits
+        renewed = dict(event, id=f"msg1c_{s}")
+        renewed["data"] = dict(event["data"], updated_at="2026-12-24T10:00:00Z",
+                               current_period_end=(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=60)).isoformat())
+        async with async_session_maker() as db:
+            await whop_billing.handle_event(db, f"wh1c_{s}", renewed)
+        assert await balance() == 600  # new period: the allowance again
+
+        event["data"].update(status="canceled", updated_at="2027-01-01T10:00:00Z")
         async with async_session_maker() as db:
             assert await whop_billing.handle_event(db, f"wh2_{s}", event) == "revoked"
         ended = (await client.get("/api/auth/session", headers=headers)).json()
