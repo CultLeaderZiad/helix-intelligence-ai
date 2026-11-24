@@ -627,6 +627,24 @@ async def _run_monitor(monitor_id: str) -> None:
             await _handle_blocked(monitor_id, reason, message)
             return
 
+        # The work item is delivered at least once. After a crash or a lease
+        # expiry it arrives again while the first attempt may still be running,
+        # and a second run would charge the credit and spend provider records a
+        # second time. ``assert_can_spend`` holds the organisation row lock, so
+        # two deliveries cannot both pass this check. A run that really died is
+        # closed by the reconciliation sweep and the next cadence runs again.
+        in_flight = await db.scalar(
+            select(func.count(MonitorRun.id)).where(
+                MonitorRun.monitor_id == monitor.id,
+                MonitorRun.status == "running",
+                MonitorRun.started_at > _utcnow() - datetime.timedelta(seconds=settings.MONITOR_RUN_TIMEOUT_S),
+            )
+        )
+        if in_flight:
+            await db.rollback()
+            logger.info("Monitor %s already has a run in flight; duplicate delivery ignored", monitor_id)
+            return
+
         run = MonitorRun(monitor_id=monitor.id, status="running", started_at=_utcnow(), is_baseline=is_baseline)
         job = ScrapeJob(
             org_id=org_id,
