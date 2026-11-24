@@ -350,7 +350,7 @@ async def billing_checkout(
     org = await billing_service.get_or_create_default_org(db, current_user)
     if org.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail={"code": "owner_only", "message": "Only the workspace owner can change its plan."})
-    redirect = f"{settings.PUBLIC_APP_BASE_URL.rstrip('/')}/settings?billing=returned"
+    redirect = f"{settings.PUBLIC_APP_BASE_URL.rstrip('/')}/access?billing=returned"
     url = await whop_billing.create_checkout(org.id, body.plan_id, redirect)
     return {"checkout_url": url}
 

@@ -1,10 +1,13 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import { useLanguage } from "@/context/LanguageContext"
 import { useWorkspaceAccess } from "@/hooks/useWorkspaceAccess"
 import { Button } from "@/components/ui/Button"
 import { useAuth } from "@/context/AuthContext"
 import { useW8Copy } from "@/i18n/w8Product"
 import { SupportMailto } from "@/components/SupportMailto"
+import { PlansSection } from "@/features/plans/PlansSection"
+import { usePricingCopy } from "@/i18n/pricing"
 
 const FEATURES = [
   { flag: "discover", copy: "featureDiscover" },
@@ -34,13 +37,39 @@ export function RecordsMeter({ usage, w8 }) {
 export function BillingPage() {
   const { t } = useLanguage()
   const w8 = useW8Copy()
-  const { user } = useAuth()
+  const { user, refreshSession } = useAuth()
+  const planCopy = usePricingCopy()
+  const [params] = useSearchParams()
+  const highlightId = params.get("plan") || undefined
+  const returnedFromPayment = params.get("billing") === "returned"
   const flags = user?.feature_flags ?? {}
   const { access, usage, loading, error, submitting, refresh, requestAccess } = useWorkspaceAccess()
   const [note, setNote] = useState("")
   const [requestError, setRequestError] = useState(false)
   const [sent, setSent] = useState(false)
   const status = access?.status
+
+  // Back from the payment page. The server grants access only when it receives
+  // the payment confirmation, which can land after the user is back, so the page
+  // refreshes the access state for up to a minute. Nothing here grants anything:
+  // a paid plan shows up when the server says so (its grant is not the trial's).
+  const [activation, setActivation] = useState(returnedFromPayment ? "waiting" : null)
+  const attempts = useRef(0)
+  const paid = status === "approved" && Boolean(access?.plan_id) && !String(access.plan_id).startsWith("plan_trial")
+  useEffect(() => {
+    if (!returnedFromPayment || activation !== "waiting") return undefined
+    if (paid) {
+      setActivation("done")
+      refreshSession?.()
+      return undefined
+    }
+    if (attempts.current >= 15) {
+      setActivation("slow")
+      return undefined
+    }
+    const timer = setTimeout(() => { attempts.current += 1; refresh() }, 4000)
+    return () => clearTimeout(timer)
+  }, [returnedFromPayment, activation, paid, refresh, refreshSession])
   const statusKeys = { approved: "accessApproved", pending: "accessPending", rejected: "accessRejected", expired: "accessExpired", revoked: "accessRevoked" }
 
   async function submit(event) {
@@ -62,6 +91,12 @@ export function BillingPage() {
       {loading ? <p role="status">{t("loading")}</p> : error ? <p role="alert" className="text-danger">{t("requestFailed")}</p> : (
         <>
           <p className="border border-border bg-surface p-4" role="status">{t("accessStatusLabel")}: {statusKeys[status] ? t(statusKeys[status]) : t("unknownValue")}</p>
+          {activation ? (
+            <p role="status" className="border border-border bg-surface p-4 text-sm">
+              {activation === "done" ? planCopy.activated : activation === "slow" ? planCopy.activationSlow : planCopy.activating}
+            </p>
+          ) : null}
+          <PlansSection access={access} highlightId={highlightId} />
           {status !== "approved" && (
             <form onSubmit={submit} className="space-y-3 border border-border bg-surface p-4">
               <h2 className="font-semibold">{t("requestAccessTitle")}</h2>

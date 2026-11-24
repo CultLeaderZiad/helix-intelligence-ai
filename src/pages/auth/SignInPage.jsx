@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { APP_HOME } from "@/app/ProtectedRoute"
@@ -25,7 +25,9 @@ export function SignInPage() {
   const { lang, t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
-  const redirectTo = location.state?.from?.pathname ?? APP_HOME
+  // A visitor who picked a plan and already has an account lands on the plans page with it highlighted.
+  const planId = useSearchParams()[0].get("plan") || ""
+  const redirectTo = location.state?.from?.pathname ?? (planId ? `/access?plan=${encodeURIComponent(planId)}` : APP_HOME)
 
   const [values, setValues] = useState({
     email: location.state?.email ?? "",
@@ -131,7 +133,7 @@ export function SignInPage() {
         <>
           {t("authNoAccount", "No account?")} {" "}
           <Link
-            to="/sign-up"
+            to={planId ? `/sign-up?plan=${encodeURIComponent(planId)}` : "/sign-up"}
             className="text-accent transition-colors hover:text-accent-dim"
           >
             {t("authCreateAccount", "Create one")}

@@ -11,6 +11,9 @@ class UserCreate(BaseModel):
     utm_term: Optional[str] = None
     utm_content: Optional[str] = None
     referrer: Optional[str] = None
+    # The listed plan the visitor picked on the pricing page. Validated on the
+    # server; anything else falls back to the default trial.
+    plan_id: Optional[str] = None
 
     @field_validator('email')
     @classmethod

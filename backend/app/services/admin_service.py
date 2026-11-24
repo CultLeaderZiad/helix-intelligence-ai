@@ -267,6 +267,19 @@ def _limits(plan):
         return None
 
 
+def plan_grantable_features(plan) -> List[str]:
+    """The grantable features this plan switches on, in a stable order."""
+    flags = getattr(plan, "feature_flags", None) or {}
+    return sorted(k for k, v in flags.items() if k in GRANTABLE_FEATURES and v is True)
+
+
+def plan_trial_days(plan) -> int:
+    """Free-trial days for a plan: its own setting, else SIGNUP_TRIAL_DAYS. 0 = no trial."""
+    pricing = _pricing(plan)
+    own = getattr(pricing, "trial_days", None) if pricing is not None else None
+    return max(0, int(settings.SIGNUP_TRIAL_DAYS if own is None else own))
+
+
 async def list_public_pricing(db: AsyncSession):
     """Listed plans for /pricing, plus the sign-up trial terms. No auth."""
     from app.schemas.pricing import PublicPlan, PublicPricing
@@ -283,6 +296,9 @@ async def list_public_pricing(db: AsyncSession):
         plans.append(PublicPlan(
             id=p.id, name=p.name, price_monthly=p.price_monthly, pricing=pricing,
             checkout=purchasable and p.id in purchasable_plans,
+            limits=_limits(p),
+            feature_flags=plan_grantable_features(p),
+            trial_days=plan_trial_days(p),
         ))
     plans.sort(key=lambda item: (item.pricing.order, item.price_monthly or 0, item.name))
     return PublicPricing(

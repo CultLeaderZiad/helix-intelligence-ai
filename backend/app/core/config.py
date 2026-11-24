@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     # trial off and new workspaces wait for an admin grant. The provider caps
     # (DISCOVER_*) still apply per workspace and globally during the trial.
     SIGNUP_TRIAL_DAYS: int = max(0, int(os.getenv("SIGNUP_TRIAL_DAYS", "7")))
+    # Access keeps running this long after a trial ends, to give the user time to subscribe.
+    TRIAL_GRACE_HOURS: int = max(0, int(os.getenv("TRIAL_GRACE_HOURS", "12")))
     SIGNUP_TRIAL_FEATURES: tuple = tuple(
         f.strip() for f in os.getenv("SIGNUP_TRIAL_FEATURES", "discover,swipe_files,monitors").split(",") if f.strip()
     )
@@ -154,7 +156,7 @@ class Settings(BaseSettings):
     WHOP_API_BASE: str = os.getenv("WHOP_API_BASE", "https://api.whop.com/api/v1")
     # Access keeps running this long past the paid period, so a renewal that
     # arrives late (retries, cold starts) never locks a paying workspace out.
-    WHOP_GRACE_HOURS: int = max(0, int(os.getenv("WHOP_GRACE_HOURS", "48")))
+    WHOP_GRACE_HOURS: int = max(0, int(os.getenv("WHOP_GRACE_HOURS", "12")))
     # Writes that are cheap but send email or create shared rows (support
     # tickets, access requests, share links, drafts): per IP per window.
     ABUSE_RATE_LIMIT: int = int(os.getenv("ABUSE_RATE_LIMIT", "10"))

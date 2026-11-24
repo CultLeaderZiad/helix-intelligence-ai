@@ -46,6 +46,8 @@ class PlanPricing(BaseModel):
     cta: Literal["trial", "contact"] = "trial"
     # Shown after the price, e.g. "/ month". Empty means the default period.
     period: Localized = Localized()
+    # Free-trial days for this plan. None = SIGNUP_TRIAL_DAYS; 0 = this plan has no trial.
+    trial_days: Optional[int] = Field(None, ge=0, le=30)
 
 
 class PlanLimits(BaseModel):
@@ -91,6 +93,10 @@ class PublicPlan(BaseModel):
     # True when this plan can be bought online (Whop checkout is configured
     # and WHOP_PLAN_MAP maps a Whop plan to it).
     checkout: bool = False
+    # What the plan really enforces and grants, read from the plan row.
+    limits: Optional[PlanLimits] = None
+    feature_flags: List[str] = []
+    trial_days: int = 0
 
 
 class PublicPricing(BaseModel):

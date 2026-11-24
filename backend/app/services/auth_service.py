@@ -213,7 +213,22 @@ class EmailAlreadyRegistered(Exception):
     """Internal signal only. The sign-up route answers identically either way."""
 
 
-async def _start_signup_trial(db: AsyncSession, user: User, org) -> None:
+async def _chosen_plan(db: AsyncSession, plan_id: Optional[str]):
+    """The listed plan a visitor picked, or None. Anything not listed is ignored."""
+    plan_id = (plan_id or "").strip()
+    if not plan_id or len(plan_id) > 100:
+        return None
+    from app.models.plan import Plan
+    from app.services import admin_service
+
+    plan = await db.get(Plan, plan_id)
+    pricing = admin_service._pricing(plan) if plan is not None else None
+    if plan is None or pricing is None or not pricing.listed:
+        return None
+    return plan
+
+
+async def _start_signup_trial(db: AsyncSession, user: User, org, plan_id: Optional[str] = None) -> None:
     """Grant the new workspace a time-limited trial, enforced server-side.
 
     The grant expires on its own (access_status_for_org treats an expired
@@ -221,9 +236,21 @@ async def _start_signup_trial(db: AsyncSession, user: User, org) -> None:
     the user themself so the admin audit shows it was the automatic trial.
     """
     days = int(settings.SIGNUP_TRIAL_DAYS)
+    from app.services import admin_service
     from app.services.admin_service import GRANTABLE_FEATURES
 
     features = [f for f in settings.SIGNUP_TRIAL_FEATURES if f in GRANTABLE_FEATURES]
+    # A visitor who picked a listed plan tries that plan's features for that
+    # plan's trial length. Caps stay the trial plan's own (set by an admin), so a
+    # trial of a big plan is still limited. An unknown or unlisted plan is
+    # ignored, and a plan without a trial leaves the default trial.
+    chosen = await _chosen_plan(db, plan_id)
+    chosen_days = admin_service.plan_trial_days(chosen) if chosen is not None else 0
+    chosen_features = admin_service.plan_grantable_features(chosen) if chosen is not None else []
+    if chosen is not None and chosen_days > 0 and chosen_features:
+        days, features = chosen_days, chosen_features
+    else:
+        chosen = None
     if days <= 0 or not features:
         return
     from app.core.tenancy import apply_tenant_context, bind_tenant
@@ -234,15 +261,26 @@ async def _start_signup_trial(db: AsyncSession, user: User, org) -> None:
     await apply_tenant_context(db)
     now = datetime.datetime.now(datetime.timezone.utc)
     expires = now + datetime.timedelta(days=days)
+    # Access runs a grace period past the trial's end, so the user can subscribe
+    # without being cut off mid-task. trial_expires_at stays the real end.
+    grace = datetime.timedelta(hours=int(settings.TRIAL_GRACE_HOURS))
     db.add(OrganizationAccessGrant(
         org_id=org.id,
         plan_id=org.plan_id,
         feature_flags={f: True for f in features},
         granted_by_user_id=user.id,
-        expires_at=expires,
+        expires_at=expires + grace,
     ))
     user.trial_started_at = now
     user.trial_expires_at = expires
+    if chosen is not None:
+        from app.models.usage_log import UsageLog
+
+        db.add(UsageLog(
+            org_id=org.id, user_id=user.id, provider="signup", operation="trial_started", units=1.0,
+            cost_usd=0.0, credits_deducted=0.0, requests_used=0,
+            metadata_json={"chosen_plan_id": chosen.id, "trial_days": days, "features": features},
+        ))
 
 
 async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
@@ -321,7 +359,7 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
         status="active"
     )
     db.add(org)
-    await _start_signup_trial(db, user, org)
+    await _start_signup_trial(db, user, org, getattr(user_in, "plan_id", None))
     try:
         await db.commit()
     except Exception as e:
