@@ -119,6 +119,16 @@ class Settings(BaseSettings):
     # matches, the edge client-IP header is believed even if the hop before
     # our proxies is not a Cloudflare address. Empty = off (the default).
     TRUSTED_PROXY_SECRET: str = os.getenv("TRUSTED_PROXY_SECRET", "")
+    # Alerts (app/services/alert_channels.py). Telegram is off unless the
+    # bot token is set. TELEGRAM_WEBHOOK_SECRET must match the secret_token
+    # passed to Telegram's setWebhook; requests without it are refused.
+    TELEGRAM_BOT_TOKEN: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_BOT_USERNAME: str = os.getenv("TELEGRAM_BOT_USERNAME", "")
+    TELEGRAM_WEBHOOK_SECRET: str = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
+    ALERT_DEFAULT_TELEGRAM_CHATS: int = int(os.getenv("ALERT_DEFAULT_TELEGRAM_CHATS", "1"))
+    ALERT_DEFAULT_WEBHOOKS: int = int(os.getenv("ALERT_DEFAULT_WEBHOOKS", "1"))
+    ALERT_DEFAULT_PER_DAY: int = int(os.getenv("ALERT_DEFAULT_PER_DAY", "20"))
+    ALERT_MAX_CONSECUTIVE_FAILURES: int = int(os.getenv("ALERT_MAX_CONSECUTIVE_FAILURES", "5"))
     # Whop billing (app/services/whop_billing.py). Every value empty = off:
     # no checkout button, and the webhook answers 503.
     # WHOP_API_KEY: company API key with checkout_configuration:create.

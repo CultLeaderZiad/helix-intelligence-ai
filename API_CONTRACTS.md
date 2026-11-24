@@ -214,3 +214,23 @@ retry waits and fences stale state updates. Aborting a client request is
 **not** proof that the backend job stopped: only `POST /jobs/{id}/cancel` asks
 the server to stop. Requests keep their bounded transport deadline and the hook
 keeps its overall job deadline.
+
+## Alerts — `/api/account/alert-channels`, `/api/telegram/webhook`
+
+- `GET /api/account/alert-channels` returns `{items, limits: {telegram, webhook, per_day}, sent_today, telegram_available}`. Items never include the chat id, URL or secrets.
+- `POST /api/account/alert-channels/webhook` `{url}` (owner only, https, public host only: SSRF-checked, pinned address, no redirects). Returns `{channel, signing_secret}`. The secret is shown once.
+- `POST /api/account/alert-channels/telegram` (owner only) returns `{channel, link, expires_at}`. The one-time code is valid for 15 minutes and is stored hashed.
+- `PATCH /api/account/alert-channels/{id}` `{enabled}`; `DELETE /api/account/alert-channels/{id}`. `403 alert_channel_limit` when the plan's channel count is used.
+- `POST /api/telegram/webhook`: Telegram only, verified with `X-Telegram-Bot-Api-Secret-Token`. Handles `/start <code>`.
+
+Webhook delivery: `POST <your url>`, `Content-Type: application/json`, headers
+`X-Helix-Timestamp: <unix seconds>` and
+`X-Helix-Signature: v1=<hex HMAC-SHA256(secret, "<timestamp>.<raw body>")>`.
+Reject a timestamp older than 5 minutes. Body:
+
+```json
+{"type": "helix.alert", "id": "<notification id>", "created_at": "<ISO 8601>",
+ "title": "...", "message": "...", "link": "https://<app>/monitors" }
+```
+
+A non-2xx answer counts as a failure and is retried by the outbox.

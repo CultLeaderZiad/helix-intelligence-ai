@@ -31,6 +31,7 @@ from .workspace_daily_usage import WorkspaceDailyUsage
 from .provider_record_budget import ProviderRecordBudget
 from .saved_ad_annotation import SavedAdTag, SavedAdNote
 from .billing_subscription import BillingSubscription
+from .notification_channel import NotificationChannel
 
 __all__ = [
     "Base",
@@ -40,6 +41,7 @@ __all__ = [
     "SavedAdTag",
     "SavedAdNote",
     "BillingSubscription",
+    "NotificationChannel",
     "User",
     "Organization",
     "ScrapeJob",

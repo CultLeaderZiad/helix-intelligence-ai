@@ -28,6 +28,26 @@ const accountService = {
     })
   },
 
+  listAlertChannels() {
+    return request("/account/alert-channels")
+  },
+
+  addAlertWebhook(url) {
+    return request("/account/alert-channels/webhook", { method: "POST", body: { url } })
+  },
+
+  linkTelegram() {
+    return request("/account/alert-channels/telegram", { method: "POST" })
+  },
+
+  setAlertChannelEnabled(id, enabled) {
+    return request(`/account/alert-channels/${encodeURIComponent(id)}`, { method: "PATCH", body: { enabled } })
+  },
+
+  removeAlertChannel(id) {
+    return request(`/account/alert-channels/${encodeURIComponent(id)}`, { method: "DELETE" })
+  },
+
   getBilling() {
     return request("/account/billing")
   },

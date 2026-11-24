@@ -478,3 +478,34 @@ def decode_image_data_url(value: str, max_bytes: int = MAX_INLINE_IMAGE_BYTES) -
     if len(raw) > max_bytes:
         raise UnsafeFetch(f"SSRF blocked: inline payload exceeds {max_bytes} bytes")
     return raw, "image/jpeg" if mime == "image/jpg" else mime
+
+
+def safe_http_post(url: str, content: bytes, headers: Optional[dict] = None, timeout: float = 10.0,
+                   max_bytes: int = 64 * 1024, resolve: Optional[Callable] = None) -> httpx.Response:
+    """POST to a public http(s) URL with the same SSRF policy as safe_http_get.
+
+    The resolved public address is pinned for the connection and redirects are
+    never followed (a 3xx is returned as is), so a webhook cannot be bounced
+    to an internal address. The response body is capped.
+    """
+    destination = assert_public_http_url(url, resolve=resolve)
+    transport = _PinningTransport(destination)
+    try:
+        with httpx.Client(transport=transport, trust_env=False, follow_redirects=False,
+                          timeout=httpx.Timeout(timeout)) as client:
+            request = client.build_request("POST", destination.url, headers=headers or {}, content=content)
+            response = client.send(request, stream=True)
+            try:
+                body = b"" if response.is_redirect else _read_capped(response, max_bytes)
+                return httpx.Response(status_code=response.status_code,
+                                      headers=_decoded_headers(response.headers), content=body)
+            finally:
+                response.close()
+    finally:
+        transport.close()
+
+
+async def safe_http_post_async(url: str, content: bytes, headers: Optional[dict] = None, timeout: float = 10.0):
+    import asyncio
+
+    return await asyncio.to_thread(safe_http_post, url, content, headers, timeout)

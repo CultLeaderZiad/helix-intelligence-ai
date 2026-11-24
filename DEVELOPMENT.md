@@ -780,3 +780,27 @@ and expired revoke only that grant; an admin's grant is never touched.
 Deliveries are deduplicated on `webhook-id` (`webhook_events`) and an event
 older than the last one applied to its membership is ignored. State per
 membership lives in `billing_subscriptions` (tenant RLS).
+
+## Alerts: Telegram and webhooks
+
+Every in-app notification for a workspace is copied to its active alert
+channels through the work outbox (`kind = 'alert'`). A failed send is retried
+with backoff. After `ALERT_MAX_CONSECUTIVE_FAILURES` failures in a row, the
+channel is turned off and the owner gets an in-app notice. Channels live in
+`notification_channels` (tenant RLS). The secret part (chat id, URL, signing
+secret) is Fernet-encrypted with `CREDENTIAL_ENCRYPTION_KEY`.
+
+| Env var | Required | What |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | Optional | Bot token from @BotFather. Unset = Telegram alerts off |
+| `TELEGRAM_BOT_USERNAME` | Optional | Bot username, used in the `t.me/<bot>?start=<code>` link |
+| `TELEGRAM_WEBHOOK_SECRET` | With Telegram | Must equal the `secret_token` given to `setWebhook`; the bot webhook refuses requests without it |
+| `ALERT_DEFAULT_TELEGRAM_CHATS` / `ALERT_DEFAULT_WEBHOOKS` | Optional | Channels per workspace when the plan sets none (default `1` / `1`) |
+| `ALERT_DEFAULT_PER_DAY` | Optional | Alerts per workspace per UTC day when the plan sets none (default `20`) |
+| `ALERT_MAX_CONSECUTIVE_FAILURES` | Optional | Failures in a row before a channel is turned off (default `5`) |
+
+Plan overrides: `plans.limits.alert_telegram_chats`, `alert_webhooks`, `alerts_per_day`.
+
+Telegram setup, done once by the owner:
+`POST https://api.telegram.org/bot<TOKEN>/setWebhook` with
+`url=https://<api>/api/telegram/webhook` and `secret_token=<TELEGRAM_WEBHOOK_SECRET>`.
