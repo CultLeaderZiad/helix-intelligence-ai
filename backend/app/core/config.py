@@ -348,6 +348,11 @@ class Settings(BaseSettings):
     MONITOR_MAX_FAILURES: int = int(os.getenv("MONITOR_MAX_FAILURES", "5"))
     # How long a monitor run may take before the reconciler treats it as dead.
     MONITOR_RUN_TIMEOUT_S: int = int(os.getenv("MONITOR_RUN_TIMEOUT_S", "900"))
+    # A run killed by a restart (reconciler: skipped_reason='service_restart')
+    # is retried on the next tick instead of waiting a full cadence, at most
+    # this many times in a row, so a monitor that crashes the process every
+    # time cannot loop. 0 = never retry early (wait for the cadence).
+    MONITOR_RESTART_MAX_RETRIES: int = max(0, int(os.getenv("MONITOR_RESTART_MAX_RETRIES", "2")))
 
     # EMAIL (Resend). Unset means email fan-out is skipped and only in-app
     # notifications are delivered; it is never a hard failure.

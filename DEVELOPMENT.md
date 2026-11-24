@@ -75,6 +75,7 @@ You can set up a free uptime monitor or cron ping to reduce cold starts:
 | `MONITOR_PARTIAL_RATIO` | Optional | A run returning fewer than this share of the monitor's active ads is recorded as `partial_result` and changes nothing (default `0.5`, `0` disables) |
 | `MONITOR_PARTIAL_MIN_PRIOR` | Optional | The partial-run guard only applies once a monitor tracks at least this many active ads (default `6`) |
 | `MONITOR_PARTIAL_MAX_CONSECUTIVE` | Optional | After this many partial runs in a row the smaller catalogue is accepted as real, so a genuine shrink cannot freeze a monitor (default `3`) |
+| `MONITOR_RESTART_MAX_RETRIES` | Optional | A run killed by a restart is retried on the next tick, at most this many times in a row; after that it waits for its cadence (default `2`, `0` = never retry early) |
 | `MONITOR_MAX_FAILURES` | Optional | Consecutive failed runs before a monitor self-pauses (default `5`) |
 | `RESEND_API_KEY` | Optional | Resend API key. Without it monitor alerts are in-app only |
 | `RESEND_FROM` | Optional | Verified From address. Planned value: `Helix <noreply@mail.cyreax.com>`. Read from the environment only; the app does not hardcode it |
