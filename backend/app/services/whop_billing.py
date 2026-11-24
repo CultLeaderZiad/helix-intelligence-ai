@@ -113,6 +113,12 @@ def verify(body: bytes, headers: Mapping[str, str], secret: str, now: Optional[f
     raise WebhookRejected("no signature matches")
 
 
+def _aware(value):
+    if value is not None and value.tzinfo is None:
+        return value.replace(tzinfo=datetime.timezone.utc)
+    return value
+
+
 def _parse_time(value: Any) -> Optional[datetime.datetime]:
     if not value or not isinstance(value, str):
         return None
@@ -264,6 +270,7 @@ async def _apply_membership(db: AsyncSession, org_id: str, membership_id: str, d
     if sub is None:
         sub = BillingSubscription(org_id=org_id, provider=PROVIDER, provider_membership_id=membership_id, status=status)
         db.add(sub)
+    previous_end = _aware(sub.current_period_end)
     sub.status = status
     sub.provider_plan_id = whop_plan or None
     sub.plan_id = helix_plan_id
@@ -313,7 +320,18 @@ async def _apply_membership(db: AsyncSession, org_id: str, membership_id: str, d
         org.plan = plan.type
         if org.status not in ("active", "suspended"):
             org.status = "active"
-        audit("billing_access_granted", {"plan_id": plan.id, "expires_at": expires.isoformat() if expires else None})
+        # Searches and monitor runs spend credits, and credits are not renewed
+        # anywhere else. Each new paid period resets the balance to the plan's
+        # monthly allowance (unused credits do not roll over). A repeated event
+        # for the same period changes nothing.
+        new_end = _aware(sub.current_period_end)
+        new_period = previous_end is None or (new_end is not None and new_end > previous_end)
+        credits = None
+        if new_period and plan.credit_allowance is not None:
+            credits = float(plan.credit_allowance)
+            org.credit_balance = credits
+        audit("billing_access_granted", {"plan_id": plan.id, "expires_at": expires.isoformat() if expires else None,
+                                         "credits_set_to": credits})
         return "granted"
 
     if status in ENDED_STATUSES:

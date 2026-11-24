@@ -79,7 +79,9 @@ async def test_admin_edits_pricing_and_only_listed_plans_are_public():
         listed = [p for p in (await client.get("/api/public/pricing")).json()["plans"] if p["id"] == plan_id]
         assert listed and listed[0]["price_monthly"] == 29
         assert listed[0]["pricing"]["tagline"]["ar"] == "للفرق النامية"
-        assert "feature_flags" not in listed[0]  # internal plan config stays private
+        # Only the names of grantable features are public (never the raw flag map, which can hold credentials).
+        assert isinstance(listed[0]["feature_flags"], list)
+        assert set(listed[0]["feature_flags"]) <= {"discover", "swipe_files", "monitors", "team_accounts"}
 
         await client.delete(f"/api/admin/plans/{plan_id}", headers=admin)
 

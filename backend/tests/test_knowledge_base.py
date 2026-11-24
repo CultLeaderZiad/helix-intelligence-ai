@@ -86,3 +86,15 @@ def test_merge_script_dedupes_and_drops_noise_without_rewriting():
     assert "<!-- source: a.md -->" in text and "<!-- source: b.txt -->" in text
     assert dropped["duplicate"] == 1 and dropped["links only"] == 1 and dropped["too short"] == 1
     assert dropped["navigation/boilerplate"] == 1
+
+
+def test_merge_script_turns_front_matter_into_title_summary_and_tags():
+    body = ("---\ntitle: Hooks That Stop the Scroll\nslug: hooks\ncategory: ad-creative\ntags: [hooks, copy]\n"
+            "summary: How to write the first line of an ad so the right person stops reading past it.\n"
+            "level: beginner\nupdated: 2026-11-24\nsources:\n  - \"A talk about hooks\"\n---\n"
+            "# Hooks\n\nOpen with the customer's problem, not with your product name or logo.")
+    text, _ = kb_merge.merge([("ad-creative/hooks.md", body)])
+    assert "# Hooks\n\nHow to write the first line" in text      # own title first, then the summary
+    assert "Tags: hooks, copy" in text and "Sources: A talk about hooks" in text
+    assert "slug:" not in text and "level:" not in text and "updated:" not in text
+    assert "Open with the customer's problem" in text

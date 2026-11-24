@@ -175,8 +175,8 @@ async function performSignIn({ email, password } = {}) {
   return { user }
 }
 
-/** @param {{ name?: string, email?: string, password?: string, utm_source?: string, utm_medium?: string, utm_campaign?: string, utm_term?: string, utm_content?: string, referrer?: string }} [params] */
-async function performSignUp({ name, email, password, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer } = {}) {
+/** @param {{ name?: string, email?: string, password?: string, utm_source?: string, utm_medium?: string, utm_campaign?: string, utm_term?: string, utm_content?: string, referrer?: string, plan_id?: string }} [params] */
+async function performSignUp({ name, email, password, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer, plan_id } = {}) {
   const operationVersion = beginSessionOperation()
   const cleanName = name ? String(name).trim() : undefined
   const cleanEmail = String(email ?? "").trim().toLowerCase()
@@ -193,6 +193,7 @@ async function performSignUp({ name, email, password, utm_source, utm_medium, ut
       utm_term,
       utm_content,
       referrer,
+      plan_id: plan_id || undefined,
     },
   }))
   assertCurrentSessionOperation(operationVersion)
@@ -278,7 +279,7 @@ const authService = {
    * sign-in that follows. An existing account with a different password
    * therefore surfaces as the usual generic sign-in error.
    */
-  /** @param {{ name?: string, email?: string, password?: string, utm_source?: string, utm_medium?: string, utm_campaign?: string, utm_term?: string, utm_content?: string, referrer?: string }} [params] */
+  /** @param {{ name?: string, email?: string, password?: string, utm_source?: string, utm_medium?: string, utm_campaign?: string, utm_term?: string, utm_content?: string, referrer?: string, plan_id?: string }} [params] */
   signUp(params) {
     return shareInFlight("auth:sign-up", () => performSignUp(params))
   },

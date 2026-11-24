@@ -38,6 +38,46 @@ def fold(text: str) -> str:
     return " ".join(text.split())
 
 
+def prepare(body: str) -> str:
+    """Turn a YAML front matter block into a heading, a summary line, tags and sources.
+
+    Only fields that help search and trust are kept (title, summary, tags,
+    sources). slug, level and updated are dropped. Text without front matter is
+    returned unchanged. Nothing in the article body is touched.
+    """
+    body = body.replace("\r\n", "\n")
+    if not body.startswith("---\n"):
+        return body
+    end = body.find("\n---", 4)
+    if end == -1:
+        return body
+    head, rest = body[4:end], body[end + 4:].lstrip("\n")
+    meta: Dict[str, str] = {}
+    sources: List[str] = []
+    key = ""
+    for line in head.splitlines():
+        match = re.match(r"^([A-Za-z_]+):\s*(.*)$", line)
+        if match:
+            key = match.group(1)
+            meta[key] = match.group(2).strip().strip('"')
+        elif key == "sources" and line.strip().startswith("- "):
+            sources.append(line.strip()[2:].strip().strip('"'))
+    title = meta.get("title", "").strip()
+    parts = [meta.get("summary", "").strip()]
+    tags = meta.get("tags", "").strip("[]")
+    if tags:
+        parts.append("Tags: " + ", ".join(t.strip() for t in tags.split(",") if t.strip()))
+    if sources:
+        parts.append("Sources: " + "; ".join(sources))
+    intro = "\n".join(p for p in parts if p)
+    heading = f"## {title}\n\n" if title and not rest.lstrip().startswith("# ") else ""
+    if intro and not heading and rest.lstrip().startswith("# "):
+        # The article has its own title: keep it first, then the summary, then the text.
+        first, _, remainder = rest.lstrip().partition("\n")
+        return f"{first}\n\n{intro}\n\n{remainder.lstrip()}"
+    return f"{heading}{intro}\n\n{rest}" if intro else f"{heading}{rest}"
+
+
 def paragraphs(body: str) -> List[str]:
     return [p.strip() for p in re.split(r"\n\s*\n", body.replace("\r\n", "\n")) if p.strip()]
 
@@ -61,7 +101,7 @@ def merge(files: List[Tuple[str, str]]) -> Tuple[str, Dict[str, int]]:
     out: List[str] = ["# Helix knowledge base (merged draft: review before upload)", ""]
     for name, body in files:
         kept: List[str] = []
-        for p in paragraphs(body):
+        for p in paragraphs(prepare(body)):
             reason = keep_reason(p)
             if reason:
                 dropped[reason] += 1
@@ -83,16 +123,33 @@ def main(argv: List[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("source_dir")
     ap.add_argument("-o", "--output", default="knowledge_base.md")
+    ap.add_argument("--split", action="store_true",
+                    help="write one file per top-level folder into the --output directory (better citations)")
     args = ap.parse_args(argv)
     root = Path(args.source_dir)
+    # README files describe the folder, not the subject: they are skipped.
     files = [(str(p.relative_to(root)), p.read_text(encoding="utf-8", errors="replace"))
-             for p in sorted(root.rglob("*")) if p.is_file() and p.suffix.lower() in (".md", ".txt")]
+             for p in sorted(root.rglob("*"))
+             if p.is_file() and p.suffix.lower() in (".md", ".txt") and p.name.lower() != "readme.md"]
     if not files:
         print("No .md or .txt files found.", file=sys.stderr)
         return 1
-    text, dropped = merge(files)
-    Path(args.output).write_text(text, encoding="utf-8")
-    print(f"{len(files)} files -> {args.output} ({len(text)} chars). Dropped: {dropped}")
+    if not args.split:
+        text, dropped = merge(files)
+        Path(args.output).write_text(text, encoding="utf-8")
+        print(f"{len(files)} files -> {args.output} ({len(text)} chars). Dropped: {dropped}")
+        return 0
+    out_dir = Path(args.output)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    groups: Dict[str, List[Tuple[str, str]]] = {}
+    for name, body in files:
+        parts = Path(name).parts
+        groups.setdefault(parts[-2] if len(parts) > 1 else "general", []).append((name, body))
+    for group, items in groups.items():
+        text, dropped = merge(items)
+        target = out_dir / f"{group}.md"
+        target.write_text(text, encoding="utf-8")
+        print(f"{group}: {len(items)} files -> {target.name} ({len(text)} chars). Dropped: {dropped}")
     return 0
 
 

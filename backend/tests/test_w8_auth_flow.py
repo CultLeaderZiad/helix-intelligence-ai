@@ -325,7 +325,8 @@ async def test_sign_up_starts_a_seven_day_trial_that_expires_server_side(monkeyp
         access = (await client.get("/api/account/access", headers=_auth(token))).json()
         expires = datetime.fromisoformat(access["expires_at"])
         left = expires - datetime.now(timezone.utc)
-        assert timedelta(days=6, hours=23) < left <= timedelta(days=7)
+        # 7 trial days plus the 12-hour grace the server adds after them.
+        assert timedelta(days=7, hours=11) < left <= timedelta(days=7, hours=12)
         assert (await client.get("/api/discovery/drafts", headers=_auth(token))).status_code == 200
 
         # Expire it: access stops on the server, nothing is deleted.

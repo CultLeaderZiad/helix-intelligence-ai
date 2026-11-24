@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { Link, Navigate, useNavigate } from "react-router-dom"
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom"
 import { ArrowRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 import { APP_HOME } from "@/app/ProtectedRoute"
@@ -25,6 +25,9 @@ export function SignUpPage() {
   const { signUp, isAuthenticated } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
+  // The plan picked on the pricing page. The server checks it again; an unknown one is ignored.
+  const planId = useSearchParams()[0].get("plan") || ""
+  const signInPath = planId ? `/sign-in?plan=${encodeURIComponent(planId)}` : "/sign-in"
 
   const [values, setValues] = useState({ name: "", email: "", password: "" })
   const [consentAgreed, setConsentAgreed] = useState(false)
@@ -99,6 +102,7 @@ export function SignUpPage() {
         utm_term: attribution.utm_term,
         utm_content: attribution.utm_content,
         referrer: attribution.referrer || attribution.ref,
+        plan_id: planId || undefined,
       })
       const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i
       const cleanParam = (val, fallback) => {
@@ -165,7 +169,7 @@ export function SignUpPage() {
         <>
           {t("authAlreadyAccount", "Already have an account?")} {" "}
           <Link
-            to="/sign-in"
+            to={signInPath}
             className="text-accent transition-colors hover:text-accent-dim"
           >
             {t("authSignInLink", "Sign in")}
@@ -184,7 +188,7 @@ export function SignUpPage() {
                   type="button"
                   size="xs"
                   variant="outline"
-                  onClick={() => navigate("/sign-in", { state: { email: values.email.trim() } })}
+                  onClick={() => navigate(signInPath, { state: { email: values.email.trim() } })}
                 >
                   {t("authSignInLink", "Sign in")}
                 </Button>
