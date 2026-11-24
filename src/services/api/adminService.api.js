@@ -1,4 +1,4 @@
-import { request } from "../http"
+import { request, uploadFile } from "../http"
 
 /**
  * Real FastAPI-backed admin service for full platform control,
@@ -25,8 +25,17 @@ const adminService = {
     return request("/admin/knowledge-base")
   },
 
+  /** @param {{ title: string, text: string, filename?: string }} doc */
   uploadKnowledgeDocument({ title, text, filename }) {
     return request("/admin/knowledge-base", { method: "POST", body: { title, text, filename } })
+  },
+
+  /** .md, .txt and .zip files, read on the server. A typed title applies to a single text file only. */
+  uploadKnowledgeFiles(files, title) {
+    const form = new FormData()
+    for (const file of files) form.append("files", file)
+    if (title) form.append("title", title)
+    return uploadFile("/admin/knowledge-base/upload", form)
   },
 
   previewKnowledgeDocument(id) {

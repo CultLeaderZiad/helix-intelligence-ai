@@ -800,6 +800,7 @@ secret) is Fernet-encrypted with `CREDENTIAL_ENCRYPTION_KEY`.
 | `KB_MAX_FILE_BYTES` / `KB_MAX_TOTAL_BYTES` | Optional | Knowledge base upload limits per file and in total (default 512 KB / 10 MB) |
 | `AGENT_DEFAULT_MESSAGES_PER_DAY` / `AGENT_DEFAULT_GENERATIONS_PER_DAY` | Optional | Ask Helix questions and generations per workspace per UTC day when the plan sets none (default `5` / `3`) |
 | `AGENT_MAX_STEPS` / `AGENT_TIMEOUT_S` | Optional | Tool steps per question and the hard timeout (default `4` / `60`) |
+| `KB_MAX_ZIP_BYTES` / `KB_MAX_ZIP_ENTRIES` | Optional | A knowledge base `.zip` upload: its size and how many files it may hold (default 8 MB / 300) |
 | `TEARDOWN_DEFAULT_PER_DAY` | Optional | New AI teardowns per workspace per UTC day when the plan sets none (default `10`; cache hits are free) |
 | `ALERT_MAX_CONSECUTIVE_FAILURES` | Optional | Failures in a row before a channel is turned off (default `5`) |
 
