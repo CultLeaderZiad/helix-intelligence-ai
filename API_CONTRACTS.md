@@ -269,3 +269,9 @@ A non-2xx answer counts as a failure and is retried by the outbox.
 - `POST /generate {creative_id, product, language: ar|en, dialect: egyptian|gulf|levantine|msa}` returns 5 drafts `{primary_text, headline, cta, ugc_script, image_prompt}`, cached per workspace by input hash (a cache hit is free).
 - `POST /brief {brand_id}` saves the advertiser's longest-running ads to a board "Brief: <name>" (needs Swipe Files) and returns angles (from cached teardowns only) and 10 ideas. Share the board with the existing share link.
 - Arabic search: queries are also matched with alef forms, ta marbuta, alef maqsura, tashkeel and tatweel normalised (`text_search.expand_query`).
+
+### Knowledge base file and zip upload
+
+`POST /api/admin/knowledge-base/upload` (full admin, `multipart/form-data`: `files` (up to 20), optional `title`). Accepts `.md`, `.txt` and `.zip`, read on the server. Every text file in a zip becomes its own document, titled from its front matter `title` or its file name. A typed `title` applies only when exactly one text file is imported. Front matter becomes a title, summary, tags and sources (slug, level and updated are dropped); the article text is not rewritten. Archives are read in memory, never written to disk.
+
+Returns `201 {created: [{id, title, version, chunks}], skipped: [{name, reason}]}`. Skipped: hidden and system files, README files, anything that is not `.md` or `.txt`, encrypted or oversized entries, binary files renamed to `.md`, and a re-upload that did not change (`This exact version is already uploaded.`). Errors: `422 kb_bad_zip`, `422 kb_nothing_to_import` (with `skipped`), `413 kb_zip_too_many_files` (over `KB_MAX_ZIP_ENTRIES`, 300), `413 kb_file_too_large` (a `.zip` over `KB_MAX_ZIP_BYTES`, 8 MB, or a text file over `KB_MAX_FILE_BYTES`, 512 KB). The whole knowledge base stays under `KB_MAX_TOTAL_BYTES` (10 MB).

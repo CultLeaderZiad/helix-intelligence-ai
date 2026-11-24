@@ -340,6 +340,7 @@ export async function uploadFile(path, formData, options = {}) {
   }
 
   if (!res.ok) {
+    /** @type {any} */
     let detail = res.statusText
     try {
       const payload = await res.json()
@@ -349,7 +350,8 @@ export async function uploadFile(path, formData, options = {}) {
     if (res.status === 401 && !isAuthRoute && getAccessToken() === token) {
       window.dispatchEvent(new CustomEvent("helix:unauthorized"))
     }
-    throw new ServiceError(typeof detail === "string" ? detail : "Upload failed", { status: res.status })
+    const message = typeof detail === "string" ? detail : (typeof detail?.message === "string" ? detail.message : "Upload failed")
+    throw new ServiceError(message, { status: res.status })
   }
 
   return res.json()
