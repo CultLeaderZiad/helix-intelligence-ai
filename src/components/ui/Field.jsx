@@ -14,7 +14,7 @@ export function Input({ className = "", ...props }) {
   return (
     <input
       className={cn(
-        "h-8 w-full min-w-0 rounded-sm border border-border bg-surface-2 px-2.5",
+        "h-8 max-sm:h-10 w-full min-w-0 rounded-sm border border-border bg-surface-2 px-2.5",
         "text-[13px] text-text placeholder:text-text-faint",
         "transition-colors focus:border-border-strong focus:outline-none",
         "disabled:opacity-40",
@@ -57,7 +57,7 @@ export function Select({ className = "", options = [], ...props }) {
     <div className="relative">
       <select
         className={cn(
-          "h-8 w-full appearance-none rounded-sm border border-border bg-surface-2 pl-2.5 pr-7",
+          "h-8 max-sm:h-10 w-full appearance-none rounded-sm border border-border bg-surface-2 pl-2.5 pr-7",
           "text-[13px] text-text transition-colors",
           "focus:border-border-strong focus:outline-none",
           className,
@@ -87,7 +87,7 @@ export function Checkbox({ checked, onChange, label, count = undefined, classNam
   return (
     <label
       className={cn(
-        "group flex cursor-pointer select-none items-center gap-2 py-1",
+        "group flex cursor-pointer select-none items-center gap-2 py-1 max-sm:min-h-10",
         className,
       )}
     >
