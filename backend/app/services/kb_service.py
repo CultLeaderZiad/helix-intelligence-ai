@@ -131,6 +131,33 @@ async def audit(db: AsyncSession, limit: int = 100) -> List[Dict[str, Any]]:
              "version": r.version, "created_at": r.created_at.isoformat() if r.created_at else None} for r in rows]
 
 
+def _public_view(doc: KbDocument) -> Dict[str, Any]:
+    """What any signed-in user may see: no uploader, checksum or file name."""
+    return {"id": doc.id, "title": doc.title, "version": doc.version,
+            "updated_at": doc.created_at.isoformat() if doc.created_at else None}
+
+
+async def public_list(db: AsyncSession) -> List[Dict[str, Any]]:
+    """Enabled documents only (one per title: older versions are disabled on upload)."""
+    docs = (await db.execute(select(KbDocument).where(KbDocument.status == "enabled")
+                             .order_by(KbDocument.title))).scalars().all()
+    return [_public_view(d) for d in docs]
+
+
+async def public_document(db: AsyncSession, document_id: str) -> Dict[str, Any]:
+    doc = await db.get(KbDocument, document_id)
+    if doc is None or doc.status != "enabled":  # a disabled article looks like a missing one
+        raise HTTPException(status_code=404, detail="Article not found")
+    chunks = (await db.execute(select(KbChunk).where(KbChunk.document_id == doc.id).order_by(KbChunk.ordinal))).scalars().all()
+    return {**_public_view(doc), "text": "\n\n".join(c.text for c in chunks)}
+
+
+async def public_search(db: AsyncSession, query: str, k: int = 8) -> List[Dict[str, Any]]:
+    hits = await search(db, query, k=k)
+    return [{"document_id": h["document_id"], "title": h["title"], "version": h["version"],
+             "snippet": " ".join(h["text"].split())[:300]} for h in hits]
+
+
 async def search(db: AsyncSession, query: str, k: int = 5) -> List[Dict[str, Any]]:
     """Top-k chunks of enabled documents for ``query``, with source ids for citing."""
     from app.services.text_search import clean_query, expand_query

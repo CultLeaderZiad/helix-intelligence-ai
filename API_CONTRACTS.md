@@ -70,6 +70,10 @@ Scores (`hook`, `clarity`, `retention`, `composite`) are a **text rubric on a
 bound of the range Meta's official Ad Library API reports and is `null` for
 every other source; spend, CTR and engagement are `null` unless Meta reports them.
 
+## Knowledge base (read-only) — `/api/knowledge-base`
+
+Any signed-in user can read the enabled articles; editing stays admin-only under `/api/admin/knowledge-base`. `GET ""` returns `{items: [{id, title, version, updated_at}]}` (enabled documents only). `GET /search?q=` returns `{items: [{document_id, title, version, snippet}]}`. `GET /{id}` returns the article with its `text`; a disabled or missing article is `404`. The uploader, checksum and file name are never returned.
+
 ## 4. Creatives and boards
 
 | Method | Path | Flag | Notes |
