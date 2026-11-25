@@ -25,6 +25,7 @@ from .scout import ScoutJob, ScoutLead, ScoutMapsJob, ScoutMapsLead
 from .leadgen import LeadGenJob, LeadGenLead, LeadGenWorkerHeartbeat
 from .board_share_link import BoardShareLink
 from .search_draft import SearchDraft
+from .agent_conversation import AgentConversation, AgentMessage
 from .ad_archive import AdArchiveEntry
 from .provider_call_budget import ProviderCallBudget
 from .workspace_daily_usage import WorkspaceDailyUsage
@@ -87,4 +88,6 @@ __all__ = [
     "BoardShareLink",
     "AdArchiveEntry",
     "SearchDraft",
+    "AgentConversation",
+    "AgentMessage",
 ]
