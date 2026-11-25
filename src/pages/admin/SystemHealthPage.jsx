@@ -96,7 +96,7 @@ export function SystemHealthPage() {
                 AI Inference Stack
               </div>
               <p className="text-xs text-text-muted">
-                Groq LPUs running Llama-3.3-70b-versatile, Mixtral 8x7b, and OpenRouter multi-model fallbacks.
+                Groq (Llama 3.3 70B) first, with Gemini as the fallback.
               </p>
               <div className="pt-2 flex items-center justify-between text-xs font-mono">
                 <span className="text-text-faint">Throughput: High Concurrency</span>
