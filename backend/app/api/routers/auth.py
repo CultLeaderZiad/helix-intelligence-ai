@@ -6,7 +6,7 @@ from sqlalchemy import select
 import datetime
 
 from app.core.observability import log_event
-from app.schemas.auth import UserCreate, UserLogin, SessionResponse, SignUpAccepted, PasswordResetRequest, PasswordResetConfirm
+from app.schemas.auth import GoogleSignIn, UserCreate, UserLogin, SessionResponse, SignUpAccepted, PasswordResetRequest, PasswordResetConfirm
 from app.services import auth_service, billing_service
 from app.core.deps import _bind_request_tenant, get_db, get_current_user, oauth2_scheme
 from app.models.user import User
@@ -173,6 +173,32 @@ async def signin(user_in: UserLogin, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Sign-in temporarily unavailable. Please try again shortly.",
         )
+
+@router.post("/google", response_model=SessionResponse)
+async def google_sign_in(body: GoogleSignIn, db: AsyncSession = Depends(get_db)):
+    """Continue with Google: verify the ID token on the server, then sign in or sign up."""
+    from app.services import google_identity
+
+    if not settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Google sign-in is not available.")
+    limits.enforce("google-sign-in", "all", settings.SIGN_UP_GLOBAL_LIMIT * 5, settings.SIGN_UP_GLOBAL_WINDOW_S,
+                   "Sign-in is busy. Please try again shortly.")
+    try:
+        identity = await google_identity.verify_id_token(body.credential)
+    except google_identity.GoogleTokenError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google sign-in could not be verified.")
+    limits.enforce("sign-in-email", identity.email, settings.SIGN_IN_EMAIL_LIMIT, settings.AUTH_EMAIL_WINDOW_S)
+    try:
+        token, user = await auth_service.sign_in_with_google(db, identity, body.plan_id)
+        await _bind_request_tenant(db, user)
+        return await build_session_response(db, user, access_token=token)
+    except HTTPException:
+        raise
+    except Exception as e:
+        log_event(logger, "google_sign_in_failed", error=e)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Sign-in temporarily unavailable. Please try again shortly.")
+
 
 @router.post("/sign-out")
 @router.post("/logout")

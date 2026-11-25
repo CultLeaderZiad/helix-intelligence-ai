@@ -21,7 +21,7 @@ describe("W8 frontend security headers (vercel.json)", () => {
     expect(directives["script-src"]).toContain("'self'")
     expect(directives["script-src"]).not.toContain("'unsafe-inline'")
     expect(directives["script-src"]).not.toContain("'unsafe-eval'")
-    expect(directives["script-src"].filter((s) => s.startsWith("https:") && s !== "https://plausible.io")).toEqual([])
+    expect(directives["script-src"].filter((s) => s.startsWith("https:") && s !== "https://plausible.io" && s !== "https://accounts.google.com/gsi/client")).toEqual([])
   })
 
   it("lets the browser reach the production API it is built for, and nothing else by script", () => {

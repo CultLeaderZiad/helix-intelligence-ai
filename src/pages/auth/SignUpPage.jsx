@@ -11,6 +11,7 @@ import { classifyAuthFailure } from "@/features/auth/authFailure"
 import { formatAuthFieldError, validateSignUp } from "@/features/auth/validation"
 import { Input, PasswordInput } from "@/components/ui/Field"
 import { Button } from "@/components/ui/Button"
+import { GOOGLE_CLIENT_ID, GoogleSignInButton } from "@/features/auth/GoogleSignInButton"
 import { getAttribution, clearAttribution } from "@/lib/utm"
 import { track } from "@/lib/analytics"
 import { useLanguage } from "@/context/LanguageContext"
@@ -22,7 +23,7 @@ import { useLanguage } from "@/context/LanguageContext"
  * guard resolves anything role-specific from there.
  */
 export function SignUpPage() {
-  const { signUp, isAuthenticated } = useAuth()
+  const { signUp, signInWithGoogle, isAuthenticated } = useAuth()
   const { t } = useLanguage()
   const navigate = useNavigate()
   // The plan picked on the pricing page. The server checks it again; an unknown one is ignored.
@@ -54,6 +55,27 @@ export function SignUpPage() {
     setValues((s) => ({ ...s, [key]: value }))
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }))
     if (authError) setAuthError(null)
+  }
+
+  async function onGoogle(credential) {
+    if (submitLock.current) return
+    submitLock.current = true
+    setAuthError(null)
+    setSubmitting(true)
+    try {
+      await signInWithGoogle({ credential, plan_id: planId || undefined })
+      track("signup", { source: "google", medium: "oauth", campaign: "none" })
+      navigate(APP_HOME, { replace: true })
+    } catch (err) {
+      const kind = classifyAuthFailure(err)
+      setAuthError({
+        status: t("authAuthFailedStatus", "Sign-in failed"),
+        tone: kind === "rate_limited" || kind === "unavailable" ? "warning" : "danger",
+        message: t("authGoogleFailed", "Google sign-in could not be completed. Try again, or use your email and password."),
+      })
+      submitLock.current = false
+      setSubmitting(false)
+    }
   }
 
   /** @param {import("react").FormEvent<HTMLFormElement>} [event] */
@@ -312,6 +334,12 @@ export function SignUpPage() {
           )}
         </Button>
       </form>
+      <GoogleSignInButton onCredential={onGoogle} disabled={submitting} />
+      {GOOGLE_CLIENT_ID ? (
+        <p className="text-center text-xs text-text-muted">
+          {t("authGoogleTerms", "Continuing with Google means you agree to the Terms of Service and Privacy Policy.")}
+        </p>
+      ) : null}
     </AuthLayout>
   )
 }

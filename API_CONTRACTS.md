@@ -74,6 +74,10 @@ every other source; spend, CTR and engagement are `null` unless Meta reports the
 
 Any signed-in user can read the enabled articles; editing stays admin-only under `/api/admin/knowledge-base`. `GET ""` returns `{items: [{id, title, version, updated_at}]}` (enabled documents only). `GET /search?q=` returns `{items: [{document_id, title, version, snippet}]}`. `GET /{id}` returns the article with its `text`; a disabled or missing article is `404`. The uploader, checksum and file name are never returned.
 
+## Continue with Google — `POST /api/auth/google`
+
+Body `{credential, plan_id?}` (a Google ID token, no auth header). The server checks signature, audience (`GOOGLE_CLIENT_ID`), issuer, expiry and `email_verified`, then signs in or creates the account like an email sign-up (same workspace, trial and access-request rules). Returns the same `SessionResponse` as sign-in. `404` while `GOOGLE_CLIENT_ID` is unset, `401` for a bad token, `409 google_account_mismatch` if the email is linked to another Google account. First link to an existing password account replaces its password and revokes its sessions.
+
 ## 4. Creatives and boards
 
 | Method | Path | Flag | Notes |

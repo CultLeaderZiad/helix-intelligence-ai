@@ -175,6 +175,22 @@ async function performSignIn({ email, password } = {}) {
   return { user }
 }
 
+/** @param {{ credential: string, plan_id?: string }} params Google ID token; the server verifies it. */
+async function performGoogleSignIn({ credential, plan_id } = { credential: "" }) {
+  const operationVersion = beginSessionOperation()
+  const session = await recoverAuthRequest(() => request("/auth/google", {
+    method: "POST",
+    body: { credential, plan_id: plan_id || undefined },
+  }))
+  if (!session?.access_token) {
+    throw new ServiceError("Sign-in succeeded but no access token returned", { code: "no_token" })
+  }
+  assertCurrentSessionOperation(operationVersion)
+  const user = sessionToUser(session)
+  storeSession(session.access_token, user)
+  return { user }
+}
+
 /** @param {{ name?: string, email?: string, password?: string, utm_source?: string, utm_medium?: string, utm_campaign?: string, utm_term?: string, utm_content?: string, referrer?: string, plan_id?: string }} [params] */
 async function performSignUp({ name, email, password, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer, plan_id } = {}) {
   const operationVersion = beginSessionOperation()
@@ -269,6 +285,11 @@ const authService = {
   /** @param {{ email?: string, password?: string }} [credentials] */
   signIn(credentials) {
     return shareInFlight("auth:sign-in", () => performSignIn(credentials))
+  },
+
+  /** Continue with Google (ID token from Google Identity Services). @param {{ credential: string, plan_id?: string }} params */
+  signInWithGoogle(params) {
+    return shareInFlight("auth:google", () => performGoogleSignIn(params))
   },
 
   /**
