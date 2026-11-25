@@ -65,7 +65,7 @@ async def test_zip_becomes_one_document_per_article_with_front_matter_cleaned():
     body = response.json()
     assert sorted(d["title"] for d in body["created"]) == sorted([f"Hooks A {s}", f"Hooks B {s}", f"Notes"])
     reasons = {x["name"].split("/")[-1]: x["reason"] for x in body["skipped"]}
-    assert "README" in reasons["README.md"] and reasons["logo.png"] == "not a .md or .txt file"
+    assert "README" in reasons["README.md"] and reasons["logo.png"] == "only .md, .txt, .csv and .pdf files are accepted"
     assert reasons[".hidden.md"] == "hidden or system file"
 
     async with async_session_maker() as db:

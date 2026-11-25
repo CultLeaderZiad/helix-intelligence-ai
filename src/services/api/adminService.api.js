@@ -30,7 +30,7 @@ const adminService = {
     return request("/admin/knowledge-base", { method: "POST", body: { title, text, filename } })
   },
 
-  /** .md, .txt and .zip files, read on the server. A typed title applies to a single text file only. */
+  /** .md, .txt, .csv, .pdf and .zip files, read on the server. A typed title applies to a single text file only. */
   uploadKnowledgeFiles(files, title) {
     const form = new FormData()
     for (const file of files) form.append("files", file)

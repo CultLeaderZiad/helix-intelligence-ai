@@ -27,6 +27,8 @@ export const ADVERTISER_COPY = {
     week: "Week",
     launchesCol: "Launches",
     activeCol: "Active",
+    adLibrary: "Open this advertiser in Meta Ad Library",
+    adLibraryNote: "Opens Meta's own public page in a new tab. Nothing is fetched or stored by Helix.",
   },
   ar: {
     title: "المعلِن",
@@ -49,7 +51,16 @@ export const ADVERTISER_COPY = {
     week: "الأسبوع",
     launchesCol: "جديد",
     activeCol: "نشط",
+    adLibrary: "افتح هذا المعلِن في مكتبة إعلانات ميتا",
+    adLibraryNote: "يفتح صفحة ميتا العامة في تبويب جديد. لا يجلب Helix أو يخزّن شيئاً.",
   },
+}
+
+/** Meta's public Ad Library search for an advertiser name. A plain link: no API, no data fetched. */
+export function adLibraryUrl(name) {
+  const q = String(name || "").trim()
+  if (!q) return null
+  return `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=ALL&search_type=keyword_unordered&q=${encodeURIComponent(q)}`
 }
 
 function Stat({ label, value }) {
@@ -97,6 +108,14 @@ export function AdvertiserPage() {
       <header>
         <p className="label-mono text-text-muted">{c.title}</p>
         <h1 className="text-2xl font-semibold text-text" dir="auto">{s.brand_name || brandId}</h1>
+        {adLibraryUrl(s.brand_name) ? (
+          <p className="mt-2 text-sm">
+            <a href={adLibraryUrl(s.brand_name)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-text underline">
+              {c.adLibrary} <ExternalLink className="h-4 w-4" aria-hidden="true" />
+            </a>
+            <span className="ms-2 text-xs text-text-muted">{c.adLibraryNote}</span>
+          </p>
+        ) : null}
       </header>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

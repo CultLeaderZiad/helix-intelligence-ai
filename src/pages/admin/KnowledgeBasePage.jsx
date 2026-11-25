@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { adminService } from "@/services"
 
-const ACCEPT = ".md,.txt,.zip,text/markdown,text/plain,application/zip,application/x-zip-compressed"
+const ACCEPT = ".md,.txt,.csv,.pdf,.zip,text/markdown,text/plain,text/csv,application/pdf,application/zip,application/x-zip-compressed"
+const STALE_DAYS = 30
+
+/** Days since the newest enabled document was added; null when there is none. */
+export function daysSinceUpdate(docs, now = Date.now()) {
+  const times = (docs || []).filter((d) => d.status === "enabled" && d.created_at).map((d) => Date.parse(d.created_at))
+  if (times.length === 0) return null
+  return Math.floor((now - Math.max(...times)) / 86400000)
+}
 
 /**
- * Admin-only: upload .md, .txt or .zip files (a zip's text files each become a
+ * Admin-only: upload .md, .txt, .csv, .pdf or .zip files (a zip's text files each become a
  * document), or paste text. Files are read by the server, not the browser. Preview
  * chunks, version, enable/disable, delete, audit.
  */
@@ -70,6 +78,7 @@ export function KnowledgeBasePage() {
     })
   }
 
+  const stale = daysSinceUpdate(docs)
   const hasFiles = files.length > 0
   const onlyOneTextFile = hasFiles && files.length === 1 && !/\.zip$/i.test(files[0].name)
 
@@ -78,17 +87,24 @@ export function KnowledgeBasePage() {
       <header>
         <h1 className="text-xl font-semibold text-text">Knowledge Base</h1>
         <p className="mt-1 max-w-3xl text-sm text-text-muted">
-          Documents the Helix Agent can search and cite. Upload .md or .txt files, or a .zip (every .md and .txt inside becomes its own
+          Documents the Helix Agent can search and cite. Upload .md, .txt, .csv or .pdf files, or a .zip (every such file inside becomes its own
           document, titled from the file). Uploading an existing title creates a new version and turns the older ones off. Retrieved text
           is treated as data by the agent, never as instructions.
         </p>
       </header>
 
       {error ? <p role="alert" className="text-sm text-rose-300">{error}</p> : null}
+      {docs && (stale === null || stale >= STALE_DAYS) ? (
+        <p role="status" className="rounded-lg border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-text">
+          {stale === null
+            ? "The knowledge base has no enabled documents yet. Helix answers from it, so add some."
+            : `Nothing new was added for ${stale} days. Add fresh material so Helix and your customers see current guidance.`}
+        </p>
+      ) : null}
 
       <form className="flex flex-col gap-3 rounded-lg border border-border p-4" onSubmit={submit}>
         <label className="flex flex-col gap-1 text-sm text-text">
-          Files (.md, .txt or .zip)
+          Files (.md, .txt, .csv, .pdf or .zip)
           <input ref={fileInput} type="file" multiple accept={ACCEPT} onChange={onFiles} className="text-sm" />
         </label>
         {hasFiles ? (

@@ -22,7 +22,7 @@ from app.models.knowledge_base import KbAudit, KbChunk, KbDocument
 
 CHUNK_TARGET = 1200
 CHUNK_MAX = 2000
-ALLOWED_SUFFIXES = (".md", ".txt")
+ALLOWED_SUFFIXES = (".md", ".txt", ".csv", ".pdf")
 
 
 def chunk_text(body: str) -> List[str]:
@@ -61,7 +61,7 @@ async def upload(db: AsyncSession, actor_id: str, title: str, body: str, filenam
     if not title:
         raise HTTPException(status_code=422, detail={"code": "kb_title_required", "message": "A title is required."})
     if filename and not filename.lower().endswith(ALLOWED_SUFFIXES):
-        raise HTTPException(status_code=422, detail={"code": "kb_file_type", "message": "Upload a .md or .txt file."})
+        raise HTTPException(status_code=422, detail={"code": "kb_file_type", "message": "Upload a .md, .txt, .csv or .pdf file."})
     raw = (body or "").encode("utf-8")
     if not raw.strip():
         raise HTTPException(status_code=422, detail={"code": "kb_empty", "message": "The document is empty."})

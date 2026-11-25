@@ -1,4 +1,4 @@
-"""Knowledge-base file import: .md, .txt and .zip uploads, read fully on the server.
+"""Knowledge-base file import: .md, .txt, .csv, .pdf and .zip uploads, read fully on the server.
 
 Each text file (and each text file inside a zip) becomes its own document, titled
 from its front matter or its file name, so the agent can cite the exact article.
@@ -9,7 +9,7 @@ Archives are read in memory, never written to disk, so a hostile path cannot
 escape anywhere. Limits: KB_MAX_ZIP_BYTES for the upload, KB_MAX_ZIP_ENTRIES
 entries, KB_MAX_FILE_BYTES per file (declared and actually read), and the whole
 knowledge base stays under KB_MAX_TOTAL_BYTES. Encrypted entries, nested archives,
-hidden files, README files and anything that is not .md or .txt are skipped, and
+hidden files, README files and anything that is not .md, .txt, .csv or .pdf are skipped, and
 every skip is reported with its reason.
 """
 from __future__ import annotations
@@ -26,7 +26,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.services import kb_service
 
-TEXT_SUFFIXES = (".md", ".txt")
+TEXT_SUFFIXES = (".md", ".txt", ".csv", ".pdf")
+MAX_PDF_PAGES = 100
 MAX_FILES_PER_REQUEST = 20
 
 
@@ -86,7 +87,24 @@ def _clean_name(raw: str) -> str:
     return PurePosixPath(str(raw or "").replace("\\", "/")).name
 
 
-def _decode(raw: bytes) -> Optional[str]:
+def _pdf_text(raw: bytes) -> Optional[str]:
+    """Text of the first MAX_PDF_PAGES pages. None for a scanned, encrypted or broken PDF."""
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(io.BytesIO(raw))
+        if reader.is_encrypted:
+            return None
+        pages = [(page.extract_text() or "").strip() for page in reader.pages[:MAX_PDF_PAGES]]
+    except Exception:  # a damaged file must skip, never fail the whole upload
+        return None
+    text = "\n\n".join(p for p in pages if p)
+    return text or None
+
+
+def _decode(raw: bytes, name: str = "") -> Optional[str]:
+    if name.lower().endswith(".pdf"):
+        return _pdf_text(raw)
     if b"\x00" in raw:
         return None  # a binary file renamed to .md
     return raw.decode("utf-8-sig", errors="replace")
@@ -100,7 +118,7 @@ def _skip_reason(path: str) -> Optional[str]:
     if name.lower() == "readme.md":
         return "README (describes the folder, not a subject)"
     if not name.lower().endswith(TEXT_SUFFIXES):
-        return "not a .md or .txt file"
+        return "only .md, .txt, .csv and .pdf files are accepted"
     return None
 
 
@@ -170,15 +188,15 @@ async def import_files(db: AsyncSession, actor_id: str, uploads: List[Tuple[str,
     if not entries:
         raise HTTPException(status_code=422, detail={
             "code": "kb_nothing_to_import",
-            "message": "No .md or .txt files were found.",
+            "message": "No .md, .txt, .csv or .pdf files were found.",
             "skipped": skipped,
         })
     created: List[Dict[str, Any]] = []
     custom_title = " ".join((title or "").split())[:200] if len(entries) == 1 else ""
     for name, raw in entries:
-        text = _decode(raw)
+        text = _decode(raw, name)
         if text is None:
-            skipped.append({"name": name, "reason": "not a text file"})
+            skipped.append({"name": name, "reason": "no readable text (scanned or protected?)"})
             continue
         doc_title = custom_title or document_title(text, name)
         try:
