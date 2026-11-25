@@ -1,0 +1,33 @@
+/** Copy for the saved-conversations panel (the Ask Helix page spreads it into its own copy). */
+export const HISTORY_COPY = {
+  en: {
+      history: "History",
+      newChat: "New chat",
+      historyActive: "Saved",
+      historyArchived: "Archived",
+      historyHint: (n) => `Your chats are saved and private to you. Up to ${n} stay open; older ones are archived, not deleted.`,
+      historyEmpty: "Nothing here yet.",
+      historyFailed: "Could not update your history. Try again.",
+      pin: "Pin",
+      unpin: "Unpin",
+      archive: "Archive",
+      restore: "Restore",
+      remove: "Delete",
+      confirmRemove: "Delete for good?",
+  },
+  ar: {
+      history: "السجل",
+      newChat: "محادثة جديدة",
+      historyActive: "المحفوظة",
+      historyArchived: "المؤرشفة",
+      historyHint: (n) => `محادثاتك محفوظة وخاصة بك. تبقى ${n} مفتوحة، والأقدم تُؤرشف ولا تُحذف.`,
+      historyEmpty: "لا شيء هنا بعد.",
+      historyFailed: "تعذّر تحديث سجلك. أعد المحاولة.",
+      pin: "تثبيت",
+      unpin: "إلغاء التثبيت",
+      archive: "أرشفة",
+      restore: "استعادة",
+      remove: "حذف",
+      confirmRemove: "حذف نهائي؟",
+  },
+}
