@@ -89,6 +89,8 @@ Body `{credential, plan_id?}` (a Google ID token, no auth header). The server ch
 | GET / POST | `/api/playbooks` | `swipe_files` | List / create a shareable board report. |
 | GET | `/api/playbooks/public/{public_id}` | signed-in owner org | Read a shared report. |
 | GET | `/api/boards` | `swipe_files` | The caller's boards (saved-ad collections) with counts. |
+| GET | `/api/boards/export?collection=` | `swipe_files` | W9-4: one of the caller's boards as `{filename, csv}` (UTF-8 BOM, formula-like cells prefixed with `'`). |
+| POST | `/api/boards/brief` | `swipe_files` | W9-4: body `{collection, goal?}`. One AI call over up to 15 ads of the caller's board plus their already-stored teardowns (never starts new ones). Returns `{board, markdown, ads_used, analysed, model, label}`; `429 brief_daily_limit` after `BRIEF_PER_DAY` (default 5) per workspace per day, `502 ai_unavailable` (not counted). Not stored. |
 | GET / POST | `/api/boards/share-links` | `swipe_files` | List / create guest links. Body `{collection, expires_in_days ∈ {1, 7, 30}}`; at most 5 active links per board (`409`). |
 | DELETE | `/api/boards/share-links/{id}` | `swipe_files` | Revoke (creator only; sets `revoked_at`, nothing is deleted). |
 | GET | `/api/boards/tags` | `swipe_files` | W9-2. The caller's tags with counts: `{items: [{tag, count}]}` (most used first, at most 200). |

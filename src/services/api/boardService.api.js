@@ -21,6 +21,16 @@ const boardService = {
     return request(`/boards/share-links/${encodeURIComponent(linkId)}`, { method: "DELETE" })
   },
 
+  /** W9-4: the board as CSV text. @param {string} collection @returns {Promise<{filename: string, csv: string}>} */
+  exportBoard(collection) {
+    return request("/boards/export", { params: { collection } })
+  },
+
+  /** W9-4: AI creative brief (Markdown) from one board. @param {string} collection @param {string} [goal] */
+  buildBrief(collection, goal = "") {
+    return request("/boards/brief", { method: "POST", body: { collection, goal } })
+  },
+
   listTeamBoards() {
     return request("/boards/team")
   },

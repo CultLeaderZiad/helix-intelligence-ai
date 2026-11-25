@@ -264,3 +264,12 @@
 .helixa-driver-theme .driver-popover-arrow {
   border-color: var(--color-accent);
 }
+
+/* Phones: form fields at 16px or larger. Below that, iOS Safari zooms the page when a field gets focus. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

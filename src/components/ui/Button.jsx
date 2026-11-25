@@ -18,12 +18,12 @@ const VARIANTS = {
 }
 
 const SIZES = {
-  xs: "h-6 px-2 text-[11px] gap-1",
-  sm: "h-7 px-2.5 text-xs gap-1.5",
-  md: "h-8 px-3 text-[13px] gap-1.5",
-  lg: "h-9 px-4 text-sm gap-2",
-  icon: "h-7 w-7 p-0",
-  "icon-sm": "h-6 w-6 p-0",
+  xs: "h-6 px-2 text-[11px] gap-1 max-sm:min-h-10",
+  sm: "h-7 px-2.5 text-xs gap-1.5 max-sm:min-h-10",
+  md: "h-8 px-3 text-[13px] gap-1.5 max-sm:min-h-10",
+  lg: "h-9 px-4 text-sm gap-2 max-sm:min-h-10",
+  icon: "h-7 w-7 p-0 max-sm:h-10 max-sm:w-10",
+  "icon-sm": "h-6 w-6 p-0 max-sm:h-10 max-sm:w-10",
 }
 
 /** @param {import("react").ButtonHTMLAttributes<HTMLButtonElement> & { ref?: import("react").Ref<HTMLButtonElement>, as?: import("react").ElementType, to?: import("react-router-dom").To, replace?: boolean, href?: string, variant?: keyof typeof VARIANTS, size?: keyof typeof SIZES }} props */
