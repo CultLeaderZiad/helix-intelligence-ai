@@ -105,6 +105,16 @@ def components(ads: List[Creative]) -> Dict[str, Dict[str, Any]]:
     return out
 
 
+async def landing_domain(db: AsyncSession, scope: Optional[List[str]], brand_id: str) -> Optional[str]:
+    """The website most of this advertiser's ads in the workspace point to (404 when it has no ads here)."""
+    from app.services.competitor_snapshot import top_domain
+
+    ads = await _creatives(db, scope, brand_id)
+    if not ads:
+        raise HTTPException(status_code=404, detail="No ads from this advertiser in your workspace yet.")
+    return top_domain([c.landing_domain for c in ads])
+
+
 async def summary(db: AsyncSession, scope: Optional[List[str]], brand_id: str) -> Dict[str, Any]:
     ads = await _creatives(db, scope, brand_id)
     monitored = await _monitored(db, scope, brand_id)

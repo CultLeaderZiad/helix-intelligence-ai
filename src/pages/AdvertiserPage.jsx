@@ -28,6 +28,14 @@ export const ADVERTISER_COPY = {
     launchesCol: "Launches",
     activeCol: "Active",
     adLibrary: "Open this advertiser in Meta Ad Library",
+    siteTitle: "Their website",
+    siteButton: "Look up their website",
+    siteLoading: "Reading the site…",
+    siteNote: "Reads one public page of the site their ads point to. Only what the page says; nothing is guessed.",
+    siteFailed: "Could not read the site.",
+    siteCached: "Saved result (refreshes weekly)",
+    siteSocial: "Social profiles",
+    sitePages: "Pages",
     adLibraryNote: "Opens Meta's own public page in a new tab. Nothing is fetched or stored by Helix.",
   },
   ar: {
@@ -52,6 +60,14 @@ export const ADVERTISER_COPY = {
     launchesCol: "جديد",
     activeCol: "نشط",
     adLibrary: "افتح هذا المعلِن في مكتبة إعلانات ميتا",
+    siteTitle: "موقعهم",
+    siteButton: "اعرض بيانات موقعهم",
+    siteLoading: "جارٍ قراءة الموقع…",
+    siteNote: "يقرأ صفحة عامة واحدة من الموقع الذي تشير إليه إعلاناتهم. فقط ما تقوله الصفحة، دون تخمين.",
+    siteFailed: "تعذّرت قراءة الموقع.",
+    siteCached: "نتيجة محفوظة (تتجدد أسبوعياً)",
+    siteSocial: "الحسابات الاجتماعية",
+    sitePages: "الصفحات",
     adLibraryNote: "يفتح صفحة ميتا العامة في تبويب جديد. لا يجلب Helix أو يخزّن شيئاً.",
   },
 }
@@ -61,6 +77,49 @@ export function adLibraryUrl(name) {
   const q = String(name || "").trim()
   if (!q) return null
   return `https://www.facebook.com/ads/library/?active_status=all&ad_type=all&country=ALL&search_type=keyword_unordered&q=${encodeURIComponent(q)}`
+}
+
+function SiteSnapshot({ brandId, c }) {
+  const [state, setState] = useState({ status: "idle", data: null, message: "" })
+  async function load() {
+    setState({ status: "loading", data: null, message: "" })
+    try {
+      setState({ status: "done", data: await advertiserService.getSite(brandId), message: "" })
+    } catch (err) {
+      setState({ status: "error", data: null, message: err?.detail?.message || c.siteFailed })
+    }
+  }
+  const d = state.data
+  const links = (obj) => Object.entries(obj || {})
+  return (
+    <section className="rounded-lg border border-border p-4">
+      <h2 className="text-sm font-semibold text-text">{c.siteTitle}</h2>
+      <p className="mt-1 text-xs text-text-muted">{c.siteNote}</p>
+      {state.status === "idle" || state.status === "error" ? (
+        <button type="button" onClick={load} className="mt-3 rounded-lg border border-border px-4 py-2 text-sm text-text hover:bg-surface-2">{c.siteButton}</button>
+      ) : null}
+      {state.status === "loading" ? <p className="mt-3 text-sm text-text-muted">{c.siteLoading}</p> : null}
+      {state.status === "error" ? <p role="alert" className="mt-2 text-xs text-rose-300">{state.message}</p> : null}
+      {d ? (
+        <div className="mt-3 flex flex-col gap-2 text-sm">
+          <p dir="auto" className="font-medium text-text">{d.site_name || d.title || d.domain}</p>
+          {d.description ? <p dir="auto" className="text-text-muted">{d.description}</p> : null}
+          <a href={d.url} target="_blank" rel="noopener noreferrer" dir="ltr" className="inline-flex items-center gap-1 text-text underline">{d.domain} <ExternalLink className="h-4 w-4" aria-hidden="true" /></a>
+          {links(d.social).length ? (
+            <p className="text-xs text-text-muted">{c.siteSocial}: {links(d.social).map(([name, href]) => (
+              <a key={name} href={href} target="_blank" rel="noopener noreferrer" className="me-3 text-text underline">{name}</a>
+            ))}</p>
+          ) : null}
+          {links(d.pages).length ? (
+            <p className="text-xs text-text-muted">{c.sitePages}: {links(d.pages).map(([name, href]) => (
+              <a key={name} href={href} target="_blank" rel="noopener noreferrer" className="me-3 text-text underline">{name}</a>
+            ))}</p>
+          ) : null}
+          {d.cached ? <p className="text-xs text-text-muted">{c.siteCached}</p> : null}
+        </div>
+      ) : null}
+    </section>
+  )
 }
 
 function Stat({ label, value }) {
@@ -117,6 +176,8 @@ export function AdvertiserPage() {
           </p>
         ) : null}
       </header>
+
+      <SiteSnapshot brandId={brandId} c={c} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label={c.adsFound} value={s.ads_found} />
