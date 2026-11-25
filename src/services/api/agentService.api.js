@@ -5,8 +5,25 @@ const agentService = {
     return request("/agent/limits")
   },
 
-  ask(question, history, lang) {
-    return request("/agent/ask", { method: "POST", body: { question, history, lang }, timeoutMs: 90000 })
+  /**
+   * @param {string} question
+   * @param {{ role: string, content: string }[]} history
+   * @param {string} lang
+   * @param {{ references?: { type: string, id: string }[], effort?: string, signal?: AbortSignal }} [options]
+   */
+  ask(question, history, lang, options = {}) {
+    const { references = [], effort = "think", signal } = options
+    return request("/agent/ask", {
+      method: "POST",
+      body: { question, history, lang, effort, model: "cyreax-z1", references: references.map(({ type, id }) => ({ type, id })) },
+      timeoutMs: 90000,
+      signal,
+    })
+  },
+
+  /** What the "@" menu offers: the caller's own searches, drafts, boards and monitors. */
+  mentions(q = "", signal) {
+    return request("/agent/mentions", { params: { q, limit: 20 }, signal })
   },
 
   generate({ creativeId, product, language, dialect }) {
