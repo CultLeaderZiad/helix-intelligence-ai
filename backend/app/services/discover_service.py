@@ -990,11 +990,8 @@ async def _run_discovery_pipeline(
                 from app.services.work_outbox import retries_remaining
                 from app.services.ai.call_policy import RetryableProviderError
                 will_retry = await retries_remaining(job_id)
-                sources_str = ", ".join(sources_tried) if sources_tried else "all providers"
-                failure_message = (
-                    "All ad discovery providers are temporarily unavailable or unconfigured: "
-                    f"[{sources_str}]"
-                )
+                failure_message = "Ad search is temporarily unavailable. You were not charged; please try again in a few minutes."
+                logger.warning("[AdDiscovery] provider outage; tried: %s", ", ".join(sources_tried) or "none")
                 if will_retry:
                     async with async_session_maker() as db:
                         job = await _lock_active_discovery_job(
@@ -1043,7 +1040,6 @@ async def _run_discovery_pipeline(
                     lease_generation=lease_generation,
                 )
                 if job:
-                    sources_str = ", ".join(sources_tried) if sources_tried else "available sources"
                     job.entity_profile = entity_profile
                     if entity_profile and entity_profile.get("entity_type") == "creator_streamer":
                         label = (
@@ -1051,7 +1047,7 @@ async def _run_discovery_pipeline(
                             f"Content creators grow via livestreams, clipping, and sponsors rather than direct Meta feed ads. See Entity Dossier."
                         )
                     else:
-                        label = f"No active ads found across [{sources_str}] for '{query}'. Try the company domain or a broader keyword, then run the search again."
+                        label = f"No active ads found for '{query}'. Check the spelling, try the company's website address, its Facebook page link, or a broader keyword, then search again."
                     _set_discovery_terminal(job, status="succeeded", stage_label=label)
                     job.stage = "zero_results"
                     job.record_count = 0

@@ -347,7 +347,7 @@ export function AgentPage() {
   }
 
   return (
-    <div className={`mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-6 p-4 sm:p-6 ${turns.length === 0 && !pending ? "min-h-[70dvh] justify-center" : ""}`}>
+    <div className={`mx-auto flex w-full min-w-0 max-w-4xl flex-col gap-6 p-4 sm:p-6 ${turns.length === 0 && !pending ? "min-h-[85dvh] justify-center pt-[14dvh]" : ""}`}>
       <section className="flex flex-col gap-4" aria-live="polite">
         {turns.map((t) => (
           <div key={t.id} className="flex flex-col gap-2">
@@ -389,7 +389,7 @@ export function AgentPage() {
 
       {error ? <p role="alert" className="text-sm text-rose-300">{error}</p> : null}
 
-      <div className="relative mx-auto w-full max-w-[560px]">
+      <div className="relative mx-auto w-full max-w-[820px]">
         {menu ? (
           <div role="listbox" aria-label={c.mention}
             className="absolute bottom-full left-0 z-20 mb-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-white/10 bg-[#1c1c1c] p-1.5 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.7)]">
@@ -424,7 +424,7 @@ export function AgentPage() {
         ) : null}
 
         <PromptBox
-          className="w-full"
+          className="w-full py-2"
           value={value}
           onValueChange={setValue}
           onSubmit={onSubmit}
@@ -454,6 +454,8 @@ export function AgentPage() {
           )}
         />
       </div>
+
+      <DraftsFolder className="flex justify-end" />
 
       <details className="rounded-lg border border-border p-4" open={Boolean(params.get("ad"))}>
         <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-text">
@@ -539,7 +541,6 @@ export function AgentPage() {
           onOpen={(conversation) => { openConversation(conversation); setShowHistory(false) }}
           onNew={() => { newChat(); setShowHistory(false) }} onRemoved={newChat} />
       ) : null}
-      <DraftsFolder />
     </div>
   )
 }

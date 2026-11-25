@@ -46,7 +46,8 @@ export function pickLinks(items) {
 }
 
 /** Bottom-corner folder: click it to see the titles of your saved drafts and reference links. */
-export function DraftsFolder() {
+/** `className` positions it; the list opens just below the folder. */
+export function DraftsFolder({ className = "" }) {
   const { lang } = useLanguage()
   const c = lang === "ar" ? FOLDER_COPY.ar : FOLDER_COPY.en
   const { drafts } = useSearchContext()
@@ -65,9 +66,9 @@ export function DraftsFolder() {
   const shownLinks = links.slice(0, MAX_SHOWN)
 
   return (
-    <div className="fixed bottom-3 end-3 z-30 flex flex-col items-end gap-2">
+    <div className={`relative z-20 ${className}`}>
       {open ? (
-        <div role="dialog" aria-label={c.open} className="max-h-[60dvh] w-72 max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-2xl border border-white/10 bg-[#1c1c1c] p-3 text-sm shadow-[0_12px_40px_-12px_rgba(0,0,0,0.7)]">
+        <div role="dialog" aria-label={c.open} className="absolute end-0 top-full z-30 mt-2 max-h-[60dvh] w-72 max-w-[calc(100vw-1.5rem)] overflow-y-auto rounded-2xl border border-white/10 bg-[#1c1c1c] p-3 text-sm shadow-[0_12px_40px_-12px_rgba(0,0,0,0.7)]">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-white/50">{c.drafts}</h2>
           {shownDrafts.length === 0 ? <p className="mt-1 text-xs text-white/50">{c.noDrafts}</p> : (
             <ul className="mt-1 flex flex-col">
@@ -94,8 +95,8 @@ export function DraftsFolder() {
           </div>
         </div>
       ) : null}
-      <button type="button" aria-label={c.open} aria-expanded={open} onClick={() => setOpen((v) => !v)} className="h-[110px] w-[120px] rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-white/30">
-        <Folder size="xs" />
+      <button type="button" aria-label={c.open} aria-expanded={open} onClick={() => setOpen((v) => !v)} className="h-[140px] w-[165px] rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-white/30">
+        <Folder size="cs" />
       </button>
     </div>
   )

@@ -85,7 +85,7 @@ describe("W9-2 D2 Monitor this brand", () => {
     svc.createBrandMonitor.mockResolvedValue({ id: "m1" })
     wrap(<MonitorBrandButton pageId="123456789" brandName="Gymshark" />)
     fireEvent.click(screen.getByRole("button", { name: /Monitor this brand/ }))
-    await waitFor(() => expect(screen.getByTestId("monitor-brand-cost").textContent).toMatch(/up to 30 Metapi records, about 150 a month/))
+    await waitFor(() => expect(screen.getByTestId("monitor-brand-cost").textContent).toMatch(/up to 30 ad records, about 150 a month/))
     expect(screen.getByText("180 of 300 records left this month.")).toBeTruthy()
     expect(svc.previewBrandMonitor).toHaveBeenCalledWith({ page_id: "123456789", brand_name: "Gymshark", cadence: "weekly" })
     fireEvent.click(screen.getByRole("button", { name: "Create monitor" }))
@@ -108,7 +108,7 @@ describe("W9-2 D2 Monitor this brand", () => {
     fireEvent.click(screen.getByRole("button", { name: /Monitor this brand/ }))
     await waitFor(() => screen.getByTestId("monitor-brand-cost"))
     fireEvent.click(screen.getByRole("button", { name: "Create monitor" }))
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/monthly Metapi records|Metapi/))
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toMatch(/monthly ad records/))
   })
 
   it("is hidden without the monitors feature", () => {
@@ -192,5 +192,15 @@ describe("W9-2 #7 tags and notes on a board card", () => {
   it("renders in Arabic", () => {
     wrap(<SavedAdAnnotations creativeId="c1" tags={[]} notes={[]} />, "ar")
     expect(screen.getByLabelText("أضف وسمًا")).toBeTruthy()
+  })
+})
+
+describe("customer-facing copy never names a data provider", () => {
+  it("has no provider name in the record meter, cost or cap messages", async () => {
+    const { W9_COPY } = await import("@/i18n/w9Product").catch(() => ({}))
+    const files = await Promise.all([import("@/i18n/w9Product"), import("@/i18n/w9_2Product")])
+    const text = JSON.stringify(files.map((m) => Object.values(m).map((v) => (typeof v === "object" ? Object.entries(v).map(([k, x]) => (typeof x === "function" ? String(x(1, 2)) : x)) : v))))
+    expect(text).not.toMatch(/Metapi|Adyntel|Apify|ScrapeGraph/i)
+    expect(W9_COPY === undefined || typeof W9_COPY === "object").toBe(true)
   })
 })

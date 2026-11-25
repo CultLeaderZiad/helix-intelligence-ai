@@ -41,7 +41,7 @@ const THEMES = {
   },
 }
 
-const SIZE_SCALES = { xs: 0.36, sm: 0.65, md: 1, lg: 1.35 }
+const SIZE_SCALES = { xs: 0.36, cs: 0.5, sm: 0.65, md: 1, lg: 1.35 }
 const BASE_WIDTH = 321
 const BASE_HEIGHT = 270
 
