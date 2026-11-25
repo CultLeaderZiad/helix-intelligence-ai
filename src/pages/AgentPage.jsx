@@ -389,7 +389,8 @@ export function AgentPage() {
 
       {error ? <p role="alert" className="text-sm text-rose-300">{error}</p> : null}
 
-      <div className="relative mx-auto w-full max-w-[820px]">
+      <div className="mx-auto flex w-full max-w-[960px] flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+      <div className="relative min-w-0 flex-1">
         {menu ? (
           <div role="listbox" aria-label={c.mention}
             className="absolute bottom-full left-0 z-20 mb-2 max-h-72 w-full overflow-y-auto rounded-2xl border border-white/10 bg-[#1c1c1c] p-1.5 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.7)]">
@@ -454,8 +455,8 @@ export function AgentPage() {
           )}
         />
       </div>
-
-      <DraftsFolder className="flex justify-end" />
+      <DraftsFolder className="flex shrink-0 justify-center" />
+      </div>
 
       <details className="rounded-lg border border-border p-4" open={Boolean(params.get("ad"))}>
         <summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-text">

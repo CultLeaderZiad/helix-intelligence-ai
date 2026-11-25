@@ -148,3 +148,23 @@ async def test_an_unfinished_task_is_a_failure_and_results_are_never_requested(m
     assert await provider.search("gymshark", max_records=15) == []
     assert provider.last_outcome == "failure"
     assert not any(u.endswith("/results") for u in calls)
+
+
+@pytest.mark.asyncio
+async def test_an_empty_exact_phrase_gets_one_looser_pass(monkeypatch):
+    def results(payload):
+        return [_ad("333333", "Acme Dev Studio", "acme develop apps")] if payload.get("search_type") == "keyword_unordered" else []
+
+    posted = _fake_metapi(monkeypatch, results)
+    provider = _provider()
+    ads = await provider.search("acme develop", max_records=15)
+    assert [p["search_type"] for p in posted] == ["keyword_exact_phrase", "keyword_unordered"]
+    assert len(ads) == 1 and provider.last_mode == "keyword"
+
+
+@pytest.mark.asyncio
+async def test_nothing_at_all_stops_after_the_looser_pass(monkeypatch):
+    posted = _fake_metapi(monkeypatch, lambda payload: [])
+    provider = _provider()
+    assert await provider.search("zzzzqqq", max_records=15) == []
+    assert len(posted) == 2 and provider.last_outcome == "empty"

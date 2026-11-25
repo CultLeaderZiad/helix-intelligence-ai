@@ -59,18 +59,33 @@ _WORKSPACE_SEARCH_SQL = text(
 
 
 _PLAN_LIMITS_SQL = text(
-    "SELECT p.limits FROM organizations o JOIN plans p ON p.id = o.plan_id WHERE o.id = :org_id"
+    "SELECT p.limits, (u.is_platform_admin OR u.role = 'admin') AS owner_is_admin "
+    "FROM organizations o LEFT JOIN plans p ON p.id = o.plan_id LEFT JOIN users u ON u.id = o.owner_id "
+    "WHERE o.id = :org_id"
 )
+
+# A platform admin's own workspace runs without per-workspace caps (their testing and support work).
+# The money guards stay: the global monthly provider record budget still stops paid calls.
+ADMIN_LIMITS = {
+    "_admin": True, "searches_per_day": 1000, "monitors": 500, "records_per_month": 100000,
+    "alerts_per_day": 10000, "alert_telegram_chats": 20, "alert_webhooks": 20,
+    "teardowns_per_day": 10000, "agent_messages_per_day": 10000, "agent_generations_per_day": 10000,
+}
+
+
+def resolve_limits(limits, owner_is_admin) -> dict:
+    if owner_is_admin:
+        return dict(ADMIN_LIMITS)
+    return limits if isinstance(limits, dict) else {}
 
 
 async def plan_limits(db, org_id: Optional[str]) -> dict:
-    """The workspace plan's limits (plans.limits), or {} for global defaults."""
+    """The workspace plan's limits (plans.limits), or {} for global defaults; generous for an admin's own workspace."""
     workspace = _org(org_id)
     if not workspace:
         return {}
     row = (await db.execute(_PLAN_LIMITS_SQL, {"org_id": workspace})).first()
-    limits = row[0] if row else None
-    return limits if isinstance(limits, dict) else {}
+    return resolve_limits(row[0] if row else None, bool(row[1]) if row else False)
 
 
 def search_cap(limits: dict) -> int:
@@ -106,13 +121,15 @@ async def reserve_provider_call(provider: str, org_id: Optional[str] = None) -> 
 
     try:
         async with async_session_maker() as db:
+            limits = await plan_limits(db, workspace) if workspace else {}
+            admin_workspace = bool(limits.get("_admin"))
             calls = (await db.execute(_RESERVE_SQL)).scalar_one()
-            if calls > cap:
+            if calls > cap and not admin_workspace:
                 await db.rollback()
                 logger.warning("Daily provider call cap reached (%s); refused %s call", cap, provider)
                 return BUDGET
             if workspace:
-                workspace_cap = workspace_call_cap(await plan_limits(db, workspace))
+                workspace_cap = workspace_call_cap(limits)
                 used = (await db.execute(_WORKSPACE_CALL_SQL, {"org_id": workspace})).scalar_one()
                 if workspace_cap <= 0 or used > workspace_cap:
                     await db.rollback()

@@ -95,8 +95,10 @@ async def create(db: AsyncSession, user: User, collection: str, goal: str = "") 
     ads = [{"block": ad_block(c), "analysis": found.get(fps[c.id])} for c in rows if (c.headline or c.body)]
     if not ads:
         raise HTTPException(status_code=422, detail={"code": "no_ad_text", "message": "These ads have no text to build a brief from."})
+    from app.services.billing_service import is_platform_admin
+
     cap = settings.BRIEF_PER_DAY
-    if await _used_today(db, org_id) >= cap:
+    if not is_platform_admin(user) and await _used_today(db, org_id) >= cap:
         raise HTTPException(status_code=429, detail={
             "code": "brief_daily_limit",
             "message": f"Your workspace can build {cap} briefs a day. Resets at 00:00 UTC.",

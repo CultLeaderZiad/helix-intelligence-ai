@@ -196,6 +196,23 @@ class MetapiProvider(ScraperProvider):
             )
             if keyword_items is None:
                 return []
+            if not keyword_items:
+                # Nothing contains the exact phrase (a lesser-known name, a typo, or word order):
+                # one looser pass, so any search gets whatever Meta really has for those words.
+                if progress_callback:
+                    await progress_callback(0, "Widening the search...")
+                loose_items = await self._run_task(
+                    {
+                        "q": search_query,
+                        "count": resolve_count,
+                        **metapi_task_filters(filters, advertiser=False),
+                        "search_type": "keyword_unordered",
+                    },
+                    progress_callback,
+                )
+                if loose_items is None:
+                    return []
+                keyword_items = loose_items
 
             match = pick_brand_page(keyword_items, search_query)
             if match:

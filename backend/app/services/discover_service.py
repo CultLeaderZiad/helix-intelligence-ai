@@ -62,6 +62,9 @@ def group_by_concept(records: list) -> tuple:
     return kept, repeats
 
 
+LOOSE_MATCH_MAX = 30
+
+
 def _is_creative_relevant(creative, query: str, entity_profile: Optional[dict] = None) -> bool:
     clean_q = (query or "").lower().strip()
     if not clean_q or len(clean_q) < 3:
@@ -1113,6 +1116,7 @@ async def _run_discovery_pipeline(
             rejected_templates = 0
             duplicates_skipped = 0
             rejected_irrelevant = 0
+            loose_match = False
             normalized_records = []
 
             for rc, extra in enriched_creatives:
@@ -1130,6 +1134,12 @@ async def _run_discovery_pipeline(
                 if advertiser_mode
                 else [(c, s) for c, s in normalized_records if _is_creative_relevant(c, query, entity_profile)]
             )
+            if (not relevant_records and normalized_records and not advertiser_mode
+                    and not (entity_profile and entity_profile.get("entity_type") == "creator_streamer")):
+                # The strict filter would leave nothing. These are still real ads that mention the
+                # words searched for, so show them and say so, instead of an empty page.
+                relevant_records = list(normalized_records)[:LOOSE_MATCH_MAX]
+                loose_match = True
             rejected_irrelevant = len(normalized_records) - len(relevant_records)
             # Strictly save genuine relevant records — never force noise back into the user view
             final_records = relevant_records
@@ -1198,6 +1208,8 @@ async def _run_discovery_pipeline(
                         )
                     else:
                         label = f"Pruned {rejected_irrelevant} off-topic records for '{query}'. No direct ads verified."
+                elif loose_match:
+                    label = "Showing ads that mention your words. We could not confirm the advertiser's own page, so check each ad."
                 else:
                     label = "Complete"
                 _set_discovery_terminal(job, status="succeeded", stage_label=label)

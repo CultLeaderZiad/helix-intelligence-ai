@@ -35,4 +35,6 @@ async def advertiser_site(brand_id: str = BrandId, db: AsyncSession = Depends(ge
     """One public page of the advertiser's own website. Cached a week; 20 lookups per user per day."""
     scope = await get_user_org_ids(db, current_user)
     domain = await advertiser_service.landing_domain(db, scope, brand_id)
-    return await competitor_snapshot.snapshot(current_user.id, domain)
+    from app.services.billing_service import is_platform_admin
+
+    return await competitor_snapshot.snapshot(current_user.id, domain, unlimited=is_platform_admin(current_user))

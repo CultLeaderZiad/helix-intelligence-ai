@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react"
-import { DraftsFolder } from "@/features/library/DraftsFolder"
 import { Link2 } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 import { Label, Select } from "@/components/ui/Field"
@@ -129,8 +128,7 @@ _${res.label}_
   const stateLabel = { active: c.shareActive, expired: c.shareExpired, revoked: c.shareRevoked }
 
   return (
-    <section className="relative space-y-3 rounded-md border border-border bg-surface p-4" aria-label={c.shareTitle}>
-      <DraftsFolder className="absolute end-6 top-1/2 hidden -translate-y-1/2 lg:block" />
+    <section className="space-y-3 rounded-md border border-border bg-surface p-4" aria-label={c.shareTitle}>
       <div className="flex items-center gap-2">
         <Link2 className="h-4 w-4 text-accent" aria-hidden="true" />
         <h2 className="text-sm font-semibold text-text">{c.shareTitle}</h2>

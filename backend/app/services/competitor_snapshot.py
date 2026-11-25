@@ -95,7 +95,7 @@ def top_domain(domains: List[Optional[str]]) -> Optional[str]:
     return counts.most_common(1)[0][0] if counts else None
 
 
-async def snapshot(user_id: str, domain: Optional[str]) -> Dict[str, Any]:
+async def snapshot(user_id: str, domain: Optional[str], unlimited: bool = False) -> Dict[str, Any]:
     if not domain:
         raise HTTPException(status_code=404, detail={
             "code": "snapshot_no_site", "message": "None of this advertiser's ads point to a website we can read.",
@@ -103,7 +103,8 @@ async def snapshot(user_id: str, domain: Optional[str]) -> Dict[str, Any]:
     hit = _cache.get(domain)
     if hit and time.monotonic() - hit["at"] < CACHE_TTL_S:
         return {**hit["data"], "cached": True}
-    _check_allowance(user_id)
+    if not unlimited:
+        _check_allowance(user_id)
     url = f"https://{domain}/"
     try:
         resp = await safe_http_get_async(url, timeout=8.0, max_redirects=3, max_bytes=MAX_BYTES,
