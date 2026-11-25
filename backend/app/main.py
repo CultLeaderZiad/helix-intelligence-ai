@@ -134,6 +134,7 @@ app.include_router(discover.router, prefix=f"{settings.API_V1_STR}/discovery", t
 app.include_router(creatives.router, prefix=f"{settings.API_V1_STR}/creatives", tags=["creatives"])
 app.include_router(updates.router, prefix=f"{settings.API_V1_STR}/updates", tags=["updates"])
 app.include_router(knowledge_base.router, prefix=f"{settings.API_V1_STR}/admin/knowledge-base", tags=["admin"])
+app.include_router(knowledge_base.public_router, prefix=f"{settings.API_V1_STR}/knowledge-base", tags=["knowledge-base"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["admin"])
 app.include_router(support.router, prefix=f"{settings.API_V1_STR}/support", tags=["support"])
 app.include_router(playbooks.router, prefix=f"{settings.API_V1_STR}/playbooks", tags=["playbooks"])

@@ -5,12 +5,30 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_current_full_admin, get_db
+from app.core.deps import get_current_full_admin, get_current_user, get_db
 from app.models.user import User
 from app.core.config import settings
 from app.services import kb_import, kb_service
 
 router = APIRouter()
+# Read-only view of the enabled articles for any signed-in user. Editing stays admin-only (router above).
+public_router = APIRouter()
+
+
+@public_router.get("")
+async def public_articles(db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    return {"items": await kb_service.public_list(db)}
+
+
+@public_router.get("/search")
+async def public_article_search(q: str = Query("", max_length=200), db: AsyncSession = Depends(get_db),
+                                user: User = Depends(get_current_user)):
+    return {"items": await kb_service.public_search(db, q) if q.strip() else []}
+
+
+@public_router.get("/{document_id}")
+async def public_article(document_id: str, db: AsyncSession = Depends(get_db), user: User = Depends(get_current_user)):
+    return await kb_service.public_document(db, document_id)
 
 
 class KbUpload(BaseModel):

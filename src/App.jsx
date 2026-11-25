@@ -88,6 +88,7 @@ const GuestBoardPage = safeLazy(() => import("@/pages/GuestBoardPage").then(m =>
 const PublicPlaybookPage = safeLazy(() => import("@/pages/PublicPlaybookPage").then(m => ({ default: m.PublicPlaybookPage })))
 const PublicUpdatesPage = safeLazy(() => import("@/pages/PublicUpdatesPage").then(m => ({ default: m.PublicUpdatesPage })))
 const ProfileSettingsPage = safeLazy(() => import("@/pages/ProfileSettingsPage").then(m => ({ default: m.ProfileSettingsPage })))
+const KnowledgePage = safeLazy(() => import("@/pages/KnowledgePage").then(m => ({ default: m.KnowledgePage })))
 const SupportPage = safeLazy(() => import("@/pages/SupportPage").then(m => ({ default: m.SupportPage })))
 const NotificationsPage = safeLazy(() => import("@/pages/NotificationsPage").then(m => ({ default: m.NotificationsPage })))
 const DocsHomePage = safeLazy(() => import("@/pages/docs/DocsHomePage").then(m => ({ default: m.DocsHomePage })))
@@ -110,6 +111,7 @@ const PUBLIC_TITLES = {
   "/team": "Team Members",
   "/settings": "Profile & Settings",
   "/support": "Support & Feedback",
+  "/knowledge": "Knowledge base",
   "/notifications": "Notifications & Announcements",
 }
 
@@ -239,6 +241,7 @@ export default function App() {
                       <Route path="/team" element={optionalPage(<TeamPage />)} />
                       <Route path="/team/accept" element={optionalPage(<TeamAcceptPage />)} />
                       <Route path="/settings" element={<ProfileSettingsPage />} />
+                      <Route path="/knowledge" element={<KnowledgePage />} />
                       <Route path="/support" element={<SupportPage />} />
                       <Route path="/notifications" element={<NotificationsPage />} />
                       {NAV_SECTIONS.filter((s) => s.status === "pending").map((section) => (

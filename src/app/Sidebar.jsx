@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { NavLink, useNavigate } from "react-router-dom"
-import { LogOut, Shield, HelpCircle, Settings, Bell, BookOpen, KeyRound, MessageSquare } from "lucide-react"
+import { LogOut, Shield, HelpCircle, Settings, Bell, BookOpen, KeyRound, MessageSquare, Library } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "@/context/AuthContext"
 import { useLanguage } from "@/context/LanguageContext"
@@ -19,6 +19,7 @@ export function Sidebar({ className = "", onOpenCommand = null, onNavigate = nul
     ...visibleSections(user?.feature_flags).map((section) => ({ ...section, text: t(section.key, section.label) })),
     { path: "/access", text: t("accessUsage"), icon: KeyRound },
     { path: "/docs", text: t("docsNavigation"), icon: BookOpen },
+    { path: "/knowledge", text: t("knowledgeNavigation", "Knowledge base"), icon: Library },
     { path: "/support", text: t("supportNavigation"), icon: MessageSquare },
     { path: "/settings", text: t("settingsNavigation"), icon: Settings },
     { path: "/notifications", text: t("updatesNavigation"), icon: Bell },
