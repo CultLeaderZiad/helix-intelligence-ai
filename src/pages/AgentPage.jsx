@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
-import { AtSign, Check, Sparkles, X } from "lucide-react"
+import { AtSign, Check, History, Sparkles, X } from "lucide-react"
 import agentService from "@/services/api/agentService.api"
 import { useLanguage } from "@/context/LanguageContext"
 import { PromptBox } from "@/components/ui/prompt-box/PromptBox"
 import { ModelPicker } from "@/components/ui/prompt-box/ModelPicker"
+import { ConversationHistory } from "@/features/agent/ConversationHistory"
+import { HISTORY_COPY } from "@/features/agent/historyCopy"
 
 export const ASSISTANT_NAME = "Cyreax-Z.1"
 const MAX_REFERENCES = 5
@@ -24,6 +26,7 @@ export const AGENT_COPY = {
     approved: "Done",
     failed: "Helix could not answer. Nothing was counted; try again later.",
     stopped: "Stopped.",
+    ...HISTORY_COPY.en,
     analysing: "Analysing…",
     label: "AI answer based on your workspace data. Check important facts.",
     model: "Model",
@@ -74,6 +77,7 @@ export const AGENT_COPY = {
     approved: "تم",
     failed: "تعذّر على Helix الإجابة. لم يُحتسب شيء؛ حاول لاحقاً.",
     stopped: "تم الإيقاف.",
+    ...HISTORY_COPY.ar,
     analysing: "جارٍ التحليل…",
     label: "إجابة بالذكاء الاصطناعي مبنية على بيانات مساحة عملك. تحقّق من المعلومات المهمة.",
     model: "النموذج",
@@ -149,6 +153,9 @@ export function AgentPage() {
   const [gen, setGen] = useState({ creativeId: params.get("ad") || "", product: "", language: lang === "ar" ? "ar" : "en", dialect: "egyptian" })
   const [drafts, setDrafts] = useState(null)
   const [genBusy, setGenBusy] = useState(false)
+  const [conversationId, setConversationId] = useState(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const [historyTick, setHistoryTick] = useState(0)
   const [genError, setGenError] = useState("")
   const inputRef = useRef(null)
   const abortRef = useRef(null)
@@ -249,8 +256,10 @@ export function AgentPage() {
     const controller = new AbortController()
     abortRef.current = controller
     try {
-      const answer = await agentService.ask(text, history, lang, { references: refs, effort, signal: controller.signal })
+      const answer = await agentService.ask(text, history, lang, { references: refs, effort, signal: controller.signal, conversationId })
       setTurns((current) => current.map((t) => (t.id === id ? { ...t, a: answer } : t)))
+      if (answer?.conversation_id) setConversationId(answer.conversation_id)
+      setHistoryTick((n) => n + 1)
     } catch (err) {
       const stopped = err?.name === "AbortError"
       setTurns((current) => current.map((t) => (t.id === id ? { ...t, failed: stopped ? c.stopped : errorText(err, c.failed) } : t)))
@@ -259,6 +268,35 @@ export function AgentPage() {
       setPending(false)
       refreshLimits()
     }
+  }
+
+  function newChat() {
+    abortRef.current?.abort()
+    setTurns([])
+    setConversationId(null)
+    setError("")
+    setDone({})
+  }
+
+  // Turn a saved conversation back into the page's question/answer pairs.
+  function openConversation(conversation) {
+    const rows = conversation?.messages ?? []
+    const next = []
+    for (let i = 0; i < rows.length; i += 1) {
+      if (rows[i].role !== "user") continue
+      const reply = rows[i + 1]?.role === "assistant" ? rows[i + 1] : null
+      next.push({
+        id: rows[i].id,
+        q: rows[i].content,
+        refs: [],
+        a: reply ? { ...reply, answer: reply.content } : null,
+        failed: reply ? undefined : c.failed,
+      })
+    }
+    setTurns(next)
+    setConversationId(conversation.id)
+    setError("")
+    setDone({})
   }
 
   function onSubmit(prompt, effort) {
@@ -312,12 +350,22 @@ export function AgentPage() {
       <header>
         <h1 className="text-2xl font-semibold text-text">{c.title}</h1>
         <p className="mt-1 text-sm text-text-muted">{c.intro}</p>
+        <button type="button" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-xs text-text hover:border-white/30 max-sm:min-h-10">
+          <History className="h-3.5 w-3.5" aria-hidden="true" /> {c.history}
+        </button>
         {limits ? (
           <p className="mt-1 text-xs text-text-faint">
             {c.usage(limits.messages_used, limits.messages_per_day)} · {c.genUsage(limits.generations_used, limits.generations_per_day)}
           </p>
         ) : null}
       </header>
+
+      {showHistory ? (
+        <ConversationHistory c={c} lang={lang} activeId={conversationId} refreshKey={historyTick} disabled={pending}
+          onOpen={(conversation) => { openConversation(conversation); setShowHistory(false) }}
+          onNew={() => { newChat(); setShowHistory(false) }} onRemoved={newChat} />
+      ) : null}
 
       <section className="flex flex-col gap-4" aria-live="polite">
         {turns.map((t) => (

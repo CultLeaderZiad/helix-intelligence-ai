@@ -1,15 +1,19 @@
 """Ask Helix: read-only agent, ad variant drafts, and briefs (approved proposals)."""
 from typing import List, Literal, Optional
 
+import logging
+
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.exc import DBAPIError
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import account_rate_limit, get_current_user, get_db, require_feature
 from app.core.tenancy import get_user_org_ids
 from app.models.user import User
-from app.services import agent_service, billing_service
+from app.services import agent_conversation_service as conversations, agent_service, billing_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_feature("discover"))])
 _limit = Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))
 
@@ -33,6 +37,15 @@ class AskBody(BaseModel):
     effort: Literal["quick", "think", "deep"] = "think"
     # The one assistant shown in the model picker. Anything else is refused.
     model: Literal["cyreax-z1"] = "cyreax-z1"
+    # Continue a saved conversation. The server then uses its own saved turns as memory and
+    # ignores `history`. Without it, a new conversation is saved.
+    conversation_id: Optional[str] = Field(default=None, max_length=64)
+
+
+class ConversationUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=200)
+    pinned: Optional[bool] = None
+    archived: Optional[bool] = None
 
 
 class GenerateBody(BaseModel):
@@ -70,9 +83,57 @@ async def mentions(q: str = Query("", max_length=100), limit: int = Query(20, ge
 @router.post("/ask", dependencies=[_limit])
 async def ask(body: AskBody, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     org_id, scope = await _ctx(db, current_user)
-    return await agent_service.ask(db, current_user, org_id, scope, body.question,
-                                   [t.model_dump() for t in body.history], body.lang,
-                                   [r.model_dump() for r in body.references], body.effort)
+    history = [t.model_dump() for t in body.history]
+    if body.conversation_id:
+        history = await conversations.history_for_model(db, current_user, org_id, body.conversation_id)
+    result = await agent_service.ask(db, current_user, org_id, scope, body.question, history, body.lang,
+                                     [r.model_dump() for r in body.references], body.effort)
+    try:
+        result["conversation_id"] = await conversations.record_turn(
+            db, current_user, org_id, body.conversation_id, body.question, result)
+    except DBAPIError as exc:
+        if not conversations.tables_missing(exc):
+            raise
+        await db.rollback()  # history tables not migrated yet: the answer is still returned, just not saved
+        logger.warning("agent history not saved: migration c3e5a7b9d1f2 is not applied")
+        result["conversation_id"] = None
+    return result
+
+
+@router.get("/conversations")
+async def list_conversations(archived: bool = Query(False), db: AsyncSession = Depends(get_db),
+                             current_user: User = Depends(get_current_user)):
+    org_id, _scope = await _ctx(db, current_user)
+    try:
+        items = await conversations.list_conversations(db, current_user, org_id, archived)
+    except DBAPIError as exc:
+        if not conversations.tables_missing(exc):
+            raise
+        await db.rollback()
+        return {"items": [], "max_active": conversations.MAX_ACTIVE, "available": False}
+    return {"items": items, "max_active": conversations.MAX_ACTIVE, "available": True}
+
+
+@router.get("/conversations/{conversation_id}")
+async def get_conversation(conversation_id: str, db: AsyncSession = Depends(get_db),
+                           current_user: User = Depends(get_current_user)):
+    org_id, _scope = await _ctx(db, current_user)
+    return await conversations.get_conversation(db, current_user, org_id, conversation_id)
+
+
+@router.patch("/conversations/{conversation_id}", dependencies=[_limit])
+async def update_conversation(conversation_id: str, body: ConversationUpdate, db: AsyncSession = Depends(get_db),
+                              current_user: User = Depends(get_current_user)):
+    org_id, _scope = await _ctx(db, current_user)
+    return await conversations.update_conversation(db, current_user, org_id, conversation_id, title=body.title,
+                                                   pinned=body.pinned, archived=body.archived)
+
+
+@router.delete("/conversations/{conversation_id}", dependencies=[_limit])
+async def delete_conversation(conversation_id: str, db: AsyncSession = Depends(get_db),
+                              current_user: User = Depends(get_current_user)):
+    org_id, _scope = await _ctx(db, current_user)
+    return await conversations.delete_conversation(db, current_user, org_id, conversation_id)
 
 
 @router.post("/generate", dependencies=[_limit])

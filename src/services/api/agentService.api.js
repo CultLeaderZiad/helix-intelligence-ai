@@ -9,16 +9,36 @@ const agentService = {
    * @param {string} question
    * @param {{ role: string, content: string }[]} history
    * @param {string} lang
-   * @param {{ references?: { type: string, id: string }[], effort?: string, signal?: AbortSignal }} [options]
+   * @param {{ references?: { type: string, id: string }[], effort?: string, signal?: AbortSignal, conversationId?: string | null }} [options]
    */
   ask(question, history, lang, options = {}) {
-    const { references = [], effort = "think", signal } = options
+    const { references = [], effort = "think", signal, conversationId } = options
     return request("/agent/ask", {
       method: "POST",
-      body: { question, history, lang, effort, model: "cyreax-z1", references: references.map(({ type, id }) => ({ type, id })) },
+      body: { question, history, lang, effort, model: "cyreax-z1", references: references.map(({ type, id }) => ({ type, id })), conversation_id: conversationId || undefined },
       timeoutMs: 90000,
       signal,
     })
+  },
+
+  /** Saved conversations (private to the caller). @param {boolean} [archived] */
+  conversations(archived = false) {
+    return request("/agent/conversations", { params: { archived } })
+  },
+
+  /** One conversation with its messages. @param {string} id */
+  conversation(id) {
+    return request(`/agent/conversations/${encodeURIComponent(id)}`)
+  },
+
+  /** @param {string} id @param {{ title?: string, pinned?: boolean, archived?: boolean }} body */
+  updateConversation(id, body) {
+    return request(`/agent/conversations/${encodeURIComponent(id)}`, { method: "PATCH", body })
+  },
+
+  /** @param {string} id */
+  deleteConversation(id) {
+    return request(`/agent/conversations/${encodeURIComponent(id)}`, { method: "DELETE" })
   },
 
   /** What the "@" menu offers: the caller's own searches, drafts, boards and monitors. */
