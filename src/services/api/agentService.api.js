@@ -9,7 +9,7 @@ const agentService = {
    * @param {string} question
    * @param {{ role: string, content: string }[]} history
    * @param {string} lang
-   * @param {{ references?: { type: string, id: string }[], effort?: string, signal?: AbortSignal }} [options]
+   * @param {{ references?: { type: string, id: string }[], effort?: string, signal?: AbortSignal, conversationId?: string | null }} [options]
    */
   ask(question, history, lang, options = {}) {
     const { references = [], effort = "think", signal, conversationId } = options
