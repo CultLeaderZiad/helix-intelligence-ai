@@ -163,7 +163,11 @@ async def record_turn(db: AsyncSession, user: User, org_id: str, conversation_id
     """Save the question and the answer; start a conversation when none is given. Returns its id."""
     if conversation_id:
         c = await _own(db, user, org_id, conversation_id)
-        count = await db.scalar(select(func.count(AgentMessage.id)).where(AgentMessage.conversation_id == c.id)) or 0
+        if c.archived_at is not None:  # continuing an archived chat brings it back
+            c.archived_at = None
+            await db.flush()
+            await _make_room(db, user, org_id, keep=c.id)
+        count =await db.scalar(select(func.count(AgentMessage.id)).where(AgentMessage.conversation_id == c.id)) or 0
         if count + 2 > MAX_MESSAGES:
             raise HTTPException(status_code=409, detail={
                 "code": "conversation_full",

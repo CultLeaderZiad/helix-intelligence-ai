@@ -34,9 +34,13 @@ class GoogleIdentity:
     name: Optional[str]
 
 
+_MIN_REFRESH_S = 60  # a token with an unknown key id cannot make us call Google more than once a minute
+
+
 async def _jwks(force: bool = False) -> dict:
     async with _lock:
-        if not force and _keys["jwks"] and time.monotonic() - _keys["at"] < _KEYS_TTL_S:
+        age = time.monotonic() - _keys["at"]
+        if _keys["jwks"] and (age < _MIN_REFRESH_S or (not force and age < _KEYS_TTL_S)):
             return _keys["jwks"]
         async with httpx.AsyncClient(timeout=8.0) as client:
             res = await client.get(CERTS_URL)

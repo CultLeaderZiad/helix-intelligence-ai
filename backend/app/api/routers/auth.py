@@ -181,12 +181,14 @@ async def google_sign_in(body: GoogleSignIn, db: AsyncSession = Depends(get_db))
 
     if not settings.GOOGLE_CLIENT_ID:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Google sign-in is not available.")
-    limits.enforce("google-sign-in", "all", settings.SIGN_UP_GLOBAL_LIMIT * 5, settings.SIGN_UP_GLOBAL_WINDOW_S,
-                   "Sign-in is busy. Please try again shortly.")
     try:
         identity = await google_identity.verify_id_token(body.credential)
     except google_identity.GoogleTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Google sign-in could not be verified.")
+    # Counted only for tokens Google really signed: a flood of garbage tokens cannot use up the
+    # shared allowance and lock everyone out (checking the token is a cheap local signature test).
+    limits.enforce("google-sign-in", "all", settings.SIGN_UP_GLOBAL_LIMIT * 5, settings.SIGN_UP_GLOBAL_WINDOW_S,
+                   "Sign-in is busy. Please try again shortly.")
     limits.enforce("sign-in-email", identity.email, settings.SIGN_IN_EMAIL_LIMIT, settings.AUTH_EMAIL_WINDOW_S)
     try:
         token, user = await auth_service.sign_in_with_google(db, identity, body.plan_id)

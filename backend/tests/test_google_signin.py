@@ -77,3 +77,39 @@ def test_garbage_and_disabled_feature_are_refused(signer, monkeypatch):
     monkeypatch.setattr(settings, "GOOGLE_CLIENT_ID", "")
     with pytest.raises(g.GoogleTokenError):
         verify(signer())
+
+
+def test_unknown_key_ids_cannot_make_us_call_google_more_than_once_a_minute(monkeypatch):
+    calls = []
+
+    class Res:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"keys": [{"kid": "k"}]}
+
+    class Client:
+        def __init__(self, **_):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            return False
+
+        async def get(self, url):
+            calls.append(url)
+            return Res()
+
+    monkeypatch.setattr(g.httpx, "AsyncClient", Client)
+    monkeypatch.setitem(g._keys, "jwks", None)
+    monkeypatch.setitem(g._keys, "at", 0.0)
+
+    async def many():
+        for _ in range(5):
+            await g._jwks(force=True)
+
+    asyncio.run(many())
+    assert len(calls) == 1
