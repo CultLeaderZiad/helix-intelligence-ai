@@ -19,6 +19,7 @@ export function ConversationHistory({ c, lang, activeId, refreshKey, onOpen, onN
   const [tab, setTab] = useState("active")
   const [items, setItems] = useState(null)
   const [max, setMax] = useState(50)
+  const [available, setAvailable] = useState(true)
   const [failed, setFailed] = useState(false)
   const [confirming, setConfirming] = useState(null)
 
@@ -27,6 +28,7 @@ export function ConversationHistory({ c, lang, activeId, refreshKey, onOpen, onN
       const res = await agentService.conversations(tab === "archived")
       setItems(res?.items ?? [])
       setMax(res?.max_active ?? 50)
+      setAvailable(res?.available !== false)
       setFailed(false)
     } catch {
       setFailed(true)
@@ -89,8 +91,9 @@ export function ConversationHistory({ c, lang, activeId, refreshKey, onOpen, onN
         </div>
       </div>
       <p className="text-[11px] text-text-faint">{c.historyHint(max)}</p>
+      {!available ? <p role="status" className="text-xs text-text-muted">{c.historyUnavailable}</p> : null}
       {failed ? <p role="alert" className="text-xs text-rose-300">{c.historyFailed}</p> : null}
-      {items && items.length === 0 ? <p className="text-xs text-text-muted">{c.historyEmpty}</p> : null}
+      {available && items && items.length === 0 ? <p className="text-xs text-text-muted">{c.historyEmpty}</p> : null}
       <ul className="flex max-h-72 flex-col divide-y divide-border overflow-y-auto">
         {(items ?? []).map((item) => (
           <li key={item.id} className={`flex items-center gap-2 py-1.5 ${item.id === activeId ? "text-accent" : ""}`}>

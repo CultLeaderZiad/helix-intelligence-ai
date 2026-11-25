@@ -25,6 +25,19 @@ def test_memory_is_bounded():
     assert svc.MEMORY_TURNS <= 6 and svc.MEMORY_CHARS <= 500 and svc.MAX_ACTIVE == 50
 
 
+def test_missing_history_tables_are_recognised_so_ask_keeps_working_before_the_migration():
+    class Orig(Exception):
+        pass
+
+    class Err(Exception):
+        orig = Orig('relation "agent_conversations" does not exist')
+
+    assert svc.tables_missing(Err())
+    assert svc.tables_missing(Exception('UndefinedTableError: relation "agent_messages" does not exist'))
+    assert not svc.tables_missing(Exception("connection refused"))
+    assert not svc.tables_missing(Exception('relation "users" does not exist'))
+
+
 def test_routes_exist_and_ask_accepts_a_conversation_id():
     paths = {(r.path, tuple(sorted(r.methods))) for r in agent.router.routes}
     assert ("/conversations", ("GET",)) in paths

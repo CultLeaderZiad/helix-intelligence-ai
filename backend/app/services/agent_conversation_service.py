@@ -18,6 +18,16 @@ from app.models.agent_conversation import AgentConversation, AgentMessage
 from app.models.user import User
 
 MAX_ACTIVE = 50
+_TABLES = ("agent_conversations", "agent_messages")
+
+
+def tables_missing(exc: BaseException) -> bool:
+    """True when the history tables are not in the database yet (the migration has not been applied).
+
+    Ask Helix keeps answering without saving until then, instead of failing every question."""
+    text = str(getattr(exc, "orig", exc)).lower()
+    return any(t in text for t in _TABLES) and ("does not exist" in text or "undefinedtable" in text)
+
 MAX_ARCHIVED_LISTED = 100
 MAX_MESSAGES = 200
 MEMORY_TURNS = 6

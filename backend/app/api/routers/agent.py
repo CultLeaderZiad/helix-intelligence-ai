@@ -1,7 +1,10 @@
 """Ask Helix: read-only agent, ad variant drafts, and briefs (approved proposals)."""
 from typing import List, Literal, Optional
 
+import logging
+
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy.exc import DBAPIError
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +13,7 @@ from app.core.tenancy import get_user_org_ids
 from app.models.user import User
 from app.services import agent_conversation_service as conversations, agent_service, billing_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter(dependencies=[Depends(require_feature("discover"))])
 _limit = Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))
 
@@ -84,8 +88,15 @@ async def ask(body: AskBody, db: AsyncSession = Depends(get_db), current_user: U
         history = await conversations.history_for_model(db, current_user, org_id, body.conversation_id)
     result = await agent_service.ask(db, current_user, org_id, scope, body.question, history, body.lang,
                                      [r.model_dump() for r in body.references], body.effort)
-    result["conversation_id"] = await conversations.record_turn(
-        db, current_user, org_id, body.conversation_id, body.question, result)
+    try:
+        result["conversation_id"] = await conversations.record_turn(
+            db, current_user, org_id, body.conversation_id, body.question, result)
+    except DBAPIError as exc:
+        if not conversations.tables_missing(exc):
+            raise
+        await db.rollback()  # history tables not migrated yet: the answer is still returned, just not saved
+        logger.warning("agent history not saved: migration c3e5a7b9d1f2 is not applied")
+        result["conversation_id"] = None
     return result
 
 
@@ -93,8 +104,14 @@ async def ask(body: AskBody, db: AsyncSession = Depends(get_db), current_user: U
 async def list_conversations(archived: bool = Query(False), db: AsyncSession = Depends(get_db),
                              current_user: User = Depends(get_current_user)):
     org_id, _scope = await _ctx(db, current_user)
-    return {"items": await conversations.list_conversations(db, current_user, org_id, archived),
-            "max_active": conversations.MAX_ACTIVE}
+    try:
+        items = await conversations.list_conversations(db, current_user, org_id, archived)
+    except DBAPIError as exc:
+        if not conversations.tables_missing(exc):
+            raise
+        await db.rollback()
+        return {"items": [], "max_active": conversations.MAX_ACTIVE, "available": False}
+    return {"items": items, "max_active": conversations.MAX_ACTIVE, "available": True}
 
 
 @router.get("/conversations/{conversation_id}")
