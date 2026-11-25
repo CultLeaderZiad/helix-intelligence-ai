@@ -166,6 +166,8 @@ class Settings(BaseSettings):
     ABUSE_RATE_LIMIT_WINDOW_S: int = int(os.getenv("ABUSE_RATE_LIMIT_WINDOW_S", "60"))
     # Limits keyed by data a caller cannot rotate for free (app.core.limits):
     # the email in an auth request, the signed-in account, or one global count.
+    # Public OAuth client id for "Continue with Google". Not a secret. Empty turns the feature off.
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "").strip()
     AUTH_EMAIL_LIMIT: int = int(os.getenv("AUTH_EMAIL_LIMIT", "5"))              # sign-up / forgot per email
     AUTH_EMAIL_WINDOW_S: int = int(os.getenv("AUTH_EMAIL_WINDOW_S", "900"))
     SIGN_IN_EMAIL_LIMIT: int = int(os.getenv("SIGN_IN_EMAIL_LIMIT", "20"))       # all sign-in attempts per email

@@ -375,6 +375,71 @@ async def register_user(db: AsyncSession, user_in: UserCreate) -> User:
     return user
 
 
+GOOGLE_SUB_KEY = "google_sub"
+
+
+def _refuse_blocked(user: User) -> None:
+    if getattr(user, "is_banned", False):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail={"code": "user_banned", "message": "This account has been banned."})
+    if getattr(user, "is_suspended", False):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail={"code": "user_suspended", "message": "This account has been suspended."})
+
+
+async def sign_in_with_google(db: AsyncSession, identity, plan_id: Optional[str] = None) -> tuple[str, User]:
+    """Sign in (or sign up) a Google-verified identity. Returns (session token, user).
+
+    New email: a normal account is created through register_user, so it gets the same workspace,
+    trial rules and access-request flow as an email sign-up; its password is random and unused.
+    Existing email: Google has verified the address, so the account is linked to this Google id.
+    A password account that was never linked loses its password and its sessions at that moment,
+    because nobody proved ownership of that email when the password was set (pre-registration
+    takeover). The owner can set a new password with "forgot password".
+    Another Google id on the same email is refused.
+    """
+    from app.core.tenancy import bind_request_lookup
+    from app.schemas.auth import UserCreate
+
+    email = _normalize_email(identity.email)
+    await bind_request_lookup(db, auth_email=email)
+    user = (await db.execute(select(User).where(func.lower(User.email) == email))).scalar_one_or_none()
+
+    if user is None:
+        try:
+            user = await register_user(db, UserCreate(
+                email=email, password=secrets.token_urlsafe(32), name=identity.name, plan_id=plan_id,
+            ))
+        except EmailAlreadyRegistered:  # a concurrent sign-up won the race
+            await bind_request_lookup(db, auth_email=email)
+            user = (await db.execute(select(User).where(func.lower(User.email) == email))).scalar_one()
+        else:
+            user.signup_metadata = {**(user.signup_metadata or {}), GOOGLE_SUB_KEY: identity.sub}
+            await db.commit()
+            await db.refresh(user)
+            return session_token_for(user), user
+
+    _refuse_blocked(user)
+    metadata = dict(user.signup_metadata or {})
+    linked = metadata.get(GOOGLE_SUB_KEY)
+    if linked and linked != identity.sub:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={
+            "code": "google_account_mismatch",
+            "message": "This email is linked to a different Google account.",
+        })
+    if not linked:
+        metadata[GOOGLE_SUB_KEY] = identity.sub
+        user.signup_metadata = metadata
+        user.password_hash = await asyncio.to_thread(get_password_hash, secrets.token_urlsafe(32))
+        if not user.full_name and identity.name:
+            user.full_name = identity.name
+        await revoke_user_sessions(db, user, commit=False)
+        await db.commit()
+        await db.refresh(user)
+        logger.info("Google identity linked to user %s", user.id)
+    return session_token_for(user), user
+
+
 async def request_password_reset(db: AsyncSession, email: str) -> User:
     """Mint a single-use reset token for the user. Callers must only call
     this for users that exist; the router handles the non-enumeration

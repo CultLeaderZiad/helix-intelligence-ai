@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Any, Optional, Dict
 
 class UserCreate(BaseModel):
@@ -63,6 +63,11 @@ class SignUpAccepted(BaseModel):
     """Identical for new and already-registered emails. Carries no token."""
     ok: bool = True
     message: str
+
+
+class GoogleSignIn(BaseModel):
+    credential: str = Field(min_length=20, max_length=4096)
+    plan_id: Optional[str] = None
 
 
 class SessionResponse(BaseModel):
