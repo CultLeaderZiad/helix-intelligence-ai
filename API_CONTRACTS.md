@@ -70,6 +70,7 @@ Scores (`hook`, `clarity`, `retention`, `composite`) are a **text rubric on a
 bound of the range Meta's official Ad Library API reports and is `null` for
 every other source; spend, CTR and engagement are `null` unless Meta reports them.
 
+| POST | `/api/auth/google` | none | Continue with Google. Body `{credential, plan_id?}` (a Google ID token). The server checks signature, audience (`GOOGLE_CLIENT_ID`), issuer, expiry and `email_verified`, then signs in or creates the account like an email sign-up (same workspace, trial and access-request rules). Returns the same `SessionResponse` as sign-in. `404` while `GOOGLE_CLIENT_ID` is unset, `401` for a bad token, `409 google_account_mismatch` if the email is linked to another Google account. First link to an existing password account replaces its password and revokes its sessions. |
 ## 4. Creatives and boards
 
 | Method | Path | Flag | Notes |

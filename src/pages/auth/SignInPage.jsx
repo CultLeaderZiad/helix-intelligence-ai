@@ -11,6 +11,7 @@ import { formatAuthFieldError, validateSignIn } from "@/features/auth/validation
 import { Input, PasswordInput } from "@/components/ui/Field"
 import { SupportMailto } from "@/components/SupportMailto"
 import { Button } from "@/components/ui/Button"
+import { GoogleSignInButton } from "@/features/auth/GoogleSignInButton"
 import { useLanguage } from "@/context/LanguageContext"
 import { getMemberMessage } from "@/i18n/memberMessages"
 
@@ -21,7 +22,7 @@ import { getMemberMessage } from "@/i18n/memberMessages"
  * that sent them here (via `location.state.from`) or APP_HOME.
  */
 export function SignInPage() {
-  const { signIn, isAuthenticated } = useAuth()
+  const { signIn, signInWithGoogle, isAuthenticated } = useAuth()
   const { lang, t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
@@ -57,6 +58,28 @@ export function SignInPage() {
     setValues((s) => ({ ...s, [key]: value }))
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }))
     if (authError) setAuthError(null)
+  }
+
+  async function onGoogle(credential) {
+    if (submitLock.current) return
+    submitLock.current = true
+    setAuthError(null)
+    setSubmitting(true)
+    try {
+      const user = await signInWithGoogle({ credential })
+      let finalRedirect = redirectTo
+      if (redirectTo === APP_HOME || redirectTo === "/") finalRedirect = user?.role === "admin" ? "/admin" : "/discover"
+      navigate(finalRedirect, { replace: true })
+    } catch (err) {
+      const kind = classifyAuthFailure(err)
+      setAuthError({
+        status: t("authAuthFailedStatus", "Sign-in failed"),
+        tone: kind === "rate_limited" || kind === "unavailable" ? "warning" : "danger",
+        message: t("authGoogleFailed", "Google sign-in could not be completed. Try again, or use your email and password."),
+      })
+      submitLock.current = false
+      setSubmitting(false)
+    }
   }
 
   /** @param {import("react").FormEvent<HTMLFormElement>} [event] */
@@ -240,6 +263,7 @@ export function SignInPage() {
           {t("authSupportLead", "Need help with this account?")} <SupportMailto />
         </p>
       </form>
+      <GoogleSignInButton onCredential={onGoogle} disabled={submitting} />
     </AuthLayout>
   )
 }

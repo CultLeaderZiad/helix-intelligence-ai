@@ -124,6 +124,15 @@ export function AuthProvider({ children }) {
     return nextUser
   }, [])
 
+  const signInWithGoogle = useCallback(async (params) => {
+    const mutationId = ++authMutationRef.current
+    const { user: nextUser } = await authService.signInWithGoogle(params)
+    if (mutationId !== authMutationRef.current) return nextUser
+    setUser(nextUser)
+    setStatus(AUTH_STATUS.AUTHENTICATED)
+    return nextUser
+  }, [])
+
   const signUp = useCallback(async (params) => {
     const mutationId = ++authMutationRef.current
     const { user: nextUser } = await authService.signUp(params)
@@ -182,6 +191,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: status === AUTH_STATUS.AUTHENTICATED,
       isResolving: status === AUTH_STATUS.LOADING,
       signIn,
+      signInWithGoogle,
       signUp,
       signOut,
       requestPasswordReset,
@@ -190,7 +200,7 @@ export function AuthProvider({ children }) {
       completeOnboarding,
       refreshSession,
     }),
-    [user, status, signIn, signUp, signOut, requestPasswordReset, resetPassword, updateUser, completeOnboarding, refreshSession],
+    [user, status, signIn, signInWithGoogle, signUp, signOut, requestPasswordReset, resetPassword, updateUser, completeOnboarding, refreshSession],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
