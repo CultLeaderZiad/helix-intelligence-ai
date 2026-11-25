@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Field"
 import { BoardSharePanel } from "@/features/boards/BoardSharePanel"
 import { TeamBoardsPanel } from "@/features/boards/TeamBoardsPanel"
 import { boardService, creativeService } from "@/services"
+import { DraftsFolder } from "@/features/library/DraftsFolder"
 import { SavedAdAnnotations } from "@/features/boards/SavedAdAnnotations"
 import { useW92Copy } from "@/i18n/w9_2Product"
 import { useAuth } from "@/context/AuthContext"
@@ -495,6 +496,7 @@ export function SwipeFilesPage() {
       />
 
       </div>
+      <DraftsFolder />
     </div>
   )
 }

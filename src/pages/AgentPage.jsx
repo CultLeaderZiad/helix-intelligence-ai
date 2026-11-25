@@ -7,6 +7,7 @@ import { PromptBox } from "@/components/ui/prompt-box/PromptBox"
 import { ModelPicker } from "@/components/ui/prompt-box/ModelPicker"
 import { ConversationHistory } from "@/features/agent/ConversationHistory"
 import { HISTORY_COPY } from "@/features/agent/historyCopy"
+import { DraftsFolder } from "@/features/library/DraftsFolder"
 
 export const ASSISTANT_NAME = "Cyreax-Z.1"
 const MAX_REFERENCES = 5
@@ -346,27 +347,7 @@ export function AgentPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-6 p-4 sm:p-6">
-      <header>
-        <h1 className="text-2xl font-semibold text-text">{c.title}</h1>
-        <p className="mt-1 text-sm text-text-muted">{c.intro}</p>
-        <button type="button" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}
-          className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-xs text-text hover:border-white/30 max-sm:min-h-10">
-          <History className="h-3.5 w-3.5" aria-hidden="true" /> {c.history}
-        </button>
-        {limits ? (
-          <p className="mt-1 text-xs text-text-faint">
-            {c.usage(limits.messages_used, limits.messages_per_day)} · {c.genUsage(limits.generations_used, limits.generations_per_day)}
-          </p>
-        ) : null}
-      </header>
-
-      {showHistory ? (
-        <ConversationHistory c={c} lang={lang} activeId={conversationId} refreshKey={historyTick} disabled={pending}
-          onOpen={(conversation) => { openConversation(conversation); setShowHistory(false) }}
-          onNew={() => { newChat(); setShowHistory(false) }} onRemoved={newChat} />
-      ) : null}
-
+    <div className={`mx-auto flex w-full min-w-0 max-w-3xl flex-col gap-6 p-4 sm:p-6 ${turns.length === 0 && !pending ? "min-h-[70dvh] justify-center" : ""}`}>
       <section className="flex flex-col gap-4" aria-live="polite">
         {turns.map((t) => (
           <div key={t.id} className="flex flex-col gap-2">
@@ -407,20 +388,6 @@ export function AgentPage() {
       </section>
 
       {error ? <p role="alert" className="text-sm text-rose-300">{error}</p> : null}
-
-      {turns.length === 0 && !pending ? (
-        <section aria-label={c.shortcutsTitle} className="flex flex-col gap-2">
-          <p className="text-xs text-text-muted">{c.shortcutsTitle}</p>
-          <div className="flex flex-wrap gap-2">
-            {SHORTCUTS.map((shortcut) => (
-              <button key={shortcut.id} type="button" onClick={() => runShortcut(shortcut)}
-                className="rounded-full border border-border bg-surface-2 px-3 py-1.5 text-xs text-text transition hover:border-white/30">
-                {c.shortcuts[shortcut.id].label}
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       <div className="relative mx-auto w-full max-w-[560px]">
         {menu ? (
@@ -538,6 +505,41 @@ export function AgentPage() {
           </div>
         ) : null}
       </details>
+
+      {turns.length === 0 && !pending ? (
+        <section aria-label={c.shortcutsTitle} className="flex flex-col gap-2">
+          <p className="text-xs text-text-muted">{c.shortcutsTitle}</p>
+          <div className="flex flex-wrap gap-2">
+            {SHORTCUTS.map((shortcut) => (
+              <button key={shortcut.id} type="button" onClick={() => runShortcut(shortcut)}
+                className="rounded-full border border-border bg-surface-2 px-3 py-1.5 text-xs text-text transition hover:border-white/30">
+                {c.shortcuts[shortcut.id].label}
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <header>
+        <h1 className="text-2xl font-semibold text-text">{c.title}</h1>
+        <p className="mt-1 text-sm text-text-muted">{c.intro}</p>
+        <button type="button" onClick={() => setShowHistory((v) => !v)} aria-expanded={showHistory}
+          className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-3 py-1.5 text-xs text-text hover:border-white/30 max-sm:min-h-10">
+          <History className="h-3.5 w-3.5" aria-hidden="true" /> {c.history}
+        </button>
+        {limits ? (
+          <p className="mt-1 text-xs text-text-faint">
+            {c.usage(limits.messages_used, limits.messages_per_day)} · {c.genUsage(limits.generations_used, limits.generations_per_day)}
+          </p>
+        ) : null}
+      </header>
+
+      {showHistory ? (
+        <ConversationHistory c={c} lang={lang} activeId={conversationId} refreshKey={historyTick} disabled={pending}
+          onOpen={(conversation) => { openConversation(conversation); setShowHistory(false) }}
+          onNew={() => { newChat(); setShowHistory(false) }} onRemoved={newChat} />
+      ) : null}
+      <DraftsFolder />
     </div>
   )
 }
