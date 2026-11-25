@@ -30,6 +30,7 @@ export function BoardSharePanel() {
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [copied, setCopied] = useState(null)
+  const [briefing, setBriefing] = useState(false)
 
   useEffect(() => {
     let live = true
@@ -77,6 +78,41 @@ export function BoardSharePanel() {
     }
   }
 
+  function saveFile(name, text, type) {
+    const url = URL.createObjectURL(new Blob([text], { type }))
+    const a = document.createElement("a")
+    a.href = url
+    a.download = name
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function exportCsv() {
+    setFailed(false)
+    try {
+      const { filename, csv } = await boardService.exportBoard(board)
+      saveFile(filename, csv, "text/csv;charset=utf-8")
+    } catch {
+      setFailed(true)
+    }
+  }
+
+  async function buildBrief() {
+    setBriefing(true)
+    setFailed(false)
+    try {
+      const res = await boardService.buildBrief(board)
+      saveFile(`${board.replace(/[^\w-]+/g, "_") || "board"}-brief.md`, `${res.markdown}
+
+_${res.label}_
+`, "text/markdown;charset=utf-8")
+    } catch {
+      setFailed(true)
+    } finally {
+      setBriefing(false)
+    }
+  }
+
   async function copy(link) {
     const url = `${window.location.origin}${link.url}`
     try {
@@ -120,7 +156,12 @@ export function BoardSharePanel() {
         <Button size="sm" variant="primary" onClick={create} disabled={busy || !board}>
           {busy ? c.shareCreating : c.shareCreate}
         </Button>
+        <Button size="sm" variant="outline" onClick={exportCsv} disabled={!board}>{c.exportCsv}</Button>
+        <Button size="sm" variant="outline" onClick={buildBrief} disabled={!board || briefing}>
+          {briefing ? c.briefBuilding : c.briefBuild}
+        </Button>
       </div>
+      <p className="text-xs text-text-faint">{c.briefNote}</p>
       {failed ? <p role="alert" className="text-xs text-danger">{c.shareFailed}</p> : null}
       {links.length === 0 ? (
         <p className="text-xs text-text-faint">{c.shareNone}</p>

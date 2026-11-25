@@ -144,6 +144,7 @@ class Settings(BaseSettings):
     AGENT_MAX_STEPS: int = int(os.getenv("AGENT_MAX_STEPS", "4"))
     AGENT_TIMEOUT_S: float = float(os.getenv("AGENT_TIMEOUT_S", "60"))
     TEARDOWN_DEFAULT_PER_DAY: int = int(os.getenv("TEARDOWN_DEFAULT_PER_DAY", "10"))
+    BRIEF_PER_DAY: int = int(os.getenv("BRIEF_PER_DAY", "5"))
     ALERT_MAX_CONSECUTIVE_FAILURES: int = int(os.getenv("ALERT_MAX_CONSECUTIVE_FAILURES", "5"))
     # Whop billing (app/services/whop_billing.py). Every value empty = off:
     # no checkout button, and the webhook answers 503.

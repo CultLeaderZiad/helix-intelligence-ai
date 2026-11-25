@@ -2,16 +2,21 @@
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Request, Response
-from app.core import markdown
+from app.core import csv_export, markdown
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import account_rate_limit, get_current_user, get_db, require_feature
 from app.models.user import User
-from app.services import annotation_service, board_share_service, team_board_service
+from app.services import annotation_service, board_share_service, brief_service, team_board_service
 
 router = APIRouter(dependencies=[Depends(require_feature("swipe_files"))])
 guest_router = APIRouter()
+
+
+class BriefCreate(BaseModel):
+    collection: str = Field(min_length=1, max_length=200)
+    goal: str = Field(default="", max_length=400)
 
 
 class ShareLinkCreate(BaseModel):
@@ -40,6 +45,27 @@ async def get_my_board(
     if markdown.wants_markdown(request, as_md):
         return markdown.response(markdown.ads_document(f"Board: {board['board']}", board["items"]))
     return board
+
+
+@router.get("/export")
+async def export_my_board(
+    collection: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """One of the caller's own boards as CSV text; the page saves it as a file."""
+    board = await team_board_service.get_team_board(db, current_user, current_user.id, collection)
+    return {"filename": csv_export.filename(board["board"]), "csv": csv_export.board_csv(board["items"])}
+
+
+@router.post("/brief", dependencies=[Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))])
+async def build_brief(
+    body: BriefCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """AI creative brief from one of the caller's boards (capped per workspace per day)."""
+    return await brief_service.create(db, current_user, body.collection, body.goal)
 
 
 @router.post("/share-links", dependencies=[Depends(account_rate_limit("account-write", "ACCOUNT_WRITE_LIMIT", "ACCOUNT_WRITE_WINDOW_S"))])
