@@ -35,6 +35,14 @@ async def start() -> bool:
     return True
 
 
+async def ensure_running() -> bool:
+    """Restart the loop if it has died (it must never stay dead while the API is up). Cheap when healthy."""
+    if not settings.EMBEDDED_WORKER_ENABLED or running():
+        return running()
+    logger.warning("embedded jobs worker was not running; restarting it")
+    return await start()
+
+
 def status() -> dict:
     """Public, non-sensitive worker state for /api/health."""
     from app.services.job_runner import seconds_since_last_poll

@@ -100,6 +100,12 @@ async def enqueue_work(
     db.add(item)
     try:
         await db.commit()
+        try:  # a queued item must never wait on a dead embedded worker
+            from app.services import embedded_worker
+
+            await embedded_worker.ensure_running()
+        except Exception:
+            logger.warning("could not check the embedded worker", exc_info=True)
     except IntegrityError:
         await db.rollback()
         return (
@@ -395,7 +401,13 @@ async def execute_work_item(item_id: str, owner: str) -> None:
         except asyncio.CancelledError:
             dispatch_task.cancel()
             await asyncio.gather(dispatch_task, return_exceptions=True)
-            raise
+            from app.services.job_runner import outer_cancel_requested
+
+            if outer_cancel_requested():
+                raise  # the worker itself is shutting down: keep the lease so the item is reclaimed
+            # The search was cancelled (not the worker): close the item and let the worker carry on.
+            await finish_work_item(item_id, status=CANCELED, owner=owner, attempt_count=attempt_count)
+            return
         except RetryableProviderError as exc:
             await defer_or_dead(item_id, str(exc), owner=owner, attempt_count=attempt_count)
             return

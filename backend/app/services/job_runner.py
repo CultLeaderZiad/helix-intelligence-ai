@@ -41,6 +41,13 @@ def seconds_since_last_poll() -> Optional[int]:
     return int(time.monotonic() - last_poll_monotonic)
 
 
+def outer_cancel_requested() -> bool:
+    """True only when something is cancelling THIS task (shutdown). A CancelledError that comes up
+    from a search's own inner task (the user pressed Cancel) is not that, and must not stop the loop."""
+    task = asyncio.current_task()
+    return task is not None and getattr(task, "cancelling", lambda: 0)() > 0
+
+
 async def _wait(stop: asyncio.Event, seconds: float) -> None:
     try:
         await asyncio.wait_for(stop.wait(), timeout=seconds)
@@ -92,7 +99,9 @@ async def run_jobs(stop: asyncio.Event, worker_id: str, poll_interval_s: float =
                     continue
                 await _wait(stop, poll_interval_s)
             except asyncio.CancelledError:
-                raise
+                if stop.is_set() or outer_cancel_requested():
+                    raise
+                logger.warning("a search was cancelled mid-run; the worker keeps polling")
             except Exception as exc:  # keep the loop alive; the item's lease handles retries
                 logger.exception("worker loop error: %s", exc)
                 await _wait(stop, poll_interval_s)

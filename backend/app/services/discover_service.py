@@ -1219,7 +1219,9 @@ async def _run_discovery_pipeline(
                 await db.commit()
                 if not saved_creatives:
                     await refund_zero_result_search(db, org_id, job_id)
-                if saved_creatives and settings.ARCHIVE_ENABLED:
+                from app.services.storage_service import r2_fully_configured
+
+                if saved_creatives and settings.ARCHIVE_ENABLED and r2_fully_configured():
                     # Permanent copy runs as its own work item so media
                     # downloads never hold up the search result.
                     try:

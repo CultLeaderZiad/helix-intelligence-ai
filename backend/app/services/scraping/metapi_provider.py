@@ -44,6 +44,17 @@ def brand_term(query: str) -> str:
     return text
 
 
+def domain_term(query: str) -> Optional[str]:
+    """'https://www.acme.example/x' -> 'acme.example'; None when the query is not a web address."""
+    text = (query or "").strip().lower()
+    if "://" in text:
+        text = text.split("://", 1)[1]
+    text = text.split("/", 1)[0].split("?", 1)[0]
+    if text.startswith("www."):
+        text = text[4:]
+    return text if "." in text and " " not in text and len(text) > 3 else None
+
+
 def _norm(name: str) -> str:
     words = re.findall(r"[a-z0-9]+", (name or "").lower())
     while words and words[-1] in _NAME_SUFFIXES:
@@ -201,15 +212,17 @@ class MetapiProvider(ScraperProvider):
                 # one looser pass, so any search gets whatever Meta really has for those words.
                 if progress_callback:
                     await progress_callback(0, "Widening the search...")
-                loose_items = await self._run_task(
-                    {
-                        "q": search_query,
-                        "count": resolve_count,
-                        **metapi_task_filters(filters, advertiser=False),
-                        "search_type": "keyword_unordered",
-                    },
-                    progress_callback,
-                )
+                # Metapi matches q against ad text, page name AND link URL, so a website address is
+                # searched as the address itself. Without an explicit status filter its default is
+                # active-only, which hides a brand whose ads just ended; this pass asks for all.
+                loose_payload = {
+                    "q": domain_term(query) or search_query,
+                    "count": resolve_count,
+                    **metapi_task_filters(filters, advertiser=False),
+                    "search_type": "keyword_unordered",
+                }
+                loose_payload.setdefault("active_status", "all")
+                loose_items = await self._run_task(loose_payload, progress_callback)
                 if loose_items is None:
                     return []
                 keyword_items = loose_items

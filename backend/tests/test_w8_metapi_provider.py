@@ -168,3 +168,25 @@ async def test_nothing_at_all_stops_after_the_looser_pass(monkeypatch):
     provider = _provider()
     assert await provider.search("zzzzqqq", max_records=15) == []
     assert len(posted) == 2 and provider.last_outcome == "empty"
+
+
+def test_domain_term_reads_web_addresses_only():
+    assert mp.domain_term("https://www.Acme.example/shop?x=1") == "acme.example"
+    assert mp.domain_term("acme.example") == "acme.example"
+    assert mp.domain_term("acme develop") is None and mp.domain_term("nike") is None
+
+
+@pytest.mark.asyncio
+async def test_the_looser_pass_searches_the_address_and_includes_ended_ads(monkeypatch):
+    posted = _fake_metapi(monkeypatch, lambda payload: [])
+    await _provider().search("https://softcodedevelop.com/", max_records=15)
+    assert posted[0]["q"] == "softcodedevelop" and "active_status" not in posted[0]
+    assert posted[1]["q"] == "softcodedevelop.com" and posted[1]["active_status"] == "all"
+    assert posted[1]["search_type"] == "keyword_unordered"
+
+
+@pytest.mark.asyncio
+async def test_an_explicit_status_choice_is_kept_in_the_looser_pass(monkeypatch):
+    posted = _fake_metapi(monkeypatch, lambda payload: [])
+    await _provider().search("zzzz", max_records=15, filters={"active_status": "active"})
+    assert posted[1]["active_status"] == "active"

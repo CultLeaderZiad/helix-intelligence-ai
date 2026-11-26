@@ -78,10 +78,11 @@ def _migration_status(db_revision) -> dict:
     }
 
 
-def _worker_status() -> dict:
+async def _worker_status() -> dict:
     try:
         from app.services import embedded_worker
 
+        await embedded_worker.ensure_running()  # the keep-alive ping revives a worker that died
         return embedded_worker.status()
     except Exception:  # health must never fail because of this
         return {"mode": "unknown", "running": None, "last_poll_seconds_ago": None}
@@ -130,7 +131,7 @@ async def health_check(
         "service": "helix-backend",
         "db": db_status,
         "providers": "not_checked",
-        "worker": _worker_status(),
+        "worker": await _worker_status(),
         "migration": _migration_status(db_revision),
     }
     if db_error and is_admin_req:

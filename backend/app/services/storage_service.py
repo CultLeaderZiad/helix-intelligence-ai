@@ -126,6 +126,13 @@ def r2_enabled() -> bool:
     return False
 
 
+def r2_fully_configured() -> bool:
+    """True when every R2 setting is present. Callers skip the permanent media copy otherwise,
+    instead of queueing archive work that can only fail."""
+    return all((settings.R2_ACCOUNT_ID, settings.R2_ACCESS_KEY_ID, settings.R2_SECRET_ACCESS_KEY,
+                settings.R2_BUCKET, settings.R2_PUBLIC_BASE_URL))
+
+
 @lru_cache(maxsize=1)
 def _r2_client():
     import boto3  # imported lazily so the app still boots without boto3
